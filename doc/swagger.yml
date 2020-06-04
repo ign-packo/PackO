@@ -1,0 +1,126 @@
+openapi: "3.0.1"
+info: 
+  title: "API MOSAIQUAGE"
+  version: "1.0.0"
+  description: "Documentation de l'API pour le controle et les retouches de mosaiquage."
+servers: 
+  - url: "http://localhost:8081/api"
+    description: "Serveur de dev"
+tags:
+  - name: tile
+    description: Requête sur les tuiles
+  - name: edit
+    description: Modification du mosaïquage
+paths:
+  '/tile/graph/{X}/{Y}/{Z}':
+    get:
+      tags:
+        - tile
+      summary: "Récupération du graph raster pour une tuile"
+      description: ""
+      parameters:
+        - in: path
+          name: X         
+          description: 0                       
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: Y
+          description: 0
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: Z
+          description: 0
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+  '/tile/ortho/{X}/{Y}/{Z}':
+    get:
+      tags:
+        - tile
+      summary: "Récupération de l'ortho mosaïquée pour une tuile"
+      description: ""
+      parameters:
+        - in: path
+          name: X         
+          description: 0                       
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: Y
+          description: 0
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: Z
+          description: 0
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+  '/tile/opi/{X}/{Y}/{Z}':
+    get:
+      tags:
+        - tile
+      summary: "Récupération de d'une OPI pour une tuile"
+      description: ""
+      parameters:
+        - in: path
+          name: X
+          description: 0
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: Y
+          description: 0
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: Z
+          description: 0
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: id
+          description: image id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  '/edit/patch':
+    post:
+      tags:
+        - edit
+      summary: "ajout d'un patch dans le mosaïquage"
+      description: ""
+      requestBody:
+        description: la structure du projet
+        required: true
+        content:
+          application/json:
+      parameters:
+        - in: query
+          name: id
+          description: 
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+       

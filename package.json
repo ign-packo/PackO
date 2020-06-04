@@ -1,0 +1,28 @@
+{
+  "name": "ign-api-mosaique",
+  "version": "1.0.0",
+  "description": "api pour controle et retouche du mosaiquage",
+  "main": "serveur.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gmaillet/ign-api-mosaique.git"
+  },
+  "author": "IGN",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/gmaillet/ign-api-mosaique/issues"
+  },
+  "homepage": "https://github.com/gmaillet/ign-api-mosaique#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "debug": "^4.1.1",
+    "express": "^4.17.1",
+    "swagger-editor-dist": "^3.10.0",
+    "swagger-ui-dist": "^3.25.5",
+    "swagger-ui-express": "^4.1.4",
+    "yamljs": "^0.3.0"
+  }
+}
