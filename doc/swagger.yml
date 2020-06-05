@@ -32,6 +32,7 @@ paths:
         - in: query
           name: REQUEST
           required: true
+          description: "GetCapabilities, GetTile, GetFeatureInfo"
           schema:
             type: string
         - in: query
@@ -69,6 +70,22 @@ paths:
           required: false
           schema:
             type: string
+        - in: query
+          name: I
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: J
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: INFOFORMAT
+          required: false
+          schema:
+            type: string
+  
       responses:
         '200':
           description: OK

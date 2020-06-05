@@ -1,21 +1,19 @@
 const router = require('express').Router();
+const fs = require('fs');
 const { matchedData } = require('express-validator/filter');
-// const debug = require('debug')('job');
 
 const {
   query, body,
 } = require('express-validator/check');
 
-// const validateParams = require('../../middlewares/validateParams');
-// const createErrorMsg = require('../../middlewares/createErrorMsg');
-// const jobs = require('../../middlewares/jobs');
-// const pgClient = require('../../middlewares/db/pgClient');
-// const returnMsg = require('../../middlewares/returnMsg');
-
 router.get('/wmts', [
   query('SERVICE'),
   query('VERSION'),
-  query('REQUEST')
+  query('REQUEST'),
+  query('LAYER'),
+  query('TILEMATRIX'),
+  query('TILEROW'),
+  query('TILECOL')
 ],(req, res) => {
     const params = matchedData(req);
     const SERVICE = params.SERVICE;
@@ -35,38 +33,25 @@ router.get('/wmts', [
     }
     else if (REQUEST == 'GetTile'){
         console.log(LAYER,TILEMATRIX, TILEROW, TILECOL);
-        const url = 'cache/'+TILEMATRIX+'/'+TILEROW+'/'+TILECOL+'/'+LAYER+'.jpg'
+        // const url = 'cache/'+LAYER+'.jpg'
+        const url = 'data/'+TILEMATRIX+'/'+TILEROW+'/'+TILECOL+'/'+LAYER+'.jpg'
         console.log(url);
         try {
             if (fs.existsSync(url)) {
                 console.log('found');
-                res.sendFile(url, { root: __dirname+'/../' });
+                res.sendFile(url, { root: __dirname+'/../../cache/' });
+            }
+            else {
+                console.log('not found');
+                res.sendFile('ortho.jpg', { root: __dirname+'/../../cache/' });
             }
         } catch(err) {
-            console.error(err)
+            console.error(err);
+            res.status(500).send(err);
         }
-        console.log('not found');
     }
     else
         res.status(500).send('request not supported');
-    // // Finds the validation errors in this request and wraps them in an object with handy functions
-    // const errors = validationResult(req);
-    // if (!errors.isEmpty()) {
-    //   return res.status(422).json({ errors: errors.array() });
-    // }
-    // const url = 'cache/'+String(req.query.Z)+'/'+String(req.query.Y)+'/'+String(req.query.X)+'/graph.png'
-    // console.log(url);
-    // try {
-    //   if (fs.existsSync(url)) {
-    //       console.log('found');
-    //       res.sendFile(url, { root: __dirname+'/../' });
-    //       return;
-    //   }
-    // } catch(err) {
-    //   console.error(err)
-    // }
-    // console.log('not found');
-    // res.status(500).send('Tile does not exist!');
   });
 
 module.exports = router;
