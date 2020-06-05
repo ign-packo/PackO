@@ -4,123 +4,71 @@ info:
   version: "1.0.0"
   description: "Documentation de l'API pour le controle et les retouches de mosaiquage."
 servers: 
-  - url: "http://localhost:8081/api"
+  - url: "http://localhost:8081"
     description: "Serveur de dev"
 tags:
-  - name: tile
+  - name: wmts
     description: Requête sur les tuiles
   - name: edit
     description: Modification du mosaïquage
 paths:
-  '/tile/graph/{X}/{Y}/{Z}':
+  '/wmts':
     get:
       tags:
-        - tile
-      summary: "Récupération du graph raster pour une tuile"
+        - wmts
+      summary: "service wmts pour ortho et graph"
       description: ""
       parameters:
-        - in: path
-          name: X         
-          description: 0                       
-          required: true
-          schema:
-            type: integer
-        - in: path
-          name: Y
-          description: 0
-          required: true
-          schema:
-            type: integer
-        - in: path
-          name: Z
-          description: 0
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: OK
-  '/tile/ortho/{X}/{Y}/{Z}':
-    get:
-      tags:
-        - tile
-      summary: "Récupération de l'ortho mosaïquée pour une tuile"
-      description: ""
-      parameters:
-        - in: path
-          name: X         
-          description: 0                       
-          required: true
-          schema:
-            type: integer
-        - in: path
-          name: Y
-          description: 0
-          required: true
-          schema:
-            type: integer
-        - in: path
-          name: Z
-          description: 0
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: OK
-  '/tile/opi/{X}/{Y}/{Z}':
-    get:
-      tags:
-        - tile
-      summary: "Récupération de d'une OPI pour une tuile"
-      description: ""
-      parameters:
-        - in: path
-          name: X
-          description: 0
-          required: true
-          schema:
-            type: integer
-        - in: path
-          name: Y
-          description: 0
-          required: true
-          schema:
-            type: integer
-        - in: path
-          name: Z
-          description: 0
-          required: true
-          schema:
-            type: integer
         - in: query
-          name: id
-          description: image id
+          name: SERVICE
           required: true
+          schema:
+            type: string
+        - in: query
+          name: VERSION
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: REQUEST
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: LAYER
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: STYLE
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: FORMAT
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: TILEMATRIXSET
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: TILEMATRIX
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: TILEROW
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: TILECOL
+          required: false
           schema:
             type: string
       responses:
         '200':
           description: OK
-  '/edit/patch':
-    post:
-      tags:
-        - edit
-      summary: "ajout d'un patch dans le mosaïquage"
-      description: ""
-      requestBody:
-        description: la structure du projet
-        required: true
-        content:
-          application/json:
-      parameters:
-        - in: query
-          name: id
-          description: 
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-       

@@ -10,6 +10,8 @@ const PORT = 8081;
 
 const app = express();
 
+const wmts = require('./routes/wmts');
+
 app.use(cors());
 app.use(bodyParser.json());
 
@@ -25,8 +27,10 @@ const options = {
 
 const swaggerDocument = YAML.load('./doc/swagger.yml');
 
-app.use('/api/doc', swaggerUi.serve, swaggerUi.setup(swaggerDocument, options));
+app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerDocument, options));
+
+app.use('/', wmts);
 
 module.exports = app.listen(PORT, () => {
-  debug.log(`URL de l'api : http://localhost:${PORT}/api \nURL de la documentation swagger : http://localhost:${PORT}/api/doc`);
+  debug.log(`URL de l'api : http://localhost:${PORT} \nURL de la documentation swagger : http://localhost:${PORT}/doc`);
 });
