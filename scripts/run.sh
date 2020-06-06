@@ -1,0 +1,1 @@
+docker run --rm -ti -v `pwd`/..:/data -w /data osgeo/gdal  bash
