@@ -68,7 +68,7 @@ for z in tiles:
         for y in range(tileMatixSetLimits[z]['MinTileRow'], tileMatixSetLimits[z]['MaxTileRow']):
             img = create_blank_tile(tiles, z, x, y)
             gdal.Warp(img, input)
-            dir='cache/'+str(z)+'/'+str(x)+'/'+str(x)
+            dir='cache/'+str(z)+'/'+str(y)+'/'+str(x)
             Path(dir).mkdir(parents=True, exist_ok=True)
             gtiffDriver.CreateCopy( dir+"/"+stem+".jpg", img)
 

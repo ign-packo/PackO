@@ -34,12 +34,12 @@ router.get('/wmts', [
     else if (REQUEST == 'GetTile'){
         console.log(LAYER,TILEMATRIX, TILEROW, TILECOL);
         // const url = 'cache/'+LAYER+'.jpg'
-        const url = 'data/'+TILEMATRIX+'/'+TILEROW+'/'+TILECOL+'/'+LAYER+'.jpg'
+        const url = 'cache/'+TILEMATRIX+'/'+TILEROW+'/'+TILECOL+'/'+LAYER+'.jpg'
         console.log(url);
         try {
             if (fs.existsSync(url)) {
                 console.log('found');
-                res.sendFile(url, { root: __dirname+'/../../cache/' });
+                res.sendFile(url, { root: __dirname+'/../..' });
             }
             else {
                 console.log('not found');
