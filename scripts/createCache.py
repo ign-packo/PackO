@@ -1,9 +1,9 @@
 import gdal
 import xml.etree.ElementTree as ET
+import math
 
 tree = ET.parse('Capabilities.xml')
 root = tree.getroot()
-# print(root)
 tiles={}
 for TMS in root.findall('{http://www.opengis.net/wmts/1.0}Contents/{http://www.opengis.net/wmts/1.0}TileMatrixSet/{http://www.opengis.net/wmts/1.0}TileMatrix'):
     # for keys in TMS.findall('*'):
@@ -21,12 +21,10 @@ for TMS in root.findall('{http://www.opengis.net/wmts/1.0}Contents/{http://www.o
 # print(tiles)
 
 epsg = int(root.find('{http://www.opengis.net/wmts/1.0}Contents/{http://www.opengis.net/wmts/1.0}TileMatrixSet/{http://www.opengis.net/ows/1.1}SupportedCRS').text.split(':')[1])
-print('Code EPSG : ', epsg)
+# print('Code EPSG : ', epsg)
 
 outRasterSRS = gdal.osr.SpatialReference()
 outRasterSRS.ImportFromEPSG(epsg)
-
-print(tiles[13])
 
 def create_blank_tile(tiles, tileMatrix, tileRow, tileCol):
     print('create', tileMatrix, tileRow, tileCol)
@@ -44,7 +42,6 @@ def create_blank_tile(tiles, tileMatrix, tileRow, tileCol):
 def get_TileMatrixSetLimits(tiles, filename):
     srcImage = gdal.Open(filename)
     geoTrans = srcImage.GetGeoTransform()
-    print(geoTrans)
     ulX = geoTrans[0]
     ulY = geoTrans[3]
     xDist = geoTrans[1]
@@ -52,16 +49,25 @@ def get_TileMatrixSetLimits(tiles, filename):
     cols = srcImage.RasterXSize
     rows = srcImage.RasterYSize
     lrX = ulX + cols*xDist
-    lrY = ulY - rows*yDist
+    lrY = ulY + rows*yDist
     tileMatrixSetLimits={}
-    for tile in tiles:
+    nbTiles = 0
+    for n in tiles:
+        tile=tiles[n]
+        tileMatrixLimits={}
         tileMatrixLimits['TileMatrix'] = tile['Identifier']
-        tileMatrixLimits['MinTileCol'] = floor((ulX - tile['TopLeftCorner'][0])/(tile['Resolution']*tile['TileWidth']))
-        tileMatrixLimits['MinTileRow'] = floor((tile['TopLeftCorner'][1])/(tile['Resolution']*tile['TileHeight']-ulY))
-        tileMatrixLimits['MaxTileCol'] = ceil((lrX - tile['TopLeftCorner'][0])/(tile['Resolution']*tile['TileWidth']))
-        tileMatrixLimits['MaxTileRow'] = ceil((tile['TopLeftCorner'][1])/(tile['Resolution']*tile['TileHeight']-lrY))
+        tileMatrixLimits['MinTileCol'] = math.floor((ulX - tile['TopLeftCorner'][0])/(tile['Resolution']*tile['TileWidth']))
+        tileMatrixLimits['MinTileRow'] = math.floor((tile['TopLeftCorner'][1]-ulY)/(tile['Resolution']*tile['TileHeight']))
+        tileMatrixLimits['MaxTileCol'] = math.ceil((lrX - tile['TopLeftCorner'][0])/(tile['Resolution']*tile['TileWidth'])) - 1
+        tileMatrixLimits['MaxTileRow'] = math.ceil((tile['TopLeftCorner'][1]-lrY)/(tile['Resolution']*tile['TileHeight'])) - 1
         tileMatrixSetLimits[tile['Identifier']] = tileMatrixLimits
+        nbTiles += (tileMatrixLimits['MaxTileCol'] - tileMatrixLimits['MinTileCol'] + 1) * (tileMatrixLimits['MaxTileRow'] - tileMatrixLimits['MinTileRow'] + 1)
+    # print('Nombre de tuiles pour cette image :', nbTiles)
     return tileMatrixSetLimits
+
+
+tileMatixSetLimits = get_TileMatrixSetLimits(tiles, 'ZoneTestPCRS/OPIs/19FD5606Ax00001_13040.tif')
+print(tileMatixSetLimits[18])
 
 # on fait un vrt de la couche Ortho
 # on recupere la BBox de l'Ortho
