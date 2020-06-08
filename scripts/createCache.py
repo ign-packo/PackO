@@ -71,8 +71,8 @@ input = gdal.Open(input_filename)
 jpegDriver = gdal.GetDriverByName( 'Jpeg' )
 pngDriver = gdal.GetDriverByName( 'png' )
 stem = Path(input_filename).stem
-# for z in tiles:
-for z in range(17,18):
+for z in tiles:
+# for z in range(17,18):
     print('Niveau de zoom : ',z)
     for x in range(tileMatixSetLimits[z]['MinTileCol'], tileMatixSetLimits[z]['MaxTileCol']):
         for y in range(tileMatixSetLimits[z]['MinTileRow'], tileMatixSetLimits[z]['MaxTileRow']):
@@ -90,65 +90,69 @@ for z in range(17,18):
             # on rasterise la partie du graphe qui concerne ce cliche
             gdal.Rasterize(mask, db, SQLStatement='select geom from graphe_pcrs56_zone_test where cliche = \''+stem+'\' ')
             img_mask = mask.GetRasterBand(1).ReadAsArray()
-            # on cree le graphe et l'ortho
-            ortho = create_blank_tile(tiles, z, x, y, 3)
-            graph = create_blank_tile(tiles, z, x, y, 3)
-            if Path(dir+"/ortho.jpg").is_file():
-                existing_ortho = gdal.Open(dir+"/ortho.jpg")
-                existing_graph = gdal.Open(dir+"/graph.png")
-            else:
-                existing_ortho = False
-                existing_graph = False
+            
+            # si le mask est vide, on a termine
+            max = np.amax(img_mask)
+            if (max>0):
+                # on cree le graphe et l'ortho
+                ortho = create_blank_tile(tiles, z, x, y, 3)
+                graph = create_blank_tile(tiles, z, x, y, 3)
+                if Path(dir+"/ortho.jpg").is_file():
+                    existing_ortho = gdal.Open(dir+"/ortho.jpg")
+                    existing_graph = gdal.Open(dir+"/graph.png")
+                else:
+                    existing_ortho = False
+                    existing_graph = False
 
-            opi_r = opi.GetRasterBand(1).ReadAsArray()
-            if existing_ortho :
-                ortho_r = existing_ortho.GetRasterBand(1).ReadAsArray()
-            else:
-                ortho_r = ortho.GetRasterBand(1).ReadAsArray()
-            opi_r[(img_mask == 0)] = 0
-            ortho_r[(img_mask != 0)] = 0
-            ortho.GetRasterBand(1).WriteArray(np.add(opi_r, ortho_r))
+                opi_r = opi.GetRasterBand(1).ReadAsArray()
+                if existing_ortho :
+                    ortho_r = existing_ortho.GetRasterBand(1).ReadAsArray()
+                else:
+                    ortho_r = ortho.GetRasterBand(1).ReadAsArray()
+                opi_r[(img_mask == 0)] = 0
+                ortho_r[(img_mask != 0)] = 0
+                ortho.GetRasterBand(1).WriteArray(np.add(opi_r, ortho_r))
 
-            opi_v = opi.GetRasterBand(2).ReadAsArray()
-            if existing_ortho:
-                ortho_v = existing_ortho.GetRasterBand(2).ReadAsArray()
-            else:
-                ortho_v = ortho.GetRasterBand(2).ReadAsArray()
-            opi_v[(img_mask == 0)] = 0
-            ortho_v[(img_mask != 0)] = 0
-            ortho.GetRasterBand(2).WriteArray(np.add(opi_v, ortho_v))
+                opi_v = opi.GetRasterBand(2).ReadAsArray()
+                if existing_ortho:
+                    ortho_v = existing_ortho.GetRasterBand(2).ReadAsArray()
+                else:
+                    ortho_v = ortho.GetRasterBand(2).ReadAsArray()
+                opi_v[(img_mask == 0)] = 0
+                ortho_v[(img_mask != 0)] = 0
+                ortho.GetRasterBand(2).WriteArray(np.add(opi_v, ortho_v))
 
-            opi_b = opi.GetRasterBand(3).ReadAsArray()
-            if existing_ortho:
-                ortho_b = existing_ortho.GetRasterBand(3).ReadAsArray()
-            else:
-                ortho_b = ortho.GetRasterBand(3).ReadAsArray()
-            opi_b[(img_mask == 0)] = 0
-            ortho_b[(img_mask != 0)] = 0
-            ortho.GetRasterBand(3).WriteArray(np.add(opi_b, ortho_b))
+                opi_b = opi.GetRasterBand(3).ReadAsArray()
+                if existing_ortho:
+                    ortho_b = existing_ortho.GetRasterBand(3).ReadAsArray()
+                else:
+                    ortho_b = ortho.GetRasterBand(3).ReadAsArray()
+                opi_b[(img_mask == 0)] = 0
+                ortho_b[(img_mask != 0)] = 0
+                ortho.GetRasterBand(3).WriteArray(np.add(opi_b, ortho_b))
 
-            if existing_graph:
-                graph_r = existing_graph.GetRasterBand(1).ReadAsArray()
-            else:
-                graph_r = graph.GetRasterBand(1).ReadAsArray()
-            graph.GetRasterBand(1).WriteArray(graph_r)
+                if existing_graph:
+                    graph_r = existing_graph.GetRasterBand(1).ReadAsArray()
+                else:
+                    graph_r = graph.GetRasterBand(1).ReadAsArray()
+                graph.GetRasterBand(1).WriteArray(graph_r)
 
-            if existing_graph:
-                graph_v = existing_graph.GetRasterBand(2).ReadAsArray()
-            else:
-                graph_v = graph.GetRasterBand(2).ReadAsArray()
-            graph_v[(img_mask != 0)] = input_v
-            graph.GetRasterBand(2).WriteArray(graph_v)
+                if existing_graph:
+                    graph_v = existing_graph.GetRasterBand(2).ReadAsArray()
+                else:
+                    graph_v = graph.GetRasterBand(2).ReadAsArray()
+                graph_v[(img_mask != 0)] = input_v
+                graph.GetRasterBand(2).WriteArray(graph_v)
 
-            if existing_graph:
-                graph_b = existing_graph.GetRasterBand(3).ReadAsArray()
-            else:
-                graph_b = graph.GetRasterBand(3).ReadAsArray()
-            graph_b[(img_mask != 0)] = input_b
-            graph.GetRasterBand(3).WriteArray(graph_b)
+                if existing_graph:
+                    graph_b = existing_graph.GetRasterBand(3).ReadAsArray()
+                else:
+                    graph_b = graph.GetRasterBand(3).ReadAsArray()
+                graph_b[(img_mask != 0)] = input_b
+                graph.GetRasterBand(3).WriteArray(graph_b)
 
-            jpegDriver.CreateCopy( dir+"/ortho.jpg", ortho)
-            pngDriver.CreateCopy( dir+"/graph.png", graph)
+                jpegDriver.CreateCopy( dir+"/ortho.jpg", ortho)
+                pngDriver.CreateCopy( dir+"/graph.png", graph)
 
 
 
