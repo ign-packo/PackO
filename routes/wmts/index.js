@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const fs = require('fs');
 const { matchedData } = require('express-validator/filter');
+const {spawn} = require('child_process');
 
 const {
   query, body,
@@ -29,7 +30,19 @@ router.get('/wmts', [
 
     console.log(SERVICE, VERSION, REQUEST);
     if (REQUEST == 'GetCapabilities'){
-        res.status(200).sendFile('Capabilities.xml', { root: __dirname+'/../../' });
+        const python = spawn('python3', ['scripts/GetCapabilities.py']);
+        // collect data from script
+        dataToSend = '';
+        python.stdout.on('data', function (data) {
+            dataToSend += data.toString();
+        });
+        // in close event we are sure that stream from child process is closed
+        python.on('close', (code) => {
+            console.log(`child process close all stdio with code ${code}`);
+            // send data to browser
+            res.status(200).send(dataToSend);
+        });
+        // res.status(200).sendFile('toto.xml', { root: __dirname+'/../../' });
     }
     else if (REQUEST == 'GetTile'){
         console.log(LAYER,TILEMATRIX, TILEROW, TILECOL);
@@ -43,7 +56,7 @@ router.get('/wmts', [
             }
             else {
                 console.log('not found');
-                res.sendFile('ortho.jpg', { root: __dirname+'/../../cache/' });
+                res.sendFile('ortho.jpg', { root: __dirname+'/../../' });
             }
         } catch(err) {
             console.error(err);
