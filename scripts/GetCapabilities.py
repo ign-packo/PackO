@@ -51,6 +51,6 @@ def exportLayer(layername, format='image/jpeg'):
 with open('Capabilities_part1.xml') as f:
     print(f.read())
 print(exportLayer('ortho'))
-print(exportLayer('graph'))
+print(exportLayer('graph', 'image/png'))
 with open('Capabilities_part2.xml') as f:
     print(f.read())

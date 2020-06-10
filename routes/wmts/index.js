@@ -14,7 +14,8 @@ router.get('/wmts', [
   query('LAYER'),
   query('TILEMATRIX'),
   query('TILEROW'),
-  query('TILECOL')
+  query('TILECOL'),
+  query('FORMAT') 
 ],(req, res) => {
     const params = matchedData(req);
     const SERVICE = params.SERVICE;
@@ -22,7 +23,7 @@ router.get('/wmts', [
     const REQUEST = params.REQUEST;
     const LAYER = params.LAYER;
     // const STYLE = params.STYLE;
-    // const FORMAT = params.FORMAT;
+    const FORMAT = params.FORMAT;
     // const TILEMATRIXSET = params.TILEMATRIXSET;
     const TILEMATRIX = params.TILEMATRIX;
     const TILEROW = params.TILEROW;
@@ -46,8 +47,13 @@ router.get('/wmts', [
     }
     else if (REQUEST == 'GetTile'){
         console.log(LAYER,TILEMATRIX, TILEROW, TILECOL);
+        let ext='.tif';
+        console.log(FORMAT);
+        if (FORMAT == 'image/png') {
+            ext = '.png';
+        }
         // const url = 'cache/'+LAYER+'.jpg'
-        const url = 'cache/'+TILEMATRIX+'/'+TILEROW+'/'+TILECOL+'/'+LAYER+'.jpg'
+        const url = 'cache/'+TILEMATRIX+'/'+TILEROW+'/'+TILECOL+'/'+LAYER+ext;
         console.log(url);
         try {
             if (fs.existsSync(url)) {
