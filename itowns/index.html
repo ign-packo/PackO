@@ -3,8 +3,8 @@
         <title>Mosaique</title>
 
         <meta charset="UTF-8">
-        <link rel="stylesheet" type="text/css" href="css/example.css">
-        <link rel="stylesheet" type="text/css" href="css/LoadingScreen.css">
+        <link rel="stylesheet" type="text/css" href="node_modules/itowns/examples/css/example.css">
+        <link rel="stylesheet" type="text/css" href="node_modules/itowns/examples/css/LoadingScreen.css">
 
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
@@ -12,9 +12,9 @@
     <body>
         <div id="viewerDiv" class="viewer"></div>
         <script src="node_modules/itowns/dist/itowns.js"></script>
-        <script src="js/GUI/LoadingScreen.js"></script>
+        <script src="node_modules/itowns/examples/js/GUI/LoadingScreen.js"></script>
         <script src="node_modules/itowns/dist/debug.js"></script>
-        <script src="js/GUI/GuiTools.js"></script>
+        <script src="node_modules/itowns/examples/js/GUI/GuiTools.js"></script>
         <!-- <script src="pgSource.js"></script> -->
         <!-- <script src="Saisie.js"></script> -->
         <script type="text/javascript">
@@ -84,6 +84,7 @@
                 //     // console.log(extent);
                     return true;
                 }
+                config.opacity= 0.2;
                 var layer = new itowns.ColorLayer('Graph', config);
                 view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
             });

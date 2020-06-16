@@ -31,7 +31,7 @@ def getSource(layername, url, format):
     source["format"] = format
     source["name"]= layername
     source["tileMatrixSet"]= "LAMBB93"
-    source["tileMatrixSetLimits"]= exportTileLimits('ortho')
+    source["tileMatrixSetLimits"]= exportTileLimits(layername)
     return source
 
 
@@ -46,9 +46,6 @@ with open('itowns/ortho.json', 'w') as outfile:
 layer={}
 layer["id"]="Graph"
 layer["source"]=  getSource("graph", "http://localhost:8081/wmts", "image/png")
-layer["name"]= "graph"
-layer["tileMatrixSet"]= "LAMBB93"
-layer["tileMatrixSetLimits"]= exportTileLimits('graph')
 
 with open('itowns/graph.json', 'w') as outfile:
     json.dump(layer, outfile)
