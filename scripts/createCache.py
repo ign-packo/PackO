@@ -6,6 +6,7 @@ import sys
 import numpy as np
 from random import randrange
 import glob
+import json
 
 def getCapabilities(input_capabilities):
     tree = ET.parse(input_capabilities)
@@ -66,7 +67,7 @@ def processImage(input_filename, input_r, input_v, input_b):
     pngDriver = gdal.GetDriverByName( 'png' )
     stem = Path(input_filename).stem
     # for z in tiles:
-    for z in range(10,18):
+    for z in range(0,18):
         print('Niveau de zoom : ',z)
         for x in range(tileMatixSetLimits[z]['MinTileCol'], tileMatixSetLimits[z]['MaxTileCol']):
             for y in range(tileMatixSetLimits[z]['MinTileRow'], tileMatixSetLimits[z]['MaxTileRow']):
@@ -163,8 +164,24 @@ L = glob.glob(sys.argv[1])
 # input_r = int(sys.argv[2])
 # input_v = int(sys.argv[3])
 # input_b = int(sys.argv[4])
+mtd={}
 for filename in L:
-    processImage(filename, randrange(255), randrange(255), randrange(255))
+    r = randrange(255)
+    v = randrange(255)
+    b = randrange(255)
+    while (r in mtd) and (v in mtd[r]) and (b in mtd[r][v]):
+        r = randrange(255)
+        v = randrange(255)
+        b = randrange(255)
+    if not(r in mtd):
+        mtd[r] = {}
+    if not(v in mtd[r]):
+        mtd[r][v] = {}
+    mtd[r][v][b] = filename 
+    processImage(filename, r, v, b)
+
+with open('cache_mtd.json', 'w') as outfile:
+    json.dump(mtd, outfile)
 
 
 

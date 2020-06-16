@@ -47,7 +47,7 @@ router.get('/wmts', [
     }
     else if (REQUEST == 'GetTile'){
         console.log(LAYER,TILEMATRIX, TILEROW, TILECOL);
-        let ext='.tif';
+        let ext='.jpg';
         console.log(FORMAT);
         if (FORMAT == 'image/png') {
             ext = '.png';
@@ -62,7 +62,7 @@ router.get('/wmts', [
             }
             else {
                 console.log('not found');
-                res.sendFile('ortho.jpg', { root: __dirname+'/../../' });
+                res.sendFile('ortho.jpg', { root: __dirname+'/../../cache' });
             }
         } catch(err) {
             console.error(err);

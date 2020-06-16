@@ -1,0 +1,203 @@
+<html>
+    <head>
+        <title>Mosaique</title>
+
+        <meta charset="UTF-8">
+        <link rel="stylesheet" type="text/css" href="css/example.css">
+        <link rel="stylesheet" type="text/css" href="css/LoadingScreen.css">
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
+    </head>
+    <body>
+        <div id="viewerDiv" class="viewer"></div>
+        <script src="node_modules/itowns/dist/itowns.js"></script>
+        <script src="js/GUI/LoadingScreen.js"></script>
+        <script src="node_modules/itowns/dist/debug.js"></script>
+        <script src="js/GUI/GuiTools.js"></script>
+        <!-- <script src="pgSource.js"></script> -->
+        <!-- <script src="Saisie.js"></script> -->
+        <script type="text/javascript">
+            // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
+            itowns.proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+            /* global itowns, setupLoadingScreen, GuiTools, debug */
+            // # Planar (EPSG:3946) viewer
+
+            var extent;
+            var viewerDiv;
+            var view;
+            var p;
+            var menuGlobe;
+            var d;
+
+
+            var placement = {
+                coord: new itowns.Coordinates('EPSG:2154', 227155, 6760500 ),
+                range: 10000,
+            }
+
+            // Define geographic extent: CRS, min/max X, min/max Y
+            extent = new itowns.Extent(
+                'EPSG:2154',
+                0, 256 * 373497230.5353357571875677 * 0.00028,
+                12000000 - 256 * 373497230.5353357571875677 * 0.00028, 12000000);
+
+            // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
+            viewerDiv = document.getElementById('viewerDiv');
+
+            // Instanciate PlanarView*
+            view = new itowns.PlanarView(viewerDiv, extent, {
+                placement,
+             maxSubdivisionLevel: 30,
+            //  disableSkirt: false 
+            });
+
+            view.isDebugMode = true;
+            setupLoadingScreen(viewerDiv, view);
+            menuGlobe = new GuiTools('menuDiv', view);
+            console.log(menuGlobe);
+            menuGlobe.gui.width = 300;
+
+
+            // itowns.Fetcher.json('./cadastre.json').then(function _(config) {
+            //     config.source = new itowns.WMTSSource(config.source);
+            //     var layer = new itowns.ColorLayer('Cadastre', config);
+            //     console.log(layer);
+            //     view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            // });
+
+            itowns.Fetcher.json('./ortho.json').then(function _(config) {
+                console.log(config);
+                config.source = new itowns.WMTSSource(config.source);
+                config.source.extentInsideLimit = function(extent) {
+                //     console.log(extent);
+                    return true;
+                }
+                var layer = new itowns.ColorLayer('Ortho', config);
+                console.log(layer);
+                view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            });
+
+            itowns.Fetcher.json('./graph.json').then(function _(config) {
+                config.source = new itowns.WMTSSource(config.source);
+                config.source.extentInsideLimit = function(extent) {
+                //     // console.log(extent);
+                    return true;
+                }
+                var layer = new itowns.ColorLayer('Graph', config);
+                view.addLayer(layer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            });
+
+            // // // Add a TMS imagery source
+            // var allSource = new itowns.TMSSource({
+            //     isInverted: true,
+            //     // eslint-disable-next-line no-template-curly-in-string
+            //     url: 'cache2/${z}/${y}/${x}/all.jpg',
+            //     networkOptions: { crossOrigin: 'anonymous' },
+            //     extent,
+            //     projection: 'EPSG:2154',
+            //     zoom: { min: 0, max: 7  },
+            // });
+            // // Add a TMS imagery layer
+            // var allLayer = new itowns.ColorLayer('All', {
+            //     source: allSource,
+            // });
+            // // view.addLayer(allLayer);
+
+            // // Add a TMS imagery source
+            // var orthoSource = new itowns.TMSSource({
+            //     isInverted: true,
+            //     // eslint-disable-next-line no-template-curly-in-string
+            //     url: 'http://localhost:3000/tile/ortho?Z=${z}&Y=${y}&X=${x}',
+            //     networkOptions: { crossOrigin: 'anonymous' },
+            //     extent,
+            //     projection: 'EPSG:2154',
+            //     zoom: { min: 2, max: 7  },
+            // });
+            // // Add a TMS imagery layer
+            // var orthoLayer = new itowns.ColorLayer('ortho', {
+            //     source: orthoSource,
+            // });
+            // view.addLayer(orthoLayer);
+
+
+            // // Add a TMS imagery source
+            // var graphSource = new itowns.TMSSource({
+            //     isInverted: true,
+            //     // eslint-disable-next-line no-template-curly-in-string
+            //     url: 'http://localhost:3000/tile/graph?Z=${z}&Y=${y}&X=${x}',
+            //     networkOptions: { crossOrigin: 'anonymous' },
+            //     extent,
+            //     projection: 'EPSG:2154',
+            //     zoom: { min: 2, max: 7  },
+            // });
+            // // Add a TMS imagery layer
+            // var graphLayer = new itowns.ColorLayer('graphe', {
+            //     source: graphSource,
+            //     opacity: 0.2
+            // });
+            // view.addLayer(graphLayer);
+
+            // // Add a TMS imagery source
+            // var opiSource = new itowns.TMSSource({
+            //     isInverted: true,
+            //     // eslint-disable-next-line no-template-curly-in-string
+            //     url: 'http://localhost:3000/tile/opi?Z=${z}&Y=${y}&X=${x}&cliche=19FD2A2B25x00014_06847',
+            //     networkOptions: { crossOrigin: 'anonymous' },
+            //     extent,
+            //     projection: 'EPSG:2154',
+            //     zoom: { min: 2, max: 7  },
+            // });
+            // // Add a TMS imagery layer
+            // var opiLayer = new itowns.ColorLayer('opi', {
+            //     source: opiSource,
+            //     opacity: 0.2
+            // });
+            // view.addLayer(opiLayer);
+
+            // var saisie = new Saisie({table:'saisie', graphLayer, orthoLayer, opiLayer});
+            // saisie.cliche = 'unknown';
+            // const eng = view.mainLoop.gfxEngine;
+            // const dom = eng.renderer.domElement;
+            // dom.addEventListener( 'mousemove', function (ev) {
+            //         ev.preventDefault();
+            //         saisie.mousemove(ev);
+            //         return false;
+            //     }, false );
+            // dom.addEventListener( 'click', function (ev) {
+            //         ev.preventDefault();
+            //         saisie.click(ev);
+            //         return false;
+            //     }, false );
+            // dom.addEventListener( 'mousedown', function (ev) {
+            //         ev.preventDefault();
+            //         saisie.mousedown(ev);
+            //         return false;
+            //     }, false );
+            // dom.addEventListener( 'mouseup', function (ev) {
+            //         ev.preventDefault();
+            //         saisie.mouseup(ev);
+            //         return false;
+            //     }, false );
+
+            // menuGlobe.gui.add(saisie,'polygon');
+            // menuGlobe.gui.add(saisie,'freehand');
+            // menuGlobe.gui.add(saisie,'select');
+            // menuGlobe.gui.add(saisie,'cliche').listen();
+
+            // instanciate controls
+            // eslint-disable-next-line no-new
+            new itowns.PlanarControls(view, {
+                maxAltitude: 80000000,
+                enableRotation: false
+            });
+            // itowns.CameraUtils.transformCameraToLookAtTarget(view, view.camera.camera3D, { tilt: 90 });
+
+            // Request redraw
+            view.notifyChange();
+                
+            menuGlobe.addImageryLayersGUI(view.getLayers(function gui(l) { return l.isColorLayer; }));
+            debug.createTileDebugUI(menuGlobe.gui, view);
+        </script>
+    </body>
+</html>
