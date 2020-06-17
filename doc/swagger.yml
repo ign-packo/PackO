@@ -9,9 +9,71 @@ servers:
 tags:
   - name: wmts
     description: Requête sur les tuiles
-  - name: edit
+  - name: graph
     description: Modification du mosaïquage
 paths:
+  '/graph/patch':
+    post:
+      tags:
+        - graph
+      summary: "Application d'un patch de correction"
+      description: ""
+      requestBody:
+       description: geoJson
+       required: true
+      #  content:
+      #    application/json:
+              # example: 
+              #   projects:
+              #     - name: Chantier 1
+              #       jobs:
+              #         - name: jobs 1
+              #           command: touch file1
+              #         - name: jobs 2
+              #           command: touch file2
+              #         - name: jobs 3
+              #           command: touch file3
+              #           deps:
+              #             - id: 0
+              #             - id: 1
+              #     - name: Chantier 2
+              #       jobs:
+              #         - name: jobs 1
+              #           command: touch file1
+              #       deps:
+              #         - id: 0
+      parameters:
+        - in: query
+          name: cliche
+          description: l'identifiant du cliche
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+  '/graph':
+    get:
+      tags:
+        - graph
+      summary: "Récupération de l'identifiant du cliche"
+      description: ""
+      parameters:
+        - in: query
+          name: x
+          description: x
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: y
+          description: y
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
   '/wmts':
     get:
       tags:

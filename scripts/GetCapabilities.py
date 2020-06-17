@@ -27,9 +27,9 @@ def exportTileLimits(layername):
         xml+='<TileMatrixLimits>'
         xml+='<TileMatrix>'+str(z)+'</TileMatrix>'
         xml+='<MinTileRow>'+str(tileMatrixSetLimits[z]['MinTileRow'])+'</MinTileRow>'
-        xml+='<MaxTileRow>'+str(tileMatrixSetLimits[z]['MaxTileRow'])+'</MaxTileRow>'
+        xml+='<MaxTileRow>'+str(tileMatrixSetLimits[z]['MaxTileRow']+1)+'</MaxTileRow>'
         xml+='<MinTileCol>'+str(tileMatrixSetLimits[z]['MinTileCol'])+'</MinTileCol>'
-        xml+='<MaxTileCol>'+str(tileMatrixSetLimits[z]['MaxTileCol'])+'</MaxTileCol>'
+        xml+='<MaxTileCol>'+str(tileMatrixSetLimits[z]['MaxTileCol']+1)+'</MaxTileCol>'
         xml+='</TileMatrixLimits>'
     return xml
 

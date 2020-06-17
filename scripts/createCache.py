@@ -67,7 +67,7 @@ def processImage(input_filename, input_r, input_v, input_b):
     pngDriver = gdal.GetDriverByName( 'png' )
     stem = Path(input_filename).stem
     # for z in tiles:
-    for z in range(0,18):
+    for z in range(10,22):
         print('Niveau de zoom : ',z)
         for x in range(tileMatixSetLimits[z]['MinTileCol'], tileMatixSetLimits[z]['MaxTileCol']):
             for y in range(tileMatixSetLimits[z]['MinTileRow'], tileMatixSetLimits[z]['MaxTileRow']):
