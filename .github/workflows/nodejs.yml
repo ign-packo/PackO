@@ -17,13 +17,14 @@ jobs:
     - uses: actions/checkout@v2
     - uses: goanpeca/setup-miniconda@v1
       with:
-        activate-environment: mosaique
+        # activate-environment: mosaique
         environment-file: environment.yml
         # python-version: 3.6
         # conda-channels: anaconda, conda-forge
 
     - name: conda
-      run: conda info
+      run: |
+        conda info
   
     - name: Use Node.js
       uses: actions/setup-node@v1
