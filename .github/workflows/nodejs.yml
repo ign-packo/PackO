@@ -16,14 +16,16 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: goanpeca/setup-miniconda@v1
-      with:
+      # with:
         # activate-environment: mosaique
-        environment-file: environment.yml
+        # environment-file: environment.yml
         # python-version: 3.6
         # conda-channels: anaconda, conda-forge
 
     - name: conda
       run: |
+        conda info
+        conda install gdal
         conda info
   
     - name: Use Node.js
