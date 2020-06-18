@@ -5,7 +5,8 @@
   "main": "serveur.js",
   "scripts": {
     "lint": "eslint .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "nyc --reporter=text mocha",
+    "test-coveralls": "nyc --reporter=lcov --report-dir=coverage mocha"
   },
   "repository": {
     "type": "git",
@@ -19,11 +20,14 @@
   "homepage": "https://github.com/gmaillet/ign-api-mosaique#readme",
   "dependencies": {
     "body-parser": "^1.19.0",
+    "chai": "^4.2.0",
+    "chai-http": "^4.3.0",
     "cors": "^2.8.5",
     "debug": "^4.1.1",
     "express": "^4.17.1",
     "express-validator": "^6.5.0",
     "fs": "0.0.1-security",
+    "nyc": "^15.1.0",
     "supervisor": "^0.12.0",
     "swagger-editor-dist": "^3.10.0",
     "swagger-ui-dist": "^3.25.5",
