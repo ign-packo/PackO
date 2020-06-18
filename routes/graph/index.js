@@ -22,7 +22,7 @@ router.get('/graph', [
   const Y = 12000000;
   const R = 2848.1658267857144691 * 0.00028;
   const cacheDir = 'cache3/17';
-  const python = spawn('/anaconda2/envs/udacity/bin/python3', ['scripts/GetColor.py', '-X', X, '-Y', Y, '-R', R, '-C', cacheDir, '-x', x, '-y', y]);
+  const python = spawn('python3', ['scripts/GetColor.py', '-X', X, '-Y', Y, '-R', R, '-C', cacheDir, '-x', x, '-y', y]);
   // collect data from script
   let json = '';
   python.stderr.on('data', (data) => {
