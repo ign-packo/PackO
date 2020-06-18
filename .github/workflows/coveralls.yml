@@ -13,8 +13,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+    - uses: goanpeca/setup-miniconda@v1
+
+     - name: conda install
+      run: conda install gdal
+
     - name: install
       run: npm install
     - name: test
