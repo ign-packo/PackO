@@ -18,6 +18,8 @@ jobs:
     - name: install
       run: npm install
     - name: test
+      env:
+        DEBUG: wmts,graph
       run: |
         npm run test-coveralls
     - name: Coveralls

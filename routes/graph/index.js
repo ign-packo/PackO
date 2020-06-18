@@ -1,3 +1,4 @@
+const debug = require('debug')('graph');
 const router = require('express').Router();
 // const fs = require('fs');
 const { matchedData } = require('express-validator/filter');
@@ -16,13 +17,11 @@ router.get('/graph', [
   const { x } = params;
   const { y } = params;
 
-  // console.log(x, y);
+  debug(x, y);
   const X = 0;
   const Y = 12000000;
   const R = 2848.1658267857144691 * 0.00028;
   const cacheDir = 'cache3/17';
-  // const opts = `scripts/GetColor.py -X ${X} -Y ${Y} -R ${R} -C ${cacheDir} -x ${x} -y ${y}`;
-  // console.log(opts);
   const python = spawn('/anaconda2/envs/udacity/bin/python3', ['scripts/GetColor.py', '-X', X, '-Y', Y, '-R', R, '-C', cacheDir, '-x', x, '-y', y]);
   // collect data from script
   let json = '';
@@ -33,8 +32,8 @@ router.get('/graph', [
     json += data.toString();
   });
   // in close event we are sure that stream from child process is closed
-  python.on('close', (/* code */) => {
-    // console.log(`child process close all stdio with code ${code}`);
+  python.on('close', (code) => {
+    debug(`child process close all stdio with code ${code}`);
     // il faut convertir la couleur en Id
     // console.log(cliche, code);
     // send data to browser

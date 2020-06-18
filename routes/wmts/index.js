@@ -1,3 +1,4 @@
+const debug = require('debug')('wmts');
 const router = require('express').Router();
 const fs = require('fs');
 const { matchedData } = require('express-validator/filter');
@@ -18,8 +19,8 @@ router.get('/wmts', [
   query('FORMAT'),
 ], (req, res) => {
   const params = matchedData(req);
-  // const { SERVICE } = params;
-  // const { VERSION } = params;
+  const { SERVICE } = params;
+  const { VERSION } = params;
   const { REQUEST } = params;
   const { LAYER } = params;
   // const STYLE = params.STYLE;
@@ -29,7 +30,7 @@ router.get('/wmts', [
   const { TILEROW } = params;
   const { TILECOL } = params;
 
-  // console.log(SERVICE, VERSION, REQUEST);
+  debug(SERVICE, VERSION, REQUEST);
   if (REQUEST === 'GetCapabilities') {
     const python = spawn('python3', ['scripts/GetCapabilities.py']);
     // collect data from script
@@ -38,14 +39,14 @@ router.get('/wmts', [
       dataToSend += data.toString();
     });
     // in close event we are sure that stream from child process is closed
-    python.on('close', (/* code */) => {
-      // console.log(`child process close all stdio with code ${code}`);
+    python.on('close', (code) => {
+      debug(`child process close all stdio with code ${code}`);
       // send data to browser
       res.status(200).send(dataToSend);
     });
     // res.status(200).sendFile('toto.xml', { root: __dirname+'/../../' });
   } else if (REQUEST === 'GetTile') {
-    // console.log(LAYER, TILEMATRIX, TILEROW, TILECOL);
+    debug(LAYER, TILEMATRIX, TILEROW, TILECOL);
     let ext = '.jpg';
     // console.log(FORMAT);
     if (FORMAT === 'image/png') {
@@ -53,7 +54,7 @@ router.get('/wmts', [
     }
     // const url = 'cache/'+LAYER+'.jpg'
     const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}${ext}`;
-    // console.log(url);
+    debug(url);
     try {
       if (fs.existsSync(url)) {
         // console.log('found');
