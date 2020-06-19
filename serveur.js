@@ -1,3 +1,4 @@
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -12,6 +13,9 @@ const app = express();
 
 const wmts = require('./routes/wmts');
 const graph = require('./routes/graph');
+
+// on charge les mtd du cache
+app.cache_mtd = JSON.parse(fs.readFileSync('cache3/cache_mtd.json'));
 
 app.use(cors());
 app.use(bodyParser.json());

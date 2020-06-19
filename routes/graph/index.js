@@ -34,10 +34,12 @@ router.get('/graph', [
   // in close event we are sure that stream from child process is closed
   python.on('close', (code) => {
     debug(`child process close all stdio with code ${code}`);
-    // il faut convertir la couleur en Id
-    // console.log(cliche, code);
+    debug(json);
+    const out = JSON.parse(json);
+    // To Do: verifier que la couleur est bien dans la table
+    out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
     // send data to browser
-    res.status(200).send(json);
+    res.status(200).send(JSON.stringify(out));
   });
   // res.status(200).sendFile('toto.xml', { root: __dirname+'/../../' });
 });

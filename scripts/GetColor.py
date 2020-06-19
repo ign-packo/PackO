@@ -4,6 +4,7 @@ import json
 import gdal
 import math
 import os
+import json
 import cv2 as cv
 
 def getColor(cacheDir, X, Y, R, x, y):
@@ -17,12 +18,13 @@ def getColor(cacheDir, X, Y, R, x, y):
     color = [0, 0, 0]
     if (os.path.exists(tile_root)):
         graph=cv.imread(os.path.join(tile_root,'graph.png'))
-        color = graph[int(Py-256*Ty),int(Px-256*Tx)]
+        c = graph[int(Py-256*Ty),int(Px-256*Tx)]
+        color = [int(c[2]), int(c[1]), int(c[0])]
         # cliche = cache[color[2]][color[1]][color[0]]
-    return {'color': color }
+    return {"color": color }
 
 def usage():
-    print('getCliche.py -C cacheDir -X <float> -Y <float> -R <float> -x <float> -y <float>')
+    print('getColor.py -C cacheDir -X <float> -Y <float> -R <float> -x <float> -y <float>')
 
 def main(argv):
     try:
@@ -31,12 +33,12 @@ def main(argv):
         usage()
         sys.exit(2)
 
-    cacheDir = None
-    X=None
-    Y=None
+    cacheDir = "cache3/17"
+    X=0
+    Y=12000000
     x=None
     y=None
-    R=None
+    R=2848.1658267857144691 * 0.00028
     for opt, arg in opts:
         if (opt == '-h'):
             usage()
@@ -54,7 +56,7 @@ def main(argv):
         if (opt == '-R'):
             R = float(arg)
         
-    print(getColor(cacheDir, X, Y, R, x, y))
+    print(json.dumps(getColor(cacheDir, X, Y, R, x, y)))
 
 if __name__ == "__main__":
     main(sys.argv[1:])
