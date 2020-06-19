@@ -17,6 +17,8 @@ router.get('/wmts', [
   query('TILEROW'),
   query('TILECOL'),
   query('FORMAT'),
+  query('I'),
+  query('J')
 ], (req, res) => {
   const params = matchedData(req);
   const { SERVICE } = params;
@@ -33,6 +35,11 @@ router.get('/wmts', [
   const { J } = params;
 
   debug(SERVICE, VERSION, REQUEST);
+  let ext = '.jpg';
+  if (FORMAT === 'image/png') {
+    ext = '.png';
+  }
+
   if (SERVICE !== 'WMTS') {
     res.status(500).send(`service ${SERVICE} not supported`);
   } else if (VERSION !== '1.0.0') {
@@ -51,10 +58,6 @@ router.get('/wmts', [
     });
   } else if (REQUEST === 'GetTile') {
     debug(LAYER, TILEMATRIX, TILEROW, TILECOL);
-    let ext = '.jpg';
-    if (FORMAT === 'image/png') {
-      ext = '.png';
-    }
     const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}${ext}`;
     debug('request : ', url);
     try {
@@ -70,16 +73,21 @@ router.get('/wmts', [
     }
   } else if (REQUEST === 'GetFeatureInfo') {
     debug(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-    const python = spawn('python3', ['scripts/GetFeatureInfo.py', TILEMATRIX, TILEROW, TILECOL, I, J]);
+    const python = spawn('python3', ['scripts/GetFeatureInfo.py', '-Z', TILEMATRIX, '-Y', TILEROW, '-X', TILECOL, '-i', I, '-j', J, '-l', `${LAYER}${ext}`]);
     // collect data from script
-    let dataToSend = '';
+    let json = '';
     python.stdout.on('data', (data) => {
-      dataToSend += data.toString();
+      json += data.toString();
     });
     // in close event we are sure that stream from child process is closed
     python.on('close', (code) => {
       debug(`child process close all stdio with code ${code}`);
-      res.status(200).send(dataToSend);
+      const out = JSON.parse(json);
+      debug(out)
+      // To Do: verifier que la couleur est bien dans la table
+      out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+      // send data to browser
+      res.status(200).send(JSON.stringify(out));
     });
   } else { res.status(500).send('request not supported'); }
 });
