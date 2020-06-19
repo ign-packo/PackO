@@ -130,6 +130,7 @@ def processImage(input_filename, input_r, input_v, input_b):
                         graph_r = existing_graph.GetRasterBand(1).ReadAsArray()
                     else:
                         graph_r = graph.GetRasterBand(1).ReadAsArray()
+                    graph_r[(img_mask != 0)] = input_r
                     graph.GetRasterBand(1).WriteArray(graph_r)
 
                     if existing_graph:
