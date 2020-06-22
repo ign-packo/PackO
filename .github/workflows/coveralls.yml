@@ -17,7 +17,8 @@ jobs:
     - uses: goanpeca/setup-miniconda@v1
     - name: conda install
       run: |
-        conda install gdal
+        conda create -n test -c conda-forge gdal
+        conda activate test
         python3 scripts/GetColor.py -C cache/17 -X 200 -Y 200 -l graph.png -i 100 -j 100
         which python3
 
