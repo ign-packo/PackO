@@ -18,7 +18,7 @@ router.get('/wmts', [
   query('TILECOL'),
   query('FORMAT'),
   query('I'),
-  query('J')
+  query('J'),
 ], (req, res) => {
   const params = matchedData(req);
   const { SERVICE } = params;
@@ -83,7 +83,7 @@ router.get('/wmts', [
     python.on('close', (code) => {
       debug(`child process close all stdio with code ${code}`);
       const out = JSON.parse(json);
-      debug(out)
+      debug(out);
       // To Do: verifier que la couleur est bien dans la table
       out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
       // send data to browser

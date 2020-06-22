@@ -16,7 +16,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: goanpeca/setup-miniconda@v1
     - name: conda install
-      run: conda install gdal opencv
+      run: conda install opencv gdal
 
     - name: install
       run: npm install
