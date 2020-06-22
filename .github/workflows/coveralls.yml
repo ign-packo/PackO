@@ -17,7 +17,6 @@ jobs:
     - uses: goanpeca/setup-miniconda@v1
     - name: conda install
       run: |
-        conda install opencv
         conda install gdal
 
     - name: install

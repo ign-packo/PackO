@@ -2,25 +2,28 @@ import sys
 import getopt
 import json
 import gdal
+import numpy as np
 import math
 import os
 import json
-import cv2 as cv
 
 def getColor(cacheDir, X, Y, R, x, y):
+    print(cacheDir, X, Y, R, x, y)
     # il faut trouver la tuile
     Px = (x-X)/R
     Py = (Y-y)/R
     Tx = math.floor(Px/256)
     Ty = math.floor(Py/256)
     tile_root = os.path.join(cacheDir,str(Ty),str(Tx))
-    # print(tile_root)
+    print(tile_root)
     color = [0, 0, 0]
     if (os.path.exists(tile_root)):
-        graph=cv.imread(os.path.join(tile_root,'graph.png'))
+        input = gdal.Open(os.path.join(tile_root,'graph.png'))
+        bands = [input.GetRasterBand(i) for i in range(1, input.RasterCount + 1)]
+        graph = [band.ReadAsArray() for band in bands]
+        graph = np.transpose(graph, [1, 2, 0])  # Reorders dimensions, so that channels are last
         c = graph[int(Py-256*Ty),int(Px-256*Tx)]
-        color = [int(c[2]), int(c[1]), int(c[0])]
-        # cliche = cache[color[2]][color[1]][color[0]]
+        color = [int(c[0]), int(c[1]), int(c[2])]
     return {"color": color }
 
 def usage():

@@ -2,18 +2,21 @@ import sys
 import getopt
 import json
 import gdal
+import numpy as np
 import math
 import os
 import json
-import cv2 as cv
 
 def getColor(cacheDir, X, Y, Z, i, j, l):
     tile = os.path.join(cacheDir,str(Z), str(Y), str(X), l)
     color = [0, 0, 0]
     if (os.path.exists(tile)):
-        graph=cv.imread(tile)
-        c = graph[j,i]
-        color = [int(c[2]), int(c[1]), int(c[0])]
+        input = gdal.Open(tile)
+        bands = [input.GetRasterBand(i) for i in range(1, input.RasterCount + 1)]
+        graph = [band.ReadAsArray() for band in bands]
+        graph = np.transpose(graph, [1, 2, 0])  # Reorders dimensions, so that channels are last
+        c = graph[j, i]
+        color = [int(c[0]), int(c[1]), int(c[2])]
     return {"color": color }
 
 def usage():
