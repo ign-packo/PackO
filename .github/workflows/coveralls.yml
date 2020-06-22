@@ -18,7 +18,8 @@ jobs:
     - name: conda install
       run: |
         conda install gdal
-        python3 script/GetColor.py -C cache/17 -X 200 -Y 200 -l graph.png -i 100 -j 100
+        python3 scripts/GetColor.py -C cache/17 -X 200 -Y 200 -l graph.png -i 100 -j 100
+        which python3
 
     - name: install
       run: npm install
