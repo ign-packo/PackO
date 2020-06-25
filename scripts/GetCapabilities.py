@@ -13,7 +13,7 @@ def exportTileLimits(layername):
             tileMatrixSetLimits[z]['MinTileRow'] = min(y, tileMatrixSetLimits[z]['MinTileRow'])
             tileMatrixSetLimits[z]['MaxTileRow'] = max(y, tileMatrixSetLimits[z]['MaxTileRow'])
             tileMatrixSetLimits[z]['MinTileCol'] = min(x, tileMatrixSetLimits[z]['MinTileCol'])
-            tileMatrixSetLimits[z]['MaxTileCol'] = min(x, tileMatrixSetLimits[z]['MaxTileCol'])
+            tileMatrixSetLimits[z]['MaxTileCol'] = max(x, tileMatrixSetLimits[z]['MaxTileCol'])
         else:
             tileMatrixSetLimit={}
             tileMatrixSetLimit['MinTileRow'] = y
@@ -27,9 +27,9 @@ def exportTileLimits(layername):
         xml+='<TileMatrixLimits>'
         xml+='<TileMatrix>'+str(z)+'</TileMatrix>'
         xml+='<MinTileRow>'+str(tileMatrixSetLimits[z]['MinTileRow'])+'</MinTileRow>'
-        xml+='<MaxTileRow>'+str(tileMatrixSetLimits[z]['MaxTileRow']+1)+'</MaxTileRow>'
+        xml+='<MaxTileRow>'+str(tileMatrixSetLimits[z]['MaxTileRow'])+'</MaxTileRow>'
         xml+='<MinTileCol>'+str(tileMatrixSetLimits[z]['MinTileCol'])+'</MinTileCol>'
-        xml+='<MaxTileCol>'+str(tileMatrixSetLimits[z]['MaxTileCol']+1)+'</MaxTileCol>'
+        xml+='<MaxTileCol>'+str(tileMatrixSetLimits[z]['MaxTileCol'])+'</MaxTileCol>'
         xml+='</TileMatrixLimits>'
     return xml
 
