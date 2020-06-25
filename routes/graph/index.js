@@ -20,8 +20,8 @@ router.get('/graph', [
   debug(x, y);
   const X = 0;
   const Y = 12000000;
-  const R = 2848.1658267857144691 * 0.00028;
-  const cacheDir = 'cache3/17';
+  const R = 178.571428571429 * 0.00028;
+  const cacheDir = 'cache/21';
   const python = spawn('python3', ['scripts/GetColor.py', '-X', X, '-Y', Y, '-R', R, '-C', cacheDir, '-x', x, '-y', y]);
   // collect data from script
   let json = '';

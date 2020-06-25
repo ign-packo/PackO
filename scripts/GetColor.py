@@ -8,14 +8,16 @@ import os
 import json
 
 def getColor(cacheDir, X, Y, R, x, y):
-    print(cacheDir, X, Y, R, x, y)
+    # print(cacheDir, X, Y, R, x, y)
     # il faut trouver la tuile
     Px = (x-X)/R
     Py = (Y-y)/R
+    # print(Px, Py)
     Tx = math.floor(Px/256)
     Ty = math.floor(Py/256)
+    # print(Tx, Ty)
     tile_root = os.path.join(cacheDir,str(Ty),str(Tx))
-    print(tile_root)
+    # print(tile_root)
     color = [0, 0, 0]
     if (os.path.exists(tile_root)):
         input = gdal.Open(os.path.join(tile_root,'graph.png'))
@@ -36,12 +38,12 @@ def main(argv):
         usage()
         sys.exit(2)
 
-    cacheDir = "cache3/17"
+    cacheDir = "cache/21"
     X=0
     Y=12000000
     x=None
     y=None
-    R=2848.1658267857144691 * 0.00028
+    R=0.05
     for opt, arg in opts:
         if (opt == '-h'):
             usage()

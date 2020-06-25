@@ -40,10 +40,8 @@ router.get('/wmts', [
     ext = '.png';
   }
 
-  if (SERVICE !== 'WMTS') {
+  if ((SERVICE !== 'WMTS') && (SERVICE !== 'WMS')) {
     res.status(500).send(`service ${SERVICE} not supported`);
-  } else if (VERSION !== '1.0.0') {
-    res.status(500).send(`version ${VERSION} not supported`);
   } else if (REQUEST === 'GetCapabilities') {
     const python = spawn('python3', ['scripts/GetCapabilities.py']);
     // collect data from script
@@ -85,7 +83,13 @@ router.get('/wmts', [
       const out = JSON.parse(json);
       debug(out);
       // To Do: verifier que la couleur est bien dans la table
-      out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+      if ((out.color[0] in req.app.cache_mtd)
+          && (out.color[1] in req.app.cache_mtd[out.color[0]])
+          && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
+        out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+      } else {
+        out.cliche = 'unkown';
+      }
       // send data to browser
       res.status(200).send(JSON.stringify(out));
     });

@@ -29,7 +29,7 @@ def main(argv):
         usage()
         sys.exit(2)
 
-    cacheDir = "cache3"
+    cacheDir = "cache"
     X=None
     Y=None
     Z=None
