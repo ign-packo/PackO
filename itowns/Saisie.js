@@ -63,6 +63,7 @@ class Saisie {
   }
 
   update() {
+    console.log('update');
     this.status = 'ras';
     const positions = this.currentMeasure.geometry.attributes.position.array;
     const geojson = {
@@ -72,9 +73,7 @@ class Saisie {
       features: [
         {
           type: 'Feature',
-          properties:
-                    {
-                    },
+          properties: this.json,
           geometry:
                     {
                       type: 'Polygon',
@@ -91,7 +90,7 @@ class Saisie {
     view.scene.remove(this.currentMeasure);
     // On post le geojson sur l'API
     const that = this;
-    fetch(`http://localhost:3000/tile/patch?cliche=${this.cliche}`,
+    fetch(`http://localhost:8081/graph/patch?`,
       {
         method: 'POST',
         headers: {
@@ -143,12 +142,14 @@ class Saisie {
   }
 
   click(e) {
+    console.log('click: ', this.pickPoint(e));
     if (this.status == 'movePoint') {
       if (this.currentMeasure == null) {
+        console.log("ici");
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         const that = this;
-        fetch(`http://localhost:3000/cliche?x=${pos.x}&y=${pos.y}`,
+        fetch(`http://localhost:8081/graph?x=${pos.x}&y=${pos.y}`,
           {
             method: 'GET',
             headers: {
@@ -158,6 +159,8 @@ class Saisie {
           }).then((res) => {
           res.json().then((json) => {
             if (json) {
+              console.log(json);
+              that.json = json;
               that.cliche = json.cliche;
               that.status = 'ras';
               // On modifie la couche OPI

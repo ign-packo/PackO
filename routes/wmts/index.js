@@ -81,8 +81,6 @@ router.get('/wmts', [
     python.on('close', (code) => {
       debug(`child process close all stdio with code ${code}`);
       const out = JSON.parse(json);
-      debug(out);
-      // To Do: verifier que la couleur est bien dans la table
       if ((out.color[0] in req.app.cache_mtd)
           && (out.color[1] in req.app.cache_mtd[out.color[0]])
           && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {

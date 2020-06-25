@@ -19,7 +19,7 @@ def getColor(cacheDir, X, Y, R, x, y):
     tile_root = os.path.join(cacheDir,str(Ty),str(Tx))
     # print(tile_root)
     color = [0, 0, 0]
-    if (os.path.exists(tile_root)):
+    if (os.path.exists(os.path.join(tile_root,'graph.png'))):
         input = gdal.Open(os.path.join(tile_root,'graph.png'))
         bands = [input.GetRasterBand(i) for i in range(1, input.RasterCount + 1)]
         graph = [band.ReadAsArray() for band in bands]

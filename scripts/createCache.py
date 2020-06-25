@@ -154,7 +154,7 @@ def processImage(input_filename, input_r, input_v, input_b):
 tiles, epsg = getCapabilities('Capabilities.xml')
 outRasterSRS = gdal.osr.SpatialReference()
 outRasterSRS.ImportFromEPSG(epsg)
-conn_string = "PG:host=host.docker.internal dbname='pcrs' user='postgres'"
+conn_string = "PG:host=localhost dbname='pcrs' user='postgres'"
 db = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
 if db is None:
     raise ValueError("Connection to database failed")

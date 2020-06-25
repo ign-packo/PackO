@@ -1,128 +1,133 @@
 <html>
-    <head>
-        <title>Mosaique</title>
 
-        <meta charset="UTF-8">
-        <link rel="stylesheet" type="text/css" href="node_modules/itowns/examples/css/example.css">
-        <link rel="stylesheet" type="text/css" href="node_modules/itowns/examples/css/LoadingScreen.css">
+<head>
+    <title>Mosaique</title>
 
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
-    </head>
-    <body>
-        <div id="viewerDiv" class="viewer"></div>
-        <script src="node_modules/itowns/dist/itowns.js"></script>
-        <script src="node_modules/itowns/examples/js/GUI/LoadingScreen.js"></script>
-        <script src="node_modules/itowns/dist/debug.js"></script>
-        <script src="node_modules/itowns/examples/js/GUI/GuiTools.js"></script>
-        <script src="Saisie.js"></script>
-        <script type="text/javascript">
-            // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
-            itowns.proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
-            /* global itowns, setupLoadingScreen, GuiTools, debug */
-            // # Planar (EPSG:3946) viewer
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="node_modules/itowns/examples/css/example.css">
+    <link rel="stylesheet" type="text/css" href="node_modules/itowns/examples/css/LoadingScreen.css">
 
-            var extent;
-            var viewerDiv;
-            var view;
-            var p;
-            var menuGlobe;
-            var d;
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
+</head>
+
+<body>
+    <div id="viewerDiv">
+        <div id="menuDiv"></div>
+    </div>
+    <span id="divScaleWidget"> Scale </span>
+    <div id="miniDiv"></div>
+    <script src="node_modules/itowns/examples/js/GUI/GuiTools.js"></script>
+    <script src="node_modules/itowns/dist/itowns.js"></script>
+    <script src="node_modules/itowns/examples/js/GUI/LoadingScreen.js"></script>
+    <script src="node_modules/itowns/dist/debug.js"></script>
+    <script src="Saisie.js"></script>
+    <script type="text/javascript">
+        // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
+        itowns.proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+        /* global itowns, setupLoadingScreen, GuiTools, debug */
+        // # Planar (EPSG:3946) viewer
+
+        var placement = {
+            coord: new itowns.Coordinates('EPSG:2154', 227155, 6760500),
+            range: 10000,
+        }
+
+        // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
+        var viewerDiv = document.getElementById('viewerDiv');
+        // var miniDiv = document.getElementById('miniDiv');
+
+        // Define geographic extent: CRS, min/max X, min/max Y
+        var extent = new itowns.Extent(
+            'EPSG:2154',
+            0, 256 * 374491428.571429 * 0.00028,
+            12000000 - 256 * 374491428.571429 * 0.00028, 12000000);
 
 
-            var placement = {
-                coord: new itowns.Coordinates('EPSG:2154', 227155, 6760500 ),
-                range: 10000,
-            }
-
-            // Define geographic extent: CRS, min/max X, min/max Y
-            extent = new itowns.Extent(
-                'EPSG:2154',
-                0, 256 * 373497230.5353357571875677 * 0.00028,
-                12000000 - 256 * 373497230.5353357571875677 * 0.00028, 12000000);
-
-            // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
-            viewerDiv = document.getElementById('viewerDiv');
-
-            // Instanciate PlanarView*
-            view = new itowns.PlanarView(viewerDiv, extent, {
-                placement,
-             maxSubdivisionLevel: 30,
+        // Instanciate PlanarView*
+        var view = new itowns.PlanarView(viewerDiv, extent, {
+            placement,
+            maxSubdivisionLevel: 30,
             //  disableSkirt: false 
-            });
+        });
+        setupLoadingScreen(viewerDiv, view);
 
-            view.isDebugMode = true;
-            setupLoadingScreen(viewerDiv, view);
-            menuGlobe = new GuiTools('menuDiv', view);
-            console.log(menuGlobe);
-            menuGlobe.gui.width = 300;
+        view.isDebugMode = true;
+        setupLoadingScreen(viewerDiv, view);
+        var menuGlobe = new GuiTools('menuDiv', view);
+        console.log(menuGlobe);
+        menuGlobe.gui.width = 300;
 
-            var orthoLayer, graphLayer;
-            itowns.Fetcher.json('./ortho.json').then(function _(config) {
-                // console.log(config);
-                config.source = new itowns.WMTSSource(config.source);
-                config.source.extentInsideLimit = function(extent) {
+        var orthoLayer, graphLayer;
+        itowns.Fetcher.json('./ortho.json').then(function _(config) {
+            // console.log(config);
+            config.source = new itowns.WMTSSource(config.source);
+            config.source.extentInsideLimit = function (extent) {
                 //     console.log(extent);
-                    return true;
-                }
-                orthoLayer = new itowns.ColorLayer('Ortho', config);
-                console.log(orthoLayer);
-                view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-            });
+                return true;
+            }
+            orthoLayer = new itowns.ColorLayer('Ortho', config);
+            console.log(orthoLayer);
+            view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+        });
 
-            itowns.Fetcher.json('./graph.json').then(function _(config) {
-                config.source = new itowns.WMTSSource(config.source);
-                config.source.extentInsideLimit = function(extent) {
+        itowns.Fetcher.json('./graph.json').then(function _(config) {
+            config.source = new itowns.WMTSSource(config.source);
+            config.source.extentInsideLimit = function (extent) {
                 //     console.log(extent);
-                    return true;
-                }
-                config.opacity= 0.2;
-                graphLayer = new itowns.ColorLayer('Graph', config);
-                view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-            });
+                return true;
+            }
+            config.opacity = 0.2;
+            graphLayer = new itowns.ColorLayer('Graph', config);
+            view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+        });
 
-            var saisie = new Saisie({graphLayer, orthoLayer/*, opiLayer*/});
-            saisie.cliche = 'unknown';
-            const eng = view.mainLoop.gfxEngine;
-            const dom = eng.renderer.domElement;
-            dom.addEventListener( 'mousemove', function (ev) {
-                    ev.preventDefault();
-                    saisie.mousemove(ev);
-                    return false;
-                }, false );
-            dom.addEventListener( 'click', function (ev) {
-                    ev.preventDefault();
-                    saisie.click(ev);
-                    return false;
-                }, false );
-            dom.addEventListener( 'mousedown', function (ev) {
-                    ev.preventDefault();
-                    saisie.mousedown(ev);
-                    return false;
-                }, false );
-            dom.addEventListener( 'mouseup', function (ev) {
-                    ev.preventDefault();
-                    saisie.mouseup(ev);
-                    return false;
-                }, false );
+        var saisie = new Saisie({ graphLayer, orthoLayer/*, opiLayer*/ });
+        saisie.cliche = 'unknown';
+        // const eng = view.mainLoop.gfxEngine;
+        // console.log('eng:', eng);
+        // const dom = eng.renderer.domElement;
+        // console.log('dom:', dom);
+        viewerDiv.focus();
+        viewerDiv.addEventListener('mousemove', function (ev) {
+            ev.preventDefault();
+            saisie.mousemove(ev);
+            return false;
+        }, false);
+        viewerDiv.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            saisie.click(ev);
+            return false;
+        }, false);
+        viewerDiv.addEventListener('mousedown', function (ev) {
+            ev.preventDefault();
+            saisie.mousedown(ev);
+            return false;
+        }, false);
+        viewerDiv.addEventListener('mouseup', function (ev) {
+            ev.preventDefault();
+            saisie.mouseup(ev);
+            return false;
+        }, false);
 
-            menuGlobe.gui.add(saisie,'polygon');
-            menuGlobe.gui.add(saisie,'freehand');
-            menuGlobe.gui.add(saisie,'select');
-            menuGlobe.gui.add(saisie,'cliche').listen();
+        menuGlobe.gui.add(saisie, 'polygon');
+        menuGlobe.gui.add(saisie, 'freehand');
+        menuGlobe.gui.add(saisie, 'select');
+        menuGlobe.gui.add(saisie, 'cliche').listen();
 
-            // instanciate controls
-            // eslint-disable-next-line no-new
-            new itowns.PlanarControls(view, {
-                maxAltitude: 80000000,
-                enableRotation: false
-            });
+        // instanciate controls
+        // eslint-disable-next-line no-new
+        new itowns.PlanarControls(view, {
+            maxAltitude: 80000000,
+            enableRotation: false
+        });
 
-            // Request redraw
-            view.notifyChange();
-                
-            menuGlobe.addImageryLayersGUI(view.getLayers(function gui(l) { return l.isColorLayer; }));
-            debug.createTileDebugUI(menuGlobe.gui, view);
-        </script>
-    </body>
+        // Request redraw
+        view.notifyChange();
+
+        menuGlobe.addImageryLayersGUI(view.getLayers(function gui(l) { return l.isColorLayer; }));
+        debug.createTileDebugUI(menuGlobe.gui, view);
+    </script>
+</body>
+
 </html>

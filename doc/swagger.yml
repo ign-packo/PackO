@@ -42,13 +42,6 @@ paths:
               #           command: touch file1
               #       deps:
               #         - id: 0
-      parameters:
-        - in: query
-          name: cliche
-          description: l'identifiant du cliche
-          required: true
-          schema:
-            type: integer
       responses:
         '200':
           description: OK
