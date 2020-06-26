@@ -32,7 +32,6 @@ router.post('/graph/patch', (req, res) => {
     // send data to browser
     res.status(200).send(JSON.stringify(json));
   });
-
 });
 
 router.get('/graph', [

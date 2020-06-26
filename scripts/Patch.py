@@ -8,6 +8,7 @@ import math
 import os
 import json
 import time
+from pathlib import Path
 
 
 # this allows GDAL to throw Python Exceptions
@@ -16,23 +17,22 @@ mem_drv = gdal.GetDriverByName('MEM')
 jpegDriver = gdal.GetDriverByName( 'Jpeg' )
 pngDriver = gdal.GetDriverByName( 'png' )
 
-
 def update_tile_raster(tile):
     # print('update_tile_raster:',tile)
     y=tile["y"]
     x=tile["x"]
     cache=tile["dir"]
-    # out = {'x': x, 'y': y, 'z':z, 'status': 'nok', 'allChildren': (z==cache['zoom']['max'])}
+    out = {'x': x, 'y': y, 'dir':cache, 'status': 'nok'}
     geojson=tile["geojson"]
-    # cliche=tile["cliche"]
-    # restile = cache['resolution']/pow(2,int(z))
     tile_root = os.path.join(cache,str(y),str(x))
     print('tile_root: ', tile_root)
     print('update_tile_raster')
     color = geojson['features'][0]['properties']['color']
-    cliche = geojson['features'][0]['properties']['cliche']
+    cliche = ((geojson['features'][0]['properties']['cliche']).split('/')[-1]).split('.')[0]
+    print('cliche: ', cliche)
     poly=gdal.OpenEx(json.dumps(geojson))
-    graph = gdal.Open(tile_root+'/graph.png')
+    graph_src = gdal.Open(tile_root+'/graph.png')
+    graph = mem_drv.CreateCopy('',graph_src) 
     print('graph :', graph.GetGeoTransform())
     mask = mem_drv.Create('', 256, 256, 1, gdal.GDT_Byte)
     mask.SetGeoTransform(graph.GetGeoTransform())
@@ -42,32 +42,33 @@ def update_tile_raster(tile):
     print('Rasterize time: ',time.time()-debut,'s')
     img_mask = mask.GetRasterBand(1).ReadAsArray()
     # on applique le mask sur le graph
-    graph_r = graph.GetRasterBand(1).ReadAsArray()
-    graph_r[(img_mask != 0)] = color[0]
-    graph.GetRasterBand(1).WriteArray(graph_r)
-    graph_g = graph.GetRasterBand(2).ReadAsArray()
-    graph_g[(img_mask != 0)] = color[1]
-    graph.GetRasterBand(2).WriteArray(graph_g)
-    graph_b = graph.GetRasterBand(3).ReadAsArray()
-    graph_b[(img_mask != 0)] = color[2]
-    graph.GetRasterBand(3).WriteArray(graph_b)
+    for c in range(3):
+        graph_c = graph.GetRasterBand(c+1).ReadAsArray()
+        graph_c[(img_mask != 0)] = color[c]
+        graph.GetRasterBand(c+1).WriteArray(graph_c)
     pngDriver.CreateCopy(tile_root+"/graph.png", graph)
     # on applique le mask sur l opi
-    
-    # img_graph = cv.imread(os.path.join(tile_root,'graph.png'))
-    # img_graph[(img_mask==255)] = color
-    # cv.imwrite(os.path.join(tile_root,'graph.png'), img_graph)
-    # # on applique le mask sur l opi
-    # opiFile = os.path.join(tile_root,cliche+'.jpg')
-    # if (os.path.exists(opiFile)):
-    #     img_ortho = cv.imread(os.path.join(tile_root,'ortho.jpg'))
-    #     img_opi = cv.imread(opiFile)
-    #     img_opi[(img_mask!=255)] = 0
-    #     img_ortho[(img_mask==255)] = 0
-    #     img_ortho = cv.add(img_opi, img_ortho)
-    #     cv.imwrite(os.path.join(tile_root,'ortho.jpg'), img_ortho)
-    #     out['status']='ok'
-    # return out
+    opi = None
+    if Path(tile_root+'/'+cliche+'.jpg').is_file():
+        opi = gdal.Open(tile_root+'/'+cliche+'.jpg')
+    ortho_src = gdal.Open(tile_root+'/ortho.jpg')
+    ortho = mem_drv.CreateCopy('',ortho_src) 
+    for c in range(3):
+        ortho_c = ortho.GetRasterBand(c+1).ReadAsArray()
+        # on met a zero ce qui dans le masque dans l'ortho
+        ortho_c[(img_mask != 0)] = 0
+        if (opi != None):
+            opi_c = opi.GetRasterBand(c+1).ReadAsArray()
+            # on met a zero ce qui est hors du masque dans l'opi
+            opi_c[(img_mask == 0)] = 0
+            # on somme dans l'ortho
+            newortho_c = np.add(ortho_c, opi_c)
+        else:
+            newortho_c = ortho_c
+        ortho.GetRasterBand(c+1).WriteArray(newortho_c)
+    jpegDriver.CreateCopy(tile_root+"/ortho.jpg", ortho)
+    out['status']='ok'
+    return out
 
 
 def list_tiles(geojson, X0, Y0, R, dir):
@@ -100,13 +101,15 @@ def list_tiles(geojson, X0, Y0, R, dir):
 def patch(cacheDir, geojson):
     print(cacheDir, geojson)
     out={'tiles':[]}
-    L = list_tiles(geojson, 0, 12000000, 0.05, cacheDir+"/21")
-    print(L)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        Res = executor.map(update_tile_raster, L)
-        for res in Res:
-            if (res):
-                out['tiles'].append(res)
+    resolution = 0.05
+    for z in range(21, 9, -1):
+        L = list_tiles(geojson, 0, 12000000, resolution, cacheDir+"/"+str(z))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            Res = executor.map(update_tile_raster, L)
+            for res in Res:
+                if (res):
+                    out['tiles'].append(res)
+        resolution *= 2
     print(out)
 
 def usage():
