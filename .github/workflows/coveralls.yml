@@ -15,20 +15,18 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: goanpeca/setup-miniconda@v1
-    - name: conda install
-      shell: bash -l {0}
-      run: |
-        conda init bash
-        conda create -n test -c conda-forge gdal
-        conda activate test
-
     - name: install
       run: npm install
     - name: test
       env:
         DEBUG: wmts,graph
+      shell: bash -l {0}
       run: |
+        conda init bash
+        conda create -n test -c conda-forge gdal
+        conda activate test
         npm run test-coveralls
+
     - name: Coveralls
       uses: coverallsapp/github-action@master
       with:
