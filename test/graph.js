@@ -1,7 +1,7 @@
 const chai = require('chai');
 const chaiHttp = require('chai-http');
+// const { json } = require('body-parser');
 const server = require('..');
-const { json } = require('body-parser');
 
 const should = chai.should();
 chai.use(chaiHttp);
@@ -22,23 +22,23 @@ describe('Graph', () => {
           should.equal(err, null);
           res.should.have.status(200);
           const json = JSON.parse(res.text);
-          var schema = {
+          const schema = {
             title: 'test',
             type: 'object',
             required: ['color', 'cliche'],
             properties: {
               color: {
                 type: 'array',
-                "minItems": 3,
-                "maxItems": 3,
+                minItems: 3,
+                maxItems: 3,
                 items: {
-                  type: 'integer'
-                }
+                  type: 'integer',
+                },
               },
               cliche: {
-                type: 'string'
-              }
-            }
+                type: 'string',
+              },
+            },
           };
           json.should.be.jsonSchema(schema);
           json.cliche.should.to.equal('unkown');
