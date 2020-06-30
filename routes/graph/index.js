@@ -30,7 +30,8 @@ router.post('/graph/patch', (req, res) => {
     debug(`child process close all stdio with code ${code}`);
     debug(json);
     // send data to browser
-    res.status(200).send(JSON.stringify(json));
+    if (code!=0) res.status(500).send(json);
+    else res.status(200).send(JSON.stringify(json));
   });
 });
 

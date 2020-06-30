@@ -50,11 +50,30 @@ describe('Graph', () => {
   describe('Post graph/patch', () => {
     it('should return an error', (done) => {
       chai.request(server)
-        .get('/graph/patch')
-        .query({ cliche: -1 })
+        .post('/graph/patch')
         .end((err, res) => {
           should.equal(err, null);
-          res.should.have.status(404);
+          res.should.have.status(500);
+          // res.body.status.should.equal("Le paramètre 'id_session' est invalide.");
+          done();
+        });
+    });
+  });
+
+  describe('Post graph/patch', () => {
+    it('should works', (done) => {
+      chai.request(server)
+        .post('/graph/patch')
+        .send({"type":"FeatureCollection", 
+          "features":[
+            {
+              "type":"Feature",
+              "properties":{"color":[0,0,0], "cliche": 'unkown'},
+              "geometry":{"type":"Polygon","coordinates":[[[0,0],[10,0],[10,10],[0,10],[0,0]]]}}]}
+            )
+        .end((err, res) => {
+          should.equal(err, null);
+          res.should.have.status(200);
           // res.body.status.should.equal("Le paramètre 'id_session' est invalide.");
           done();
         });
