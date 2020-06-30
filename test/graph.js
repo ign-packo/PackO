@@ -64,13 +64,15 @@ describe('Graph', () => {
     it('should works', (done) => {
       chai.request(server)
         .post('/graph/patch')
-        .send({"type":"FeatureCollection", 
-          "features":[
+        .send({
+          type: 'FeatureCollection',
+          features: [
             {
-              "type":"Feature",
-              "properties":{"color":[0,0,0], "cliche": 'unkown'},
-              "geometry":{"type":"Polygon","coordinates":[[[0,0],[10,0],[10,10],[0,10],[0,0]]]}}]}
-            )
+              type: 'Feature',
+              properties: { color: [0, 0, 0], cliche: 'unkown' },
+              geometry: { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]] },
+            }],
+        })
         .end((err, res) => {
           should.equal(err, null);
           res.should.have.status(200);
