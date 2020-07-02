@@ -14,7 +14,7 @@ from pathlib import Path
 # this allows GDAL to throw Python Exceptions
 gdal.UseExceptions()
 mem_drv = gdal.GetDriverByName('MEM')
-jpegDriver = gdal.GetDriverByName( 'Jpeg' )
+# jpegDriver = gdal.GetDriverByName( 'Jpeg' )
 pngDriver = gdal.GetDriverByName( 'png' )
 
 def update_tile_raster_with_ssech(tile):
@@ -28,7 +28,7 @@ def update_tile_raster_with_ssech(tile):
     # copie des images à mettre à jour
     graph_src = gdal.Open(os.path.join(cache,str(z),str(y),str(x),'graph.png'))
     graph = mem_drv.CreateCopy('',graph_src)
-    ortho_src = gdal.Open(os.path.join(cache,str(z),str(y),str(x),'ortho.jpg'))
+    ortho_src = gdal.Open(os.path.join(cache,str(z),str(y),str(x),'ortho.png'))
     ortho = mem_drv.CreateCopy('',ortho_src)
     
     # on cherche les 4 tiles filles (A, B, C, D)
@@ -53,7 +53,7 @@ def update_tile_raster_with_ssech(tile):
         img_graph_g[0:128, 0:128] = graph_A_g
         graph_A_b = graph_A.GetRasterBand(3).ReadAsArray(buf_xsize=128, buf_ysize=128, resample_alg= gdal.GRA_Average)
         img_graph_b[0:128, 0:128] = graph_A_b
-        ortho_A = gdal.Open(os.path.join(tile_root_A,'ortho.jpg'))
+        ortho_A = gdal.Open(os.path.join(tile_root_A,'ortho.png'))
         ortho_A_r = ortho_A.GetRasterBand(1).ReadAsArray(buf_xsize=128, buf_ysize=128, resample_alg= gdal.GRA_Average)
         img_ortho_r[0:128, 0:128] = ortho_A_r
         ortho_A_g = ortho_A.GetRasterBand(2).ReadAsArray(buf_xsize=128, buf_ysize=128, resample_alg= gdal.GRA_Average)
@@ -68,7 +68,7 @@ def update_tile_raster_with_ssech(tile):
         img_graph_g[0:128,128:256] = graph_B_g
         graph_B_b = graph_B.GetRasterBand(3).ReadAsArray(buf_xsize=128, buf_ysize=128, resample_alg= gdal.GRA_Average)
         img_graph_b[0:128,128:256] = graph_B_b
-        ortho_B = gdal.Open(os.path.join(tile_root_B,'ortho.jpg'))
+        ortho_B = gdal.Open(os.path.join(tile_root_B,'ortho.png'))
         ortho_B_r = ortho_B.GetRasterBand(1).ReadAsArray(buf_xsize=128, buf_ysize=128, resample_alg= gdal.GRA_Average)
         img_ortho_r[0:128,128:256] = ortho_B_r
         ortho_B_g = ortho_B.GetRasterBand(2).ReadAsArray(buf_xsize=128, buf_ysize=128, resample_alg= gdal.GRA_Average)
@@ -83,7 +83,7 @@ def update_tile_raster_with_ssech(tile):
         img_graph_g[128:256,0:128] = graph_C_g
         graph_C_b = graph_C.GetRasterBand(3).ReadAsArray(buf_xsize=128, buf_ysize=128, resample_alg= gdal.GRA_Average)
         img_graph_b[128:256,0:128] = graph_C_b
-        ortho_C = gdal.Open(os.path.join(tile_root_C,'ortho.jpg'))
+        ortho_C = gdal.Open(os.path.join(tile_root_C,'ortho.png'))
         ortho_C_r = ortho_C.GetRasterBand(1).ReadAsArray(buf_xsize=128, buf_ysize=128, resample_alg= gdal.GRA_Average)
         img_ortho_r[128:256,0:128] = ortho_C_r
         ortho_C_g = ortho_C.GetRasterBand(2).ReadAsArray(buf_xsize=128, buf_ysize=128, resample_alg= gdal.GRA_Average)
@@ -98,7 +98,7 @@ def update_tile_raster_with_ssech(tile):
         img_graph_g[128:256,128:256] = graph_D_g
         graph_D_b = graph_D.GetRasterBand(3).ReadAsArray(buf_xsize=128, buf_ysize=128, resample_alg= gdal.GRA_Average)
         img_graph_b[128:256,128:256] = graph_D_b
-        ortho_D = gdal.Open(os.path.join(tile_root_D,'ortho.jpg'))
+        ortho_D = gdal.Open(os.path.join(tile_root_D,'ortho.png'))
         ortho_D_r = ortho_D.GetRasterBand(1).ReadAsArray(buf_xsize=128, buf_ysize=128, resample_alg= gdal.GRA_Average)
         img_ortho_r[128:256,128:256] = ortho_D_r
         ortho_D_g = ortho_D.GetRasterBand(2).ReadAsArray(buf_xsize=128, buf_ysize=128, resample_alg= gdal.GRA_Average)
@@ -114,7 +114,7 @@ def update_tile_raster_with_ssech(tile):
     ortho.GetRasterBand(1).WriteArray(img_ortho_r)
     ortho.GetRasterBand(2).WriteArray(img_ortho_g)
     ortho.GetRasterBand(3).WriteArray(img_ortho_b)
-    jpegDriver.CreateCopy(os.path.join(cache,str(z),str(y),str(x),'ortho.jpg'), ortho)
+    pngDriver.CreateCopy(os.path.join(cache,str(z),str(y),str(x),'ortho.png'), ortho)
   
     out['status']='ok'
     return out
@@ -152,9 +152,9 @@ def update_tile_raster_with_rasterize(tile):
     pngDriver.CreateCopy(tile_root+"/graph.png", graph)
     # on applique le mask sur l opi
     opi = None
-    if Path(tile_root+'/'+cliche+'.jpg').is_file():
-        opi = gdal.Open(tile_root+'/'+cliche+'.jpg')
-    ortho_src = gdal.Open(tile_root+'/ortho.jpg')
+    if Path(tile_root+'/'+cliche+'.png').is_file():
+        opi = gdal.Open(tile_root+'/'+cliche+'.png')
+    ortho_src = gdal.Open(tile_root+'/ortho.png')
     ortho = mem_drv.CreateCopy('',ortho_src) 
     for c in range(3):
         ortho_c = ortho.GetRasterBand(c+1).ReadAsArray()
@@ -169,7 +169,7 @@ def update_tile_raster_with_rasterize(tile):
         else:
             newortho_c = ortho_c
         ortho.GetRasterBand(c+1).WriteArray(newortho_c)
-    jpegDriver.CreateCopy(tile_root+"/ortho.jpg", ortho)
+    pngDriver.CreateCopy(tile_root+"/ortho.png", ortho)
     out['status']='ok'
     return out
 

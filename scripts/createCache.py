@@ -8,6 +8,10 @@ from random import randrange
 import glob
 import json
 
+# jpegDriver = gdal.GetDriverByName( 'Jpeg' )
+pngDriver = gdal.GetDriverByName( 'png' )
+gtiffDriver = gdal.GetDriverByName( 'Gtiff' )
+
 def getCapabilities(input_capabilities):
     tree = ET.parse(input_capabilities)
     root = tree.getroot()
@@ -63,8 +67,7 @@ def processImage(input_filename, input_r, input_v, input_b):
     print(input_filename, input_r, input_v, input_b)
     tileMatixSetLimits = get_TileMatrixSetLimits(tiles, input_filename)
     input = gdal.Open(input_filename)
-    jpegDriver = gdal.GetDriverByName( 'Jpeg' )
-    pngDriver = gdal.GetDriverByName( 'png' )
+    
     stem = Path(input_filename).stem
     # for z in tiles:
     for z in range(10,22):
@@ -79,7 +82,7 @@ def processImage(input_filename, input_r, input_v, input_b):
                 dir='cache/'+str(z)+'/'+str(y)+'/'+str(x)
                 Path(dir).mkdir(parents=True, exist_ok=True)
                 # on export en jpeg (todo: gerer le niveau de Q)
-                jpegDriver.CreateCopy( dir+"/"+stem+".jpg", opi)
+                pngDriver.CreateCopy( dir+"/"+stem+".png", opi)
                 # on cree une image mono canal pour la tuile
                 mask = create_blank_tile(tiles, z, x, y, 1)
                 # on rasterise la partie du graphe qui concerne ce cliche
@@ -92,8 +95,8 @@ def processImage(input_filename, input_r, input_v, input_b):
                     # on cree le graphe et l'ortho
                     ortho = create_blank_tile(tiles, z, x, y, 3)
                     graph = create_blank_tile(tiles, z, x, y, 3)
-                    if Path(dir+"/ortho.jpg").is_file():
-                        existing_ortho = gdal.Open(dir+"/ortho.jpg")
+                    if Path(dir+"/ortho.png").is_file():
+                        existing_ortho = gdal.Open(dir+"/ortho.png")
                         existing_graph = gdal.Open(dir+"/graph.png")
                     else:
                         existing_ortho = False
@@ -147,7 +150,9 @@ def processImage(input_filename, input_r, input_v, input_b):
                     graph_b[(img_mask != 0)] = input_b
                     graph.GetRasterBand(3).WriteArray(graph_b)
 
-                    jpegDriver.CreateCopy( dir+"/ortho.jpg", ortho)
+                    # jpegDriver.CreateCopy( dir+"/ortho.jpg", ortho, options=["QUALITY=95"])
+                    pngDriver.CreateCopy( dir+"/ortho.png", ortho)
+                    # gtiffDriver.CreateCopy( dir+"/ortho.tif", ortho, options=["COMPRESS=LZW"])
                     pngDriver.CreateCopy( dir+"/graph.png", graph)
 
 
@@ -162,10 +167,8 @@ if db is None:
 
 
 L = glob.glob(sys.argv[1])
-# input_r = int(sys.argv[2])
-# input_v = int(sys.argv[3])
-# input_b = int(sys.argv[4])
-mtd={}
+with open('cache/cache_mtd.json', 'r') as inputfile:
+    mtd = json.load(inputfile)
 for filename in L:
     r = randrange(255)
     v = randrange(255)
@@ -178,10 +181,10 @@ for filename in L:
         mtd[r] = {}
     if not(v in mtd[r]):
         mtd[r][v] = {}
-    mtd[r][v][b] = filename 
+    mtd[r][v][b] = filename.split('/')[-1].split('.')[0] 
     processImage(filename, r, v, b)
 
-with open('cache_mtd.json', 'w') as outfile:
+with open('cache/cache_mtd.json', 'w') as outfile:
     json.dump(mtd, outfile)
 
 

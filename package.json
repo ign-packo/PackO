@@ -28,6 +28,7 @@
     "express": "^4.17.1",
     "express-validator": "^6.5.0",
     "fs": "0.0.1-security",
+    "jimp": "^0.14.0",
     "mocha": "^8.0.1",
     "nyc": "^15.1.0",
     "supervisor": "^0.12.0",

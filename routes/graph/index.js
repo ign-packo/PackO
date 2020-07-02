@@ -3,6 +3,8 @@ const router = require('express').Router();
 // const fs = require('fs');
 const { matchedData } = require('express-validator/filter');
 const { spawn } = require('child_process');
+const jimp = require('jimp');
+
 
 const {
   query, /* body, */
@@ -47,32 +49,35 @@ router.get('/graph', [
   const X = 0;
   const Y = 12000000;
   const R = 178.571428571429 * 0.00028;
-  const cacheDir = 'cache/21';
-  const python = spawn('python3', ['scripts/GetColor.py', '-X', X, '-Y', Y, '-R', R, '-C', cacheDir, '-x', x, '-y', y]);
-  // collect data from script
-  let json = '';
-  python.stderr.on('data', (data) => {
-    json += data.toString();
-  });
-  python.stdout.on('data', (data) => {
-    json += data.toString();
-  });
-  // in close event we are sure that stream from child process is closed
-  python.on('close', (code) => {
-    debug(`child process close all stdio with code ${code}`);
-    debug(json);
-    const out = JSON.parse(json);
-    if ((out.color[0] in req.app.cache_mtd)
-        && (out.color[1] in req.app.cache_mtd[out.color[0]])
-        && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-      out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
-    } else {
-      out.cliche = 'unkown';
+
+  // il faut trouver la tuile
+  const Px = (x-X)/R;
+  const Py = (Y-y)/R;
+  const Tx = Math.floor(Px/256)
+  const Ty = Math.floor(Py/256)
+  const I = Math.floor(Px-Tx*256)
+  const J = Math.floor(Py-Ty*256)
+  const url = `cache/21/${Ty}/${Tx}/graph.png`;
+  jimp.read(url, (err, image) => {
+    if (err){
+      res.status(500).send(err);
     }
-    // send data to browser
-    res.status(200).send(JSON.stringify(out));
+    else{
+      const index = image.getPixelIndex(I,J);
+      debug("index: ",index);
+      debug(image.bitmap.data[index], image.bitmap.data[index+1], image.bitmap.data[index+2]);
+      const out = {'color':[image.bitmap.data[index], image.bitmap.data[index+1], image.bitmap.data[index+2]]}
+      if ((out.color[0] in req.app.cache_mtd)
+          && (out.color[1] in req.app.cache_mtd[out.color[0]])
+          && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
+        out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+      } else {
+        out.cliche = 'unkown';
+      }
+      debug(JSON.stringify(out)); 
+      res.status(200).send(JSON.stringify(out));  
+    }
   });
-  // res.status(200).sendFile('toto.xml', { root: __dirname+'/../../' });
 });
 
 module.exports = router;
