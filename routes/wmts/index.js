@@ -1,8 +1,7 @@
 const debug = require('debug')('wmts');
 const router = require('express').Router();
 const { matchedData } = require('express-validator/filter');
-const jimp = require('jimp');
-
+const Jimp = require('jimp');
 
 const {
   query, /* body, */
@@ -44,36 +43,36 @@ router.get('/wmts', [
     debug(LAYER, TILEMATRIX, TILEROW, TILECOL);
     let mime = null;
     if ((!FORMAT) || (FORMAT === 'image/png')) {
-      mime = jimp.MIME_PNG; // "image/png"
+      mime = Jimp.MIME_PNG; // "image/png"
     } else if (FORMAT === 'image/jpeg') {
-      mime = jimp.MIME_JPEG; // "image/jpeg"
+      mime = Jimp.MIME_JPEG; // "image/jpeg"
     } else {
       res.status(500).send(`format ${FORMAT} not supported`);
       return;
     }
     const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}.png`;
-    jimp.read(url, (err, image) => {
+    Jimp.read(url, (err, image) => {
       new Promise((success, failure) => {
-        if (err){
-          new jimp(256, 256, 0x000000ff, (err, img) => {
-            if (err){
+        if (err) {
+          /* eslint-disable no-new */
+          new Jimp(256, 256, 0x000000ff, (errJimp, img) => {
+            if (errJimp) {
               failure(err);
             }
             success(img);
           });
-        }
-        else{
+        } else {
           success(image);
         }
-      }).then( (img) => {
-        img.getBuffer(mime, (err2, buffer) => {res.send(buffer);});
+      }).then((img) => {
+        img.getBuffer(mime, (err2, buffer) => { res.send(buffer); });
       });
-      });
+    });
   } else if (REQUEST === 'GetFeatureInfo') {
     debug(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
     const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}.png`;
     debug(url);
-    jimp.read(url, (err, image) => {
+    Jimp.read(url, (err, image) => {
       if (err) {
         res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
       } else {
