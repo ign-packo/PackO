@@ -133,7 +133,7 @@ router.post('/graph/patch', (req, res) => {
       debug('done');
     }));
   });
-  if (errors.length){
+  if (errors.length) {
     res.status(500).send(errors);
   }
   Promise.all(promises).then(() => {
