@@ -1,8 +1,7 @@
 const debug = require('debug')('wmts');
 const router = require('express').Router();
-const fs = require('fs');
 const { matchedData } = require('express-validator/filter');
-const { spawn } = require('child_process');
+const jimp = require('jimp');
 
 const {
   query, /* body, */
@@ -35,61 +34,64 @@ router.get('/wmts', [
   const { J } = params;
 
   debug(SERVICE, VERSION, REQUEST);
-  let ext = '.jpg';
-  if (FORMAT === 'image/png') {
-    ext = '.png';
-  }
-
   if ((SERVICE !== 'WMTS') && (SERVICE !== 'WMS')) {
     res.status(500).send(`service ${SERVICE} not supported`);
   } else if (REQUEST === 'GetCapabilities') {
-    const python = spawn('python3', ['scripts/GetCapabilities.py']);
-    // collect data from script
-    let dataToSend = '';
-    python.stdout.on('data', (data) => {
-      dataToSend += data.toString();
-    });
-    // in close event we are sure that stream from child process is closed
-    python.on('close', (code) => {
-      debug(`child process close all stdio with code ${code}`);
-      res.status(200).send(dataToSend);
-    });
+    res.type('application/xml');
+    res.sendFile('Capabilities.xml', { root: `${__dirname}/../../cache` });
   } else if (REQUEST === 'GetTile') {
     debug(LAYER, TILEMATRIX, TILEROW, TILECOL);
-    const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}${ext}`;
-    debug('request : ', url);
-    try {
-      if (fs.existsSync(url)) {
-        // console.log('found');
-        res.sendFile(url, { root: `${__dirname}/../..` });
-      } else {
-        // console.log('not found');
-        res.sendFile('ortho.jpg', { root: `${__dirname}/../../cache` });
-      }
-    } catch (err) {
-      res.status(500).send(err);
+    let mime = null;
+    if ((!FORMAT) || (FORMAT === 'image/png')) {
+      mime = jimp.MIME_PNG; // "image/png"
+    } else if (FORMAT === 'image/jpeg') {
+      mime = jimp.MIME_JPEG; // "image/jpeg"
+    } else {
+      res.status(500).send(`format ${FORMAT} not supported`);
+      return;
     }
+    const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}.png`;
+    jimp.read(url, (err, image) => {
+      if (err) {
+        debug(err);
+        res.sendFile('ortho.jpg', { root: `${__dirname}/../../cache` });
+      } else {
+        debug('ok ', mime);
+        image.getBuffer(mime, (err2, buffer) => {
+          if (err2) {
+            debug(err2);
+            res.sendFile('ortho.jpg', { root: `${__dirname}/../../cache` });
+          } else {
+            res.send(buffer);
+          }
+        });
+      }
+    });
   } else if (REQUEST === 'GetFeatureInfo') {
     debug(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-    const python = spawn('python3', ['scripts/GetFeatureInfo.py', '-Z', TILEMATRIX, '-Y', TILEROW, '-X', TILECOL, '-i', I, '-j', J, '-l', `${LAYER}${ext}`]);
-    // collect data from script
-    let json = '';
-    python.stdout.on('data', (data) => {
-      json += data.toString();
-    });
-    // in close event we are sure that stream from child process is closed
-    python.on('close', (code) => {
-      debug(`child process close all stdio with code ${code}`);
-      const out = JSON.parse(json);
-      if ((out.color[0] in req.app.cache_mtd)
+    const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}.png`;
+    debug(url);
+    jimp.read(url, (err, image) => {
+      if (err) {
+        res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
+      } else {
+        const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
+        debug('index: ', index);
+        debug(image.bitmap.data[index], image.bitmap.data[index + 1], image.bitmap.data[index + 2]);
+        const out = {
+          color: [image.bitmap.data[index],
+            image.bitmap.data[index + 1],
+            image.bitmap.data[index + 2]],
+        };
+        if ((out.color[0] in req.app.cache_mtd)
           && (out.color[1] in req.app.cache_mtd[out.color[0]])
           && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-        out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
-      } else {
-        out.cliche = 'unkown';
+          out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+        } else {
+          out.cliche = 'unknown';
+        }
+        res.status(200).send(JSON.stringify(out));
       }
-      // send data to browser
-      res.status(200).send(JSON.stringify(out));
     });
   } else { res.status(500).send('request not supported'); }
 });

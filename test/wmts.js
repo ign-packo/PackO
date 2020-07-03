@@ -100,7 +100,7 @@ describe('Wmts', () => {
             },
           };
           json.should.be.jsonSchema(schema);
-          json.cliche.should.to.equal('unkown');
+          json.cliche.should.to.equal('unknown');
           done();
         });
     });
