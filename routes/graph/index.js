@@ -69,8 +69,8 @@ router.post('/graph/patch', (req, res) => {
       debug('ERROR');
       return;
     }
-    let mask = PImage.make(256, 256);
-    let ctx = mask.getContext('2d');
+    const mask = PImage.make(256, 256);
+    const ctx = mask.getContext('2d');
     geoJson.features.forEach((feature) => {
       debug(feature.properties.color);
       ctx.fillStyle = '#FFFFFF';
@@ -100,12 +100,13 @@ router.post('/graph/patch', (req, res) => {
     // });
 
     // // On patch le graph
+    /* eslint-disable no-param-reassign */
     jimp.read(urlGraph).then((graph) => {
-      for (let idx = 0 ; idx < 256 * 256 * 4; idx += 4) {
+      for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
         if (mask.data[idx + 3]) {
-          graph.bitmap.data[idx] = geoJson.features[0].properties.color[0];
-          graph.bitmap.data[idx + 1] = geoJson.features[0].properties.color[1];
-          graph.bitmap.data[idx + 2] = geoJson.features[0].properties.color[2];
+          [graph.bitmap.data[idx],
+            graph.bitmap.data[idx + 1],
+            graph.bitmap.data[idx + 2]] = geoJson.features[0].properties.color;
         }
       }
       // const out_graph = `graph_${tile.x}_${tile.y}_${tile.z}.png`;
@@ -119,9 +120,10 @@ router.post('/graph/patch', (req, res) => {
       debug(err);
     });
     // // On patch l ortho
+    /* eslint-disable no-param-reassign */
     jimp.read(urlOrtho).then((ortho) => {
       jimp.read(urlOpi).then((opi) => {
-        for (let idx = 0 ; idx < 256 * 256 * 4; idx += 4) {
+        for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
           if (mask.data[idx + 3]) {
             ortho.bitmap.data[idx] = opi.bitmap.data[idx];
             ortho.bitmap.data[idx + 1] = opi.bitmap.data[idx + 1];
