@@ -14,11 +14,12 @@ router.post('/graph/patch', (req, res) => {
   const Y0 = 12000000;
   const R = 0.05;
   const geoJson = req.body;
+  const promises = [];
   // todo: valider la structure geoJson et les propriétés nécessaires (color/cliche)
-  // if (!('features' in geoJson)) {
-  //   res.status(500).send('geoJson not valid');
-  //   return;
-  // }
+  if (!('features' in geoJson)) {
+    res.status(500).send('geoJson not valid');
+    return;
+  }
   debug('GeoJson: ', geoJson);
   debug('Features: ', geoJson.features);
   // Version JS
@@ -101,7 +102,7 @@ router.post('/graph/patch', (req, res) => {
 
     // // On patch le graph
     /* eslint-disable no-param-reassign */
-    jimp.read(urlGraph).then((graph) => {
+    promises.push(jimp.read(urlGraph).then((graph) => {
       for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
         if (mask.data[idx + 3]) {
           [graph.bitmap.data[idx],
@@ -109,47 +110,40 @@ router.post('/graph/patch', (req, res) => {
             graph.bitmap.data[idx + 2]] = geoJson.features[0].properties.color;
         }
       }
-      // const out_graph = `graph_${tile.x}_${tile.y}_${tile.z}.png`;
-      // graph.write(out_graph, () => {
-      //   debug('done : ', out_graph);
-      // });
-      graph.write(urlGraph, () => {
-        debug('done : ', urlGraph);
-      });
-    }).catch((err) => {
-      debug(err);
-    });
+      return graph.writeAsync(urlGraph);
+    }).then(() => {
+      debug('done');
+    }));
     // // On patch l ortho
     /* eslint-disable no-param-reassign */
-    jimp.read(urlOrtho).then((ortho) => {
-      jimp.read(urlOpi).then((opi) => {
-        for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
-          if (mask.data[idx + 3]) {
-            ortho.bitmap.data[idx] = opi.bitmap.data[idx];
-            ortho.bitmap.data[idx + 1] = opi.bitmap.data[idx + 1];
-            ortho.bitmap.data[idx + 2] = opi.bitmap.data[idx + 2];
-          }
+    const promiseOrthoOpi = [jimp.read(urlOrtho), jimp.read(urlOpi)];
+    promises.push(Promise.all(promiseOrthoOpi).then((images) => {
+      const ortho = images[0];
+      const opi = images[1];
+      // debug(ortho, opi);
+      for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
+        if (mask.data[idx + 3]) {
+          ortho.bitmap.data[idx] = opi.bitmap.data[idx];
+          ortho.bitmap.data[idx + 1] = opi.bitmap.data[idx + 1];
+          ortho.bitmap.data[idx + 2] = opi.bitmap.data[idx + 2];
         }
-        // const out_ortho = `ortho_${tile.x}_${tile.y}_${tile.z}.png`;
-        // ortho.write(out_ortho, () => {
-        //   debug('done : ', out_ortho);
-        // });
-        ortho.write(urlOrtho, () => {
-          debug('done : ', urlOrtho);
-        });
-      }).catch((err) => {
-        debug(err);
-      });
-    }).catch((err) => {
-      debug(err);
-    });
+      }
+      return ortho.writeAsync(urlOrtho);
+    }).then(() => {
+      debug('done');
+    }));
   });
-  debug('FIN');
-  if (errors.length) {
+  if (errors.length){
     res.status(500).send(errors);
-  } else {
-    res.status(200).send(JSON.stringify(tiles));
   }
+  Promise.all(promises).then(() => {
+    debug('tout c est bien passé');
+    res.status(200).send(JSON.stringify(tiles));
+  }).catch((err) => {
+    debug('erreur : ', err);
+    // todo: il faut tout annuler
+    res.status(500).send(err);
+  });
 });
 
 router.get('/graph', [
