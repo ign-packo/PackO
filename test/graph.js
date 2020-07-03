@@ -41,7 +41,7 @@ describe('Graph', () => {
             },
           };
           json.should.be.jsonSchema(schema);
-          json.cliche.should.to.equal('unkown');
+          json.cliche.should.to.equal('unknown');
           done();
         });
     });
@@ -54,14 +54,13 @@ describe('Graph', () => {
         .end((err, res) => {
           should.equal(err, null);
           res.should.have.status(500);
-          // res.body.status.should.equal("Le paramètre 'id_session' est invalide.");
           done();
         });
     });
   });
 
   describe('Post graph/patch', () => {
-    it('should works', (done) => {
+    it('should return an works', (done) => {
       chai.request(server)
         .post('/graph/patch')
         .send({
@@ -75,8 +74,7 @@ describe('Graph', () => {
         })
         .end((err, res) => {
           should.equal(err, null);
-          res.should.have.status(200);
-          // res.body.status.should.equal("Le paramètre 'id_session' est invalide.");
+          res.should.have.status(500);
           done();
         });
     });

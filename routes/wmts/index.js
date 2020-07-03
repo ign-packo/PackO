@@ -1,8 +1,6 @@
 const debug = require('debug')('wmts');
 const router = require('express').Router();
-// const fs = require('fs');
 const { matchedData } = require('express-validator/filter');
-// const { spawn } = require('child_process');
 const jimp = require('jimp');
 
 const {
@@ -44,7 +42,7 @@ router.get('/wmts', [
   } else if (REQUEST === 'GetTile') {
     debug(LAYER, TILEMATRIX, TILEROW, TILECOL);
     let mime = null;
-    if (FORMAT === 'image/png') {
+    if ((!FORMAT) || (FORMAT === 'image/png')) {
       mime = jimp.MIME_PNG; // "image/png"
     } else if (FORMAT === 'image/jpeg') {
       mime = jimp.MIME_JPEG; // "image/jpeg"
@@ -57,15 +55,13 @@ router.get('/wmts', [
       if (err) {
         debug(err);
         res.sendFile('ortho.jpg', { root: `${__dirname}/../../cache` });
-      }
-      else {
+      } else {
         debug('ok ', mime);
         image.getBuffer(mime, (err2, buffer) => {
           if (err2) {
             debug(err2);
             res.sendFile('ortho.jpg', { root: `${__dirname}/../../cache` });
-          }
-          else {
+          } else {
             res.send(buffer);
           }
         });
@@ -77,19 +73,22 @@ router.get('/wmts', [
     debug(url);
     jimp.read(url, (err, image) => {
       if (err) {
-        res.status(500).send(err);
-      }
-      else {
-        const index = image.getPixelIndex(parseInt(I), parseInt(J));
-        debug("index: ", index);
+        res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
+      } else {
+        const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
+        debug('index: ', index);
         debug(image.bitmap.data[index], image.bitmap.data[index + 1], image.bitmap.data[index + 2]);
-        const out = { 'color': [image.bitmap.data[index], image.bitmap.data[index + 1], image.bitmap.data[index + 2]] }
+        const out = {
+          color: [image.bitmap.data[index],
+            image.bitmap.data[index + 1],
+            image.bitmap.data[index + 2]],
+        };
         if ((out.color[0] in req.app.cache_mtd)
           && (out.color[1] in req.app.cache_mtd[out.color[0]])
           && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
           out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
         } else {
-          out.cliche = 'unkown';
+          out.cliche = 'unknown';
         }
         res.status(200).send(JSON.stringify(out));
       }

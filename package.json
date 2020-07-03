@@ -31,6 +31,7 @@
     "jimp": "^0.14.0",
     "mocha": "^8.0.1",
     "nyc": "^15.1.0",
+    "pureimage": "^0.2.1",
     "supervisor": "^0.12.0",
     "swagger-editor-dist": "^3.10.0",
     "swagger-ui-dist": "^3.25.5",
