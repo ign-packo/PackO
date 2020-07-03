@@ -3,6 +3,7 @@ const router = require('express').Router();
 const { matchedData } = require('express-validator/filter');
 const jimp = require('jimp');
 
+
 const {
   query, /* body, */
 } = require('express-validator/check');
@@ -52,21 +53,22 @@ router.get('/wmts', [
     }
     const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}.png`;
     jimp.read(url, (err, image) => {
-      if (err) {
-        debug(err);
-        res.sendFile('ortho.jpg', { root: `${__dirname}/../../cache` });
-      } else {
-        debug('ok ', mime);
-        image.getBuffer(mime, (err2, buffer) => {
-          if (err2) {
-            debug(err2);
-            res.sendFile('ortho.jpg', { root: `${__dirname}/../../cache` });
-          } else {
-            res.send(buffer);
-          }
-        });
-      }
-    });
+      new Promise((success, failure) => {
+        if (err){
+          new jimp(256, 256, 0x000000ff, (err, img) => {
+            if (err){
+              failure(err);
+            }
+            success(img);
+          });
+        }
+        else{
+          success(image);
+        }
+      }).then( (img) => {
+        img.getBuffer(mime, (err2, buffer) => {res.send(buffer);});
+      });
+      });
   } else if (REQUEST === 'GetFeatureInfo') {
     debug(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
     const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}.png`;
