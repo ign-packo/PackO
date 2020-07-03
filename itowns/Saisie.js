@@ -3,6 +3,8 @@ class Saisie {
     // this.opiLayer = options.opiLayer;
     this.orthoLayer = options.orthoLayer;
     this.graphLayer = options.graphLayer;
+    this.orthoConfig = options.orthoConfig;
+    this.graphConfig = options.graphConfig;
 
     this.status = 'ras';
     this.currentMeasure = null;
@@ -99,43 +101,54 @@ class Saisie {
         },
         body: dataStr,
       }).then((res) => {
+        // Pour le moment on force le rechargement complet des couches
+        view.removeLayer('Ortho');
+        view.removeLayer('Graph');
+        console.log(this.orthoConfig);
+        const orthoLayer = new itowns.ColorLayer('Ortho', orthoConfig);
+        view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+        const graphLayer = new itowns.ColorLayer('Graph', graphConfig);
+        view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+        view.notifyChange();
+        
       // On recupere la liste des tuiles impactees
-      res.json().then((json) => {
-        if (json) {
-          view.tileLayer.object3d.traverse((object) => {
-            if (object.isTileMesh) {
-              const ext = object.getExtentsByProjection('WMTS:TMS:2154');
-              let toBeRefresh = false;
-              let withAllChildren = false;
-              ext.some((e) => {
-                json.tiles.some((tile) => {
-                  if ((tile.x == e.col) && (tile.y == e.row) && (tile.z == e.zoom)) {
-                    toBeRefresh = true;
-                    withAllChildren = tile.allChildren;
-                    return true;
-                  }
-                });
-              });
-              if (toBeRefresh) {
-                console.log('to be refresh');
-                console.log(withAllChildren);
-                console.log(object);
-                object.refreshMaterial(that.graphLayer, view);
-                object.refreshMaterial(that.orthoLayer, view);
-                if (withAllChildren) {
-                  object.traverse((o) => {
-                    if (o.isTileMesh) {
-                      o.refreshMaterial(that.graphLayer, view);
-                      o.refreshMaterial(that.orthoLayer, view);
-                    }
-                  });
-                }
-              }
-            }
-          });
-          view.notifyChange();
-        }
-      });
+      // res.json().then((json) => {
+      //   if (json) {
+      //     console.log(json);
+      //     view.tileLayer.object3d.traverse((object) => {
+      //       if (object.isTileMesh) {
+      //         const ext = object.getExtentsByProjection('WMTS:TMS:2154');
+      //         let toBeRefresh = false;
+      //         let withAllChildren = false;
+      //         ext.some((e) => {
+      //           json.some((tile) => {
+      //             if ((tile.x == e.col) && (tile.y == e.row) && (tile.z == e.zoom)) {
+      //               toBeRefresh = true;
+      //               withAllChildren = tile.allChildren;
+      //               return true;
+      //             }
+      //           });
+      //         });
+      //         if (toBeRefresh) {
+      //           console.log('to be refresh');
+      //           console.log(withAllChildren);
+      //           console.log(object);
+      //           object.refreshMaterial(that.graphLayer, view);
+      //           object.refreshMaterial(that.orthoLayer, view);
+      //           if (withAllChildren) {
+      //             object.traverse((o) => {
+      //               if (o.isTileMesh) {
+      //                 o.refreshMaterial(that.graphLayer, view);
+      //                 o.refreshMaterial(that.orthoLayer, view);
+      //               }
+      //             });
+      //           }
+      //         }
+      //       }
+      //     });
+      //     view.notifyChange();
+      //   }
+      // });
     });
     this.currentMeasure = null;
     this.currentIndex = -1;
