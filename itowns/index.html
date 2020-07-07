@@ -60,10 +60,11 @@
 
         var orthoLayer, graphLayer;
         var orthoConfig, graphConfig;
-        let promises = [itowns.Fetcher.json('./ortho.json'), itowns.Fetcher.json('./graph.json')];
+        let promises = [itowns.Fetcher.json('./ortho.json'), itowns.Fetcher.json('./graph.json'), itowns.Fetcher.json('./19FD5606A.json')];
         Promise.all(promises).then((conf) => {
             orthoConfig = conf[0];
             graphConfig = conf[1];
+            opiConfig = conf[2];
             orthoConfig.source = new itowns.WMTSSource(orthoConfig.source);
             orthoConfig.source.extentInsideLimit = function (extent) {
                     return true;
@@ -73,12 +74,24 @@
                 return true;
             }
             graphConfig.opacity = 0.2;
+            opiConfig.sourceOri = opiConfig.source;
+
+            opiConfig.source = new itowns.WMTSSource(opiConfig.sourceOri);
+            opiConfig.source.extentInsideLimit = function (extent) {
+                return true;
+            }
+            opiConfig.opacity = 0.2;
             orthoLayer = new itowns.ColorLayer('Ortho', orthoConfig);
             view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
             graphLayer = new itowns.ColorLayer('Graph', graphConfig);
             view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            opiLayer = new itowns.ColorLayer('Opi', opiConfig);
+            view.addLayer(opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+            itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+            itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
 
-            var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig/*, opiLayer*/ });
+            var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig, opiLayer, opiConfig });
             saisie.cliche = 'unknown';
             menuGlobe.gui.add(saisie, 'polygon');
             menuGlobe.gui.add(saisie, 'freehand');

@@ -1,8 +1,9 @@
 class Saisie {
   constructor(options) {
-    // this.opiLayer = options.opiLayer;
+    this.opiLayer = options.opiLayer;
     this.orthoLayer = options.orthoLayer;
     this.graphLayer = options.graphLayer;
+    this.opiConfig = options.opiConfig;
     this.orthoConfig = options.orthoConfig;
     this.graphConfig = options.graphConfig;
 
@@ -102,6 +103,7 @@ class Saisie {
         body: dataStr,
       }).then((res) => {
         // Pour le moment on force le rechargement complet des couches
+        menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
         view.removeLayer('Ortho');
         view.removeLayer('Graph');
         console.log(this.orthoConfig);
@@ -109,46 +111,10 @@ class Saisie {
         view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
         const graphLayer = new itowns.ColorLayer('Graph', graphConfig);
         view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+        itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+        itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+        itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
         view.notifyChange();
-        
-      // On recupere la liste des tuiles impactees
-      // res.json().then((json) => {
-      //   if (json) {
-      //     console.log(json);
-      //     view.tileLayer.object3d.traverse((object) => {
-      //       if (object.isTileMesh) {
-      //         const ext = object.getExtentsByProjection('WMTS:TMS:2154');
-      //         let toBeRefresh = false;
-      //         let withAllChildren = false;
-      //         ext.some((e) => {
-      //           json.some((tile) => {
-      //             if ((tile.x == e.col) && (tile.y == e.row) && (tile.z == e.zoom)) {
-      //               toBeRefresh = true;
-      //               withAllChildren = tile.allChildren;
-      //               return true;
-      //             }
-      //           });
-      //         });
-      //         if (toBeRefresh) {
-      //           console.log('to be refresh');
-      //           console.log(withAllChildren);
-      //           console.log(object);
-      //           object.refreshMaterial(that.graphLayer, view);
-      //           object.refreshMaterial(that.orthoLayer, view);
-      //           if (withAllChildren) {
-      //             object.traverse((o) => {
-      //               if (o.isTileMesh) {
-      //                 o.refreshMaterial(that.graphLayer, view);
-      //                 o.refreshMaterial(that.orthoLayer, view);
-      //               }
-      //             });
-      //           }
-      //         }
-      //       }
-      //     });
-      //     view.notifyChange();
-      //   }
-      // });
     });
     this.currentMeasure = null;
     this.currentIndex = -1;
@@ -177,13 +143,14 @@ class Saisie {
               that.cliche = json.cliche;
               that.status = 'ras';
               // On modifie la couche OPI
-              // that.opiLayer.source.url = 'http://localhost:3000/tile/opi?Z=${z}&Y=${y}&X=${x}&cliche='+that.cliche;
-              // console.log(that.opiLayer.source.url);
-              // view.tileLayer.object3d.traverse((object) => {
-              //     if (object.isTileMesh) {
-              //         object.refreshMaterial(that.opiLayer, view);
-              //     }
-              // });
+              menuGlobe.removeLayersGUI(['Opi']);
+              view.removeLayer('Opi');
+              opiConfig.source.url = opiConfig.source.url.replace(/LAYER=.*\&FORMAT/, `LAYER=${json.cliche}&FORMAT`);
+              const opiLayer = new itowns.ColorLayer('Opi', opiConfig);
+              view.addLayer(opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+              itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+              itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+              itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
               view.notifyChange();
             }
           });

@@ -194,5 +194,5 @@ def exportCapabilities(layers, url):
     with open('cache/Capabilities.xml', 'w') as outfile:
         outfile.write(xml)
 
-layers=[{'name':'ortho', 'format':'image/png'}, {'name':'graph', 'format':'image/png'}]
+layers=[{'name':'ortho', 'format':'image/png'}, {'name':'graph', 'format':'image/png'}, {'name':'19FD5606A', 'format':'image/png'}]
 exportCapabilities(layers, 'http://localhost:8081/wmts')
