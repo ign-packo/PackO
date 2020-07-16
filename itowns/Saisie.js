@@ -92,7 +92,6 @@ class Saisie {
     const dataStr = JSON.stringify(geojson);
     view.scene.remove(this.currentMeasure);
     // On post le geojson sur l'API
-    const that = this;
     fetch(`http://localhost:8081/graph/patch?`,
       {
         method: 'POST',
@@ -103,14 +102,15 @@ class Saisie {
         body: dataStr,
       }).then((res) => {
         // Pour le moment on force le rechargement complet des couches
+        this.orthoConfig.opacity = this.orthoLayer.opacity;
+        this.graphConfig.opacity = this.graphLayer.opacity;
         menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
         view.removeLayer('Ortho');
         view.removeLayer('Graph');
-        console.log(this.orthoConfig);
-        const orthoLayer = new itowns.ColorLayer('Ortho', orthoConfig);
-        view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-        const graphLayer = new itowns.ColorLayer('Graph', graphConfig);
-        view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+        this.orthoLayer = new itowns.ColorLayer('Ortho', this.orthoConfig);
+        view.addLayer(this.orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+        this.graphLayer = new itowns.ColorLayer('Graph', this.graphConfig);
+        view.addLayer(this.graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
         itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
         itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
         itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
@@ -143,11 +143,12 @@ class Saisie {
               that.cliche = json.cliche;
               that.status = 'ras';
               // On modifie la couche OPI
+              this.opiConfig.opacity = this.opiLayer.opacity;
               menuGlobe.removeLayersGUI(['Opi']);
               view.removeLayer('Opi');
-              opiConfig.source.url = opiConfig.source.url.replace(/LAYER=.*\&FORMAT/, `LAYER=${json.cliche}&FORMAT`);
-              const opiLayer = new itowns.ColorLayer('Opi', opiConfig);
-              view.addLayer(opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+              this.opiConfig.source.url = this.opiConfig.source.url.replace(/LAYER=.*\&FORMAT/, `LAYER=${json.cliche}&FORMAT`);
+              this.opiLayer = new itowns.ColorLayer('Opi', this.opiConfig);
+              view.addLayer(this.opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
               itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
               itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
               itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
