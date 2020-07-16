@@ -1,106 +1,128 @@
+"""This script create Capabilities.xml and json files for iTowns"""
 import glob
 import json
 import os
 
-def exportTileLimits(layername):
-    L = glob.glob('cache/*/*/*/'+layername+'.*')
-    tileMatrixSetLimits={}
-    for dirname in L:
-        T = dirname.split(os.path.sep)
-        z = int(T[1])
-        y = int(T[2])
-        x = int(T[3])
-        if z in tileMatrixSetLimits:
-            tileMatrixSetLimits[z]['MinTileRow'] = min(y, tileMatrixSetLimits[z]['MinTileRow'])
-            tileMatrixSetLimits[z]['MaxTileRow'] = max(y, tileMatrixSetLimits[z]['MaxTileRow'])
-            tileMatrixSetLimits[z]['MinTileCol'] = min(x, tileMatrixSetLimits[z]['MinTileCol'])
-            tileMatrixSetLimits[z]['MaxTileCol'] = max(x, tileMatrixSetLimits[z]['MaxTileCol'])
+def export_tile_limits(layername):
+    """Return tile_matrix_set_limits for a layer in the cache"""
+    list_filename = glob.glob('cache/*/*/*/'+layername+'.*')
+    tile_matrix_set_limits = {}
+    for dirname in list_filename:
+        tab = dirname.split(os.path.sep)
+        tile_z = int(tab[1])
+        tile_y = int(tab[2])
+        tile_x = int(tab[3])
+        if tile_z in tile_matrix_set_limits:
+            tile_matrix_set_limits[tile_z]['MinTileRow'] = \
+                min(tile_y, tile_matrix_set_limits[tile_z]['MinTileRow'])
+            tile_matrix_set_limits[tile_z]['MaxTileRow'] = \
+                max(tile_y, tile_matrix_set_limits[tile_z]['MaxTileRow'])
+            tile_matrix_set_limits[tile_z]['MinTileCol'] = \
+                min(tile_x, tile_matrix_set_limits[tile_z]['MinTileCol'])
+            tile_matrix_set_limits[tile_z]['MaxTileCol'] = \
+                max(tile_x, tile_matrix_set_limits[tile_z]['MaxTileCol'])
         else:
-            tileMatrixSetLimit={}
-            tileMatrixSetLimit['MinTileRow'] = y
-            tileMatrixSetLimit['MaxTileRow'] = y
-            tileMatrixSetLimit['MinTileCol'] = x
-            tileMatrixSetLimit['MaxTileCol'] = x
-            tileMatrixSetLimits[z] = tileMatrixSetLimit
-    return tileMatrixSetLimits
+            tile_matrix_set_limit = {}
+            tile_matrix_set_limit['MinTileRow'] = tile_y
+            tile_matrix_set_limit['MaxTileRow'] = tile_y
+            tile_matrix_set_limit['MinTileCol'] = tile_x
+            tile_matrix_set_limit['MaxTileCol'] = tile_x
+            tile_matrix_set_limits[tile_z] = tile_matrix_set_limit
+    return tile_matrix_set_limits
 
-def exportCapabilities(layers, url):
-    xml=("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-         "<Capabilities xmlns=\"http://www.opengis.net/wmts/1.0\" " 
-         "xmlns:gml=\"http://www.opengis.net/gml\" " 
-         "xmlns:ows=\"http://www.opengis.net/ows/1.1\" " 
-         "xmlns:xlink=\"http://www.w3.org/1999/xlink\" "
-         "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" version=\"1.0.0\" xsi:schemaLocation=\"http://www.opengis.net/wmts/1.0 http://schemas.opengis.net/wmts/1.0/wmtsGetCapabilities_response.xsd\">"
-         "<ows:ServiceIdentification>"
-         "<ows:Title>Service WMTS</ows:Title>"
-         "<ows:Abstract>Proto pour API Mosaiquage</ows:Abstract>"
-         "<ows:Keywords><ows:Keyword>WMTS</ows:Keyword><ows:Keyword>Mosaiquage</ows:Keyword></ows:Keywords>"
-         "<ows:ServiceType>OGC WMTS</ows:ServiceType>"
-         "<ows:ServiceTypeVersion>1.0.0</ows:ServiceTypeVersion>"
-         "</ows:ServiceIdentification>"
-         "<ows:ServiceProvider><ows:ProviderName>IGN</ows:ProviderName></ows:ServiceProvider>"
-         "<ows:OperationsMetadata>"
-         "<ows:Operation name=\"GetCapabilities\">"
-         "<ows:DCP><ows:HTTP>"
-         "<ows:Get xlink:href=\""+url+"\">"
-         "<ows:Constraint name=\"GetEncoding\"><ows:AllowedValues><ows:Value>KVP</ows:Value></ows:AllowedValues></ows:Constraint>"
-         "</ows:Get>"
-         "</ows:HTTP></ows:DCP>"
-         "</ows:Operation>"
-         "<ows:Operation name=\"GetTile\">"
-         "<ows:DCP><ows:HTTP>"
-         "<ows:Get xlink:href=\""+url+"\">"
-         "<ows:Constraint name=\"GetEncoding\"><ows:AllowedValues><ows:Value>KVP</ows:Value></ows:AllowedValues></ows:Constraint>"
-         "</ows:Get>"
-         "</ows:HTTP></ows:DCP>"
-         "</ows:Operation>"
-         "<ows:Operation name=\"GetFeatureInfo\">"
-         "<ows:DCP><ows:HTTP>"
-         "<ows:Get xlink:href=\""+url+"\">"
-         "<ows:Constraint name=\"GetEncoding\"><ows:AllowedValues><ows:Value>KVP</ows:Value></ows:AllowedValues></ows:Constraint>"
-         "</ows:Get>"
-         "</ows:HTTP></ows:DCP>"
-         "</ows:Operation>"
-         "</ows:OperationsMetadata>"
-         "<Contents>")
+def export_capabilities(layers, url):
+    """Return export Capabilities.xml"""
+    xml = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+           "<Capabilities xmlns=\"http://www.opengis.net/wmts/1.0\" "
+           "xmlns:gml=\"http://www.opengis.net/gml\" "
+           "xmlns:ows=\"http://www.opengis.net/ows/1.1\" "
+           "xmlns:xlink=\"http://www.w3.org/1999/xlink\" "
+           "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" version=\"1.0.0\" "
+           "xsi:schemaLocation=\"http://www.opengis.net/wmts/1.0 "
+           "http://schemas.opengis.net/wmts/1.0/wmtsGetCapabilities_response.xsd\">"
+           "<ows:ServiceIdentification>"
+           "<ows:Title>Service WMTS</ows:Title>"
+           "<ows:Abstract>Proto pour API Mosaiquage</ows:Abstract>"
+           "<ows:Keywords>"
+           "<ows:Keyword>WMTS</ows:Keyword><ows:Keyword>Mosaiquage</ows:Keyword>"
+           "</ows:Keywords>"
+           "<ows:ServiceType>OGC WMTS</ows:ServiceType>"
+           "<ows:ServiceTypeVersion>1.0.0</ows:ServiceTypeVersion>"
+           "</ows:ServiceIdentification>"
+           "<ows:ServiceProvider><ows:ProviderName>IGN</ows:ProviderName></ows:ServiceProvider>"
+           "<ows:OperationsMetadata>"
+           "<ows:Operation name=\"GetCapabilities\">"
+           "<ows:DCP><ows:HTTP>"
+           "<ows:Get xlink:href=\""+url+"\">"
+           "<ows:Constraint name=\"GetEncoding\">"
+           "<ows:AllowedValues><ows:Value>KVP</ows:Value></ows:AllowedValues>"
+           "</ows:Constraint>"
+           "</ows:Get>"
+           "</ows:HTTP></ows:DCP>"
+           "</ows:Operation>"
+           "<ows:Operation name=\"GetTile\">"
+           "<ows:DCP><ows:HTTP>"
+           "<ows:Get xlink:href=\""+url+"\">"
+           "<ows:Constraint name=\"GetEncoding\">"
+           "<ows:AllowedValues><ows:Value>KVP</ows:Value></ows:AllowedValues>"
+           "</ows:Constraint>"
+           "</ows:Get>"
+           "</ows:HTTP></ows:DCP>"
+           "</ows:Operation>"
+           "<ows:Operation name=\"GetFeatureInfo\">"
+           "<ows:DCP><ows:HTTP>"
+           "<ows:Get xlink:href=\""+url+"\">"
+           "<ows:Constraint name=\"GetEncoding\">"
+           "<ows:AllowedValues><ows:Value>KVP</ows:Value></ows:AllowedValues>"
+           "</ows:Constraint>"
+           "</ows:Get>"
+           "</ows:HTTP></ows:DCP>"
+           "</ows:Operation>"
+           "</ows:OperationsMetadata>"
+           "<Contents>")
     for layer in layers:
         print(layer)
-        limits=exportTileLimits(layer['name'])
-        layerconf={}
-        layerconf["id"]=layer['name']
-        source={}
+        limits = export_tile_limits(layer['name'])
+        layerconf = {}
+        layerconf["id"] = layer['name']
+        source = {}
         source["url"] = url
         source["projection"] = "EPSG:2154"
         source["networkOptions"] = {"crossOrigin": "anonymous"}
         source["format"] = layer['format']
-        source["name"]= layer['name']
-        source["tileMatrixSet"]= "LAMBB93"
-        source["tileMatrixSetLimits"]=limits
-        layerconf["source"]=source
+        source["name"] = layer['name']
+        source["tileMatrixSet"] = "LAMBB93"
+        source["tileMatrixSetLimits"] = limits
+        layerconf["source"] = source
         with open('itowns/'+layer['name']+".json", 'w') as outfile:
             json.dump(layerconf, outfile)
-        xml+='<Layer><ows:Title>'+layer['name']+'</ows:Title><ows:Abstract>'+layer['name']+'</ows:Abstract>'
-        xml+='<ows:WGS84BoundingBox><ows:LowerCorner>-7.1567 40.6712</ows:LowerCorner><ows:UpperCorner>11.578 51.9948</ows:UpperCorner></ows:WGS84BoundingBox>'
-        xml+='<ows:Identifier>'+layer['name']+'</ows:Identifier>'
-        xml+='<Style isDefault="true"><ows:Title>Légende générique</ows:Title><ows:Abstract>Fichier de légende générique – pour la compatibilité avec certains systèmes</ows:Abstract>'
-        xml+='<ows:Keywords><ows:Keyword>Défaut</ows:Keyword></ows:Keywords>'
-        xml+='<ows:Identifier>normal</ows:Identifier>'
-        xml+='<LegendURL format="image/jpeg" height="200" maxScaleDenominator="100000000" minScaleDenominator="200" width="200" xlink:href="https://wxs.ign.fr/static/legends/LEGEND.jpg"/></Style>'
-        xml+='<Format>'+layer['format']+'</Format>'
-        xml+='<TileMatrixSetLink><TileMatrixSet>LAMB93</TileMatrixSet>'
-        xml+='<TileMatrixSetLimits>'
-        for z in limits:
-            xml+='<TileMatrixLimits>'
-            xml+='<TileMatrix>'+str(z)+'</TileMatrix>'
-            xml+='<MinTileRow>'+str(limits[z]['MinTileRow'])+'</MinTileRow>'
-            xml+='<MaxTileRow>'+str(limits[z]['MaxTileRow'])+'</MaxTileRow>'
-            xml+='<MinTileCol>'+str(limits[z]['MinTileCol'])+'</MinTileCol>'
-            xml+='<MaxTileCol>'+str(limits[z]['MaxTileCol'])+'</MaxTileCol>'
-            xml+='</TileMatrixLimits>'
-        xml+='</TileMatrixSetLimits>'
-        xml+='</TileMatrixSetLink>'
-        xml+='</Layer>'
-    xml+=("<TileMatrixSet>"
+        xml += '<Layer><ows:Title>'+layer['name']+\
+            '</ows:Title><ows:Abstract>'+layer['name']+'</ows:Abstract>'
+        xml += ("<ows:WGS84BoundingBox><ows:LowerCorner>-7.1567 40.6712</ows:LowerCorner>"
+                "<ows:UpperCorner>11.578 51.9948</ows:UpperCorner></ows:WGS84BoundingBox>")
+        xml += '<ows:Identifier>'+layer['name']+'</ows:Identifier>'
+        xml += ("<Style isDefault=\"true\"><ows:Title>Légende générique</ows:Title>"
+                "<ows:Abstract>Fichier de légende générique</ows:Abstract>")
+        xml += '<ows:Keywords><ows:Keyword>Défaut</ows:Keyword></ows:Keywords>'
+        xml += '<ows:Identifier>normal</ows:Identifier>'
+        xml += ("<LegendURL format=\"image/jpeg\" height=\"200\" "
+                "maxScaleDenominator=\"100000000\" minScaleDenominator=\"200\" width=\"200\" "
+                "xlink:href=\"https://wxs.ign.fr/static/legends/LEGEND.jpg\"/></Style>")
+        xml += '<Format>'+layer['format']+'</Format>'
+        xml += '<TileMatrixSetLink><TileMatrixSet>LAMB93</TileMatrixSet>'
+        xml += '<TileMatrixSetLimits>'
+        for tile_z in limits:
+            xml += '<TileMatrixLimits>'
+            xml += '<TileMatrix>'+str(tile_z)+'</TileMatrix>'
+            xml += '<MinTileRow>'+str(limits[tile_z]['MinTileRow'])+'</MinTileRow>'
+            xml += '<MaxTileRow>'+str(limits[tile_z]['MaxTileRow'])+'</MaxTileRow>'
+            xml += '<MinTileCol>'+str(limits[tile_z]['MinTileCol'])+'</MinTileCol>'
+            xml += '<MaxTileCol>'+str(limits[tile_z]['MaxTileCol'])+'</MaxTileCol>'
+            xml += '</TileMatrixLimits>'
+        xml += '</TileMatrixSetLimits>'
+        xml += '</TileMatrixSetLink>'
+        xml += '</Layer>'
+    xml += ("<TileMatrixSet>"
             "<ows:Identifier>LAMB93</ows:Identifier>"
             "<ows:SupportedCRS>EPSG:2154</ows:SupportedCRS>"
             "<TileMatrix>"
@@ -195,5 +217,7 @@ def exportCapabilities(layers, url):
     with open('cache/Capabilities.xml', 'w') as outfile:
         outfile.write(xml)
 
-layers=[{'name':'ortho', 'format':'image/png'}, {'name':'graph', 'format':'image/png'}, {'name':'19FD5606A', 'format':'image/png'}]
-exportCapabilities(layers, 'http://localhost:8081/wmts')
+
+LAYERS = [{'name':'ortho', 'format':'image/png'}, \
+    {'name':'graph', 'format':'image/png'}, {'name':'19FD5606A', 'format':'image/png'}]
+export_capabilities(LAYERS, 'http://localhost:8081/wmts')
