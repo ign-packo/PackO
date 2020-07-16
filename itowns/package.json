@@ -9,6 +9,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "itowns": "^2.22.0"
+    "itowns": "^2.23.0"
   }
 }
