@@ -94,10 +94,13 @@ paths:
               - GetFeatureInfo
         - in: query
           name: VERSION
+          description: ex: 1.0.0
           required: false
           schema:
             type: string
+            pattern: '^\d+(.\d+)*$'
         - in: query
+          description: required if GetTile
           name: LAYER
           required: false
           schema:
@@ -112,6 +115,9 @@ paths:
           required: false
           schema:
             type: string
+            enum:
+              - image/png
+              - image/jpeg
         - in: query
           name: TILEMATRIXSET
           required: false

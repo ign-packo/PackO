@@ -1,4 +1,6 @@
 const debug = require('debug')('wmts');
+const debugFeatureInfo = require('debug')('wmts:GetFeatureInfo');
+const debugGetTile = require('debug')('wmts:GetTile');
 const router = require('express').Router();
 const { matchedData, query } = require('express-validator');
 const Jimp = require('jimp');
@@ -8,8 +10,8 @@ const validateParams = require('../../paramValidation/validateParams');
 
 router.get('/wmts',
   (req, res, next) => {
-    debug(req.query);
-    debug('body:', req.body);
+    // debug(req.query);
+    // debug('body:', req.body);
     next();
   }, [
     query('SERVICE')
@@ -27,15 +29,17 @@ router.get('/wmts',
     query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILEMATRIX est requis'),
     query('TILEROW').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILEROW est requis'),
     query('TILECOL').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILECOL est requis'),
-    query('FORMAT').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre FORMAT est requis'),
-    query('I').optional(),
-    query('J').optional(),
+    query('FORMAT').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre FORMAT est requis')
+      .isIn(['image/png', 'image/jpeg'])
+      .withMessage((FORMAT) => (`format ${FORMAT} not supported`)),
+    query('I').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage('le parametre I est requis'),
+    query('J').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage('le parametre J est requis'),
   ], validateParams,
   (req, res) => {
     const params = matchedData(req);
     // const { SERVICE } = params;
-    // const { VERSION } = params;
     const { REQUEST } = params;
+    // const { VERSION } = params;
     const { LAYER } = params;
     // const STYLE = params.STYLE;
     const { FORMAT } = params;
@@ -46,24 +50,24 @@ router.get('/wmts',
     const { I } = params;
     const { J } = params;
 
+    // GetCapabilities
     if (REQUEST === 'GetCapabilities') {
       debug('~~~GetCapabilities');
       res.type('application/xml');
       // debug(__dirname)
       res.sendFile('Capabilities.xml', { root: path.join('cache') });
+
+    // GetTile
     } else if (REQUEST === 'GetTile') {
       debug('~~~GetTile');
-      debug(LAYER, TILEMATRIX, TILEROW, TILECOL);
+      debugGetTile(LAYER, TILEMATRIX, TILEROW, TILECOL);
       let mime = null;
       if ((!FORMAT) || (FORMAT === 'image/png')) {
         mime = Jimp.MIME_PNG; // "image/png"
-      } else if (FORMAT === 'image/jpeg') {
+      } else if (FORMAT === 'image/jpeg') { // cela peut il arriver ?
         mime = Jimp.MIME_JPEG; // "image/jpeg"
-      } else {
-        res.status(500).send(`format ${FORMAT} not supported`);
-        return;
       }
-      const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}.png`;
+      const url = path.join('cache', TILEMATRIX, TILEROW, TILECOL, `${LAYER}.${FORMAT.split('/')[1]}`);
       Jimp.read(url, (err, image) => {
         new Promise((success, failure) => {
           if (err) {
@@ -81,18 +85,19 @@ router.get('/wmts',
           img.getBuffer(mime, (err2, buffer) => { res.send(buffer); });
         });
       });
+
+    // GetFeatureInfo
     } else if (REQUEST === 'GetFeatureInfo') {
       debug('~~~GetFeatureInfo');
-      debug(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-      const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}.png`;
-      debug(url);
+      debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
+      const url = path.join('cache', TILEMATRIX, TILEROW, TILECOL, `${LAYER}.${FORMAT.split('/')[1]}`);
       Jimp.read(url, (err, image) => {
         if (err) {
           res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
         } else {
           const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
-          debug('index: ', index);
-          debug(image.bitmap.data[index], image.bitmap.data[index + 1], image.bitmap.data[index + 2]);
+          debugFeatureInfo('index: ', index);
+          debugFeatureInfo(image.bitmap.data[index], image.bitmap.data[index + 1], image.bitmap.data[index + 2]);
           const out = {
             color: [image.bitmap.data[index],
               image.bitmap.data[index + 1],
