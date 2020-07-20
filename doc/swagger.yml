@@ -79,15 +79,22 @@ paths:
           required: true
           schema:
             type: string
-        - in: query
-          name: VERSION
-          required: true
-          schema:
-            type: string
+            enum:
+              - WMS
+              - WMTS
         - in: query
           name: REQUEST
           required: true
-          description: "GetCapabilities, GetTile, GetFeatureInfo"
+          description: ""
+          schema:
+            type: string
+            enum:
+              - GetCapabilities
+              - GetTile
+              - GetFeatureInfo
+        - in: query
+          name: VERSION
+          required: false
           schema:
             type: string
         - in: query

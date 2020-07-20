@@ -1,13 +1,13 @@
 const debug = require('debug')('graph');
 const router = require('express').Router();
 const fs = require('fs');
-const { matchedData } = require('express-validator/filter');
+const { matchedData } = require('express-validator');
 const jimp = require('jimp');
 const PImage = require('pureimage');
 
 const {
   query, /* body, */
-} = require('express-validator/check');
+} = require('express-validator');
 
 router.post('/graph/patch', (req, res) => {
   const X0 = 0;
@@ -167,6 +167,7 @@ router.get('/graph', [
   const I = Math.floor(Px - Tx * 256);
   const J = Math.floor(Py - Ty * 256);
   const url = `cache/21/${Ty}/${Tx}/graph.png`;
+  debug(url);
   jimp.read(url, (err, image) => {
     if (err) {
       res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
@@ -180,12 +181,13 @@ router.get('/graph', [
           image.bitmap.data[index + 1],
           image.bitmap.data[index + 2]],
       };
+      debug(req.app.cache_mtd);
       if ((out.color[0] in req.app.cache_mtd)
           && (out.color[1] in req.app.cache_mtd[out.color[0]])
           && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
         out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
       } else {
-        out.cliche = 'unkown';
+        out.cliche = 'not found';
       }
       debug(JSON.stringify(out));
       res.status(200).send(JSON.stringify(out));
