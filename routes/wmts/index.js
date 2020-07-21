@@ -10,7 +10,7 @@ const validateParams = require('../../paramValidation/validateParams');
 
 router.get('/wmts',
   (req, res, next) => {
-    // debug(req.query);
+    debug(req.query);
     // debug('body:', req.body);
     next();
   }, [
@@ -64,10 +64,10 @@ router.get('/wmts',
       let mime = null;
       if ((!FORMAT) || (FORMAT === 'image/png')) {
         mime = Jimp.MIME_PNG; // "image/png"
-      } else if (FORMAT === 'image/jpeg') { // cela peut il arriver ?
+      } else if (FORMAT === 'image/jpeg') {
         mime = Jimp.MIME_JPEG; // "image/jpeg"
       }
-      const url = path.join('cache', TILEMATRIX, TILEROW, TILECOL, `${LAYER}.${FORMAT.split('/')[1]}`);
+      const url = path.join('cache', TILEMATRIX, TILEROW, TILECOL, `${LAYER}.png`);
       Jimp.read(url, (err, image) => {
         new Promise((success, failure) => {
           if (err) {
@@ -90,19 +90,19 @@ router.get('/wmts',
     } else if (REQUEST === 'GetFeatureInfo') {
       debug('~~~GetFeatureInfo');
       debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-      const url = path.join('cache', TILEMATRIX, TILEROW, TILECOL, `${LAYER}.${FORMAT.split('/')[1]}`);
+      const url = path.join('cache', TILEMATRIX, TILEROW, TILECOL, `${LAYER}.png`);
       Jimp.read(url, (err, image) => {
         if (err) {
           res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
         } else {
           const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
           debugFeatureInfo('index: ', index);
-          debugFeatureInfo(image.bitmap.data[index], image.bitmap.data[index + 1], image.bitmap.data[index + 2]);
           const out = {
             color: [image.bitmap.data[index],
               image.bitmap.data[index + 1],
               image.bitmap.data[index + 2]],
           };
+          debugFeatureInfo(out);
           if ((out.color[0] in req.app.cache_mtd)
           && (out.color[1] in req.app.cache_mtd[out.color[0]])
           && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
@@ -110,6 +110,7 @@ router.get('/wmts',
           } else {
             out.cliche = 'unknown';
           }
+          // res.sendFile('FeatureInfo.xml', { root: path.join('cache') });
           res.status(200).send(JSON.stringify(out));
         }
       });

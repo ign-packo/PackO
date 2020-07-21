@@ -1,25 +1,65 @@
 const debug = require('debug')('graph');
 const router = require('express').Router();
 const fs = require('fs');
-const { matchedData } = require('express-validator');
+const { matchedData, query, body } = require('express-validator');
 const jimp = require('jimp');
 const PImage = require('pureimage');
 
-const {
-  query, /* body, */
-} = require('express-validator');
+const validateParams = require('../../paramValidation/validateParams');
+const validator = require('../../paramValidation/validator');
 
-router.post('/graph/patch', (req, res) => {
+const poly4Modif = [
+  body('poly4Modif')
+    .exists().withMessage('Un body non vide est requis.')
+    .custom(validator.isGeoJSON.object)
+    .withMessage("le body n'est pas un objet GeoJSON.")
+    .custom(validator.isGeoJSON.featureCollection)
+    .withMessage("le body n'est pas une featureCollection."),
+  body('poly4Modif.type')
+    .exists().withMessage("Le parametre 'type' est requis")
+    .isIn(['FeatureCollection'])
+    .withMessage("Le parametre 'type' est invalide"),
+  body('poly4Modif.crs')
+    .exists().withMessage("Le parametre 'crs' est requis")
+    .custom(validator.isCrs)
+    .withMessage("Le parametre 'crs' est invalide"),
+  body('poly4Modif.features.*.geometry')
+    .custom(validator.isGeoJSON.polygon).withMessage("Le parametre 'geometry' n'est pas un polygon valide."),
+  body('poly4Modif.features.*.properties.color')
+    .exists().withMessage("une Properties 'color' est requis"),
+  // .custom(validator.isColor)
+  // .withMessage("Le parametre 'properties.color' est invalide"),
+  body('poly4Modif.features.*.properties.cliche')
+    .exists().withMessage("une Properties 'cliche' est requis"),
+  // .custom(validator.isCliche)
+  // .withMessage("Le parametre 'properties.cliche' est invalide"),
+];
+
+// Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
+function encapBody(req, res, next) {
+  let keyName = 'body';
+  if (this.keyName) { keyName = this.keyName; }
+  if (JSON.stringify(req.body) !== '{}') {
+    const requestBodyKeys = Object.keys(req.body);
+    req.body[keyName] = JSON.parse(JSON.stringify(req.body));
+    for (let i = 0; i < requestBodyKeys.length; i += 1) {
+      delete req.body[requestBodyKeys[i]];
+    }
+  }
+  next();
+}
+
+router.post('/graph/patch', encapBody.bind({ keyName: 'poly4Modif' }), [
+  ...poly4Modif,
+], validateParams, (req, res) => {
+  const params = matchedData(req);
   const X0 = 0;
   const Y0 = 12000000;
   const R = 0.05;
-  const geoJson = req.body;
+  // const geoJson = req.body;
+  const geoJson = params.poly4Modif;
   const promises = [];
-  // todo: valider la structure geoJson et les propriétés nécessaires (color/cliche)
-  if (!('features' in geoJson)) {
-    res.status(500).send('geoJson not valid');
-    return;
-  }
+
   debug('GeoJson: ', geoJson);
   debug('Features: ', geoJson.features);
   // Version JS
