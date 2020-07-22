@@ -10,27 +10,27 @@ const validateParams = require('../../paramValidation/validateParams');
 const validator = require('../../paramValidation/validator');
 
 const poly4Modif = [
-  body('poly4Modif')
+  body('geoJSON')
     .exists().withMessage('Un body non vide est requis.')
     .custom(validator.isGeoJSON.object)
     .withMessage("le body n'est pas un objet GeoJSON.")
     .custom(validator.isGeoJSON.featureCollection)
     .withMessage("le body n'est pas une featureCollection."),
-  body('poly4Modif.type')
+  body('geoJSON.type')
     .exists().withMessage("Le parametre 'type' est requis")
     .isIn(['FeatureCollection'])
     .withMessage("Le parametre 'type' est invalide"),
-  body('poly4Modif.crs')
+  body('geoJSON.crs')
     .exists().withMessage("Le parametre 'crs' est requis")
     .custom(validator.isCrs)
     .withMessage("Le parametre 'crs' est invalide"),
-  body('poly4Modif.features.*.geometry')
+  body('geoJSON.features.*.geometry')
     .custom(validator.isGeoJSON.polygon).withMessage("Le parametre 'geometry' n'est pas un polygon valide."),
-  body('poly4Modif.features.*.properties.color')
+  body('geoJSON.features.*.properties.color')
     .exists().withMessage("une Properties 'color' est requis")
     .custom(validator.isColor)
     .withMessage("Le parametre 'properties.color' est invalide"),
-  body('poly4Modif.features.*.properties.cliche')
+  body('geoJSON.features.*.properties.cliche')
     .exists().withMessage("une Properties 'cliche' est requis")
     .matches(/^[a-zA-Z0-9_]+$/i)// Faut il etre plus spécifique ?
     .withMessage("Le parametre 'properties.cliche' est invalide"),
@@ -50,7 +50,7 @@ function encapBody(req, res, next) {
   next();
 }
 
-router.post('/graph/patch', encapBody.bind({ keyName: 'poly4Modif' }), [
+router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   ...poly4Modif,
 ], validateParams, (req, res) => {
   const params = matchedData(req);

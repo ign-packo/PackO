@@ -11,40 +11,43 @@ tags:
     description: Requête sur les tuiles
   - name: graph
     description: Modification du mosaïquage
+
 paths:
   '/graph/patch':
     post:
       tags:
         - graph
       summary: "Application d'un patch de correction"
-      description: ""
+      description: "Mise a jour du graph de mosaiquage a partir d'un geoJSON"
       requestBody:
-       description: geoJson
-       required: true
-      #  content:
-      #    application/json:
-              # example: 
-              #   projects:
-              #     - name: Chantier 1
-              #       jobs:
-              #         - name: jobs 1
-              #           command: touch file1
-              #         - name: jobs 2
-              #           command: touch file2
-              #         - name: jobs 3
-              #           command: touch file3
-              #           deps:
-              #             - id: 0
-              #             - id: 1
-              #     - name: Chantier 2
-              #       jobs:
-              #         - name: jobs 1
-              #           command: touch file1
-              #       deps:
-              #         - id: 0
+        description: geoJson mettre a jour
+        required: true
+        content:
+          application/json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    enum:
+                      - FeatureCollection
+                  crs:
+                    type: object
+                    example:
+                      {
+                        "type":"name",
+                        "properties":{
+                          "name":"urn:ogc:def:crs:EPSG::2154"}}
+
+                  features:
+                    type: object
+                    example:
+                      [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [Array] } } ]
+
       responses:
         '200':
           description: OK
+
   '/graph':
     get:
       tags:
@@ -67,6 +70,7 @@ paths:
       responses:
         '200':
           description: OK
+
   '/wmts':
     get:
       tags:
@@ -157,3 +161,6 @@ paths:
       responses:
         '200':
           description: OK
+
+
+
