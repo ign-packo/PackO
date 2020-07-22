@@ -1,4 +1,5 @@
 const debug = require('debug')('graph');
+const debugPatch = require('debug')('patch');
 const router = require('express').Router();
 const fs = require('fs');
 const { matchedData, query, body } = require('express-validator');
@@ -26,13 +27,13 @@ const poly4Modif = [
   body('poly4Modif.features.*.geometry')
     .custom(validator.isGeoJSON.polygon).withMessage("Le parametre 'geometry' n'est pas un polygon valide."),
   body('poly4Modif.features.*.properties.color')
-    .exists().withMessage("une Properties 'color' est requis"),
-  // .custom(validator.isColor)
-  // .withMessage("Le parametre 'properties.color' est invalide"),
+    .exists().withMessage("une Properties 'color' est requis")
+    .custom(validator.isColor)
+    .withMessage("Le parametre 'properties.color' est invalide"),
   body('poly4Modif.features.*.properties.cliche')
-    .exists().withMessage("une Properties 'cliche' est requis"),
-  // .custom(validator.isCliche)
-  // .withMessage("Le parametre 'properties.cliche' est invalide"),
+    .exists().withMessage("une Properties 'cliche' est requis")
+    .matches(/^[a-zA-Z0-9_]+$/i)// Faut il etre plus spécifique ?
+    .withMessage("Le parametre 'properties.cliche' est invalide"),
 ];
 
 // Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
@@ -60,8 +61,10 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'poly4Modif' }), [
   const geoJson = params.poly4Modif;
   const promises = [];
 
-  debug('GeoJson: ', geoJson);
-  debug('Features: ', geoJson.features);
+  debug('GeoJson:');
+  debug(geoJson);
+  debug('Features:');
+  debug(geoJson.features);
   // Version JS
   // BBox du patch
   const BBox = {};
@@ -78,7 +81,8 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'poly4Modif' }), [
       }
     });
   });
-  debug('BBox: ', BBox);
+  debug('BBox:');
+  debug(BBox);
   // List of all tiles
   const tiles = [];
   let resolution = R;
@@ -96,12 +100,12 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'poly4Modif' }), [
     }
     resolution *= 2;
   }
-  debug(tiles);
+  debugPatch(tiles);
   // Patch these tiles
   const errors = [];
   tiles.forEach((tile) => {
     // Patch du graph
-    debug(tile);
+    debugPatch(tile);
     const urlGraph = `cache/${tile.z}/${tile.y}/${tile.x}/graph.png`;
     const urlOrtho = `cache/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
     const urlOpi = `cache/${tile.z}/${tile.y}/${tile.x}/${geoJson.features[0].properties.cliche}.png`;
@@ -113,7 +117,7 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'poly4Modif' }), [
     const mask = PImage.make(256, 256);
     const ctx = mask.getContext('2d');
     geoJson.features.forEach((feature) => {
-      debug(feature.properties.color);
+      debugPatch(feature.properties.color);
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
       let first = true;
@@ -121,7 +125,7 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'poly4Modif' }), [
       for (const point of feature.geometry.coordinates[0]) {
         const i = Math.round((point[0] - X0 - tile.x * 256 * tile.resolution) / tile.resolution);
         const j = Math.round((Y0 - point[1] - tile.y * 256 * tile.resolution) / tile.resolution);
-        debug(i, j);
+        debugPatch(i, j);
         if (first) {
           first = false;
           ctx.moveTo(i, j);
@@ -152,7 +156,7 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'poly4Modif' }), [
       }
       return graph.writeAsync(urlGraph);
     }).then(() => {
-      debug('done');
+      debugPatch('done');
     }));
     // // On patch l ortho
     /* eslint-disable no-param-reassign */
@@ -170,7 +174,7 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'poly4Modif' }), [
       }
       return ortho.writeAsync(urlOrtho);
     }).then(() => {
-      debug('done');
+      debugPatch('done');
     }));
   });
   if (errors.length) {
