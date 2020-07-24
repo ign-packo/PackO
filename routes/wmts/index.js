@@ -38,7 +38,7 @@ router.get('/wmts', [
     res.status(500).send(`service ${SERVICE} not supported`);
   } else if (REQUEST === 'GetCapabilities') {
     res.type('application/xml');
-    res.sendFile('Capabilities.xml', { root: `${__dirname}/../../cache` });
+    res.sendFile('Capabilities.xml', { root: `${__dirname}/../../${global.dir_cache}` });
   } else if (REQUEST === 'GetTile') {
     debug(LAYER, TILEMATRIX, TILEROW, TILECOL);
     let mime = null;
@@ -50,7 +50,7 @@ router.get('/wmts', [
       res.status(500).send(`format ${FORMAT} not supported`);
       return;
     }
-    const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}.png`;
+    const url = `${global.dir_cache}/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}.png`;
     Jimp.read(url, (err, image) => {
       new Promise((success, failure) => {
         if (err) {
@@ -70,7 +70,7 @@ router.get('/wmts', [
     });
   } else if (REQUEST === 'GetFeatureInfo') {
     debug(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-    const url = `cache/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}.png`;
+    const url = `${global.dir_cache}/${TILEMATRIX}/${TILEROW}/${TILECOL}/${LAYER}.png`;
     debug(url);
     Jimp.read(url, (err, image) => {
       if (err) {

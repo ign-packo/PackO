@@ -11,11 +11,18 @@ const PORT = 8081;
 
 const app = express();
 
+global.dir_cache="cache";
+// on charge les mtd du cache, en fonction de l'option de démarrage (test ou pas)
+// pour test, option "--cache_test"
+if (process.argv.indexOf("--cache_test")>0)
+  global.dir_cache="cache_test";
+console.log("using cache directory: " + global.dir_cache);
+
 const wmts = require('./routes/wmts');
 const graph = require('./routes/graph');
 
-// on charge les mtd du cache
-app.cache_mtd = JSON.parse(fs.readFileSync('cache/cache_mtd.json'));
+
+app.cache_mtd = JSON.parse(fs.readFileSync(global.dir_cache + '/cache_mtd.json'));
 
 app.use(cors());
 app.use(bodyParser.json());
