@@ -191,9 +191,16 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 });
 
 router.get('/graph', [
-  query('x'),
-  query('y'),
-], (req, res) => {
+  query('x')
+    .exists().withMessage('le parametre x est requis')
+    .matches(/^\d+(.\d+)?$/i)
+    .withMessage("Le parametre 'x' est invalide"),
+  query('y')
+    .exists().withMessage('le parametre y est requis')
+    .matches(/^\d+(.\d+)?$/i)
+    .withMessage("Le parametre 'y' est invalide"),
+], validateParams,
+(req, res) => {
   const params = matchedData(req);
   const { x } = params;
   const { y } = params;
