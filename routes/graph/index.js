@@ -58,7 +58,7 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   const Y0 = 12000000;
   const R = 0.05;
   // const geoJson = req.body;
-  const geoJson = params.poly4Modif;
+  const geoJson = params.geoJSON;
   const promises = [];
 
   debug('GeoJson:');

@@ -57,16 +57,16 @@ paths:
       parameters:
         - in: query
           name: x
-          description: x
           required: true
           schema:
             type: string
+          example: 230975.84852638416
         - in: query
           name: y
-          description: y
           required: true
           schema:
             type: string
+          example: 6759518.099720161
       responses:
         '200':
           description: OK
