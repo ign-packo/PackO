@@ -59,7 +59,7 @@ describe('Wmts', () => {
       chai.request(server)
         .get('/wmts')
         .query({
-          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0,
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'ortho',
         })
         .end((err, res) => {
           should.equal(err, null);
