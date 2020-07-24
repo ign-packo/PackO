@@ -19,7 +19,7 @@ describe('Wmts', () => {
         .query({ REQUEST: 'GetCapabilities', SERVICE: 'WRONG', VERSION: '1.0.0' })
         .end((err, res) => {
           should.equal(err, null);
-          res.should.have.status(500);
+          res.should.have.status(400);
           done();
         });
     });
@@ -32,7 +32,7 @@ describe('Wmts', () => {
         .query({ REQUEST: 'WRONG', SERVICE: 'WMTS', VERSION: '1.0.0' })
         .end((err, res) => {
           should.equal(err, null);
-          res.should.have.status(500);
+          res.should.have.status(400);
           done();
         });
     });

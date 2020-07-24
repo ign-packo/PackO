@@ -53,7 +53,7 @@ describe('Graph', () => {
         .post('/graph/patch')
         .end((err, res) => {
           should.equal(err, null);
-          res.should.have.status(500);
+          res.should.have.status(400);
           done();
         });
     });
@@ -74,7 +74,7 @@ describe('Graph', () => {
         })
         .end((err, res) => {
           should.equal(err, null);
-          res.should.have.status(500);
+          res.should.have.status(400);
           done();
         });
     });
