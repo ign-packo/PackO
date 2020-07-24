@@ -103,4 +103,14 @@ dist
 # TernJS port file
 .tern-port
 
-cache/*/*
+cache/
+
+.idea/
+
+.DS_Store
+19FD5606A.json
+graph.json
+ortho.json
+Capabilities.xml
+Capabilities_part1.xml
+Capabilities_part2.xml
