@@ -10,6 +10,9 @@ from random import randrange
 import numpy as np
 import gdal
 
+# creation dossier cache
+if not os.path.isdir("cache"):
+    os.mkdir("cache")
 
 # jpegDriver = gdal.GetDriverByName( 'Jpeg' )
 PNG_DRIVER = gdal.GetDriverByName('png')
@@ -136,7 +139,7 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
 
 def main():
     """Update the cache for list of input OPI."""
-    tiles, epsg = get_capabilities('Capabilities.xml')
+    tiles, epsg = get_capabilities('cache_test/Capabilities.xml')
     out_raster_srs = gdal.osr.SpatialReference()
     out_raster_srs.ImportFromEPSG(epsg)
     conn_string = "PG:host=localhost dbname='pcrs' user='postgres'"
@@ -145,7 +148,7 @@ def main():
         raise ValueError("Connection to database failed")
     list_filename = glob.glob(sys.argv[1])
     print(list_filename)
-    with open('cache/cache_mtd.json', 'r') as inputfile:
+    with open('cache_test/cache_mtd.json', 'r') as inputfile:
         mtd = json.load(inputfile)
     for filename in list_filename:
         # Si le fichier a deja une couleur on la recupere

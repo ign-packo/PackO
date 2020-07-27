@@ -217,6 +217,9 @@ def export_capabilities(layers, url):
     with open('cache/Capabilities.xml', 'w') as outfile:
         outfile.write(xml)
 
+# creation dossier cache
+if not os.path.isdir("cache"):
+    os.mkdir("cache")
 
 LAYERS = [{'name':'ortho', 'format':'image/png'}, \
     {'name':'graph', 'format':'image/png'}, {'name':'19FD5606A', 'format':'image/png'}]
