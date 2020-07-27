@@ -16,7 +16,7 @@ describe('Patchs', () => {
   describe('Post patchs', () => {
     it('should return an error', (done) => {
       chai.request(server)
-        .post('/patchs')
+        .post('/patch')
         .end((err, res) => {
           should.equal(err, null);
           res.should.have.status(500);
@@ -28,7 +28,7 @@ describe('Patchs', () => {
   describe('Post patchs', () => {
     it('should return an works', (done) => {
       chai.request(server)
-        .post('/patchs')
+        .post('/patch')
         .send({
           type: 'FeatureCollection',
           features: [
