@@ -38,7 +38,7 @@ paths:
       reponses:
         '200':
           description: OK
-  '/patchs':
+  '/patch':
     post:
       tags:
         - patchs
@@ -72,8 +72,8 @@ paths:
       responses:
         '200':
           description: OK
-    '/patchs':
-      get:
+  '/patchs':
+    get:
       tags:
         - patchs
       summary: "Récupération de tous les patchs de correction"
