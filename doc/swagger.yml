@@ -10,13 +10,38 @@ tags:
   - name: wmts
     description: Requête sur les tuiles
   - name: graph
-    description: Modification du mosaïquage
-
+    description: Requête sur le graph de mosaïquage
+  - name: patchs
+    description: Modification du graphe de mosaïquage
 paths:
-  '/graph/patch':
+  '/patchs/undo':
+    put:
+      tags:
+        - patchs
+      summary: "Annulation de la dernière modification"
+      reponses:
+        '200':
+          description: OK
+  '/patchs/redo':
+    put:
+      tags:
+        - patchs
+      summary: "Reprise en compte de la dernière modification annulée"
+      reponses:
+        '200':
+          description: OK
+  '/patchs/clear':
+    put:
+      tags:
+        - patchs
+      summary: "Annulation de toutes les modifications"
+      reponses:
+        '200':
+          description: OK
+  '/patchs':
     post:
       tags:
-        - graph
+        - patchs
       summary: "Application d'un patch de correction"
       description: "Mise a jour du graph de mosaiquage a partir d'un geoJSON"
       requestBody:
@@ -47,7 +72,15 @@ paths:
       responses:
         '200':
           description: OK
-
+    '/patchs':
+      get:
+      tags:
+        - patchs
+      summary: "Récupération de tous les patchs de correction"
+      description: ""
+      responses:
+        '200':
+          description: OK
   '/graph':
     get:
       tags:
