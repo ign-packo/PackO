@@ -27,6 +27,7 @@ debug.log(`using cache directory: ${global.dir_cache}`);
 const wmts = require('./routes/wmts.js');
 const graph = require('./routes/graph.js');
 const files = require('./routes/files.js');
+const patchs = require('./routes/patchs');
 
 try {
   app.cache_mtd = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'cache_mtd.json')));
@@ -57,6 +58,7 @@ try {
   app.use('/', wmts);
   app.use('/', graph);
   app.use('/', files);
+  app.use('/', patchs);
 
   app.urlApi = `http://localhost:${PORT}`;
 
