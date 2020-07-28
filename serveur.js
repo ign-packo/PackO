@@ -17,7 +17,7 @@ global.dir_cache = 'cache';
 if (process.argv.indexOf('--cache_test') > 0) {
   global.dir_cache = 'cache_test';
 }
-console.log(`using cache directory: ${global.dir_cache}`);
+debug.log(`using cache directory: ${global.dir_cache}`);
 
 const wmts = require('./routes/wmts');
 const graph = require('./routes/graph');
