@@ -8,19 +8,13 @@ const YAML = require('yamljs');
 const debugServer = require('debug')('serveur');
 const debug = require('debug');
 
-const {argv} = require('yargs')
-
+const { argv } = require('yargs');
 
 const nocache = require('nocache');
 
 const app = express();
 
-global.dir_cache = 'cache';
-// on charge les mtd du cache, en fonction de l'option de démarrage (test ou pas)
-// pour test, option "--cache_test"
-if (process.argv.indexOf('--cache_test') > 0) {
-  global.dir_cache = 'cache_test';
-}
+global.dir_cache = argv.cache ? argv.cache : 'cache';
 debug.log(`using cache directory: ${global.dir_cache}`);
 
 const wmts = require('./routes/wmts.js');
@@ -75,11 +69,8 @@ app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerDocument, options));
 
 app.use('/', wmts);
 app.use('/', graph);
-<<<<<<< HEAD
 app.use('/', files);
-=======
 app.use('/', patchs);
->>>>>>> creation des nouvelles routes et tests unitaires
 
 module.exports = app.listen(PORT, () => {
   debug.log(`URL de l'api : http://localhost:${PORT} \nURL de la documentation swagger : http://localhost:${PORT}/doc`);

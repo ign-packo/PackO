@@ -55,13 +55,13 @@ router.post('/patch', (req, res) => {
   tiles.forEach((tile) => {
     // Patch du graph
     debug(tile);
-    const urlGraph = `${req.app.cacheRoot}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
-    const urlOrtho = `${req.app.cacheRoot}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
+    const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
+    const urlOrtho = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
 
-    const urlGraphOutput = `${req.app.cacheRoot}/${tile.z}/${tile.y}/${tile.x}/graph_${req.app.currentPatchId}.png`;
-    const urlOrthoOutput = `${req.app.cacheRoot}/${tile.z}/${tile.y}/${tile.x}/ortho_${req.app.currentPatchId}.png`;
+    const urlGraphOutput = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph_${req.app.currentPatchId}.png`;
+    const urlOrthoOutput = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho_${req.app.currentPatchId}.png`;
 
-    const urlOpi = `${req.app.cacheRoot}/${tile.z}/${tile.y}/${tile.x}/${geoJson.features[0].properties.cliche}.png`;
+    const urlOpi = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/${geoJson.features[0].properties.cliche}.png`;
     if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
       errors.push('file not exists');
       debug('ERROR');
@@ -132,8 +132,8 @@ router.post('/patch', (req, res) => {
   Promise.all(promises).then(() => {
     debug('tout c est bien passé on peut mettre a jour les liens symboliques');
     tiles.forEach((tile) => {
-      const urlGraph = `${req.app.cacheRoot}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
-      const urlOrtho = `${req.app.cacheRoot}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
+      const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
+      const urlOrtho = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
       const urlGraphOutput = `graph_${req.app.currentPatchId}.png`;
       const urlOrthoOutput = `ortho_${req.app.currentPatchId}.png`;
       // on supprimer l'ancien lien
@@ -152,7 +152,7 @@ router.post('/patch', (req, res) => {
     // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
     req.app.unactivePatchs.features = [];
     // on sauve l'historique (au cas ou l'API devrait etre relancee)
-    fs.writeFileSync(`${req.app.cacheRoot}/activePatchs.geojson`, JSON.stringify(req.app.activePatchs));
+    fs.writeFileSync(`${global.dir_cache}/activePatchs.geojson`, JSON.stringify(req.app.activePatchs));
     res.status(200).send(JSON.stringify(tiles));
   }).catch((err) => {
     debug('erreur : ', err);
