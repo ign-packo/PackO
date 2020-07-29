@@ -62,9 +62,9 @@ router.post('/graph/patch', (req, res) => {
   tiles.forEach((tile) => {
     // Patch du graph
     debug(tile);
-    const urlGraph = `cache/${tile.z}/${tile.y}/${tile.x}/graph.png`;
-    const urlOrtho = `cache/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
-    const urlOpi = `cache/${tile.z}/${tile.y}/${tile.x}/${geoJson.features[0].properties.cliche}.png`;
+    const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
+    const urlOrtho = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
+    const urlOpi = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/${geoJson.features[0].properties.cliche}.png`;
     if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
       errors.push('file not exists');
       debug('ERROR');
@@ -166,7 +166,7 @@ router.get('/graph', [
   const Ty = Math.floor(Py / 256);
   const I = Math.floor(Px - Tx * 256);
   const J = Math.floor(Py - Ty * 256);
-  const url = `cache/21/${Ty}/${Tx}/graph.png`;
+  const url = `${global.dir_cache}/21/${Ty}/${Tx}/graph.png`;
   jimp.read(url, (err, image) => {
     if (err) {
       res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
