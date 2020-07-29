@@ -15,13 +15,7 @@ const nocache = require('nocache');
 
 const app = express();
 
-global.dir_cache = 'cache';
-// on charge les mtd du cache, en fonction de l'option de démarrage (test ou pas)
-// pour test, option "--cache_test"
-if (process.argv.indexOf('--cache_test') > 0) {
-  global.dir_cache = 'cache_test';
-}
-
+global.dir_cache = argv.cache ? argv.cache : 'cache';
 debug.log(`using cache directory: ${global.dir_cache}`);
 
 const wmts = require('./routes/wmts.js');
@@ -34,7 +28,6 @@ try {
   // effet : maj autom apres saisie - OK Chrome/Chromium, Pas OK Firefox
   app.use(nocache());
 
-  // app.cacheRoot = argv.cache ? argv.cache : 'cache';
   const PORT = argv.port ? argv.port : 8081;
 
   // on charge les mtd du cache

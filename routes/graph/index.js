@@ -62,7 +62,8 @@ const {
 //     debug(tile);
 //     const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
 //     const urlOrtho = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
-//     const urlOpi = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/${geoJson.features[0].properties.cliche}.png`;
+//     const urlOpi = `${global.dir_cache}/
+// ${tile.z}/${tile.y}/${tile.x}/${geoJson.features[0].properties.cliche}.png`;
 //     if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
 //       errors.push('file not exists');
 //       debug('ERROR');

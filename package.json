@@ -5,8 +5,8 @@
   "main": "serveur.js",
   "scripts": {
     "lint": "eslint .",
-    "test": "nyc --reporter=text mocha --cache_test",
-    "test-coveralls": "nyc --reporter=lcov --report-dir=coverage mocha --cache_test"
+    "test": "nyc --reporter=text mocha --cache cache_test",
+    "test-coveralls": "nyc --reporter=lcov --report-dir=coverage mocha --cache cache_test"
   },
   "repository": {
     "type": "git",
