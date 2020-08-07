@@ -31,6 +31,7 @@
     "geojson-validation": "^1.0.2",
     "jimp": "^0.14.0",
     "mocha": "^8.0.1",
+    "nocache": "^2.1.0",
     "nyc": "^15.1.0",
     "pureimage": "^0.2.1",
     "supervisor": "^0.12.0",

@@ -9,6 +9,8 @@ const debug = require('debug');
 
 const PORT = 8081;
 
+const nocache = require('nocache');
+
 const app = express();
 
 global.dir_cache = 'cache';
@@ -23,6 +25,10 @@ const wmts = require('./routes/wmts');
 const graph = require('./routes/graph');
 
 app.cache_mtd = JSON.parse(fs.readFileSync(`${global.dir_cache}/cache_mtd.json`));
+
+// desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
+// effet : maj autom apres saisie - OK Chrome/Chromium, Pas OK Firefox
+app.use(nocache());
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -47,3 +53,4 @@ app.use('/', graph);
 module.exports = app.listen(PORT, () => {
   debug.log(`URL de l'api : http://localhost:${PORT} \nURL de la documentation swagger : http://localhost:${PORT}/doc`);
 });
+
