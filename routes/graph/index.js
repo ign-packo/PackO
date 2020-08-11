@@ -6,15 +6,16 @@ const { matchedData, query, body } = require('express-validator');
 const jimp = require('jimp');
 const PImage = require('pureimage');
 
+const GJV = require('geojson-validation');
 const validateParams = require('../../paramValidation/validateParams');
 const validator = require('../../paramValidation/validator');
 
-const poly4Modif = [
+const geoJsonAPatcher = [
   body('geoJSON')
     .exists().withMessage('Un body non vide est requis.')
-    .custom(validator.isGeoJSON.object)
+    .custom(GJV.isGeoJSONObject)
     .withMessage("le body n'est pas un objet GeoJSON.")
-    .custom(validator.isGeoJSON.featureCollection)
+    .custom(GJV.isFeatureCollection)
     .withMessage("le body n'est pas une featureCollection."),
   body('geoJSON.type')
     .exists().withMessage("Le parametre 'type' est requis")
@@ -25,7 +26,7 @@ const poly4Modif = [
     .custom(validator.isCrs)
     .withMessage("Le parametre 'crs' est invalide"),
   body('geoJSON.features.*.geometry')
-    .custom(validator.isGeoJSON.polygon).withMessage("Le parametre 'geometry' n'est pas un polygon valide."),
+    .custom(GJV.isPolygon).withMessage("Le parametre 'geometry' n'est pas un polygon valide."),
   body('geoJSON.features.*.properties.color')
     .exists().withMessage("une Properties 'color' est requis")
     .custom(validator.isColor)
@@ -51,7 +52,7 @@ function encapBody(req, res, next) {
 }
 
 router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
-  ...poly4Modif,
+  ...geoJsonAPatcher,
 ], validateParams, (req, res) => {
   const params = matchedData(req);
   const X0 = 0;
