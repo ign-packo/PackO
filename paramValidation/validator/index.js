@@ -1,6 +1,9 @@
-/* eslint-disable global-require */
+const isGeoJSON = require('./isGeoJSON');
+const isCrs = require('./isCrs');
+const isColor = require('./isColor');
+
 module.exports = {
-  isGeoJSON: require('./isGeoJSON'),
-  isCrs: require('./isCrs'),
-  isColor: require('./isColor'),
+  isGeoJSON,
+  isCrs,
+  isColor,
 };
