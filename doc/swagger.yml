@@ -20,7 +20,7 @@ paths:
       summary: "Application d'un patch de correction"
       description: "Mise a jour du graph de mosaiquage a partir d'un geoJSON"
       requestBody:
-        description: geoJson mettre a jour
+        description: polygone à patcher (geoJson)
         required: true
         content:
           application/json:
@@ -60,13 +60,13 @@ paths:
           required: true
           schema:
             type: string
-          example: 230975.84852638416
+          example: 230975.8
         - in: query
           name: y
           required: true
           schema:
             type: string
-          example: 6759518.099720161
+          example: 6759518.1
       responses:
         '200':
           description: OK
