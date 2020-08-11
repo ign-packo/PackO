@@ -55,7 +55,7 @@ router.get('/wmts',
       debug('~~~GetCapabilities');
       res.type('application/xml');
       // debug(__dirname)
-      res.sendFile('Capabilities.xml', { root: path.join('cache') });
+      res.sendFile('Capabilities.xml', { root: path.join(global.dir_cache) });
 
     // GetTile
     } else if (REQUEST === 'GetTile') {
@@ -67,10 +67,11 @@ router.get('/wmts',
       } else if (FORMAT === 'image/jpeg') {
         mime = Jimp.MIME_JPEG; // "image/jpeg"
       }
-      const url = path.join('cache', TILEMATRIX, TILEROW, TILECOL, `${LAYER}.png`);
+      const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${LAYER}.png`);
       Jimp.read(url, (err, image) => {
         new Promise((success, failure) => {
           if (err) {
+
           /* eslint-disable no-new */
             new Jimp(256, 256, 0x000000ff, (errJimp, img) => {
               if (errJimp) {
@@ -90,7 +91,7 @@ router.get('/wmts',
     } else if (REQUEST === 'GetFeatureInfo') {
       debug('~~~GetFeatureInfo');
       debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-      const url = path.join('cache', TILEMATRIX, TILEROW, TILECOL, `${LAYER}.png`);
+      const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${LAYER}.png`);
       Jimp.read(url, (err, image) => {
         if (err) {
           res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
@@ -104,6 +105,7 @@ router.get('/wmts',
           };
           debugFeatureInfo(out);
           if ((out.color[0] in req.app.cache_mtd)
+
           && (out.color[1] in req.app.cache_mtd[out.color[0]])
           && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
             out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
