@@ -219,7 +219,7 @@ router.get('/graph', [
   const Ty = Math.floor(Py / 256);
   const I = Math.floor(Px - Tx * 256);
   const J = Math.floor(Py - Ty * 256);
-  
+
   const url = `${global.dir_cache}/21/${Ty}/${Tx}/graph.png`;
 
   jimp.read(url, (err, image) => {

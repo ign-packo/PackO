@@ -71,7 +71,6 @@ router.get('/wmts',
       Jimp.read(url, (err, image) => {
         new Promise((success, failure) => {
           if (err) {
-
           /* eslint-disable no-new */
             new Jimp(256, 256, 0x000000ff, (errJimp, img) => {
               if (errJimp) {
