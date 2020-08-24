@@ -14,6 +14,12 @@ import gdal
 if not os.path.isdir("cache"):
     os.mkdir("cache")
 
+user = os.getenv('PGUSER', default = 'postgres')
+host = os.getenv('PGHOST', default = 'localhost')
+database = os.getenv('PGDATABASE', default = 'pcrs')
+password = os.getenv('PGPASSWORD', default = 'postgres')# En dur, pas top...
+port = os.getenv('PGPORT', default = '5432')
+
 # jpegDriver = gdal.GetDriverByName( 'Jpeg' )
 PNG_DRIVER = gdal.GetDriverByName('png')
 # gtiff_driver = gdal.GetDriverByName('Gtiff')
@@ -142,7 +148,7 @@ def main():
     tiles, epsg = get_capabilities('cache_test/Capabilities.xml')
     out_raster_srs = gdal.osr.SpatialReference()
     out_raster_srs.ImportFromEPSG(epsg)
-    conn_string = "PG:host=localhost dbname='pcrs' user='postgres'"
+    conn_string = "PG:host="+host+" dbname="+database+" user="+user+" password="+password
     db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
     if db_graph is None:
         raise ValueError("Connection to database failed")

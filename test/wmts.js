@@ -19,7 +19,7 @@ describe('Wmts', () => {
         .query({ REQUEST: 'GetCapabilities', SERVICE: 'WRONG', VERSION: '1.0.0' })
         .end((err, res) => {
           should.equal(err, null);
-          res.should.have.status(500);
+          res.should.have.status(400);
           done();
         });
     });
@@ -32,7 +32,7 @@ describe('Wmts', () => {
         .query({ REQUEST: 'WRONG', SERVICE: 'WMTS', VERSION: '1.0.0' })
         .end((err, res) => {
           should.equal(err, null);
-          res.should.have.status(500);
+          res.should.have.status(400);
           done();
         });
     });
@@ -59,7 +59,7 @@ describe('Wmts', () => {
       chai.request(server)
         .get('/wmts')
         .query({
-          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0,
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'ortho',
         })
         .end((err, res) => {
           should.equal(err, null);
