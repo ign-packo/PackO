@@ -1,6 +1,6 @@
 {
   "name": "ign-api-mosaique",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "api pour controle et retouche du mosaiquage",
   "main": "serveur.js",
   "scripts": {
@@ -30,7 +30,7 @@
     "fs": "0.0.1-security",
     "geojson-validation": "^1.0.2",
     "jimp": "^0.14.0",
-    "mocha": "^8.0.1",
+    "mocha": "^8.1.1",
     "nocache": "^2.1.0",
     "nyc": "^15.1.0",
     "pureimage": "^0.2.1",
