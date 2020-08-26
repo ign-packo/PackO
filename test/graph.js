@@ -14,10 +14,10 @@ describe('Graph', () => {
   });
 
   describe('Get graph', () => {
-    it('should return an Id', (done) => {
+    it("should return a Json contening 'color' and 'cliche'", (done) => {
       chai.request(server)
         .get('/graph')
-        .query({ x: 0, y: 0 })
+        .query({ x: 230975.8, y: 6759518.1 })
         .end((err, res) => {
           should.equal(err, null);
           res.should.have.status(200);
@@ -41,7 +41,8 @@ describe('Graph', () => {
             },
           };
           json.should.be.jsonSchema(schema);
-          json.cliche.should.to.equal('unknown');
+          // json.cliche.should.to.equal('unknown');
+          json.should.have.cliche('unknown');
           done();
         });
     });
