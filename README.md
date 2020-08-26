@@ -1,4 +1,4 @@
-# ign-api-mosaique
+# PackO
 api pour controle et retouche du mosaiquage
 
 ## Pour installer et lancer le service
