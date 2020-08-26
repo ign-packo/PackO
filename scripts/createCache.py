@@ -14,15 +14,16 @@ import gdal
 if not os.path.isdir("cache"):
     os.mkdir("cache")
 
-user = os.getenv('PGUSER', default = 'postgres')
-host = os.getenv('PGHOST', default = 'localhost')
-database = os.getenv('PGDATABASE', default = 'pcrs')
-password = os.getenv('PGPASSWORD', default = 'postgres')# En dur, pas top...
-port = os.getenv('PGPORT', default = '5432')
+user = os.getenv('PGUSER', default='postgres')
+host = os.getenv('PGHOST', default='localhost')
+database = os.getenv('PGDATABASE', default='pcrs')
+password = os.getenv('PGPASSWORD', default='postgres')  # En dur, pas top...
+port = os.getenv('PGPORT', default='5432')
 
 # jpegDriver = gdal.GetDriverByName( 'Jpeg' )
 PNG_DRIVER = gdal.GetDriverByName('png')
 # gtiff_driver = gdal.GetDriverByName('Gtiff')
+
 
 def get_capabilities(input_capabilities):
     """Return tiles and epsg from an XML."""
@@ -33,10 +34,9 @@ def get_capabilities(input_capabilities):
     for tms in root.findall('{http://www.opengis.net/wmts/1.0}Contents/{http://www.opengis.net/wmts/1.0}TileMatrixSet/{http://www.opengis.net/wmts/1.0}TileMatrix'):
         tile = {}
         tile['Identifier'] = int(tms.find('{http://www.opengis.net/ows/1.1}Identifier').text)
-        tile['ScaleDenominator'] = float(\
-            tms.find('{http://www.opengis.net/wmts/1.0}ScaleDenominator').text)
-        tile['TopLeftCorner'] = [float(v) for v in \
-            tms.find('{http://www.opengis.net/wmts/1.0}TopLeftCorner').text.split()]
+        tile['ScaleDenominator'] = float(tms.find('{http://www.opengis.net/wmts/1.0}ScaleDenominator').text)
+        tile['TopLeftCorner'] = [float(v) for v in
+                                 tms.find('{http://www.opengis.net/wmts/1.0}TopLeftCorner').text.split()]
         tile['TileWidth'] = int(tms.find('{http://www.opengis.net/wmts/1.0}TileWidth').text)
         tile['TileHeight'] = int(tms.find('{http://www.opengis.net/wmts/1.0}TileHeight').text)
         tile['MatrixWidth'] = int(tms.find('{http://www.opengis.net/wmts/1.0}MatrixWidth').text)
@@ -45,19 +45,22 @@ def get_capabilities(input_capabilities):
         tiles[tile['Identifier']] = tile
     return tiles, epsg
 
+
 def create_blank_tile(tiles, tile, nbc, out_raster_srs):
     """Return a blank georef image for a tile."""
     origin_x = tiles[tile['z']]['TopLeftCorner'][0] \
         + tile['x'] * tiles[tile['z']]['Resolution'] * tiles[tile['z']]['TileWidth']
     origin_y = tiles[tile['z']]['TopLeftCorner'][1] \
         - tile['y'] * tiles[tile['z']]['Resolution'] * tiles[tile['z']]['TileHeight']
-    target_ds = gdal.GetDriverByName('MEM').Create('', \
-        tiles[tile['z']]['TileWidth'], tiles[tile['z']]['TileHeight'], nbc, gdal.GDT_Byte)
-    target_ds.SetGeoTransform((origin_x, \
-        tiles[tile['z']]['Resolution'], 0, origin_y, 0, -tiles[tile['z']]['Resolution']))
+    target_ds = gdal.GetDriverByName('MEM').Create('',
+                                                   tiles[tile['z']]['TileWidth'], tiles[tile['z']]['TileHeight'],
+                                                   nbc, gdal.GDT_Byte)
+    target_ds.SetGeoTransform((origin_x, tiles[tile['z']]['Resolution'], 0,
+                               origin_y, 0, -tiles[tile['z']]['Resolution']))
     target_ds.SetProjection(out_raster_srs.ExportToWkt())
     target_ds.FlushCache()
     return target_ds
+
 
 def get_tile_matrix_set_limits(tiles, filename):
     """Return tms limits for a georef image"""
@@ -94,12 +97,12 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
     # for z in tiles:
     for tile_z in range(10, 22):
         print('Niveau de zoom : ', tile_z)
-        for tile_x in range(tile_matix_set_limits[tile_z]['MinTileCol'], \
-            tile_matix_set_limits[tile_z]['MaxTileCol']):
-            for tile_y in range(tile_matix_set_limits[tile_z]['MinTileRow'], \
-                tile_matix_set_limits[tile_z]['MaxTileRow']):
+        for tile_x in range(tile_matix_set_limits[tile_z]['MinTileCol'],
+                            tile_matix_set_limits[tile_z]['MaxTileCol']):
+            for tile_y in range(tile_matix_set_limits[tile_z]['MinTileRow'],
+                                tile_matix_set_limits[tile_z]['MaxTileRow']):
                 # on cree une image 3 canaux pour la tuile
-                opi = create_blank_tile(tiles, {'x':tile_x, 'y':tile_y, 'z':tile_z}, 3, out_raster_srs)
+                opi = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
                 # on reech l'OPI dans cette image
                 gdal.Warp(opi, input_image)
                 # si necessaire on cree le dossier de la tuile
@@ -108,17 +111,17 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
                 # on export en jpeg (todo: gerer le niveau de Q)
                 PNG_DRIVER.CreateCopy(tile_dir+"/"+stem+".png", opi)
                 # on cree une image mono canal pour la tuile
-                mask = create_blank_tile(tiles, {'x':tile_x, 'y':tile_y, 'z':tile_z}, 3, out_raster_srs)
+                mask = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
                 # on rasterise la partie du graphe qui concerne ce cliche
-                gdal.Rasterize(mask, db_graph, SQLStatement=\
-                    'select geom from graphe_pcrs56_zone_test where cliche = \''+stem+'\' ')
+                gdal.Rasterize(mask, db_graph,
+                               SQLStatement='select geom from graphe_pcrs56_zone_test where cliche = \''+stem+'\' ')
                 img_mask = mask.GetRasterBand(1).ReadAsArray()
                 # si le mask est vide, on a termine
                 val_max = np.amax(img_mask)
                 if val_max > 0:
                     # on cree le graphe et l'ortho
-                    ortho = create_blank_tile(tiles, {'x':tile_x, 'y':tile_y, 'z':tile_z}, 3, out_raster_srs)
-                    graph = create_blank_tile(tiles, {'x':tile_x, 'y':tile_y, 'z':tile_z}, 3, out_raster_srs)
+                    ortho = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
+                    graph = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
                     if Path(tile_dir+"/ortho.png").is_file():
                         existing_ortho = gdal.Open(tile_dir+"/ortho.png")
                         existing_graph = gdal.Open(tile_dir+"/graph.png")
@@ -142,6 +145,7 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
                         graph.GetRasterBand(i+1).WriteArray(graph_i)
                     PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
                     PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
+
 
 def main():
     """Update the cache for list of input OPI."""
