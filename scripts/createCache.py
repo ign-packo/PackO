@@ -19,6 +19,7 @@ host = os.getenv('PGHOST', default='localhost')
 database = os.getenv('PGDATABASE', default='pcrs')
 password = os.getenv('PGPASSWORD', default='postgres')  # En dur, pas top...
 port = os.getenv('PGPORT', default='5432')
+graphtbl = os.getenv('GRAPHTABLE', default='graphe_pcrs56_zone_test')
 
 # jpegDriver = gdal.GetDriverByName( 'Jpeg' )
 PNG_DRIVER = gdal.GetDriverByName('png')
@@ -114,7 +115,7 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
                 mask = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
                 # on rasterise la partie du graphe qui concerne ce cliche
                 gdal.Rasterize(mask, db_graph,
-                               SQLStatement='select geom from graphe_pcrs56_zone_test where cliche = \''+stem+'\' ')
+                               SQLStatement='select geom from ' + graphtbl + ' where cliche = \''+stem+'\' ')
                 img_mask = mask.GetRasterBand(1).ReadAsArray()
                 # si le mask est vide, on a termine
                 val_max = np.amax(img_mask)
@@ -175,7 +176,7 @@ def main():
             if color:
                 break
         if color is None:
-            print('nouvelle image')
+            print('nouvelle image: ', filename)
             color = [randrange(255), randrange(255), randrange(255)]
             while (color[0] in mtd) and (color[1] in mtd[color[0]]) and (color[2] in mtd[color[0]][color[1]]):
                 color = [randrange(255), randrange(255), randrange(255)]
