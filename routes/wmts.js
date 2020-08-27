@@ -90,10 +90,12 @@ router.get('/wmts',
     } else if (REQUEST === 'GetFeatureInfo') {
       debug('~~~GetFeatureInfo');
       debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-      const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${LAYER}.png`);
+      const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, 'graph.png');
+
       Jimp.read(url, (err, image) => {
         if (err) {
-          res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
+          res.status(500).send('{"erreur": "Jimp.read"}');
+          // res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
         } else {
           const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
           debugFeatureInfo('index: ', index);
@@ -104,12 +106,11 @@ router.get('/wmts',
           };
           debugFeatureInfo(out);
           if ((out.color[0] in req.app.cache_mtd)
-
           && (out.color[1] in req.app.cache_mtd[out.color[0]])
           && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
             out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
           } else {
-            out.cliche = 'unknown';
+            out.cliche = 'missing';
           }
           // res.sendFile('FeatureInfo.xml', { root: path.join('cache') });
           res.status(200).send(JSON.stringify(out));

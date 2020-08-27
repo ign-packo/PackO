@@ -66,6 +66,8 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   debug(geoJson);
   debug('Features:');
   debug(geoJson.features);
+  debug(geoJson.features[0].geometry.coordinates);
+  debug(geoJson.features[0].properties.color);
   // Version JS
   // BBox du patch
   const BBox = {};
@@ -183,7 +185,7 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     res.status(500).send(errors);
   }
   Promise.all(promises).then(() => {
-    debug('tout c est bien passé');
+    debug("tout c'est bien passé");
     res.status(200).send(JSON.stringify(tiles));
   }).catch((err) => {
     debug('erreur : ', err);
