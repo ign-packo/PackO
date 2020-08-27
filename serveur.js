@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
+const debugServer = require('debug')('serveur');
 const debug = require('debug');
 
 const PORT = 8081;
@@ -34,8 +35,8 @@ app.use(cors());
 app.use(bodyParser.json());
 
 app.use((req, res, next) => {
-  debug.log(req.method, ' ', req.path, ' ', req.body);
-  debug.log(`received at ${Date.now()}`);
+  debugServer(req.method, ' ', req.path, ' ', req.body);
+  debugServer(`received at ${Date.now()}`);
   next();
 });
 
