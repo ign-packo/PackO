@@ -3,6 +3,7 @@ import glob
 import json
 import os
 
+
 def export_tile_limits(layername):
     """Return tile_matrix_set_limits for a layer in the cache"""
     list_filename = glob.glob('cache/*/*/*/'+layername+'.*')
@@ -29,6 +30,7 @@ def export_tile_limits(layername):
             tile_matrix_set_limit['MaxTileCol'] = tile_x
             tile_matrix_set_limits[tile_z] = tile_matrix_set_limit
     return tile_matrix_set_limits
+
 
 def export_capabilities(layers, url):
     """Return export Capabilities.xml"""
@@ -217,10 +219,12 @@ def export_capabilities(layers, url):
     with open('cache/Capabilities.xml', 'w') as outfile:
         outfile.write(xml)
 
+
 # creation dossier cache
 if not os.path.isdir("cache"):
     os.mkdir("cache")
 
-LAYERS = [{'name':'ortho', 'format':'image/png'}, \
-    {'name':'graph', 'format':'image/png'}, {'name':'19FD5606A', 'format':'image/png'}]
+LAYERS = [{'name': 'ortho', 'format': 'image/png'},
+          {'name': 'graph', 'format': 'image/png'},
+          {'name': '19FD5606A', 'format': 'image/png'}]
 export_capabilities(LAYERS, 'http://localhost:8081/wmts')
