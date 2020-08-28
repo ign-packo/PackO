@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 const debug = require('debug');
+const { argv } = require('yargs');
 
 const PORT = 8081;
 
@@ -13,12 +14,7 @@ const nocache = require('nocache');
 
 const app = express();
 
-global.dir_cache = 'cache';
-// on charge les mtd du cache, en fonction de l'option de démarrage (test ou pas)
-// pour test, option "--cache_test"
-if (process.argv.indexOf('--cache_test') > 0) {
-  global.dir_cache = 'cache_test';
-}
+global.dir_cache = argv.cache ? argv.cache : 'cache';
 debug.log(`using cache directory: ${global.dir_cache}`);
 
 const wmts = require('./routes/wmts');
