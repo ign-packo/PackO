@@ -39,6 +39,8 @@ describe('Wmts', () => {
         .end((err, res) => {
           // should.equal(err, null);
           res.should.have.status(400);
+          const resJson = JSON.parse(res.text);
+          resJson.should.have.property('status').equal("SERVICE 'WRONG' not supported");
           done();
         });
     });
@@ -52,6 +54,8 @@ describe('Wmts', () => {
         .end((err, res) => {
           // should.equal(err, null);
           res.should.have.status(400);
+          const resJson = JSON.parse(res.text);
+          resJson.should.have.property('status').equal("REQUEST 'Wrong' not supported");
           done();
         });
     });
@@ -76,10 +80,12 @@ describe('Wmts', () => {
       chai.request(server)
         .get('/wmts')
         .query({
-          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/autre', LAYER: 'ortho',
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/autre', LAYER: 'ortho', STYLE: 'normal',
         })
         .end((err, res) => {
           res.should.have.status(400);
+          const resJson = JSON.parse(res.text);
+          resJson.should.have.property('status').equal('format image/autre not supported');
           done();
         });
     });
@@ -88,7 +94,7 @@ describe('Wmts', () => {
       chai.request(server)
         .get('/wmts')
         .query({
-          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'ortho',
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'ortho', STYLE: 'normal',
         })
         .end((err, res) => {
           should.equal(err, null);
@@ -103,7 +109,7 @@ describe('Wmts', () => {
       chai.request(server)
         .get('/wmts')
         .query({
-          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/jpeg', LAYER: 'ortho',
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/jpeg', LAYER: 'ortho', STYLE: 'normal',
         })
         .end((err, res) => {
           should.equal(err, null);

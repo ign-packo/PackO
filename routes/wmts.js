@@ -26,12 +26,14 @@ router.get('/wmts',
       .optional()
       .matches(/^\d+(.\d+)*$/i).withMessage('VERSION'),
     query('LAYER').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre LAYER est requis'),
-    query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILEMATRIX est requis'),
-    query('TILEROW').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILEROW est requis'),
-    query('TILECOL').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILECOL est requis'),
+    query('STYLE').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre STYLE est requis'),
     query('FORMAT').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre FORMAT est requis')
       .isIn(['image/png', 'image/jpeg'])
       .withMessage((FORMAT) => (`format ${FORMAT} not supported`)),
+    query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILEMATRIXSET est requis'),
+    query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILEMATRIX est requis'),
+    query('TILEROW').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILEROW est requis'),
+    query('TILECOL').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILECOL est requis'),
     query('I').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage('le parametre I est requis'),
     query('J').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage('le parametre J est requis'),
   ], validateParams,
