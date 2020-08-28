@@ -22,8 +22,15 @@ port = os.getenv('PGPORT', default='5432')
 graphtbl = os.getenv('GRAPHTABLE', default='graphe_pcrs56_zone_test')
 
 # jpegDriver = gdal.GetDriverByName( 'Jpeg' )
-PNG_DRIVER = gdal.GetDriverByName('png')
-# gtiff_driver = gdal.GetDriverByName('Gtiff')
+# PNG_DRIVER = gdal.GetDriverByName('png')
+
+# On fait groupe les tuiles par paquet de 16 x 16
+# pour avoir moins de fichiers/dossiers
+NBTILES = 16
+
+# on utilise du Tiff tuilé pour trouver rapide les tuiles dans les paquets
+GTIFF_DRIVER = gdal.GetDriverByName('Gtiff')
+GTIFF_OPTIONS = ["TILED=YES", "COMPRESS=LZW", "BLOCKXSIZE=256", "BLOCKYSIZE=256"]
 
 
 def get_capabilities(input_capabilities):
@@ -50,11 +57,11 @@ def get_capabilities(input_capabilities):
 def create_blank_tile(tiles, tile, nbc, out_raster_srs):
     """Return a blank georef image for a tile."""
     origin_x = tiles[tile['z']]['TopLeftCorner'][0] \
-        + tile['x'] * tiles[tile['z']]['Resolution'] * tiles[tile['z']]['TileWidth']
+        + tile['x'] * tiles[tile['z']]['Resolution'] * tiles[tile['z']]['TileWidth'] * NBTILES
     origin_y = tiles[tile['z']]['TopLeftCorner'][1] \
-        - tile['y'] * tiles[tile['z']]['Resolution'] * tiles[tile['z']]['TileHeight']
+        - tile['y'] * tiles[tile['z']]['Resolution'] * tiles[tile['z']]['TileHeight'] * NBTILES
     target_ds = gdal.GetDriverByName('MEM').Create('',
-                                                   tiles[tile['z']]['TileWidth'], tiles[tile['z']]['TileHeight'],
+                                                   tiles[tile['z']]['TileWidth']*NBTILES, tiles[tile['z']]['TileHeight']*NBTILES,
                                                    nbc, gdal.GDT_Byte)
     target_ds.SetGeoTransform((origin_x, tiles[tile['z']]['Resolution'], 0,
                                origin_y, 0, -tiles[tile['z']]['Resolution']))
@@ -96,12 +103,13 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
     input_image = gdal.Open(input_filename)
     stem = Path(input_filename).stem
     # for z in tiles:
-    for tile_z in range(10, 22):
+    for tile_z in range(14, 20):
         print('Niveau de zoom : ', tile_z)
-        for tile_x in range(tile_matix_set_limits[tile_z]['MinTileCol'],
-                            tile_matix_set_limits[tile_z]['MaxTileCol']):
-            for tile_y in range(tile_matix_set_limits[tile_z]['MinTileRow'],
-                                tile_matix_set_limits[tile_z]['MaxTileRow']):
+        for tile_x in range(int(math.floor(tile_matix_set_limits[tile_z]['MinTileCol']/NBTILES)),
+                            int(math.floor(tile_matix_set_limits[tile_z]['MaxTileCol']/NBTILES))+1):
+            for tile_y in range(int(math.ceil(tile_matix_set_limits[tile_z]['MinTileRow']/NBTILES-1)),
+                                int(math.ceil(tile_matix_set_limits[tile_z]['MaxTileRow']/NBTILES))):
+                print(tile_x, tile_y, tile_z)
                 # on cree une image 3 canaux pour la tuile
                 opi = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
                 # on reech l'OPI dans cette image
@@ -110,7 +118,8 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
                 tile_dir = 'cache/'+str(tile_z)+'/'+str(tile_y)+'/'+str(tile_x)
                 Path(tile_dir).mkdir(parents=True, exist_ok=True)
                 # on export en jpeg (todo: gerer le niveau de Q)
-                PNG_DRIVER.CreateCopy(tile_dir+"/"+stem+".png", opi)
+                # PNG_DRIVER.CreateCopy(tile_dir+"/"+stem+".png", opi)
+                GTIFF_DRIVER.CreateCopy(tile_dir+"/"+stem+".tif", opi, options=GTIFF_OPTIONS)
                 # on cree une image mono canal pour la tuile
                 mask = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
                 # on rasterise la partie du graphe qui concerne ce cliche
@@ -123,9 +132,9 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
                     # on cree le graphe et l'ortho
                     ortho = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
                     graph = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
-                    if Path(tile_dir+"/ortho.png").is_file():
-                        existing_ortho = gdal.Open(tile_dir+"/ortho.png")
-                        existing_graph = gdal.Open(tile_dir+"/graph.png")
+                    if Path(tile_dir+"/ortho.tif").is_file():
+                        existing_ortho = gdal.Open(tile_dir+"/ortho.tif")
+                        existing_graph = gdal.Open(tile_dir+"/graph.tif")
                     else:
                         existing_ortho = False
                         existing_graph = False
@@ -144,8 +153,8 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
                             graph_i = graph.GetRasterBand(i+1).ReadAsArray()
                         graph_i[(img_mask != 0)] = color[i]
                         graph.GetRasterBand(i+1).WriteArray(graph_i)
-                    PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
-                    PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
+                    GTIFF_DRIVER.CreateCopy(tile_dir+"/ortho.tif", ortho, options=GTIFF_OPTIONS)
+                    GTIFF_DRIVER.CreateCopy(tile_dir+"/graph.tif", graph, options=GTIFF_OPTIONS)
 
 
 def main():
