@@ -93,7 +93,7 @@ def export_capabilities(layers, url):
         source["networkOptions"] = {"crossOrigin": "anonymous"}
         source["format"] = layer['format']
         source["name"] = layer['name']
-        source["tileMatrixSet"] = "LAMBB93"
+        source["tileMatrixSet"] = "LAMB93"
         source["tileMatrixSetLimits"] = limits
         layerconf["source"] = source
         with open('itowns/'+layer['name']+".json", 'w') as outfile:
