@@ -1,10 +1,12 @@
 const debug = require('debug')('wmts');
 const debugFeatureInfo = require('debug')('wmts:GetFeatureInfo');
 const debugGetTile = require('debug')('wmts:GetTile');
+const fs = require('fs');
 const router = require('express').Router();
 const { matchedData, query } = require('express-validator');
 const Jimp = require('jimp');
 const path = require('path');
+const GeoTIFF = require('geotiff');
 
 const validateParams = require('../../paramValidation/validateParams');
 
@@ -67,24 +69,125 @@ router.get('/wmts',
       } else if (FORMAT === 'image/jpeg') {
         mime = Jimp.MIME_JPEG; // "image/jpeg"
       }
-      const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${LAYER}.png`);
-      Jimp.read(url, (err, image) => {
-        new Promise((success, failure) => {
-          if (err) {
-          /* eslint-disable no-new */
-            new Jimp(256, 256, 0x000000ff, (errJimp, img) => {
-              if (errJimp) {
-                failure(err);
-              }
-              success(img);
+      // On trouve le paquet à utiliser
+      const NBTILES = 16;
+      let PQROW = Math.trunc(TILEROW / NBTILES);
+      let PQCOL = Math.trunc(TILECOL / NBTILES);
+      // debugGetTile(PQROW, PQCOL);
+      const url = path.join(global.dir_cache, TILEMATRIX, `${PQROW}`, `${PQCOL}`, `${LAYER}.tif`);
+      // On definie la zone de l'image a charger
+      let left = (TILECOL % NBTILES) * 256;
+      let top = (TILEROW % NBTILES) * 256;
+      let right = left + 256;
+      let bottom = top + 256;
+
+      // debugGetTile(url);
+      // Creation d'un buffer Jimp
+      new Jimp(256, 256, 0x000000ff, (err, jimp_image) => {
+        // ouverture de l'image GeoTiff tuilée
+        GeoTIFF.fromFile(url).then(tiff => {
+          tiff.getImage().then(image => {
+            image.readRasters({ window: [left, top, right, bottom]}).then( data => {
+              // Mise a jour du buffer avec les valeurs chargees
+              // debugFeatureInfo(left, top, right, bottom);
+              // debugFeatureInfo(url);
+              // debugGetTile(data);
+              // for (let index = 0; index < 256*256; index++) {
+              //   jimp_image.bitmap.data[4*index] = data[0][index];
+              //   jimp_image.bitmap.data[4*index+1] = data[1][index];
+              //   jimp_image.bitmap.data[4*index+2] = data[2][index];
+              // }
+              data[0].forEach((item, index) => {
+                jimp_image.bitmap.data[4*index] = item;
+              });
+              data[1].forEach((item, index) => {
+                jimp_image.bitmap.data[4*index+1] = item;
+              });
+              data[2].forEach((item, index) => {
+                jimp_image.bitmap.data[4*index+2] = item;
+              });
+              // debugGetTile(jimp_image.bitmap);
+              // On exporte dans le format demande
+              jimp_image.getBuffer(mime, (err2, buffer) => { 
+                res.send(buffer); 
+              });
             });
-          } else {
-            success(image);
-          }
-        }).then((img) => {
-          img.getBuffer(mime, (err2, buffer) => { res.send(buffer); });
+          });
+        }).catch( err2 => {
+          debugGetTile('erreur dans le chargement de :', url, err2);
+          // On exporte dans le format demande
+          jimp_image.getBuffer(mime, (err2, buffer) => { 
+            res.send(buffer); 
+          });
         });
       });
+
+      // GeoTIFF.fromFile(url).then(tiff => { 
+      //   // debugGetTile(tiff);
+      //   tiff.getImage().then(image => {
+      //     // debugGetTile(image);
+      //     image.readRasters({ window: [left, top, right, bottom] }).then( data => {
+      //       // debugGetTile(data);
+      //       new Jimp(256, 256, 0x000000ff, (err, jimp_image) => {
+      //         // debugGetTile(jimp_image)
+      //         // this image is 256 x 256, every pixel is set to 0xFF0000FF
+      //         data[0].forEach((item, index) => {
+      //           jimp_image.bitmap[4*index] = item;
+      //         });
+      //         data[1].forEach((item, index) => {
+      //           jimp_image.bitmap[4*index+1] = item;
+      //         });
+      //         data[2].forEach((item, index) => {
+      //           jimp_image.bitmap[4*index+2] = item;
+      //         });
+      //         debugGetTile(jimp_image)
+      //         jimp_image.getBuffer(mime, (err2, buffer) => { 
+      //           debugGetTile(buffer);
+      //           res.send(buffer); 
+      //         });
+      //       });// res.send(data);
+      //     });
+      //   });
+      // }).catch( err =>{
+
+      // });
+      
+      // var fd = fs.openSync(url, 'r');
+      // var header = new Buffer.alloc(1024);
+      // fs.readSync(fd, header, 0, 1024);
+      // debug(header);
+      // fetch(url).then((err, response) => {
+      //   debug(err, response);
+      // });
+
+
+      // const response = await fetch(someUrl);
+      // const arrayBuffer = await response.arrayBuffer();
+      // GeoTIFF.fromArrayBuffer(header).then(() => {
+
+      //   debugGetTile('ici');
+      // });
+      
+      // const data = await image.readRasters({ window: [left, top, right, bottom] });
+      // res.send(data);
+
+      // Jimp.read(url, (err, image) => {
+      //   new Promise((success, failure) => {
+      //     if (err) {
+      //     /* eslint-disable no-new */
+      //       new Jimp(256, 256, 0x000000ff, (errJimp, img) => {
+      //         if (errJimp) {
+      //           failure(err);
+      //         }
+      //         success(img);
+      //       });
+      //     } else {
+      //       success(image);
+      //     }
+      //   }).then((img) => {
+      //     img.getBuffer(mime, (err2, buffer) => { res.send(buffer); });
+      //   });
+      // });
 
     // GetFeatureInfo
     } else if (REQUEST === 'GetFeatureInfo') {
