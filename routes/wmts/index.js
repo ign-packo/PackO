@@ -73,45 +73,65 @@ router.get('/wmts',
       const NBTILES = 16;
       let PQROW = Math.trunc(TILEROW / NBTILES);
       let PQCOL = Math.trunc(TILECOL / NBTILES);
-      // debugGetTile(PQROW, PQCOL);
       const url = path.join(global.dir_cache, TILEMATRIX, `${PQROW}`, `${PQCOL}`, `${LAYER}.tif`);
-      // On definie la zone de l'image a charger
-      let left = (TILECOL % NBTILES) * 256;
-      let top = (TILEROW % NBTILES) * 256;
-      let right = left + 256;
-      let bottom = top + 256;
 
-      // debugGetTile(url);
+      // Version utilisant les tuiles
+      let x = TILECOL % NBTILES;
+      let y = TILEROW % NBTILES;
+      const pool = new GeoTIFF.Pool();
+      
+      // Version sans les tuiles
+      // On definie la zone de l'image a charger
+      // let left = (TILECOL % NBTILES) * 256;
+      // let top = (TILEROW % NBTILES) * 256;
+      // let right = left + 256;
+      // let bottom = top + 256;
+
       // Creation d'un buffer Jimp
       new Jimp(256, 256, 0x000000ff, (err, jimp_image) => {
         // ouverture de l'image GeoTiff tuilée
         GeoTIFF.fromFile(url).then(tiff => {
           tiff.getImage().then(image => {
-            image.readRasters({ window: [left, top, right, bottom]}).then( data => {
-              // Mise a jour du buffer avec les valeurs chargees
-              // debugFeatureInfo(left, top, right, bottom);
-              // debugFeatureInfo(url);
-              // debugGetTile(data);
-              // for (let index = 0; index < 256*256; index++) {
-              //   jimp_image.bitmap.data[4*index] = data[0][index];
-              //   jimp_image.bitmap.data[4*index+1] = data[1][index];
-              //   jimp_image.bitmap.data[4*index+2] = data[2][index];
-              // }
-              data[0].forEach((item, index) => {
-                jimp_image.bitmap.data[4*index] = item;
+
+            // Version utilisant les tuiles
+            let sample;
+            image.getTileOrStrip(x, y, sample, pool).then((tile) => {
+              let uint8View = new Uint8Array(tile.data);
+              uint8View.forEach((item, index) => {
+                jimp_image.bitmap.data[Math.round(index/3)*4 + index%3] = item;
               });
-              data[1].forEach((item, index) => {
-                jimp_image.bitmap.data[4*index+1] = item;
-              });
-              data[2].forEach((item, index) => {
-                jimp_image.bitmap.data[4*index+2] = item;
-              });
-              // debugGetTile(jimp_image.bitmap);
               // On exporte dans le format demande
               jimp_image.getBuffer(mime, (err2, buffer) => { 
                 res.send(buffer); 
               });
             });
+
+            // Version sans les tuiles
+            // image.readRasters({ window: [left, top, right, bottom]}).then( data => {
+            //   // Mise a jour du buffer avec les valeurs chargees
+            //   // debugFeatureInfo(left, top, right, bottom);
+            //   // debugFeatureInfo(url);
+            //   // debugGetTile(data);
+            //   // for (let index = 0; index < 256*256; index++) {
+            //   //   jimp_image.bitmap.data[4*index] = data[0][index];
+            //   //   jimp_image.bitmap.data[4*index+1] = data[1][index];
+            //   //   jimp_image.bitmap.data[4*index+2] = data[2][index];
+            //   // }
+            //   data[0].forEach((item, index) => {
+            //     jimp_image.bitmap.data[4*index] = item;
+            //   });
+            //   data[1].forEach((item, index) => {
+            //     jimp_image.bitmap.data[4*index+1] = item;
+            //   });
+            //   data[2].forEach((item, index) => {
+            //     jimp_image.bitmap.data[4*index+2] = item;
+            //   });
+            //   // debugGetTile(jimp_image.bitmap);
+            //   // On exporte dans le format demande
+            //   jimp_image.getBuffer(mime, (err2, buffer) => { 
+            //     res.send(buffer); 
+            //   });
+            // });
           });
         }).catch( err2 => {
           debugGetTile('erreur dans le chargement de :', url, err2);
@@ -121,102 +141,42 @@ router.get('/wmts',
           });
         });
       });
-
-      // GeoTIFF.fromFile(url).then(tiff => { 
-      //   // debugGetTile(tiff);
-      //   tiff.getImage().then(image => {
-      //     // debugGetTile(image);
-      //     image.readRasters({ window: [left, top, right, bottom] }).then( data => {
-      //       // debugGetTile(data);
-      //       new Jimp(256, 256, 0x000000ff, (err, jimp_image) => {
-      //         // debugGetTile(jimp_image)
-      //         // this image is 256 x 256, every pixel is set to 0xFF0000FF
-      //         data[0].forEach((item, index) => {
-      //           jimp_image.bitmap[4*index] = item;
-      //         });
-      //         data[1].forEach((item, index) => {
-      //           jimp_image.bitmap[4*index+1] = item;
-      //         });
-      //         data[2].forEach((item, index) => {
-      //           jimp_image.bitmap[4*index+2] = item;
-      //         });
-      //         debugGetTile(jimp_image)
-      //         jimp_image.getBuffer(mime, (err2, buffer) => { 
-      //           debugGetTile(buffer);
-      //           res.send(buffer); 
-      //         });
-      //       });// res.send(data);
-      //     });
-      //   });
-      // }).catch( err =>{
-
-      // });
-      
-      // var fd = fs.openSync(url, 'r');
-      // var header = new Buffer.alloc(1024);
-      // fs.readSync(fd, header, 0, 1024);
-      // debug(header);
-      // fetch(url).then((err, response) => {
-      //   debug(err, response);
-      // });
-
-
-      // const response = await fetch(someUrl);
-      // const arrayBuffer = await response.arrayBuffer();
-      // GeoTIFF.fromArrayBuffer(header).then(() => {
-
-      //   debugGetTile('ici');
-      // });
-      
-      // const data = await image.readRasters({ window: [left, top, right, bottom] });
-      // res.send(data);
-
-      // Jimp.read(url, (err, image) => {
-      //   new Promise((success, failure) => {
-      //     if (err) {
-      //     /* eslint-disable no-new */
-      //       new Jimp(256, 256, 0x000000ff, (errJimp, img) => {
-      //         if (errJimp) {
-      //           failure(err);
-      //         }
-      //         success(img);
-      //       });
-      //     } else {
-      //       success(image);
-      //     }
-      //   }).then((img) => {
-      //     img.getBuffer(mime, (err2, buffer) => { res.send(buffer); });
-      //   });
-      // });
-
     // GetFeatureInfo
     } else if (REQUEST === 'GetFeatureInfo') {
       debug('~~~GetFeatureInfo');
       debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-      const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${LAYER}.png`);
-      Jimp.read(url, (err, image) => {
-        if (err) {
-          res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
-        } else {
-          const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
-          debugFeatureInfo('index: ', index);
-          const out = {
-            color: [image.bitmap.data[index],
-              image.bitmap.data[index + 1],
-              image.bitmap.data[index + 2]],
-          };
-          debugFeatureInfo(out);
-          if ((out.color[0] in req.app.cache_mtd)
-
-          && (out.color[1] in req.app.cache_mtd[out.color[0]])
-          && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-            out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
-          } else {
-            out.cliche = 'unknown';
-          }
-          // res.sendFile('FeatureInfo.xml', { root: path.join('cache') });
-          res.status(200).send(JSON.stringify(out));
-        }
+      // On trouve le paquet à utiliser
+      const NBTILES = 16;
+      let PQROW = Math.trunc(TILEROW / NBTILES);
+      let PQCOL = Math.trunc(TILECOL / NBTILES);
+      const url = path.join(global.dir_cache, TILEMATRIX, `${PQROW}`, `${PQCOL}`, `${LAYER}.tif`);
+      // Version utilisant les tuiles
+      let x = TILECOL % NBTILES;
+      let y = TILEROW % NBTILES;
+      const pool = new GeoTIFF.Pool();
+      // ouverture de l'image GeoTiff tuilée
+      GeoTIFF.fromFile(url).then(tiff => {
+        tiff.getImage().then(image => {
+          let sample;
+          image.getTileOrStrip(x, y, sample, pool).then((tile) => {
+            let uint8View = new Uint8Array(tile.data);
+            let index = parseInt(I, 10) + parseInt(J, 10) * 256
+            const out = {
+              color: [uint8View[3*index],
+                uint8View[3*index + 1],
+                uint8View[3*index + 2]],
+            };
+            debugFeatureInfo(out);
+            if ((out.color[0] in req.app.cache_mtd)
+            && (out.color[1] in req.app.cache_mtd[out.color[0]])
+            && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
+              out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+            } else {
+              out.cliche = 'unknown';
+            }
+            res.status(200).send(JSON.stringify(out));
+          });
+        });
       });
     }
   });
