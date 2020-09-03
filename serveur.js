@@ -21,8 +21,8 @@ if (process.argv.indexOf('--cache_test') > 0) {
 }
 debug.log(`using cache directory: ${global.dir_cache}`);
 
-const wmts = require('./routes/wmts');
-const graph = require('./routes/graph');
+const wmts = require('./routes/wmts.js');
+const graph = require('./routes/graph.js');
 const files = require('./routes/files.js');
 
 app.cache_mtd = JSON.parse(fs.readFileSync(`${global.dir_cache}/cache_mtd.json`));

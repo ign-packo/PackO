@@ -6,7 +6,7 @@ const { matchedData, query } = require('express-validator');
 const Jimp = require('jimp');
 const path = require('path');
 
-const validateParams = require('../../paramValidation/validateParams');
+const validateParams = require('../paramValidation/validateParams');
 
 router.get('/wmts',
   (req, res, next) => {

@@ -7,8 +7,8 @@ const jimp = require('jimp');
 const PImage = require('pureimage');
 
 const GJV = require('geojson-validation');
-const validateParams = require('../../paramValidation/validateParams');
-const validator = require('../../paramValidation/validator');
+const validateParams = require('../paramValidation/validateParams');
+const validator = require('../paramValidation/validator');
 
 const geoJsonAPatcher = [
   body('geoJSON')
