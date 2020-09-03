@@ -6,6 +6,9 @@ const fs = require('fs');
 
 const validateParams = require('../paramValidation/validateParams');
 
+// Dossier contenant les differents fichiers
+const parentDir = 'itowns';
+
 router.get('/json/:typefile', [
   param('typefile')
     .exists().withMessage(' le type de fichier est requis')
@@ -17,7 +20,7 @@ router.get('/json/:typefile', [
   const params = matchedData(req);
   const { typefile } = params;
 
-  const filePath = path.join('itowns', `${typefile}.json`);
+  const filePath = path.join(parentDir, `${typefile}.json`);
 
   try {
     if (!fs.existsSync(filePath)) {
@@ -26,8 +29,8 @@ router.get('/json/:typefile', [
       err.msg = {
         status: "Le fichier demandé n'existe pas",
         errors: [{
-          localisation: 'GET /json/',
-          param: `${typefile}`,
+          localisation: 'GET /json/{filetype}',
+          param: 'filetype',
           value: `${typefile}`,
           msg: "Le fichier demandé n'existe pas",
         }],
@@ -37,7 +40,7 @@ router.get('/json/:typefile', [
   } catch (err) {
     res.status(err.code).send(err.msg);
   }
-
+  debug(' => download');
   res.status(200).download(filePath);
 });
 
