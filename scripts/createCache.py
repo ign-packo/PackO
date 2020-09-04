@@ -157,7 +157,7 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
     input_image = gdal.Open(input_filename)
     stem = Path(input_filename).stem
     # for z in tiles:
-    for tile_z in range(10, 18):#22):
+    for tile_z in range(10, 22):
         print('Niveau de zoom : ', tile_z)
         for tile_x in range(tile_matix_set_limits[tile_z]['MinTileCol'],
                             tile_matix_set_limits[tile_z]['MaxTileCol']):
