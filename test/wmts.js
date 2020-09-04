@@ -1,10 +1,9 @@
 const chai = require('chai');
-const chaiHttp = require('chai-http');
-const server = require('..');
-// const mocha = require('mocha');
+chai.use(require('chai-http'));
+chai.use(require('chai-json-schema'));
 
 const should = chai.should();
-chai.use(chaiHttp);
+const server = require('..');
 
 const schema = {
   title: 'test',
@@ -37,7 +36,7 @@ describe('Wmts', () => {
         .get('/wmts')
         .query({ REQUEST: 'GetCapabilities', SERVICE: 'WRONG', VERSION: '1.0.0' })
         .end((err, res) => {
-          // should.equal(err, null);
+          should.not.exist(err);
           res.should.have.status(400);
           const resJson = JSON.parse(res.text);
           resJson.should.have.property('status').equal("SERVICE 'WRONG' not supported");
@@ -52,7 +51,7 @@ describe('Wmts', () => {
         .get('/wmts')
         .query({ REQUEST: 'Wrong', SERVICE: 'WMTS', VERSION: '1.0.0' })
         .end((err, res) => {
-          // should.equal(err, null);
+          should.not.exist(err);
           res.should.have.status(400);
           const resJson = JSON.parse(res.text);
           resJson.should.have.property('status').equal("REQUEST 'Wrong' not supported");
@@ -67,6 +66,7 @@ describe('Wmts', () => {
         .get('/wmts')
         .query({ REQUEST: 'GetCapabilities', SERVICE: 'WMTS', VERSION: '1.0.0' })
         .end((err, res) => {
+          should.not.exist(err);
           res.should.have.status(200);
           res.type.should.be.a('string').equal('application/xml');
 
@@ -83,6 +83,7 @@ describe('Wmts', () => {
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/autre', LAYER: 'ortho', STYLE: 'normal',
         })
         .end((err, res) => {
+          should.not.exist(err);
           res.should.have.status(400);
           const resJson = JSON.parse(res.text);
           resJson.should.have.property('status').equal('format image/autre not supported');
@@ -97,7 +98,7 @@ describe('Wmts', () => {
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'ortho', STYLE: 'normal',
         })
         .end((err, res) => {
-          should.equal(err, null);
+          should.not.exist(err);
           res.should.have.status(200);
           res.type.should.be.a('string').equal('application/octet-stream');
 
@@ -112,7 +113,7 @@ describe('Wmts', () => {
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/jpeg', LAYER: 'ortho', STYLE: 'normal',
         })
         .end((err, res) => {
-          should.equal(err, null);
+          should.not.exist(err);
           res.should.have.status(200);
           res.type.should.be.a('string').equal('application/octet-stream');
 
@@ -129,7 +130,7 @@ describe('Wmts', () => {
           REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIX: 21, TILEROW: 409395, TILECOL: 18027, I: 10, J: 10,
         })
         .end((err, res) => {
-          // should.equal(err, null);
+          should.not.exist(err);
           res.should.have.status(200);
           const resJson = JSON.parse(res.text);
 
