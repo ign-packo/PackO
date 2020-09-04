@@ -1,11 +1,9 @@
 const chai = require('chai');
-const chaiHttp = require('chai-http');
-// const { json } = require('body-parser');
-const server = require('..');
-
-// const should = chai.should();
-chai.use(chaiHttp);
+chai.use(require('chai-http'));
 chai.use(require('chai-json-schema'));
+
+const should = chai.should();
+const server = require('..');
 
 const schema = {
   title: 'test',
@@ -39,7 +37,7 @@ describe('Graph', () => {
           .get('/graph')
           .query({ x: 0, y: 0 })
           .end((err, res) => {
-            // should.equal(err, null);
+            should.not.exist(err);
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
 
@@ -56,7 +54,7 @@ describe('Graph', () => {
           .get('/graph')
           .query({ x: 230752.8, y: 6759737.1 })
           .end((err, res) => {
-            // should.equal(err, null);
+            should.not.exist(err);
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
             resJson.should.be.jsonSchema(schema);
@@ -74,7 +72,7 @@ describe('Graph', () => {
         chai.request(server)
           .post('/graph/patch')
           .end((err, res) => {
-            // should.equal(err, null);
+            should.not.exist(err);
             res.should.have.status(400);
             done();
           });
@@ -96,7 +94,7 @@ describe('Graph', () => {
               }],
           })
           .end((err, res) => {
-            // should.equal(err, null);
+            should.not.exist(err);
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
             resJson.should.be.a('array');
