@@ -162,5 +162,24 @@ paths:
         '200':
           description: OK
 
+  '/json/{filetype}':
+    get:
+      tags:
+        - files
+      summary: "Récupération des fichiers json"
+      description: ""
+      parameters:
+        - in: path
+          name: filetype
+          required: true
+          schema:
+            type: string
+            enum:
+              - graph
+              - ortho
+              - opi
 
+      responses:
+        '200':
+          description: OK
 
