@@ -42,7 +42,7 @@ paths:
                   features:
                     type: object
                     example:
-                      [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [Array] } } ]
+                      [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [ [ [ 230804.890625, 6759563 ], [ 230766.015625, 6759562.5 ], [ 230766.46875, 6759533.5 ], [ 230805.34375, 6759532.5 ], [ 230804.890625, 6759563 ] ] ]} } ]
 
       responses:
         '200':
