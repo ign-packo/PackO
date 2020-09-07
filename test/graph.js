@@ -102,6 +102,27 @@ describe('Graph', () => {
             done();
           });
       });
+
+      it('should get an error : missing data', (done) => {
+        chai.request(server)
+          .post('/graph/patch')
+          .send({
+            type: 'FeatureCollection',
+            crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
+            features: [
+              {
+                type: 'Feature',
+                properties: { color: [99, 167, 133], cliche: '19FD5606Ax00020_16371' },
+                geometry: { type: 'Polygon', coordinates: [[[230760, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230760, 6759736]]] },
+              }],
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(404);
+
+            done();
+          });
+      });
     });
   });
 });

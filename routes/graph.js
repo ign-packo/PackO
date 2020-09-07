@@ -72,127 +72,151 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   // Version JS
   // BBox du patch
   const BBox = {};
-  geoJson.features.forEach((feature) => {
-    feature.geometry.coordinates[0].forEach((point) => {
-      if ('xmin' in BBox) {
-        BBox.xmin = Math.min(BBox.xmin, point[0]);
-        BBox.xmax = Math.max(BBox.xmax, point[0]);
-        BBox.ymin = Math.min(BBox.ymin, point[1]);
-        BBox.ymax = Math.max(BBox.ymax, point[1]);
-      } else {
-        [BBox.xmin, BBox.ymin] = point;
-        [BBox.xmax, BBox.ymax] = point;
-      }
-    });
-  });
-  debug('BBox:');
-  debug(BBox);
-  // List of all tiles
-  const tiles = [];
-  let resolution = R;
-  for (let z = 21; z >= 10; z -= 1) {
-    const x0 = Math.floor((BBox.xmin - X0) / (resolution * 256));
-    const x1 = Math.ceil((BBox.xmax - X0) / (resolution * 256));
-    const y0 = Math.floor((Y0 - BBox.ymax) / (resolution * 256));
-    const y1 = Math.ceil((Y0 - BBox.ymin) / (resolution * 256));
-    for (let y = y0; y < y1; y += 1) {
-      for (let x = x0; x < x1; x += 1) {
-        tiles.push({
-          x, y, z, resolution,
-        });
-      }
-    }
-    resolution *= 2;
-  }
-  debugPatch(tiles);
-  // Patch these tiles
-  const errors = [];
-  tiles.forEach((tile) => {
-    // Patch du graph
-    debugPatch(tile);
-    const urlGraph = path.join(global.dir_cache, `${tile.z}`, `${tile.y}`, `${tile.x}`, 'graph.png');
-    const urlOrtho = path.join(global.dir_cache, `${tile.z}`, `${tile.y}`, `${tile.x}`, 'ortho.png');
-    const urlOpi = path.join(global.dir_cache, `${tile.z}`, `${tile.y}`, `${tile.x}`, `${geoJson.features[0].properties.cliche}.png`);
 
-    if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
-      errors.push('file not exists');
-      debug('ERROR');
-      return;
-    }
-    const mask = PImage.make(256, 256);
-    const ctx = mask.getContext('2d');
+  try {
     geoJson.features.forEach((feature) => {
-      debugPatch(feature.properties.color);
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      let first = true;
-      /* eslint-disable no-restricted-syntax */
-      for (const point of feature.geometry.coordinates[0]) {
-        const i = Math.round((point[0] - X0 - tile.x * 256 * tile.resolution) / tile.resolution);
-        const j = Math.round((Y0 - point[1] - tile.y * 256 * tile.resolution) / tile.resolution);
-        debugPatch(i, j);
-        if (first) {
-          first = false;
-          ctx.moveTo(i, j);
+      feature.geometry.coordinates[0].forEach((point) => {
+        if ('xmin' in BBox) {
+          BBox.xmin = Math.min(BBox.xmin, point[0]);
+          BBox.xmax = Math.max(BBox.xmax, point[0]);
+          BBox.ymin = Math.min(BBox.ymin, point[1]);
+          BBox.ymax = Math.max(BBox.ymax, point[1]);
         } else {
-          ctx.lineTo(i, j);
+          [BBox.xmin, BBox.ymin] = point;
+          [BBox.xmax, BBox.ymax] = point;
+        }
+      });
+    });
+    debug('BBox:');
+    debug(BBox);
+    // List of all tiles
+    const tiles = [];
+    let resolution = R;
+
+    const errors = [];
+
+    for (let z = 21; z >= 10; z -= 1) {
+      const x0 = Math.floor((BBox.xmin - X0) / (resolution * 256));
+      const x1 = Math.ceil((BBox.xmax - X0) / (resolution * 256));
+      const y0 = Math.floor((Y0 - BBox.ymax) / (resolution * 256));
+      const y1 = Math.ceil((Y0 - BBox.ymin) / (resolution * 256));
+      for (let y = y0; y < y1; y += 1) {
+        for (let x = x0; x < x1; x += 1) {
+          tiles.push({
+            x, y, z, resolution,
+          });
+
+          const pathGraph = path.join(global.dir_cache, `${z}`, `${y}`, `${x}`, 'graph.png');
+          const pathOrtho = path.join(global.dir_cache, `${z}`, `${y}`, `${x}`, 'ortho.png');
+          const pathOpi = path.join(global.dir_cache, `${z}`, `${y}`, `${x}`, `${geoJson.features[0].properties.cliche}.png`);
+          if (!fs.existsSync(pathGraph) || !fs.existsSync(pathOrtho) || !fs.existsSync(pathOpi)) {
+            errors.push(`one or more missing file in ${path.join(global.dir_cache, `${z}`, `${y}`, `${x}`)}`);
+          }
         }
       }
-      ctx.closePath();
-      ctx.fill();
+      resolution *= 2;
+    }
+
+    if (errors.length) {
+      debugPatch('ERROR');
+      debugPatch(errors);
+      const err = new Error();
+      err.code = 404;
+      err.msg = errors;
+      throw err;
+    }
+
+    debugPatch(tiles);
+    // Patch these tiles
+    tiles.forEach((tile) => {
+    // Patch du graph
+      debugPatch(tile);
+      const urlGraph = path.join(global.dir_cache, `${tile.z}`, `${tile.y}`, `${tile.x}`, 'graph.png');
+      const urlOrtho = path.join(global.dir_cache, `${tile.z}`, `${tile.y}`, `${tile.x}`, 'ortho.png');
+      const urlOpi = path.join(global.dir_cache, `${tile.z}`, `${tile.y}`, `${tile.x}`, `${geoJson.features[0].properties.cliche}.png`);
+
+      const mask = PImage.make(256, 256);
+      const ctx = mask.getContext('2d');
+      geoJson.features.forEach((feature) => {
+        debugPatch(feature.properties.color);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        let first = true;
+        /* eslint-disable no-restricted-syntax */
+        for (const point of feature.geometry.coordinates[0]) {
+          const i = Math.round((point[0] - X0 - tile.x * 256 * tile.resolution) / tile.resolution);
+          const j = Math.round((Y0 - point[1] - tile.y * 256 * tile.resolution) / tile.resolution);
+          // debugPatch(i, j);
+          if (first) {
+            first = false;
+            ctx.moveTo(i, j);
+          } else {
+            ctx.lineTo(i, j);
+          }
+        }
+        ctx.closePath();
+        ctx.fill();
+      });
+
+      // const out_mask = `mask_${tile.x}_${tile.y}_${tile.z}.png`;
+      // PImage.encodePNGToStream(mask, fs.createWriteStream(out_mask)).then(() => {
+      //   console.log("wrote out the png file to "+out_mask);
+      // }).catch((e)=>{
+      //   console.log("there was an error writing");
+      // });
+
+      // // On patch le graph
+      /* eslint-disable no-param-reassign */
+      promises.push(jimp.read(urlGraph).then((graph) => {
+        for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
+          if (mask.data[idx + 3]) {
+            [graph.bitmap.data[idx],
+              graph.bitmap.data[idx + 1],
+              graph.bitmap.data[idx + 2]] = geoJson.features[0].properties.color;
+          }
+        }
+        return graph.writeAsync(urlGraph);
+      }).then(() => {
+        debugPatch(`${urlGraph}: done`);
+      }));
+      // // On patch l ortho
+      /* eslint-disable no-param-reassign */
+      const promiseOrthoOpi = [jimp.read(urlOrtho), jimp.read(urlOpi)];
+      promises.push(Promise.all(promiseOrthoOpi).then((images) => {
+        const ortho = images[0];
+        const opi = images[1];
+        // debug(ortho, opi);
+        for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
+          if (mask.data[idx + 3]) {
+            ortho.bitmap.data[idx] = opi.bitmap.data[idx];
+            ortho.bitmap.data[idx + 1] = opi.bitmap.data[idx + 1];
+            ortho.bitmap.data[idx + 2] = opi.bitmap.data[idx + 2];
+          }
+        }
+        return ortho.writeAsync(urlOrtho);
+      }).then(() => {
+        debugPatch('done');
+      }));
     });
 
-    // const out_mask = `mask_${tile.x}_${tile.y}_${tile.z}.png`;
-    // PImage.encodePNGToStream(mask, fs.createWriteStream(out_mask)).then(() => {
-    //   console.log("wrote out the png file to "+out_mask);
-    // }).catch((e)=>{
-    //   console.log("there was an error writing");
-    // });
-
-    // // On patch le graph
-    /* eslint-disable no-param-reassign */
-    promises.push(jimp.read(urlGraph).then((graph) => {
-      for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
-        if (mask.data[idx + 3]) {
-          [graph.bitmap.data[idx],
-            graph.bitmap.data[idx + 1],
-            graph.bitmap.data[idx + 2]] = geoJson.features[0].properties.color;
-        }
-      }
-      return graph.writeAsync(urlGraph);
-    }).then(() => {
-      debugPatch('done');
-    }));
-    // // On patch l ortho
-    /* eslint-disable no-param-reassign */
-    const promiseOrthoOpi = [jimp.read(urlOrtho), jimp.read(urlOpi)];
-    promises.push(Promise.all(promiseOrthoOpi).then((images) => {
-      const ortho = images[0];
-      const opi = images[1];
-      // debug(ortho, opi);
-      for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
-        if (mask.data[idx + 3]) {
-          ortho.bitmap.data[idx] = opi.bitmap.data[idx];
-          ortho.bitmap.data[idx + 1] = opi.bitmap.data[idx + 1];
-          ortho.bitmap.data[idx + 2] = opi.bitmap.data[idx + 2];
-        }
-      }
-      return ortho.writeAsync(urlOrtho);
-    }).then(() => {
-      debugPatch('done');
-    }));
-  });
-  if (errors.length) {
-    res.status(500).send(errors);
+    debug('execution des promises');
+    Promise.all(promises)
+      .then(() => {
+        debug("tout c'est bien passé");
+        res.status(200).send(JSON.stringify(tiles));
+      })
+      .catch((erreur) => {
+        debug('erreur : ', erreur);
+        // todo: il faut tout annuler
+        const err = new Error();
+        err.code = 500;
+        err.msg = err;
+        throw err;
+        // res.status(500).send(err);
+      });
+  } catch (err) {
+    res.status(err.code).send(err.msg);
   }
-  Promise.all(promises).then(() => {
-    debug("tout c'est bien passé");
-    res.status(200).send(JSON.stringify(tiles));
-  }).catch((err) => {
-    debug('erreur : ', err);
-    // todo: il faut tout annuler
-    res.status(500).send(err);
-  });
 });
 
 router.get('/graph', [
@@ -223,7 +247,7 @@ router.get('/graph', [
   const I = Math.floor(Px - Tx * 256);
   const J = Math.floor(Py - Ty * 256);
 
-  const url = path.join(global.dir_cache, '21', `${Ty}`, `${Tx}`, 'graph.png');// `${global.dir_cache}/21/${Ty}/${Tx}/graph.png`;
+  const url = path.join(global.dir_cache, '21', `${Ty}`, `${Tx}`, 'graph.png');
 
   jimp.read(url, (err, image) => {
     if (err) {
