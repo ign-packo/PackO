@@ -12,8 +12,8 @@ const parentDir = `${global.dir_cache}`;
 router.get('/json/:typefile', [
   param('typefile')
     .exists().withMessage(' le type de fichier est requis')
-    .isIn(['ortho', 'graph', 'opi'])
-    .withMessage("le fichier demandé n'existe pas"),
+    .isIn(['ortho', 'graph', 'opi', 'test'])
+    .withMessage('type de fichier incorrect'),
 ], validateParams,
 (req, res) => {
   debug('~~~getJson~~~');
@@ -37,11 +37,12 @@ router.get('/json/:typefile', [
       };
       throw err;
     }
+    debug(' => download');
+    res.status(200).download(filePath);
   } catch (err) {
+    debug(' => Erreur');
     res.status(err.code).send(err.msg);
   }
-  debug(' => download');
-  res.status(200).download(filePath);
 });
 
 module.exports = router;
