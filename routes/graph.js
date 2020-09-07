@@ -2,6 +2,7 @@ const debug = require('debug')('graph');
 const debugPatch = require('debug')('patch');
 const router = require('express').Router();
 const fs = require('fs');
+const path = require('path');
 const { matchedData, query, body } = require('express-validator');
 const jimp = require('jimp');
 const PImage = require('pureimage');
@@ -109,9 +110,9 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   tiles.forEach((tile) => {
     // Patch du graph
     debugPatch(tile);
-    const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
-    const urlOrtho = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
-    const urlOpi = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/${geoJson.features[0].properties.cliche}.png`;
+    const urlGraph = path.join(global.dir_cache, `${tile.z}`, `${tile.y}`, `${tile.x}`, 'graph.png');
+    const urlOrtho = path.join(global.dir_cache, `${tile.z}`, `${tile.y}`, `${tile.x}`, 'ortho.png');
+    const urlOpi = path.join(global.dir_cache, `${tile.z}`, `${tile.y}`, `${tile.x}`, `${geoJson.features[0].properties.cliche}.png`);
 
     if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
       errors.push('file not exists');
@@ -222,7 +223,7 @@ router.get('/graph', [
   const I = Math.floor(Px - Tx * 256);
   const J = Math.floor(Py - Ty * 256);
 
-  const url = `${global.dir_cache}/21/${Ty}/${Tx}/graph.png`;
+  const url = path.join(global.dir_cache, '21', `${Ty}`, `${Tx}`, 'graph.png');// `${global.dir_cache}/21/${Ty}/${Tx}/graph.png`;
 
   jimp.read(url, (err, image) => {
     if (err) {
