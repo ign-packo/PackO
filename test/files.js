@@ -27,31 +27,16 @@ describe('Files', () => {
           });
       });
     });
-    describe('filetype = ortho', () => {
-      it('should return a json file', (done) => {
+    describe('filetype = test', () => {
+      it('should return an error', (done) => {
         chai.request(server)
-          .get('/json/ortho')
+          .get('/json/test')
           .end((err, res) => {
             should.not.exist(err);
             res.should.be.a('object');
-            res.should.have.status(200);
+            res.should.have.status(404);
             res.body.should.be.a('object');
-            res.body.should.have.property('id').equal('ortho');
-
-            done();
-          });
-      });
-    });
-    describe('filetype = opi', () => {
-      it('should return a json file', (done) => {
-        chai.request(server)
-          .get('/json/opi')
-          .end((err, res) => {
-            should.not.exist(err);
-            res.should.be.a('object');
-            res.should.have.status(200);
-            res.body.should.be.a('object');
-            res.body.should.have.property('id').equal('opi');
+            res.body.should.have.property('status').equal("Le fichier demandé n'existe pas");
 
             done();
           });
