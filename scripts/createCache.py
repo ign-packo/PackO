@@ -16,7 +16,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--cache", help="cache directory", type=str, default="cache")
 parser.add_argument("-x", "--xml", help="input GetCapabilities.xml", type=str, default="cache_test/Capabilities.xml")
 parser.add_argument("-t", "--table", help="graph table", type=str, default="graphe_pcrs56_zone_test")
-parser.add_argument("-p", "--pattern", help="input OPI pattern")
+parser.add_argument("-i", "--input", help="input OPI pattern")
+parser.add_argument("-p", "--prefix", help="OPI prefix pour créer le pattern de recherche dans le cache (pour le GetCapabilities)")
 args = parser.parse_args()
 print(args)
 
@@ -208,11 +209,9 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
                     PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
                     PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
 
-def export_tile_limits(cache, pattern):
+def export_tile_limits(cache, prefix):
     """Return tile_matrix_set_limits for a layer in the cache"""
-    list_filename = glob.glob(cache+'/*/*/*/'+pattern+'*.*')
-    # print(cache+'/*/*/*/'+pattern+'*.*')
-    # print(list_filename)
+    list_filename = glob.glob(cache+'/*/*/*/'+prefix+'*.*')
     tile_matrix_set_limits = {}
     for dirname in list_filename:
         tab = dirname.split(os.path.sep)
@@ -246,10 +245,10 @@ def update_capabilities_and_json(cache, xml, url, layers):
     for layer in layers:
         print(layer)
         try:
-            pattern = layer['pattern']
+            prefix = layer['prefix']
         except:
-            pattern = layer['name']
-        limits = export_tile_limits(cache, pattern)
+            prefix = layer['name']
+        limits = export_tile_limits(cache, prefix)
         layerconf = {}
         layerconf["id"] = layer['name']
         source = {}
@@ -297,7 +296,7 @@ def main():
     db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
     if db_graph is None:
         raise ValueError("Connection to database failed")
-    list_filename = glob.glob(args.pattern)
+    list_filename = glob.glob(args.input)
     print(list_filename)
     try:
         with open(args.cache+'/cache_mtd.json', 'r') as inputfile:
@@ -333,11 +332,9 @@ def main():
     with open(args.cache+'/cache_mtd.json', 'w') as outfile:
         json.dump(mtd, outfile)
     
-    # mise a jour Capabilities/Json
-    opi_pattern="19FD5606A"
     LAYERS = [{'name': 'ortho', 'format': 'image/png'},
         {'name': 'graph', 'format': 'image/png'},
-        {'name': 'opi', 'format': 'image/png', 'pattern': opi_pattern}]
+        {'name': 'opi', 'format': 'image/png', 'prefix': prefix}]
     update_capabilities_and_json(args.cache, args.xml, 'http://localhost:8081/wmts', LAYERS)
 
 if __name__ == "__main__":
