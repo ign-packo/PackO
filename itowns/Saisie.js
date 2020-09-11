@@ -1,3 +1,5 @@
+// const { threshold } = require("jimp");
+
 class Saisie {
   constructor(options) {
     this.opiLayer = options.opiLayer;
@@ -6,6 +8,7 @@ class Saisie {
     this.opiConfig = options.opiConfig;
     this.orthoConfig = options.orthoConfig;
     this.graphConfig = options.graphConfig;
+    this.apiUrl = options.apiUrl;
 
     this.status = 'ras';
     this.currentMeasure = null;
@@ -92,7 +95,7 @@ class Saisie {
     const dataStr = JSON.stringify(geojson);
     view.scene.remove(this.currentMeasure);
     // On post le geojson sur l'API
-    fetch(`http://localhost:8081/graph/patch?`,
+    fetch(`${this.apiUrl}graph/patch?`,
       {
         method: 'POST',
         headers: {
@@ -128,7 +131,7 @@ class Saisie {
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         const that = this;
-        fetch(`http://localhost:8081/graph?x=${pos.x}&y=${pos.y}`,
+        fetch(`${this.apiUrl}graph?x=${pos.x}&y=${pos.y}`,
           {
             method: 'GET',
             headers: {

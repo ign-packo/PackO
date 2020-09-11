@@ -7,7 +7,7 @@ const fs = require('fs');
 const validateParams = require('../paramValidation/validateParams');
 
 // Dossier contenant les differents fichiers
-const parentDir = 'itowns';
+const parentDir = `${global.dir_cache}`;
 
 router.get('/json/:typefile', [
   param('typefile')

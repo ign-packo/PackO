@@ -1,7 +1,6 @@
 """This script create or update a cache from a list of OPI"""
 import os
 import math
-import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 import glob
@@ -9,22 +8,85 @@ import json
 from random import randrange
 import numpy as np
 import gdal
+import argparse
+from collections import defaultdict
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-c", "--cache", help="cache directory (default: cache)", type=str, default="cache")
+parser.add_argument("-x", "--xml", help="input GetCapabilities.xml (default: cache_test/Capabilities.xml)", type=str, default="cache_test/Capabilities.xml")
+parser.add_argument("-t", "--table", help="graph table (default: graphe_pcrs56_zone_test)", type=str, default="graphe_pcrs56_zone_test")
+parser.add_argument("-i", "--input", required=True, help="input OPI pattern")
+parser.add_argument("-p", "--prefix", required=True, help="OPI prefix pour créer le pattern de recherche dans le cache (pour le GetCapabilities)")
+parser.add_argument("-a", "--api", help="API Url (default: http://localhost:8081/wmts)", type=str, default="http://localhost:8081/wmts")
+args = parser.parse_args()
+print(args)
 
 # creation dossier cache
-if not os.path.isdir("cache"):
-    os.mkdir("cache")
+if not os.path.isdir(args.cache):
+    os.mkdir(args.cache)
 
 user = os.getenv('PGUSER', default='postgres')
 host = os.getenv('PGHOST', default='localhost')
 database = os.getenv('PGDATABASE', default='pcrs')
 password = os.getenv('PGPASSWORD', default='postgres')  # En dur, pas top...
 port = os.getenv('PGPORT', default='5432')
-graphtbl = os.getenv('GRAPHTABLE', default='graphe_pcrs56_zone_test')
+# graphtbl = os.getenv('GRAPHTABLE', default='graphe_pcrs56_zone_test')
 
 # jpegDriver = gdal.GetDriverByName( 'Jpeg' )
 PNG_DRIVER = gdal.GetDriverByName('png')
 # gtiff_driver = gdal.GetDriverByName('Gtiff')
 
+def etree_to_dict(t):
+    """Return dictonary from XML"""
+    d = {t.tag: {} if t.attrib else None}
+    children = list(t)
+    if children:
+        dd = defaultdict(list)
+        for dc in map(etree_to_dict, children):
+            for k, v in dc.items():
+                dd[k].append(v)
+        d = {t.tag: {k: v[0] if len(v) == 1 else v
+                     for k, v in dd.items()}}
+    if t.attrib:
+        d[t.tag].update(('@' + k, v)
+                        for k, v in t.attrib.items())
+    if t.text:
+        text = t.text.strip()
+        if children or t.attrib:
+            if text:
+              d[t.tag]['#text'] = text
+        else:
+            d[t.tag] = text
+    return d
+
+def dict_to_etree(d):
+    """Return XML from dictonary"""
+    def _to_etree(d, root):
+        if not d:
+            pass
+        elif isinstance(d, str):
+            root.text = d
+        elif isinstance(d, dict):
+            for k,v in d.items():
+                assert isinstance(k, str)
+                if k.startswith('#'):
+                    assert k == '#text' and isinstance(v, str)
+                    root.text = v
+                elif k.startswith('@'):
+                    assert isinstance(v, str)
+                    root.set(k[1:], v)
+                elif isinstance(v, list):
+                    for e in v:
+                        _to_etree(e, ET.SubElement(root, k))
+                else:
+                    _to_etree(v, ET.SubElement(root, k))
+        else:
+            assert d == 'invalid type', (type(d), d)
+    assert isinstance(d, dict) and len(d) == 1
+    tag, body = next(iter(d.items()))
+    node = ET.Element(tag)
+    _to_etree(body, node)
+    return node
 
 def get_capabilities(input_capabilities):
     """Return tiles and epsg from an XML."""
@@ -107,7 +169,7 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
                 # on reech l'OPI dans cette image
                 gdal.Warp(opi, input_image)
                 # si necessaire on cree le dossier de la tuile
-                tile_dir = 'cache/'+str(tile_z)+'/'+str(tile_y)+'/'+str(tile_x)
+                tile_dir = args.cache+'/'+str(tile_z)+'/'+str(tile_y)+'/'+str(tile_x)
                 Path(tile_dir).mkdir(parents=True, exist_ok=True)
                 # on export en jpeg (todo: gerer le niveau de Q)
                 PNG_DRIVER.CreateCopy(tile_dir+"/"+stem+".png", opi)
@@ -115,7 +177,7 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
                 mask = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
                 # on rasterise la partie du graphe qui concerne ce cliche
                 gdal.Rasterize(mask, db_graph,
-                               SQLStatement='select geom from ' + graphtbl + ' where cliche = \''+stem+'\' ')
+                               SQLStatement='select geom from ' + args.table + ' where cliche = \''+stem+'\' ')
                 img_mask = mask.GetRasterBand(1).ReadAsArray()
                 # si le mask est vide, on a termine
                 val_max = np.amax(img_mask)
@@ -147,20 +209,103 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
                     PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
                     PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
 
+def export_tile_limits(cache, prefix):
+    """Return tile_matrix_set_limits for a layer in the cache"""
+    list_filename = glob.glob(cache+'/*/*/*/'+prefix+'*.*')
+    tile_matrix_set_limits = {}
+    for dirname in list_filename:
+        tab = dirname.split(os.path.sep)
+        tile_z = int(tab[1])
+        tile_y = int(tab[2])
+        tile_x = int(tab[3])
+        if tile_z in tile_matrix_set_limits:
+            tile_matrix_set_limits[tile_z]['MinTileRow'] = \
+                min(tile_y, tile_matrix_set_limits[tile_z]['MinTileRow'])
+            tile_matrix_set_limits[tile_z]['MaxTileRow'] = \
+                max(tile_y, tile_matrix_set_limits[tile_z]['MaxTileRow'])
+            tile_matrix_set_limits[tile_z]['MinTileCol'] = \
+                min(tile_x, tile_matrix_set_limits[tile_z]['MinTileCol'])
+            tile_matrix_set_limits[tile_z]['MaxTileCol'] = \
+                max(tile_x, tile_matrix_set_limits[tile_z]['MaxTileCol'])
+        else:
+            tile_matrix_set_limit = {}
+            tile_matrix_set_limit['MinTileRow'] = tile_y
+            tile_matrix_set_limit['MaxTileRow'] = tile_y
+            tile_matrix_set_limit['MinTileCol'] = tile_x
+            tile_matrix_set_limit['MaxTileCol'] = tile_x
+            tile_matrix_set_limits[tile_z] = tile_matrix_set_limit
+    return tile_matrix_set_limits
 
+def update_capabilities_and_json(cache, xml, url, layers):
+    tree = ET.parse(xml)
+    capabilities = etree_to_dict(tree.getroot())
+    # remise a zero des layers
+    # print('layers avant:', capabilities['{http://www.opengis.net/wmts/1.0}Capabilities']['{http://www.opengis.net/wmts/1.0}Contents']['{http://www.opengis.net/wmts/1.0}Layer'])
+    capabilities_layers = []
+    for layer in layers:
+        print(layer)
+        try:
+            prefix = layer['prefix']
+        except:
+            prefix = layer['name']
+        limits = export_tile_limits(cache, prefix)
+        layerconf = {}
+        layerconf["id"] = layer['name']
+        source = {}
+        source["url"] = url
+        source["projection"] = "EPSG:2154"
+        source["networkOptions"] = {"crossOrigin": "anonymous"}
+        source["format"] = layer['format']
+        source["name"] = layer['name']
+        source["tileMatrixSet"] = "LAMBB93"
+        source["tileMatrixSetLimits"] = limits
+        layerconf["source"] = source
+        with open(cache+'/'+layer['name']+".json", 'w') as outfile:
+            json.dump(layerconf, outfile)
+        tms={'TileMatrixSet': 'LAMB93', 'TileMatrixSetLimits': {'TileMatrixLimits' : []}}
+        for level in limits:
+            limit = limits[level]
+            T = {}
+            T['MinTileRow'] = str(limit['MinTileRow'])
+            T['MaxTileRow'] = str(limit['MaxTileRow'])
+            T['MinTileCol'] = str(limit['MinTileCol'])
+            T['MaxTileCol'] = str(limit['MaxTileCol'])
+            tms['TileMatrixSetLimits']['TileMatrixLimits'].append(T)
+        # print(tms)
+        layer = {'ows:Title' : layer['name'], 'ows:Identifier': layer['name'], 'Format': 'image/png'}
+        layer['TileMatrixSetLink'] = tms
+        capabilities_layers.append(layer)
+        # , 'TileMatrixSetLink': tms})
+    # update API url
+    operations=capabilities['{http://www.opengis.net/wmts/1.0}Capabilities']['{http://www.opengis.net/ows/1.1}OperationsMetadata']['{http://www.opengis.net/ows/1.1}Operation']
+    for operation in operations:
+        operation['{http://www.opengis.net/ows/1.1}DCP']['{http://www.opengis.net/ows/1.1}HTTP']['{http://www.opengis.net/ows/1.1}Get']['@{http://www.w3.org/1999/xlink}href'] = url
+        print(operation['{http://www.opengis.net/ows/1.1}DCP']['{http://www.opengis.net/ows/1.1}HTTP']['{http://www.opengis.net/ows/1.1}Get']['@{http://www.w3.org/1999/xlink}href'])
+    # on exporte le capabilities mis à jour
+    ET.register_namespace('', 'http://www.opengis.net/wmts/1.0')
+    ET.register_namespace('gml', 'http://www.opengis.net/gml')
+    ET.register_namespace('ows', "http://www.opengis.net/ows/1.1")
+    ET.register_namespace('xlink', "http://www.w3.org/1999/xlink")
+    
+    output_tree = ET.ElementTree(dict_to_etree(capabilities))
+    output_tree.write(cache+"/Capabilities.xml", encoding="UTF-8",xml_declaration=True)
+    
 def main():
-    """Update the cache for list of input OPI."""
-    tiles, epsg = get_capabilities('cache_test/Capabilities.xml')
+    """Create or Update the cache for list of input OPI."""
+    tiles, epsg = get_capabilities(args.xml)
     out_raster_srs = gdal.osr.SpatialReference()
     out_raster_srs.ImportFromEPSG(epsg)
     conn_string = "PG:host="+host+" dbname="+database+" user="+user+" password="+password
     db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
     if db_graph is None:
         raise ValueError("Connection to database failed")
-    list_filename = glob.glob(sys.argv[1])
+    list_filename = glob.glob(args.input)
     print(list_filename)
-    with open('cache_test/cache_mtd.json', 'r') as inputfile:
-        mtd = json.load(inputfile)
+    try:
+        with open(args.cache+'/cache_mtd.json', 'r') as inputfile:
+            mtd = json.load(inputfile)
+    except:
+        mtd = {}
     for filename in list_filename:
         # Si le fichier a deja une couleur on la recupere
         cliche = filename.split(os.path.sep)[-1].split('.')[0]
@@ -184,26 +329,16 @@ def main():
                 mtd[color[0]] = {}
             if color[1] not in mtd[color[0]]:
                 mtd[color[0]][color[1]] = {}
-        mtd[color[0]][color[1]][color[2]] = cliche
-        process_image(tiles, db_graph, filename, color, out_raster_srs)
+            mtd[color[0]][color[1]][color[2]] = cliche
+            process_image(tiles, db_graph, filename, color, out_raster_srs)
 
-    with open('cache/cache_mtd.json', 'w') as outfile:
+    with open(args.cache+'/cache_mtd.json', 'w') as outfile:
         json.dump(mtd, outfile)
-
+    
+    LAYERS = [{'name': 'ortho', 'format': 'image/png'},
+        {'name': 'graph', 'format': 'image/png'},
+        {'name': 'opi', 'format': 'image/png', 'prefix': args.prefix}]
+    update_capabilities_and_json(args.cache, args.xml, args.api, LAYERS)
 
 if __name__ == "__main__":
     main()
-
-
-
-
-# on fait un vrt de la couche Ortho
-# on recupere la BBox de l'Ortho
-# Pour chaque niveau on cherche les tuiles concernes
-# Pour chaque tuile concernee on lance un gdalwarp
-
-# Idem pour le graphe
-
-# on parcourt les OPI
-# pour chaque opi on recupere la BBox
-# ...
