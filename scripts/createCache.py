@@ -1,7 +1,6 @@
 """This script create or update a cache from a list of OPI"""
 import os
 import math
-import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 import glob
@@ -13,11 +12,12 @@ import argparse
 from collections import defaultdict
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-c", "--cache", help="cache directory", type=str, default="cache")
-parser.add_argument("-x", "--xml", help="input GetCapabilities.xml", type=str, default="cache_test/Capabilities.xml")
-parser.add_argument("-t", "--table", help="graph table", type=str, default="graphe_pcrs56_zone_test")
-parser.add_argument("-i", "--input", help="input OPI pattern")
-parser.add_argument("-p", "--prefix", help="OPI prefix pour créer le pattern de recherche dans le cache (pour le GetCapabilities)")
+parser.add_argument("-c", "--cache", help="cache directory (default: cache)", type=str, default="cache")
+parser.add_argument("-x", "--xml", help="input GetCapabilities.xml (default: cache_test/Capabilities.xml)", type=str, default="cache_test/Capabilities.xml")
+parser.add_argument("-t", "--table", help="graph table (default: graphe_pcrs56_zone_test)", type=str, default="graphe_pcrs56_zone_test")
+parser.add_argument("-i", "--input", required=True, help="input OPI pattern")
+parser.add_argument("-p", "--prefix", required=True, help="OPI prefix pour créer le pattern de recherche dans le cache (pour le GetCapabilities)")
+parser.add_argument("-a", "--api", help="API Url (default: http://localhost:8081/wmts)", type=str, default="http://localhost:8081/wmts")
 args = parser.parse_args()
 print(args)
 
@@ -276,8 +276,11 @@ def update_capabilities_and_json(cache, xml, url, layers):
         layer['TileMatrixSetLink'] = tms
         capabilities_layers.append(layer)
         # , 'TileMatrixSetLink': tms})
-    capabilities['{http://www.opengis.net/wmts/1.0}Capabilities']['{http://www.opengis.net/wmts/1.0}Contents']['{http://www.opengis.net/wmts/1.0}Layer'] = capabilities_layers
-    print('layers:', len(capabilities['{http://www.opengis.net/wmts/1.0}Capabilities']['{http://www.opengis.net/wmts/1.0}Contents']['{http://www.opengis.net/wmts/1.0}Layer']))
+    # update API url
+    operations=capabilities['{http://www.opengis.net/wmts/1.0}Capabilities']['{http://www.opengis.net/ows/1.1}OperationsMetadata']['{http://www.opengis.net/ows/1.1}Operation']
+    for operation in operations:
+        operation['{http://www.opengis.net/ows/1.1}DCP']['{http://www.opengis.net/ows/1.1}HTTP']['{http://www.opengis.net/ows/1.1}Get']['@{http://www.w3.org/1999/xlink}href'] = url
+        print(operation['{http://www.opengis.net/ows/1.1}DCP']['{http://www.opengis.net/ows/1.1}HTTP']['{http://www.opengis.net/ows/1.1}Get']['@{http://www.w3.org/1999/xlink}href'])
     # on exporte le capabilities mis à jour
     ET.register_namespace('', 'http://www.opengis.net/wmts/1.0')
     ET.register_namespace('gml', 'http://www.opengis.net/gml')
@@ -334,8 +337,8 @@ def main():
     
     LAYERS = [{'name': 'ortho', 'format': 'image/png'},
         {'name': 'graph', 'format': 'image/png'},
-        {'name': 'opi', 'format': 'image/png', 'prefix': prefix}]
-    update_capabilities_and_json(args.cache, args.xml, 'http://localhost:8081/wmts', LAYERS)
+        {'name': 'opi', 'format': 'image/png', 'prefix': args.prefix}]
+    update_capabilities_and_json(args.cache, args.xml, args.api, LAYERS)
 
 if __name__ == "__main__":
     main()
