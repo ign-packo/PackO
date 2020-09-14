@@ -5,15 +5,16 @@ const path = require('path');
 const fs = require('fs');
 
 const validateParams = require('../paramValidation/validateParams');
+const createErrMsg = require('../paramValidation/createErrMsg');
 
 // Dossier contenant les differents fichiers
 const parentDir = `${global.dir_cache}`;
 
 router.get('/json/:typefile', [
   param('typefile')
-    .exists().withMessage(' le type de fichier est requis')
+    .exists().withMessage(createErrMsg.missingParameter('typefile'))
     .isIn(['ortho', 'graph', 'opi', 'test'])
-    .withMessage('type de fichier incorrect'),
+    .withMessage(createErrMsg.invalidParameter('typefile')),
 ], validateParams,
 (req, res) => {
   debug('~~~getJson~~~');
@@ -27,12 +28,12 @@ router.get('/json/:typefile', [
       const err = new Error();
       err.code = 404;
       err.msg = {
-        status: "Le fichier demandé n'existe pas",
+        status: createErrMsg.missingFile(`${typefile}.json`),
         errors: [{
           localisation: 'GET /json/{filetype}',
           param: 'filetype',
           value: `${typefile}`,
-          msg: "Le fichier demandé n'existe pas",
+          msg: createErrMsg.missingFile(`${typefile}.json`),
         }],
       };
       throw err;

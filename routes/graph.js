@@ -10,32 +10,33 @@ const PImage = require('pureimage');
 const GJV = require('geojson-validation');
 const validateParams = require('../paramValidation/validateParams');
 const validator = require('../paramValidation/validator');
+const createErrMsg = require('../paramValidation/createErrMsg');
 
 const geoJsonAPatcher = [
   body('geoJSON')
-    .exists().withMessage('Un body non vide est requis.')
+    .exists().withMessage(createErrMsg.missingBody)
     .custom(GJV.isGeoJSONObject)
-    .withMessage("le body n'est pas un objet GeoJSON.")
+    .withMessage(createErrMsg.invalidBody('objet GeoJSON'))
     .custom(GJV.isFeatureCollection)
-    .withMessage("le body n'est pas une featureCollection."),
+    .withMessage(createErrMsg.invalidBody('featureCollection')),
   body('geoJSON.type')
-    .exists().withMessage("Le parametre 'type' est requis")
+    .exists().withMessage(createErrMsg.missingParameter('type'))
     .isIn(['FeatureCollection'])
-    .withMessage("Le parametre 'type' est invalide"),
+    .withMessage(createErrMsg.invalidParameter('type')),
   body('geoJSON.crs')
-    .exists().withMessage("Le parametre 'crs' est requis")
+    .exists().withMessage(createErrMsg.missingParameter('crs'))
     .custom(validator.isCrs)
-    .withMessage("Le parametre 'crs' est invalide"),
+    .withMessage(createErrMsg.invalidParameter('crs')),
   body('geoJSON.features.*.geometry')
-    .custom(GJV.isPolygon).withMessage("Le parametre 'geometry' n'est pas un polygon valide."),
+    .custom(GJV.isPolygon).withMessage(createErrMsg.InvalidEntite('geometry', 'polygon')),
   body('geoJSON.features.*.properties.color')
-    .exists().withMessage("une Properties 'color' est requis")
+    .exists().withMessage(createErrMsg.missingParameter('properties.color'))
     .custom(validator.isColor)
-    .withMessage("Le parametre 'properties.color' est invalide"),
+    .withMessage(createErrMsg.invalidParameter('properties.color')),
   body('geoJSON.features.*.properties.cliche')
-    .exists().withMessage("une Properties 'cliche' est requis")
-    .matches(/^[a-zA-Z0-9_]+$/i)// Faut il etre plus spécifique ?
-    .withMessage("Le parametre 'properties.cliche' est invalide"),
+    .exists().withMessage(createErrMsg.missingParameter('properties.cliche'))
+    .matches(/^[a-zA-Z0-9-_]+$/i)
+    .withMessage(createErrMsg.invalidParameter('properties.cliche')),
 ];
 
 // Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
@@ -59,7 +60,6 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   const X0 = 0;
   const Y0 = 12000000;
   const R = 0.05;
-  // const geoJson = req.body;
   const geoJson = params.geoJSON;
   const promises = [];
 
@@ -69,10 +69,9 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   debug(geoJson.features);
   debug(geoJson.features[0].geometry.coordinates);
   debug(geoJson.features[0].properties.color);
-  // Version JS
-  // BBox du patch
-  const BBox = {};
 
+  // BBox du polygone a patcher
+  const BBox = {};
   try {
     geoJson.features.forEach((feature) => {
       feature.geometry.coordinates[0].forEach((point) => {
@@ -89,10 +88,10 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     });
     debug('BBox:');
     debug(BBox);
+
     // List of all tiles
     const tiles = [];
     let resolution = R;
-
     const errors = [];
 
     for (let z = 21; z >= 10; z -= 1) {
@@ -110,7 +109,7 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
           const pathOrtho = path.join(global.dir_cache, `${z}`, `${y}`, `${x}`, 'ortho.png');
           const pathOpi = path.join(global.dir_cache, `${z}`, `${y}`, `${x}`, `${geoJson.features[0].properties.cliche}.png`);
           if (!fs.existsSync(pathGraph) || !fs.existsSync(pathOrtho) || !fs.existsSync(pathOpi)) {
-            errors.push(`one or more missing file in ${path.join(global.dir_cache, `${z}`, `${y}`, `${x}`)}`);
+            errors.push(`${path.join(global.dir_cache, `${z}`, `${y}`, `${x}`)}`);
           }
         }
       }
@@ -122,7 +121,13 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
       debugPatch(errors);
       const err = new Error();
       err.code = 404;
-      err.msg = errors;
+      err.msg = {
+        status: 'Fichier(s) absent(s)',
+        errors: [{
+          param: 'graph.png, ortho.png et/ou {nomCliche}.png',
+          localisation: errors,
+        }],
+      };
       throw err;
     }
 
@@ -157,13 +162,6 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         ctx.closePath();
         ctx.fill();
       });
-
-      // const out_mask = `mask_${tile.x}_${tile.y}_${tile.z}.png`;
-      // PImage.encodePNGToStream(mask, fs.createWriteStream(out_mask)).then(() => {
-      //   console.log("wrote out the png file to "+out_mask);
-      // }).catch((e)=>{
-      //   console.log("there was an error writing");
-      // });
 
       // // On patch le graph
       /* eslint-disable no-param-reassign */
@@ -212,7 +210,6 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         err.code = 500;
         err.msg = err;
         throw err;
-        // res.status(500).send(err);
       });
   } catch (err) {
     res.status(err.code).send(err.msg);
@@ -221,13 +218,13 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 
 router.get('/graph', [
   query('x')
-    .exists().withMessage('le parametre x est requis')
+    .exists().withMessage(createErrMsg.missingParameter('x'))
     .matches(/^\d+(.\d+)?$/i)
-    .withMessage("Le parametre 'x' est invalide"),
+    .withMessage(createErrMsg.invalidParameter('x')),
   query('y')
-    .exists().withMessage('le parametre y est requis')
+    .exists().withMessage(createErrMsg.missingParameter('y'))
     .matches(/^\d+(.\d+)?$/i)
-    .withMessage("Le parametre 'y' est invalide"),
+    .withMessage(createErrMsg.invalidParameter('y')),
 ], validateParams,
 (req, res) => {
   const params = matchedData(req);
@@ -248,32 +245,35 @@ router.get('/graph', [
   const J = Math.floor(Py - Ty * 256);
 
   const url = path.join(global.dir_cache, '21', `${Ty}`, `${Tx}`, 'graph.png');
-
-  jimp.read(url, (err, image) => {
-    if (err) {
-      res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
-    } else {
-      const index = image.getPixelIndex(I, J);
-      debug('index: ', index);
-      debug(image.bitmap.data[index], image.bitmap.data[index + 1], image.bitmap.data[index + 2]);
-      const out = {
-        color: [
-          image.bitmap.data[index],
-          image.bitmap.data[index + 1],
-          image.bitmap.data[index + 2]],
-      };
-      debug(req.app.cache_mtd);
-      if ((out.color[0] in req.app.cache_mtd)
-          && (out.color[1] in req.app.cache_mtd[out.color[0]])
-          && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-        out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+  if (!fs.existsSync(url)) {
+    res.status(200).send('{"color":[0,0,0], "cliche":"out of borders"}');
+  } else {
+    jimp.read(url, (err, image) => {
+      if (err) {
+        res.status(500).send('Erreur, jimp.read');
       } else {
-        out.cliche = 'not found';
+        const index = image.getPixelIndex(I, J);
+        debug('index: ', index);
+        debug(image.bitmap.data[index], image.bitmap.data[index + 1], image.bitmap.data[index + 2]);
+        const out = {
+          color: [
+            image.bitmap.data[index],
+            image.bitmap.data[index + 1],
+            image.bitmap.data[index + 2]],
+        };
+        debug(req.app.cache_mtd);
+        if ((out.color[0] in req.app.cache_mtd)
+            && (out.color[1] in req.app.cache_mtd[out.color[0]])
+            && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
+          out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+        } else {
+          out.cliche = 'missing';
+        }
+        debug(JSON.stringify(out));
+        res.status(200).send(JSON.stringify(out));
       }
-      debug(JSON.stringify(out));
-      res.status(200).send(JSON.stringify(out));
-    }
-  });
+    });
+  }
 });
 
 module.exports = router;
