@@ -36,8 +36,9 @@ app.use(cors());
 app.use(bodyParser.json());
 
 app.use((req, res, next) => {
-  debugServer(req.method, ' ', req.path, ' ', req.body);
-  debugServer(`received at ${Date.now()}`);
+  debugServer(req.method, ' ', req.path, ' ', req.query.REQUEST || '');
+  debugServer(req.query);
+  // debugServer(`received at ${Date.now()}`);
   next();
 });
 
