@@ -36,28 +36,28 @@ describe('Validator', () => {
   });
 
   describe('isColor', () => {
-    describe("color='[234, 125, 589]' (wrong format)", () => {
+    describe("color = '[234, 125, 589]' (wrong format)", () => {
       it("should return 'false'", (done) => {
         const color = '[234, 125, 589]';
         validator.isColor(color).should.be.a('boolean').equal(false);
         done();
       });
     });
-    describe('color: [234, 125, 589] (value > 255)', () => {
+    describe('color = [234, 125, 589] (value > 255)', () => {
       it("should return 'false'", (done) => {
         const color = [234, 125, 589];
         validator.isColor(color).should.be.a('boolean').equal(false);
         done();
       });
     });
-    describe('color: [234, 125] (missing a value)', () => {
+    describe('color = [234, 125] (missing a value)', () => {
       it("should return 'false'", (done) => {
         const color = [234, 125];
         validator.isColor(color).should.be.a('boolean').equal(false);
         done();
       });
     });
-    describe("color: ['234', 0, 185]", () => {
+    describe("color = ['234', 0, 185]", () => {
       it("should return 'true'", (done) => {
         const color = ['234', 0, 185];
         validator.isColor(color).should.be.a('boolean').equal(true);
