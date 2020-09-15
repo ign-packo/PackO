@@ -127,7 +127,7 @@ describe('Wmts', () => {
       chai.request(server)
         .get('/wmts')
         .query({
-          REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 21, TILEROW: 409395, TILECOL: 18027, I: 10, J: 10, FORMAT: 'image/jpeg', LAYER: 'ortho', STYLE: 'normal',
+          REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 21, TILEROW: 409395, TILECOL: 18027, I: 10, J: 10, INFOFORMAT: 'application/gml xml; version=3.1', LAYER: 'ortho', STYLE: 'normal',
         })
         .end((err, res) => {
           should.not.exist(err);
