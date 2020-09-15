@@ -30,31 +30,31 @@ describe('Wmts', () => {
     done();
   });
 
-  describe('GET /wmts?SERVICE=WRONG&REQUEST=GetCapabilities', () => {
+  describe('GET /wmts?SERVICE=OTHER&REQUEST=GetCapabilities', () => {
     it('should return an error', (done) => {
       chai.request(server)
         .get('/wmts')
-        .query({ REQUEST: 'GetCapabilities', SERVICE: 'WRONG', VERSION: '1.0.0' })
+        .query({ REQUEST: 'GetCapabilities', SERVICE: 'OTHER', VERSION: '1.0.0' })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(400);
           const resJson = JSON.parse(res.text);
-          resJson.should.have.property('status').equal("SERVICE 'WRONG' not supported");
+          resJson.should.have.property('status').equal("SERVICE 'OTHER' non supporté");
           done();
         });
     });
   });
 
-  describe('GET /wmts?SERVICE=WMTS&REQUEST=Wrong', () => {
+  describe('GET /wmts?SERVICE=WMTS&REQUEST=Other', () => {
     it('should return an error', (done) => {
       chai.request(server)
         .get('/wmts')
-        .query({ REQUEST: 'Wrong', SERVICE: 'WMTS', VERSION: '1.0.0' })
+        .query({ REQUEST: 'Other', SERVICE: 'WMTS', VERSION: '1.0.0' })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(400);
           const resJson = JSON.parse(res.text);
-          resJson.should.have.property('status').equal("REQUEST 'Wrong' not supported");
+          resJson.should.have.property('status').equal("REQUEST 'Other' non supporté");
           done();
         });
     });
@@ -86,7 +86,7 @@ describe('Wmts', () => {
           should.not.exist(err);
           res.should.have.status(400);
           const resJson = JSON.parse(res.text);
-          resJson.should.have.property('status').equal('format image/autre not supported');
+          resJson.should.have.property('status').equal("FORMAT 'image/autre' non supporté");
           done();
         });
     });
@@ -123,11 +123,11 @@ describe('Wmts', () => {
   });
 
   describe('GetFeatureInfo', () => {
-    it("should return a Json contening 'color' and 'cliche' (different de 'unknown')", (done) => {
+    it('should return a Json { "color": Array, "cliche": !unknown }', (done) => {
       chai.request(server)
         .get('/wmts')
         .query({
-          REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIX: 21, TILEROW: 409395, TILECOL: 18027, I: 10, J: 10,
+          REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 21, TILEROW: 409395, TILECOL: 18027, I: 10, J: 10, FORMAT: 'image/jpeg', LAYER: 'ortho', STYLE: 'normal',
         })
         .end((err, res) => {
           should.not.exist(err);

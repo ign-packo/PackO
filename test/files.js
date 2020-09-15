@@ -36,7 +36,7 @@ describe('Files', () => {
             res.should.be.a('object');
             res.should.have.status(404);
             res.body.should.be.a('object');
-            res.body.should.have.property('status').equal("Le fichier demandé n'existe pas");
+            res.body.should.have.property('status').equal("Le fichier demandé (test.json) n'existe pas");
 
             done();
           });
