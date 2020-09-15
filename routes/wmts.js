@@ -28,9 +28,10 @@ router.get('/wmts',
       .matches(/^\d+(.\d+)*$/i).withMessage(createErrMsg.invalidParameter('VERSION')),
     query('LAYER').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('LAYER')),
     query('STYLE').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('STYLE')),
-    query('FORMAT').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('FORMAT'))
+    query('FORMAT').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage(createErrMsg.missingParameter('FORMAT'))
       .isIn(['image/png', 'image/jpeg'])
       .withMessage((FORMAT) => (`FORMAT '${FORMAT}' non supporté`)),
+    query('INFOFORMAT').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('INFOFORMAT')),
     query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIXSET')),
     query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIX')),
     query('TILEROW').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEROW')),
