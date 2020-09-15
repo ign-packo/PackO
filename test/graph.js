@@ -31,7 +31,7 @@ describe('Graph', () => {
   });
 
   describe('GET /graph', () => {
-    describe('query : x=0 & y=0', () => {
+    describe('query: x=0 & y=0', () => {
       it("should return a 'out of borders'", (done) => {
         chai.request(server)
           .get('/graph')
@@ -48,7 +48,7 @@ describe('Graph', () => {
           });
       });
     });
-    describe('query : x=230752.8 & y=6759737.1', () => {
+    describe('query: x=230752.8 & y=6759737.1', () => {
       it("should return a Json contening 'color' and 'cliche' (different de 'unknown')", (done) => {
         chai.request(server)
           .get('/graph')
@@ -67,7 +67,7 @@ describe('Graph', () => {
   });
 
   describe('POST /graph/patch', () => {
-    describe('body : {}', () => {
+    describe('body: {}', () => {
       it('should return an error', (done) => {
         chai.request(server)
           .post('/graph/patch')
@@ -79,7 +79,7 @@ describe('Graph', () => {
       });
     });
 
-    describe('body : polygon geoJson', () => {
+    describe('body: polygon geoJson', () => {
       it('should apply the patch and return the liste of tiles impacted', (done) => {
         chai.request(server)
           .post('/graph/patch')
@@ -103,7 +103,7 @@ describe('Graph', () => {
           });
       });
 
-      it('should get an error : missing data', (done) => {
+      it('should get an error: missing data', (done) => {
         chai.request(server)
           .post('/graph/patch')
           .send({
