@@ -53,8 +53,7 @@ router.get('/wmts', [
   if (REQUEST === 'GetCapabilities') {
     debug('~~~GetCapabilities');
     res.type('application/xml');
-    // debug(__dirname)
-    res.sendFile('Capabilities_formatted.xml', { root: path.join(global.dir_cache) });
+    res.sendFile('Capabilities.xml', { root: path.join(global.dir_cache) });
 
     // GetTile
   } else if (REQUEST === 'GetTile') {
@@ -114,22 +113,22 @@ router.get('/wmts', [
         // res.sendFile('FeatureInfo.xml', { root: path.join('cache') });
         // res.status(200).send(JSON.stringify(out));
 
-        const testResponse = `<?xml version="1.0" encoding="UTF-8"?>
-                              <ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"
-                                                        xmlns:gml="http://www.opengis.net/gml"
-                                                        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                                                         xsi:schemaLocation="http://www.maps.bob/etopo2  GetFeatureInfoExampleSchema.xsd">
-                                <featureMember>
-                                  <${LAYER}>
-                                    <ortho>${out.cliche}</ortho>
-                                    <graph>${out.color}</graph>
-                                    <TileRow>${TILEROW}</TileRow>
-                                    <TileCol>${TILECOL}</TileCol>
-                                    <J>${J}</J>
-                                    <I>${I}</I>
-                                  </${LAYER}>
-                                </featureMember>
-                              </ReguralGriddedElevations>`;
+        const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
+                           + '<ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"'
+                                                    + ' xmlns:gml="http://www.opengis.net/gml"'
+                                                    + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+                                                    + ' xsi:schemaLocation="http://www.maps.bob/etopo2  GetFeatureInfoExampleSchema.xsd">'
+                             + '<featureMember>'
+                               + `<${LAYER}>`
+                                 + `<ortho>${out.cliche}</ortho>`
+                                 + `<graph>${out.color}</graph>`
+                                 + `<TileRow>${TILEROW}</TileRow>`
+                                 + `<TileCol>${TILECOL}</TileCol>`
+                                 + `<J>${J}</J>`
+                                 + `<I>${I}</I>`
+                               + `</${LAYER}>`
+                             + '</featureMember>'
+                           + '</ReguralGriddedElevations>';
         res.status(200).send(testResponse);
       }
     });
