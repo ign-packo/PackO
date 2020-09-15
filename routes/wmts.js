@@ -7,6 +7,7 @@ const Jimp = require('jimp');
 const path = require('path');
 
 const validateParams = require('../paramValidation/validateParams');
+const createErrMsg = require('../paramValidation/createErrMsg');
 
 router.get('/wmts',
   (req, res, next) => {
@@ -15,27 +16,27 @@ router.get('/wmts',
     next();
   }, [
     query('SERVICE')
-      .exists().withMessage('le parametre SERVICE est requis')
+      .exists().withMessage(createErrMsg.missingParameter('SERVICE'))
       .isIn(['WMTS', 'WMS'])
-      .withMessage((SERVICE) => (`SERVICE '${SERVICE}' not supported`)),
+      .withMessage((SERVICE) => (`SERVICE '${SERVICE}' non supporté`)),
     query('REQUEST')
-      .exists().withMessage('le parametre REQUEST est requis')
+      .exists().withMessage(createErrMsg.missingParameter('REQUEST'))
       .isIn(['GetCapabilities', 'GetTile', 'GetFeatureInfo'])
-      .withMessage((REQUEST) => (`REQUEST '${REQUEST}' not supported`)),
+      .withMessage((REQUEST) => (`REQUEST '${REQUEST}' non supporté`)),
     query('VERSION')
       .optional()
-      .matches(/^\d+(.\d+)*$/i).withMessage('VERSION'),
-    query('LAYER').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre LAYER est requis'),
-    query('STYLE').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre STYLE est requis'),
-    query('FORMAT').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre FORMAT est requis')
+      .matches(/^\d+(.\d+)*$/i).withMessage(createErrMsg.invalidParameter('VERSION')),
+    query('LAYER').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('LAYER')),
+    query('STYLE').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('STYLE')),
+    query('FORMAT').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('FORMAT'))
       .isIn(['image/png', 'image/jpeg'])
-      .withMessage((FORMAT) => (`format ${FORMAT} not supported`)),
-    query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILEMATRIXSET est requis'),
-    query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILEMATRIX est requis'),
-    query('TILEROW').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILEROW est requis'),
-    query('TILECOL').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILECOL est requis'),
-    query('I').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage('le parametre I est requis'),
-    query('J').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage('le parametre J est requis'),
+      .withMessage((FORMAT) => (`FORMAT ${FORMAT} non supporté`)),
+    query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIXSET')),
+    query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIX')),
+    query('TILEROW').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEROW')),
+    query('TILECOL').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILECOL')),
+    query('I').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('I')),
+    query('J').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('J')),
   ], validateParams,
   (req, res) => {
     const params = matchedData(req);

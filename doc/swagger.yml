@@ -42,7 +42,7 @@ paths:
                   features:
                     type: object
                     example:
-                      [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [ [ [ 230804.890625, 6759563 ], [ 230766.015625, 6759562.5 ], [ 230766.46875, 6759533.5 ], [ 230805.34375, 6759532.5 ], [ 230804.890625, 6759563 ] ] ]} } ]
+                      [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [[[230748, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230748, 6759736]]] } } ]
 
       responses:
         '200':
@@ -105,19 +105,19 @@ paths:
             pattern: '^\d+(.\d+)*$'
         - in: query
           name: LAYER
-          description: required if GetTile
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
         - in: query
           name: STYLE
-          description: required if GetTile
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
         - in: query
           name: FORMAT
-          description: required if GetTile
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
@@ -126,25 +126,25 @@ paths:
               - image/jpeg
         - in: query
           name: TILEMATRIXSET
-          description: required if GetTile
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
         - in: query
           name: TILEMATRIX
-          description: required if GetTile
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
         - in: query
           name: TILEROW
-          description: required if GetTile
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
         - in: query
           name: TILECOL
-          description: required if GetTile
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
@@ -175,8 +175,8 @@ paths:
     get:
       tags:
         - files
-      summary: "Récupération des fichiers json"
-      description: ""
+      summary: "Récupération des fichiers json pour iTowns"
+      description: "Route permettant la récupération des 3 fichiers json ncessaires à l'execution de la partie iTowns"
       parameters:
         - in: path
           name: filetype
