@@ -5,25 +5,6 @@ chai.use(require('chai-json-schema'));
 const should = chai.should();
 const server = require('..');
 
-const schema = {
-  title: 'test',
-  type: 'object',
-  required: ['color', 'cliche'],
-  properties: {
-    color: {
-      type: 'array',
-      minItems: 3,
-      maxItems: 3,
-      items: {
-        type: 'integer',
-      },
-    },
-    cliche: {
-      type: 'string',
-    },
-  },
-};
-
 describe('Wmts', () => {
   after((done) => {
     server.close();
@@ -123,7 +104,7 @@ describe('Wmts', () => {
   });
 
   describe('GetFeatureInfo', () => {
-    it('should return a Json { "color": Array(3), "cliche": !unknown }', (done) => {
+    it('should return a xml', (done) => {
       chai.request(server)
         .get('/wmts')
         .query({
@@ -132,10 +113,8 @@ describe('Wmts', () => {
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
-          const resJson = JSON.parse(res.text);
+          res.type.should.be.a('string').equal('text/html');
 
-          resJson.should.be.jsonSchema(schema);
-          resJson.should.have.property('cliche').not.equal('unknown');
           done();
         });
     });
