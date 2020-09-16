@@ -273,6 +273,10 @@ def update_capabilities_and_json(cache, xml, url, layers):
             tms['TileMatrixSetLimits']['TileMatrixLimits'].append(T)
         # print(tms)
         layer = {'ows:Title' : layer['name'], 'ows:Identifier': layer['name'], 'Format': 'image/png'}
+
+        if layer['name'] in ['ortho', 'graph'] :
+            layer['InfoFormat'] = 'application/gml+xml; version=3.1'
+
         layer['TileMatrixSetLink'] = tms
         capabilities_layers.append(layer)
         # , 'TileMatrixSetLink': tms})
