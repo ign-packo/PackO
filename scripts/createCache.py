@@ -237,6 +237,7 @@ def export_tile_limits(cache, prefix):
     return tile_matrix_set_limits
 
 def update_capabilities_and_json(cache, xml, url, layers):
+    print("~~~~update_capabilities_and_json")
     tree = ET.parse(xml)
     capabilities = etree_to_dict(tree.getroot())
     # remise a zero des layers
@@ -274,12 +275,13 @@ def update_capabilities_and_json(cache, xml, url, layers):
         # print(tms)
         layer = {'ows:Title' : layer['name'], 'ows:Identifier': layer['name'], 'Format': 'image/png'}
 
-        if layer['name'] in ['ortho', 'graph'] :
+        if source['name'] in ['ortho', 'graph'] :
             layer['InfoFormat'] = 'application/gml+xml; version=3.1'
 
         layer['TileMatrixSetLink'] = tms
         capabilities_layers.append(layer)
         # , 'TileMatrixSetLink': tms})
+    print(capabilities_layers)
     # update API url
     operations=capabilities['{http://www.opengis.net/wmts/1.0}Capabilities']['{http://www.opengis.net/ows/1.1}OperationsMetadata']['{http://www.opengis.net/ows/1.1}Operation']
     for operation in operations:
