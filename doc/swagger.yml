@@ -135,7 +135,7 @@ paths:
           description: required if GetTile or GetFeatureInfo
           required: false
           schema:
-            type: integer
+            type: string
         - in: query
           name: TILEROW
           description: required if GetTile or GetFeatureInfo
