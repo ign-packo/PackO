@@ -98,7 +98,15 @@ router.get('/wmts',
 
       Jimp.read(url, (err, image) => {
         if (err) {
-          res.status(500).send('{"erreur": "Jimp.read"}');
+          const erreur = new Error();
+          erreur.msg = {
+            status: err,
+            errors: [{
+              localisation: 'Jimp.read()',
+              msg: err,
+            }],
+          };
+          res.status(500).send(erreur);
           // res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
         } else {
           const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));

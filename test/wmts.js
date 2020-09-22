@@ -123,7 +123,7 @@ describe('Wmts', () => {
   });
 
   describe('GetFeatureInfo', () => {
-    it('should return a Json { "color": Array, "cliche": !unknown }', (done) => {
+    it('should return a Json { "color": Array(3), "cliche": !unknown }', (done) => {
       chai.request(server)
         .get('/wmts')
         .query({

@@ -49,7 +49,7 @@ describe('Graph', () => {
       });
     });
     describe('query: x=230752.8 & y=6759737.1', () => {
-      it("should return a Json contening 'color' and 'cliche' (different de 'unknown')", (done) => {
+      it('should return a Json { "color": Array(3), "cliche": !unknown }', (done) => {
         chai.request(server)
           .get('/graph')
           .query({ x: 230752.8, y: 6759737.1 })

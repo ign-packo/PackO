@@ -135,31 +135,31 @@ paths:
           description: required if GetTile or GetFeatureInfo
           required: false
           schema:
-            type: string
+            type: integer
         - in: query
           name: TILEROW
           description: required if GetTile or GetFeatureInfo
           required: false
           schema:
-            type: string
+            type: integer
         - in: query
           name: TILECOL
           description: required if GetTile or GetFeatureInfo
           required: false
           schema:
-            type: string
+            type: integer
         - in: query
           name: I
           description: required if GetFeatureInfo
           required: false
           schema:
-            type: string
+            type: integer
         - in: query
           name: J
           description: required if GetFeatureInfo
           required: false
           schema:
-            type: string
+            type: integer
         - in: query
           name: INFOFORMAT
           description: required if GetFeatureInfo
@@ -176,7 +176,7 @@ paths:
       tags:
         - files
       summary: "Récupération des fichiers json pour iTowns"
-      description: "Route permettant la récupération des 3 fichiers json ncessaires à l'execution de la partie iTowns"
+      description: "Route permettant la récupération des 3 fichiers json nécessaires à l'exécution de la partie iTowns"
       parameters:
         - in: path
           name: filetype

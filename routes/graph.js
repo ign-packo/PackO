@@ -250,7 +250,15 @@ router.get('/graph', [
   } else {
     jimp.read(url, (err, image) => {
       if (err) {
-        res.status(500).send('Erreur, jimp.read');
+        const erreur = new Error();
+        erreur.msg = {
+          status: err,
+          errors: [{
+            localisation: 'Jimp.read()',
+            msg: err,
+          }],
+        };
+        res.status(500).send(erreur);
       } else {
         const index = image.getPixelIndex(I, J);
         debug('index: ', index);
