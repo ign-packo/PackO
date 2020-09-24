@@ -242,13 +242,36 @@ router.get('/patchs', [], (req, res) => {
   res.status(200).send(JSON.stringify(req.app.activePatchs));
 });
 
-router.put('/patchs/undo', [], (_req, res) => {
+router.put('/patchs/undo', [], (req, res) => {
+  debug('undo');
   // todo
-  // trouver le patch a annuler: c'est-à-dire sortir le premier élément
+  // trouver le patch a annuler: c'est-à-dire sortir le dernier élément
   // de req.app.activePatchs.features
-  // trouver la liste des tuiles concernées par ce patch
+  let lastPatchId = req.app.activePatchs.features[req.app.activePatchs.features.length - 1].properties.patchId;
+  debug('lastPatchId : ', lastPatchId);
+  let features = [];
+  req.app.activePatchs.features.forEach((feature) => {
+    if (feature.properties.patchId == lastPatchId) features.push(feature);
+  });
+  debug(features);
+  // trouver la liste des tuiles concernées par ces patchs
+  const tiles = getTiles(features, req.app.tileSet);
+  debug(tiles);
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
-  // modifier les liens symbolique pour pointer sur ce numéro de version
+  tiles.forEach((tile) => {
+    const tileDir = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/`;
+    const arrayGraphs = fs.readdirSync(tileDir).filter(fn => fn.startsWith('graph_'));
+    const arrayId = [];
+    arrayGraphs.forEach((name) => {
+      const id = parseInt(name.split(/[_.]/)[1], 10);
+      if (id != lastPatchId) arrayId.push(id);
+    });
+    const idToUsed = arrayId.sort()[arrayId.length-1];
+    debug(idToUsed);
+    // modifier les liens symbolique pour pointer sur ce numéro de version
+    
+  });
+  
   // insérer le patch annulé au début de req.app.unactivePatchs.features
   res.status(400).send('nothing to undo');
 });

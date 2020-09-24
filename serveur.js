@@ -22,6 +22,7 @@ const wmts = require('./routes/wmts.js');
 const graph = require('./routes/graph.js');
 const files = require('./routes/files.js');
 const patchs = require('./routes/patchs.js');
+// const { debug_list_of_fonts } = require('pureimage/src/text');
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
@@ -39,17 +40,14 @@ try {
   app.unactivePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/unactivePatchs.geojson`));
 
   // on trouve l'Id du prochain patch (max des Id + 1)
-  app.currentPatchId = 0;
-  app.activePatchs.features.forEach((feature) => {
-    if (feature.patchId >= app.currentPatchId) {
-      app.currentPatchId = feature.patchId + 1;
-    }
-  });
-  app.unactivePatchs.features.forEach((feature) => {
-    if (feature.patchId >= app.currentPatchId) {
-      app.currentPatchId = feature.patchId + 1;
-    }
-  });
+  app.currentPatchId = (app.activePatchs.features.length > 0) ? app.activePatchs.features[app.activePatchs.features.length - 1].properties.patchId + 1 : 0;
+  // app.unactivePatchs.features.forEach((feature) => {
+  //   if (feature.patchId >= app.currentPatchId) {
+  //     app.currentPatchId = feature.patchId + 1;
+  //   }
+  // });
+  debug.log('app.currentPatchId : ');
+  debug.log(app.currentPatchId);
 
   app.use(cors());
   app.use(bodyParser.json());
