@@ -7,6 +7,7 @@ const Jimp = require('jimp');
 const path = require('path');
 
 const validateParams = require('../paramValidation/validateParams');
+const createErrMsg = require('../paramValidation/createErrMsg');
 
 router.get('/wmts',
   (req, res, next) => {
@@ -15,25 +16,28 @@ router.get('/wmts',
     next();
   }, [
     query('SERVICE')
-      .exists().withMessage('le parametre SERVICE est requis')
+      .exists().withMessage(createErrMsg.missingParameter('SERVICE'))
       .isIn(['WMTS', 'WMS'])
-      .withMessage((SERVICE) => (`SERVICE '${SERVICE}' not supported`)),
+      .withMessage((SERVICE) => (`SERVICE '${SERVICE}' non supporté`)),
     query('REQUEST')
-      .exists().withMessage('le parametre REQUEST est requis')
+      .exists().withMessage(createErrMsg.missingParameter('REQUEST'))
       .isIn(['GetCapabilities', 'GetTile', 'GetFeatureInfo'])
-      .withMessage((REQUEST) => (`REQUEST '${REQUEST}' not supported`)),
+      .withMessage((REQUEST) => (`REQUEST '${REQUEST}' non supporté`)),
     query('VERSION')
       .optional()
-      .matches(/^\d+(.\d+)*$/i).withMessage('VERSION'),
-    query('LAYER').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre LAYER est requis'),
-    query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILEMATRIX est requis'),
-    query('TILEROW').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILEROW est requis'),
-    query('TILECOL').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre TILECOL est requis'),
-    query('FORMAT').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage('le parametre FORMAT est requis')
+      .matches(/^\d+(.\d+)*$/i).withMessage(createErrMsg.invalidParameter('VERSION')),
+    query('LAYER').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('LAYER')),
+    query('STYLE').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('STYLE')),
+    query('FORMAT').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage(createErrMsg.missingParameter('FORMAT'))
       .isIn(['image/png', 'image/jpeg'])
-      .withMessage((FORMAT) => (`format ${FORMAT} not supported`)),
-    query('I').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage('le parametre I est requis'),
-    query('J').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage('le parametre J est requis'),
+      .withMessage((FORMAT) => (`FORMAT '${FORMAT}' non supporté`)),
+    query('INFOFORMAT').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('INFOFORMAT')),
+    query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIXSET')),
+    query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIX')),
+    query('TILEROW').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEROW')),
+    query('TILECOL').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILECOL')),
+    query('I').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('I')),
+    query('J').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('J')),
   ], validateParams,
   (req, res) => {
     const params = matchedData(req);
@@ -90,10 +94,20 @@ router.get('/wmts',
     } else if (REQUEST === 'GetFeatureInfo') {
       debug('~~~GetFeatureInfo');
       debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-      const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${LAYER}.png`);
+      const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, 'graph.png');
+
       Jimp.read(url, (err, image) => {
         if (err) {
-          res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
+          const erreur = new Error();
+          erreur.msg = {
+            status: err,
+            errors: [{
+              localisation: 'Jimp.read()',
+              msg: err,
+            }],
+          };
+          res.status(500).send(erreur);
+          // res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
         } else {
           const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
           debugFeatureInfo('index: ', index);
@@ -104,12 +118,11 @@ router.get('/wmts',
           };
           debugFeatureInfo(out);
           if ((out.color[0] in req.app.cache_mtd)
-
           && (out.color[1] in req.app.cache_mtd[out.color[0]])
           && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
             out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
           } else {
-            out.cliche = 'unknown';
+            out.cliche = 'missing';
           }
           // res.sendFile('FeatureInfo.xml', { root: path.join('cache') });
           res.status(200).send(JSON.stringify(out));

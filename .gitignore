@@ -114,3 +114,6 @@ itowns/ortho.json
 ./Capabilities.xml
 ./Capabilities_part1.xml
 ./Capabilities_part2.xml
+
+#Ignore les xml dans le fichier cache_test
+cache_test/**/*.png.aux.xml

@@ -1,0 +1,1 @@
+{"id": "opi", "source": {"url": "http://localhost:8081/wmts", "projection": "EPSG:2154", "networkOptions": {"crossOrigin": "anonymous"}, "format": "image/png", "name": "19FD5606A", "tileMatrixSet": "LAMBB93", "tileMatrixSetLimits": {}}}

@@ -42,7 +42,7 @@ paths:
                   features:
                     type: object
                     example:
-                      [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [Array] } } ]
+                      [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [[[230748, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230748, 6759736]]] } } ]
 
       responses:
         '200':
@@ -104,18 +104,20 @@ paths:
             type: string
             pattern: '^\d+(.\d+)*$'
         - in: query
-          description: required if GetTile
           name: LAYER
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
         - in: query
           name: STYLE
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
         - in: query
           name: FORMAT
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
@@ -124,36 +126,43 @@ paths:
               - image/jpeg
         - in: query
           name: TILEMATRIXSET
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
         - in: query
           name: TILEMATRIX
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
         - in: query
           name: TILEROW
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
-            type: string
+            type: integer
         - in: query
           name: TILECOL
+          description: required if GetTile or GetFeatureInfo
           required: false
           schema:
-            type: string
+            type: integer
         - in: query
           name: I
+          description: required if GetFeatureInfo
           required: false
           schema:
-            type: string
+            type: integer
         - in: query
           name: J
+          description: required if GetFeatureInfo
           required: false
           schema:
-            type: string
+            type: integer
         - in: query
           name: INFOFORMAT
+          description: required if GetFeatureInfo
           required: false
           schema:
             type: string
@@ -166,8 +175,8 @@ paths:
     get:
       tags:
         - files
-      summary: "Récupération des fichiers json"
-      description: ""
+      summary: "Récupération des fichiers json pour iTowns"
+      description: "Route permettant la récupération des 3 fichiers json nécessaires à l'exécution de la partie iTowns"
       parameters:
         - in: path
           name: filetype
