@@ -21,7 +21,7 @@ debug.log(`using cache directory: ${global.dir_cache}`);
 const wmts = require('./routes/wmts.js');
 const graph = require('./routes/graph.js');
 const files = require('./routes/files.js');
-const patchs = require('./routes/patchs');
+const patchs = require('./routes/patchs.js');
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox

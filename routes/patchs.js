@@ -2,9 +2,55 @@ const debug = require('debug')('patchs');
 const router = require('express').Router();
 const fs = require('fs');
 const jimp = require('jimp');
+const { matchedData, query, body } = require('express-validator');
+const GJV = require('geojson-validation');
 const PImage = require('pureimage');
+const validator = require('../paramValidation/validator');
+const validateParams = require('../paramValidation/validateParams');
+const createErrMsg = require('../paramValidation/createErrMsg');
 
-function getTiles(features, tileSet) {
+const geoJsonAPatcher = [
+  body('geoJSON')
+    .exists().withMessage(createErrMsg.missingBody)
+    .custom(GJV.isGeoJSONObject)
+    .withMessage(createErrMsg.invalidBody('objet GeoJSON'))
+    .custom(GJV.isFeatureCollection)
+    .withMessage(createErrMsg.invalidBody('featureCollection')),
+  body('geoJSON.type')
+    .exists().withMessage(createErrMsg.missingParameter('type'))
+    .isIn(['FeatureCollection'])
+    .withMessage(createErrMsg.invalidParameter('type')),
+  body('geoJSON.crs')
+    .exists().withMessage(createErrMsg.missingParameter('crs'))
+    .custom(validator.isCrs)
+    .withMessage(createErrMsg.invalidParameter('crs')),
+  body('geoJSON.features.*.geometry')
+    .custom(GJV.isPolygon).withMessage(createErrMsg.InvalidEntite('geometry', 'polygon')),
+  body('geoJSON.features.*.properties.color')
+    .exists().withMessage(createErrMsg.missingParameter('properties.color'))
+    .custom(validator.isColor)
+    .withMessage(createErrMsg.invalidParameter('properties.color')),
+  body('geoJSON.features.*.properties.cliche')
+    .exists().withMessage(createErrMsg.missingParameter('properties.cliche'))
+    .matches(/^[a-zA-Z0-9-_]+$/i)
+    .withMessage(createErrMsg.invalidParameter('properties.cliche')),
+];
+
+// Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
+function encapBody(req, res, next) {
+  let keyName = 'body';
+  if (this.keyName) { keyName = this.keyName; }
+  if (JSON.stringify(req.body) !== '{}') {
+    const requestBodyKeys = Object.keys(req.body);
+    req.body[keyName] = JSON.parse(JSON.stringify(req.body));
+    for (let i = 0; i < requestBodyKeys.length; i += 1) {
+      delete req.body[requestBodyKeys[i]];
+    }
+  }
+  next();
+}
+
+function getTiles(features, overviews) {
   const BBox = {};
   features.forEach((feature) => {
     feature.geometry.coordinates[0].forEach((point) => {
@@ -20,17 +66,34 @@ function getTiles(features, tileSet) {
     });
   });
   debug('BBox: ', BBox);
+
   const tiles = [];
-  tileSet.forEach((level) => {
-    const x0 = Math.floor((BBox.xmin - level.x0) / (level.resolution * 256));
-    const x1 = Math.ceil((BBox.xmax - level.x0) / (level.resolution * 256));
-    const y0 = Math.floor((level.y0 - BBox.ymax) / (level.resolution * 256));
-    const y1 = Math.ceil((level.y0 - BBox.ymin) / (level.resolution * 256));
+
+  const lvlMin = overviews.resolution.min;
+  const lvlMax = overviews.resolution.max;
+  const xOrigin = overviews.crs.boundingBox.xmin;
+  const yOrigin = overviews.crs.boundingBox.ymax;
+  const Rmax = overviews.resolution;
+  const tileWidth = overviews.tileSize.width;
+  const tileHeight = overviews.tileSize.height;
+
+  // tileSet.forEach((level) => {
+  Array.from({ length: lvlMax - lvlMin }, (_, i) => i + lvlMin).forEach((level) => {
+    const resolution = Rmax * 2 ** (lvlMax - level);
+    const x0 = Math.floor((BBox.xmin - xOrigin) / (resolution * tileWidth));
+    const x1 = Math.ceil((BBox.xmax - xOrigin) / (resolution * tileWidth));
+    const y0 = Math.floor((yOrigin - BBox.ymax) / (resolution * tileHeight));
+    const y1 = Math.ceil((yOrigin - BBox.ymin) / (resolution * tileHeight));
     for (let y = y0; y < y1; y += 1) {
       for (let x = x0; x < x1; x += 1) {
-        const aTile = { ...level };
-        aTile.x = x;
-        aTile.y = y;
+        // const aTile = { ...level };
+        const aTile = {
+          x,
+          y,
+          z: level,
+        };
+        // aTile.x = x;
+        // aTile.y = y;
         tiles.push(aTile);
       }
     }
@@ -38,23 +101,34 @@ function getTiles(features, tileSet) {
   return tiles;
 }
 
-router.post('/patch', (req, res) => {
-  const geoJson = req.body;
+router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
+  ...geoJsonAPatcher,
+], validateParams, (req, res) => {
+  debug('patch');
+
+  const { overviews } = req.app;
+  const params = matchedData(req);
+  const geoJson = params.geoJSON;
   const promises = [];
-  // todo: valider la structure geoJson et les propriétés nécessaires (color/cliche)
-  if (!('features' in geoJson)) {
-    res.status(500).send('geoJson not valid');
-    return;
-  }
+
+  const xOrigin = overviews.crs.boundingBox.xmin;
+  const yOrigin = overviews.crs.boundingBox.ymax;
+  const Rmax = overviews.resolution;
+  const lvlMax = overviews.level.max;
+  const tileWidth = overviews.tileSize.width;
+  const tileHeight = overviews.tileSize.height;
+
   debug('GeoJson: ', geoJson);
   debug('Features: ', geoJson.features);
-  const tiles = getTiles(geoJson.features, req.app.tileSet);
+  const tiles = getTiles(geoJson.features, overviews);
   debug(tiles);
   // Patch these tiles
   const errors = [];
   tiles.forEach((tile) => {
     // Patch du graph
     debug(tile);
+
+    const resolution = Rmax * 2 ** (lvlMax - tile.z);
     const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
     const urlOrtho = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
 
@@ -67,7 +141,7 @@ router.post('/patch', (req, res) => {
       debug('ERROR');
       return;
     }
-    const mask = PImage.make(256, 256);
+    const mask = PImage.make(tileWidth, tileHeight);
     const ctx = mask.getContext('2d');
     geoJson.features.forEach((feature) => {
       debug(feature.properties.color);
@@ -76,10 +150,10 @@ router.post('/patch', (req, res) => {
       let first = true;
       /* eslint-disable no-restricted-syntax */
       for (const point of feature.geometry.coordinates[0]) {
-        const i = Math.round((point[0] - tile.x0 - tile.x * 256 * tile.resolution)
-            / tile.resolution);
-        const j = Math.round((tile.y0 - point[1] - tile.y * 256 * tile.resolution)
-            / tile.resolution);
+        const i = Math.round((point[0] - xOrigin - tile.x * tileWidth * resolution)
+            / resolution);
+        const j = Math.round((yOrigin - point[1] - tile.y * tileHeight * resolution)
+            / resolution);
         debug(i, j);
         if (first) {
           first = false;
@@ -147,7 +221,10 @@ router.post('/patch', (req, res) => {
       feature.properties.patchId = req.app.currentPatchId;
     });
     // on ajoute ce patch à l'historique
-    req.app.activePatchs.features.push(geoJson.features);
+    debug('ici');
+    debug(req.app.activePatchs.features.length);
+    req.app.activePatchs.features = req.app.activePatchs.features.concat(geoJson.features);
+    debug(req.app.activePatchs.features.length);
     req.app.currentPatchId += 1;
     // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
     req.app.unactivePatchs.features = [];
