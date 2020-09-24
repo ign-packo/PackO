@@ -20,7 +20,7 @@ debug.log(`using cache directory: ${global.dir_cache}`);
 const wmts = require('./routes/wmts.js');
 const graph = require('./routes/graph.js');
 const files = require('./routes/files.js');
-const patchs = require('./routes/patchs');
+const patchs = require('./routes/patchs.js');
 
 app.cache_mtd = JSON.parse(fs.readFileSync(`${global.dir_cache}/cache_mtd.json`));
 // app.cacheRoot = argv.cache ? argv.cache : 'cache';

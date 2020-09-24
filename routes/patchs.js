@@ -2,7 +2,55 @@ const debug = require('debug')('patchs');
 const router = require('express').Router();
 const fs = require('fs');
 const jimp = require('jimp');
+const { matchedData, query, body } = require('express-validator');
+const GJV = require('geojson-validation');
+const validator = require('../paramValidation/validator');
+const validateParams = require('../paramValidation/validateParams');
+const createErrMsg = require('../paramValidation/createErrMsg');
 const PImage = require('pureimage');
+
+
+
+const geoJsonAPatcher = [
+  body('geoJSON')
+    .exists().withMessage(createErrMsg.missingBody)
+    .custom(GJV.isGeoJSONObject)
+    .withMessage(createErrMsg.invalidBody('objet GeoJSON'))
+    .custom(GJV.isFeatureCollection)
+    .withMessage(createErrMsg.invalidBody('featureCollection')),
+  body('geoJSON.type')
+    .exists().withMessage(createErrMsg.missingParameter('type'))
+    .isIn(['FeatureCollection'])
+    .withMessage(createErrMsg.invalidParameter('type')),
+  body('geoJSON.crs')
+    .exists().withMessage(createErrMsg.missingParameter('crs'))
+    .custom(validator.isCrs)
+    .withMessage(createErrMsg.invalidParameter('crs')),
+  body('geoJSON.features.*.geometry')
+    .custom(GJV.isPolygon).withMessage(createErrMsg.InvalidEntite('geometry', 'polygon')),
+  body('geoJSON.features.*.properties.color')
+    .exists().withMessage(createErrMsg.missingParameter('properties.color'))
+    .custom(validator.isColor)
+    .withMessage(createErrMsg.invalidParameter('properties.color')),
+  body('geoJSON.features.*.properties.cliche')
+    .exists().withMessage(createErrMsg.missingParameter('properties.cliche'))
+    .matches(/^[a-zA-Z0-9-_]+$/i)
+    .withMessage(createErrMsg.invalidParameter('properties.cliche')),
+];
+
+// Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
+function encapBody(req, res, next) {
+  let keyName = 'body';
+  if (this.keyName) { keyName = this.keyName; }
+  if (JSON.stringify(req.body) !== '{}') {
+    const requestBodyKeys = Object.keys(req.body);
+    req.body[keyName] = JSON.parse(JSON.stringify(req.body));
+    for (let i = 0; i < requestBodyKeys.length; i += 1) {
+      delete req.body[requestBodyKeys[i]];
+    }
+  }
+  next();
+}
 
 function getTiles(features, tileSet) {
   const BBox = {};
@@ -38,11 +86,17 @@ function getTiles(features, tileSet) {
   return tiles;
 }
 
-router.post('/patch', (req, res) => {
-  const geoJson = req.body;
+router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
+  ...geoJsonAPatcher,
+], validateParams, (req, res) => {
+  debug('patch');
+// router.post('/patch', (req, res) => {
+  const geoJson = req.body.geoJSON;
   const promises = [];
+  debug(geoJson);
   // todo: valider la structure geoJson et les propriétés nécessaires (color/cliche)
   if (!('features' in geoJson)) {
+    debug('ici')
     res.status(500).send('geoJson not valid');
     return;
   }
@@ -147,7 +201,10 @@ router.post('/patch', (req, res) => {
       feature.properties.patchId = req.app.currentPatchId;
     });
     // on ajoute ce patch à l'historique
-    req.app.activePatchs.features.push(geoJson.features);
+    debug('ici');
+    debug(req.app.activePatchs.features.length);
+    req.app.activePatchs.features = req.app.activePatchs.features.concat(geoJson.features);
+    debug(req.app.activePatchs.features.length);
     req.app.currentPatchId += 1;
     // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
     req.app.unactivePatchs.features = [];
