@@ -18,6 +18,7 @@ const app = express();
 global.dir_cache = argv.cache ? argv.cache : 'cache';
 debug.log(`using cache directory: ${global.dir_cache}`);
 
+// const { debug_list_of_fonts } = require('pureimage/src/text');
 const wmts = require('./routes/wmts.js');
 const graph = require('./routes/graph.js');
 const files = require('./routes/files.js');
