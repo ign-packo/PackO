@@ -14,12 +14,13 @@ from collections import defaultdict
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--cache", help="cache directory (default: cache)", type=str, default="cache")
 # parser.add_argument("-x", "--xml", help="input GetCapabilities.xml (default: cache/Capabilities.xml)", type=str, default="cache/Capabilities.xml")
+parser.add_argument("-o", "--overviews", help="params for the mosaic (default: LAMB93_5cm.json)", type=str, default="LAMB93_5cm.json")
 parser.add_argument("-t", "--table", help="graph table (default: graphe_pcrs56_zone_test)", type=str, default="graphe_pcrs56_zone_test")
 parser.add_argument("-i", "--input", required=True, help="input OPI pattern")
 parser.add_argument("-p", "--prefix", required=True, help="OPI prefix pour créer le pattern de recherche dans le cache (pour le GetCapabilities)")
 parser.add_argument("-a", "--api", help="API Url (default: http://localhost:8081/wmts)", type=str, default="http://localhost:8081/wmts")
 args = parser.parse_args()
-print(args)
+print("Arguments: ",args)
 
 # creation dossier cache
 if not os.path.isdir(args.cache):
@@ -92,7 +93,6 @@ def createXmlDraft( urlApi, dirCache):
     """Return export Capabilities.xml"""
 
     dico_xml = dict()
-
     dico_xml['Capabilities'] = {
         "@xmlns": "http://www.opengis.net/wmts/1.0",
         "@xmlns:gml": "http://www.opengis.net/gml",
@@ -144,7 +144,6 @@ def createXmlDraft( urlApi, dirCache):
                 }
             }
         })
-
     dico_xml['Capabilities']['ows:OperationsMetadata']['ows:Operation'] = operations
 
     tileMatrix = []
@@ -158,7 +157,7 @@ def createXmlDraft( urlApi, dirCache):
         scaleDenominator = resolution / 0.00028
 
         # Lamb93 Projected bounds -378305.81 6093283.21 ; 1212610.74 7186901.68
-        # 0.0 6090000.0 ; 1220000 7200000
+        # 0.0 6090000 ; 1220000 7200000
         MatrixWidth = math.ceil((1220000 - 0) / (256 * resolution))
         MatrixHeight = math.ceil((7200000 - 6090000) / (256 * resolution))
 
@@ -202,23 +201,23 @@ def get_pyramids(input_capabilities):
     return tiles, epsg
 
 
-def create_blank_tile(tiles, tile, nbc, out_raster_srs):
+def create_blank_tile(overviews, tile, nb_canaux, out_raster_srs):
     """Return a blank georef image for a tile."""
-    origin_x = tiles[tile['z']]['TopLeftCorner'][0] \
-        + tile['x'] * tiles[tile['z']]['Resolution'] * tiles[tile['z']]['TileWidth']
-    origin_y = tiles[tile['z']]['TopLeftCorner'][1] \
-        - tile['y'] * tiles[tile['z']]['Resolution'] * tiles[tile['z']]['TileHeight']
+    # origin_x = tiles[tile['z']]['TopLeftCorner'][0] + tile['x'] * tiles[tile['z']]['Resolution'] * tiles[tile['z']]['TileWidth']
+    origin_x = overviews['crs']['boundingBox']['xmin'] + tile['x'] * tile['resolution'] * overviews['tileSize']['width']
+    origin_y = overviews['crs']['boundingBox']['ymax'] - tile['y'] * tile['resolution'] * overviews['tileSize']['height']
     target_ds = gdal.GetDriverByName('MEM').Create('',
-                                                   tiles[tile['z']]['TileWidth'], tiles[tile['z']]['TileHeight'],
-                                                   nbc, gdal.GDT_Byte)
-    target_ds.SetGeoTransform((origin_x, tiles[tile['z']]['Resolution'], 0,
-                               origin_y, 0, -tiles[tile['z']]['Resolution']))
+                                                   # tiles[tile['z']]['TileWidth'], tiles[tile['z']]['TileHeight'],
+                                                   overviews['tileSize']['width'], overviews['tileSize']['height'],
+                                                   nb_canaux, gdal.GDT_Byte)
+    target_ds.SetGeoTransform((origin_x, tile['resolution'], 0,
+                               origin_y, 0, -tile['resolution']))
     target_ds.SetProjection(out_raster_srs.ExportToWkt())
     target_ds.FlushCache()
     return target_ds
 
 
-def get_tile_matrix_set_limits(tiles, filename):
+def get_tile_matrix_set_limits(tiles, filename, overviews):
     """Return tms limits for a georef image"""
     print("~~~get_tile_matrix_set_limits:", end='')
     src_image = gdal.Open(filename)
@@ -231,37 +230,81 @@ def get_tile_matrix_set_limits(tiles, filename):
     lr_y = ul_y + src_image.RasterYSize*y_dist
 
     tile_matrix_set_limits = {}
-    for i in tiles:
-        tile = tiles[i]
+    # for i in tiles:
+    for level in range (overviews['level']['min'], overviews['level']['max'] + 1):
+        # tile = tiles[i]
         tile_matrix_limits = {}
-        tile_matrix_limits['TileMatrix'] = tile['Identifier']
+        resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
+        # tile_matrix_limits['TileMatrix'] = tile['Identifier']
+        tile_matrix_limits['TileMatrix'] = level
         tile_matrix_limits['MinTileCol'] = \
-            math.floor(round((ul_x - tile['TopLeftCorner'][0])/(tile['Resolution']*tile['TileWidth']),8))
+            math.floor(round((ul_x - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
+            # math.floor(round((ul_x - tile['TopLeftCorner'][0])/(tile['Resolution']*tile['TileWidth']),8))
         tile_matrix_limits['MinTileRow'] = \
-            math.floor(round((tile['TopLeftCorner'][1]-ul_y)/(tile['Resolution']*tile['TileHeight']),8))
+            math.floor(round((overviews['crs']['boundingBox']['ymax']-ul_y)/(resolution*overviews['tileSize']['height']),8))
+            # math.floor(round((tile['TopLeftCorner'][1]-ul_y)/(tile['Resolution']*tile['TileHeight']),8))
         tile_matrix_limits['MaxTileCol'] = \
-            math.ceil(round((lr_x - tile['TopLeftCorner'][0])/(tile['Resolution']*tile['TileWidth']),8))
+            math.ceil(round((lr_x - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
+            # math.ceil(round((lr_x - tile['TopLeftCorner'][0])/(tile['Resolution']*tile['TileWidth']),8))
         tile_matrix_limits['MaxTileRow'] = \
-            math.ceil(round((tile['TopLeftCorner'][1]-lr_y)/(tile['Resolution']*tile['TileHeight']),8))
-        tile_matrix_set_limits[tile['Identifier']] = tile_matrix_limits
+            math.ceil(round((overviews['crs']['boundingBox']['ymax']-lr_y)/(resolution*overviews['tileSize']['height']),8))
+            # math.ceil(round((tile['TopLeftCorner'][1]-lr_y)/(tile['Resolution']*tile['TileHeight']),8))
+        tile_matrix_set_limits[level] = tile_matrix_limits
     print(" DONE")
+    print(tile_matrix_set_limits)
     return tile_matrix_set_limits
 
-def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
+def get_tile_limits(overviews, resolution, filename):
+    """Return tms limits for a georef image at a given level"""
+    print("~~~get_tile_limits:", end='')
+    src_image = gdal.Open(filename)
+    geo_trans = src_image.GetGeoTransform()
+    ul_x = geo_trans[0]
+    ul_y = geo_trans[3]
+    x_dist = geo_trans[1]
+    y_dist = geo_trans[5]
+    lr_x = ul_x + src_image.RasterXSize*x_dist
+    lr_y = ul_y + src_image.RasterYSize*y_dist
+
+    tile_limits = {}
+
+    tile_limits['MinTileCol'] = \
+        math.floor(round((ul_x - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
+    tile_limits['MinTileRow'] = \
+        math.floor(round((overviews['crs']['boundingBox']['ymax']-ul_y)/(resolution*overviews['tileSize']['height']),8))
+    tile_limits['MaxTileCol'] = \
+        math.ceil(round((lr_x - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
+    tile_limits['MaxTileRow'] = \
+        math.ceil(round((overviews['crs']['boundingBox']['ymax']-lr_y)/(resolution*overviews['tileSize']['height']),8))
+
+    print(" DONE")
+    return tile_limits
+
+def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
     """Update the cache for an input OPI."""
     print("~~~process_image")
-    tile_matix_set_limits = get_tile_matrix_set_limits(tiles, input_filename)
+    # tile_matix_set_limits = get_tile_matrix_set_limits(tiles, input_filename, overviews)
     input_image = gdal.Open(input_filename)
     stem = Path(input_filename).stem
     # for z in tiles:
-    for tile_z in range(10, 22):
+    for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
         print('Niveau de zoom : ', tile_z)
-        for tile_x in range(tile_matix_set_limits[tile_z]['MinTileCol'],
-                            tile_matix_set_limits[tile_z]['MaxTileCol']):
-            for tile_y in range(tile_matix_set_limits[tile_z]['MinTileRow'],
-                                tile_matix_set_limits[tile_z]['MaxTileRow']):
+
+        resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
+        tile_limits = get_tile_limits(overviews, resolution, input_filename)
+
+        
+        overviews['dataSet_limits'][tile_z] = tile_limits
+
+        print(tile_limits)
+
+        # for tile_x in range(tile_matix_set_limits[tile_z]['MinTileCol'], tile_matix_set_limits[tile_z]['MaxTileCol']):
+        for tile_x in range(tile_limits['MinTileCol'], tile_limits['MaxTileCol']):    
+            # for tile_y in range(tile_matix_set_limits[tile_z]['MinTileRow'], tile_matix_set_limits[tile_z]['MaxTileRow']):
+            for tile_y in range(tile_limits['MinTileRow'], tile_limits['MaxTileRow']):
                 # on cree une image 3 canaux pour la tuile
-                opi = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
+                # opi = create_blank_tile(0, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
+                opi = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
                 # on reech l'OPI dans cette image
                 gdal.Warp(opi, input_image)
                 # si necessaire on cree le dossier de la tuile
@@ -270,7 +313,7 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
                 # on export en jpeg (todo: gerer le niveau de Q)
                 PNG_DRIVER.CreateCopy(tile_dir+"/"+stem+".png", opi)
                 # on cree une image mono canal pour la tuile
-                mask = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
+                mask = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
                 # on rasterise la partie du graphe qui concerne ce cliche
                 gdal.Rasterize(mask, db_graph,
                                SQLStatement='select geom from ' + args.table + ' where cliche = \''+stem+'\' ')
@@ -279,8 +322,8 @@ def process_image(tiles, db_graph, input_filename, color, out_raster_srs):
                 val_max = np.amax(img_mask)
                 if val_max > 0:
                     # on cree le graphe et l'ortho
-                    ortho = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
-                    graph = create_blank_tile(tiles, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
+                    ortho = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
+                    graph = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
                     if Path(tile_dir+"/ortho.png").is_file():
                         existing_ortho = gdal.Open(tile_dir+"/ortho.png")
                         existing_graph = gdal.Open(tile_dir+"/graph.png")
@@ -349,6 +392,7 @@ def update_capabilities_and_json(cache, url, layers):
             prefix = layer['prefix']
         except:
             prefix = layer['name']
+
         limits = export_tile_limits(cache, prefix)
 
         source = {}
@@ -427,18 +471,27 @@ def update_capabilities_and_json(cache, url, layers):
 def main():
     """Create or Update the cache for list of input OPI."""
 
-    if not os.path.exists(args.cache+'/Capabilities.xml'):
-        createXmlDraft(args.api,args.cache)
+    # if not os.path.exists(args.cache+'/Capabilities.xml'):
+    #    createXmlDraft(args.api,args.cache)
 
-    tiles, epsg = get_pyramids(args.cache+'/Capabilities.xml')
+    if not os.path.exists(args.cache+'/overviews.json'):
+        from shutil import copy2
+        copy2("ressources/"+ args.overviews, args.cache+'/overviews.json')
+
+    import json
+    # tiles, epsg = get_pyramids(args.cache+'/Capabilities.xml')
+
+    with open(args.cache+'/overviews.json') as json_overviews:
+        overviews_dict = json.load(json_overviews)
 
     out_raster_srs = gdal.osr.SpatialReference()
-    out_raster_srs.ImportFromEPSG(epsg)
+    out_raster_srs.ImportFromEPSG(overviews_dict['crs']['code'])
     conn_string = "PG:host="+host+" dbname="+database+" user="+user+" password="+password
     db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
     if db_graph is None:
         raise ValueError("Connection to database failed")
     list_filename = glob.glob(args.input)
+    print("")
     print(len(list_filename), " fichier(s) a traiter")
     print("")
 
@@ -472,10 +525,14 @@ def main():
             if color[1] not in mtd[color[0]]:
                 mtd[color[0]][color[1]] = {}
             mtd[color[0]][color[1]][color[2]] = cliche
-            process_image(tiles, db_graph, filename, color, out_raster_srs)
+            process_image(overviews_dict, db_graph, filename, color, out_raster_srs)
+            print(overviews_dict)
 
     with open(args.cache+'/cache_mtd.json', 'w') as outfile:
         json.dump(mtd, outfile)
+
+    with open(args.cache+'/overviews.json', 'w') as outfile:
+        json.dump(overviews_dict, outfile)
     
     LAYERS = [{'name': 'ortho', 'format': 'image/png'},
         {'name': 'graph', 'format': 'image/png'},
