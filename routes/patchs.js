@@ -215,6 +215,8 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     req.app.unactivePatchs.features = [];
     // on sauve l'historique (au cas ou l'API devrait etre relancee)
     fs.writeFileSync(`${global.dir_cache}/activePatchs.geojson`, JSON.stringify(req.app.activePatchs));
+    req.app.unactivePatchs.features = [];
+    fs.writeFileSync(`${global.dir_cache}/unactivePatchs.geojson`, JSON.stringify(req.app.unactivePatchs));
     res.status(200).send(JSON.stringify(tiles));
   }).catch((err) => {
     debug('erreur : ', err);
