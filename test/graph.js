@@ -66,63 +66,63 @@ describe('Graph', () => {
     });
   });
 
-  describe('POST /graph/patch', () => {
-    describe('body: {}', () => {
-      it('should return an error', (done) => {
-        chai.request(server)
-          .post('/graph/patch')
-          .end((err, res) => {
-            should.not.exist(err);
-            res.should.have.status(400);
-            done();
-          });
-      });
-    });
+  // describe('POST /graph/patch', () => {
+  //   describe('body: {}', () => {
+  //     it('should return an error', (done) => {
+  //       chai.request(server)
+  //         .post('/graph/patch')
+  //         .end((err, res) => {
+  //           should.not.exist(err);
+  //           res.should.have.status(400);
+  //           done();
+  //         });
+  //     });
+  //   });
 
-    describe('body: polygon geoJson', () => {
-      it('should apply the patch and return the liste of tiles impacted', (done) => {
-        chai.request(server)
-          .post('/graph/patch')
-          .send({
-            type: 'FeatureCollection',
-            crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
-            features: [
-              {
-                type: 'Feature',
-                properties: { color: [99, 167, 133], cliche: '19FD5606Ax00020_16371' },
-                geometry: { type: 'Polygon', coordinates: [[[230748, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230748, 6759736]]] },
-              }],
-          })
-          .end((err, res) => {
-            should.not.exist(err);
-            res.should.have.status(200);
-            const resJson = JSON.parse(res.text);
-            resJson.should.be.a('array');
+  //   describe('body: polygon geoJson', () => {
+  //     it('should apply the patch and return the liste of tiles impacted', (done) => {
+  //       chai.request(server)
+  //         .post('/graph/patch')
+  //         .send({
+  //           type: 'FeatureCollection',
+  //           crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
+  //           features: [
+  //             {
+  //               type: 'Feature',
+  //               properties: { color: [99, 167, 133], cliche: '19FD5606Ax00020_16371' },
+  //               geometry: { type: 'Polygon', coordinates: [[[230748, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230748, 6759736]]] },
+  //             }],
+  //         })
+  //         .end((err, res) => {
+  //           should.not.exist(err);
+  //           res.should.have.status(200);
+  //           const resJson = JSON.parse(res.text);
+  //           resJson.should.be.a('array');
 
-            done();
-          });
-      });
+  //           done();
+  //         });
+  //     });
 
-      it('should get an error: missing data', (done) => {
-        chai.request(server)
-          .post('/graph/patch')
-          .send({
-            type: 'FeatureCollection',
-            crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
-            features: [
-              {
-                type: 'Feature',
-                properties: { color: [99, 167, 133], cliche: '19FD5606Ax00020_16371' },
-                geometry: { type: 'Polygon', coordinates: [[[230760, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230760, 6759736]]] },
-              }],
-          })
-          .end((err, res) => {
-            should.not.exist(err);
-            res.should.have.status(404);
+  //     it('should get an error: missing data', (done) => {
+  //       chai.request(server)
+  //         .post('/graph/patch')
+  //         .send({
+  //           type: 'FeatureCollection',
+  //           crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
+  //           features: [
+  //             {
+  //               type: 'Feature',
+  //               properties: { color: [99, 167, 133], cliche: '19FD5606Ax00020_16371' },
+  //               geometry: { type: 'Polygon', coordinates: [[[230760, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230760, 6759736]]] },
+  //             }],
+  //         })
+  //         .end((err, res) => {
+  //           should.not.exist(err);
+  //           res.should.have.status(404);
 
-            done();
-          });
-      });
-    });
-  });
+  //           done();
+  //         });
+  //     });
+  //   });
+  // });
 });
