@@ -34,12 +34,16 @@ app.activePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/activePatchs.
 app.unactivePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/unactivePatchs.geojson`));
 
 // on trouve l'Id du prochain patch (max des Id + 1)
-app.currentPatchId = (app.activePatchs.features.length > 0) ? app.activePatchs.features[app.activePatchs.features.length - 1].properties.patchId + 1 : 0;
-// app.unactivePatchs.features.forEach((feature) => {
-//   if (feature.patchId >= app.currentPatchId) {
-//     app.currentPatchId = feature.patchId + 1;
-//   }
-// });
+app.currentPatchId = 0;
+for (let i=0; i<app.activePatchs.features.length; i++) {
+  const id = app.activePatchs.features[i].properties.patchId + 1;
+  if (app.currentPatchId < id) app.currentPatchId = id;
+}
+for (let i=0; i<app.unactivePatchs.features.length; i++) {
+  const id = app.unactivePatchs.features[i].properties.patchId + 1;
+  if (app.currentPatchId < id) app.currentPatchId = id;
+}
+
 debug.log('app.currentPatchId : ');
 debug.log(app.currentPatchId);
 

@@ -19,7 +19,8 @@ paths:
       tags:
         - patchs
       summary: "Annulation de la dernière modification"
-      reponses:
+      description: ""
+      responses:
         '200':
           description: OK
   '/patchs/redo':
@@ -27,7 +28,8 @@ paths:
       tags:
         - patchs
       summary: "Reprise en compte de la dernière modification annulée"
-      reponses:
+      description: ""
+      responses:
         '200':
           description: OK
   '/patchs/clear':
@@ -35,7 +37,8 @@ paths:
       tags:
         - patchs
       summary: "Annulation de toutes les modifications"
-      reponses:
+      description: ""
+      responses:
         '200':
           description: OK
   '/patch':
