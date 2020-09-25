@@ -2,14 +2,12 @@ const debug = require('debug')('patchs');
 const router = require('express').Router();
 const fs = require('fs');
 const jimp = require('jimp');
-const { matchedData, query, body } = require('express-validator');
+const { body } = require('express-validator');
 const GJV = require('geojson-validation');
+const PImage = require('pureimage');
 const validator = require('../paramValidation/validator');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
-const PImage = require('pureimage');
-
-
 
 const geoJsonAPatcher = [
   body('geoJSON')
@@ -90,13 +88,13 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   ...geoJsonAPatcher,
 ], validateParams, (req, res) => {
   debug('patch');
-// router.post('/patch', (req, res) => {
+  // router.post('/patch', (req, res) => {
   const geoJson = req.body.geoJSON;
   const promises = [];
   debug(geoJson);
   // todo: valider la structure geoJson et les propriétés nécessaires (color/cliche)
   if (!('features' in geoJson)) {
-    debug('ici')
+    debug('ici');
     res.status(500).send('geoJson not valid');
     return;
   }
@@ -191,7 +189,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
       const urlGraphOutput = `graph_${req.app.currentPatchId}.png`;
       const urlOrthoOutput = `ortho_${req.app.currentPatchId}.png`;
       // on verifie si c'est un lien symbolique ou le fichier d'origine
-      if (fs.lstatSync(urlGraph).isSymbolicLink()){
+      if (fs.lstatSync(urlGraph).isSymbolicLink()) {
         fs.unlinkSync(urlGraph);
         fs.unlinkSync(urlOrtho);
       } else {
@@ -231,43 +229,44 @@ router.get('/patchs', [], (req, res) => {
 
 router.put('/patchs/undo', [], (req, res) => {
   debug('undo');
-  if (req.app.activePatchs.features.length == 0){
+  if (req.app.activePatchs.features.length === 0) {
     debug('nothing');
     res.status(400).send('nothing to undo');
     return;
   }
-  // trouver le patch a annuler: c'est-à-dire sortir les éléments 
+  // trouver le patch a annuler: c'est-à-dire sortir les éléments
   // de req.app.activePatchs.features avec patchId == lastPatchId
-  let lastPatchId = req.app.activePatchs.features[req.app.activePatchs.features.length - 1].properties.patchId;
-  let features = [];
+  const lastPatchId = req.app.activePatchs.features[req.app.activePatchs.features.length - 1]
+    .properties.patchId;
+  const features = [];
   let index = req.app.activePatchs.features.length - 1;
   while (index >= 0) {
     const feature = req.app.activePatchs.features[index];
-    if (feature.properties.patchId == lastPatchId){
+    if (feature.properties.patchId === lastPatchId) {
       features.push(feature);
       req.app.activePatchs.features.splice(index, 1);
     }
     index -= 1;
   }
   req.app.activePatchs.features.forEach((feature) => {
-    if (feature.properties.patchId == lastPatchId) features.push(feature);
+    if (feature.properties.patchId === lastPatchId) features.push(feature);
   });
   // trouver la liste des tuiles concernées par ces patchs
   const tiles = getTiles(features, req.app.tileSet);
-  debug('liste des tuiles')
-  debug(tiles)
+  debug('liste des tuiles');
+  debug(tiles);
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
   tiles.forEach((tile) => {
     const tileDir = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/`;
-    const arrayGraphs = fs.readdirSync(tileDir).filter(fn => fn.startsWith('graph_'));
+    const arrayGraphs = fs.readdirSync(tileDir).filter((fn) => fn.startsWith('graph_'));
     debug(arrayGraphs);
     const arrayId = [];
     arrayGraphs.forEach((name) => {
       const id = parseInt(name.split(/[_.]/)[1], 10);
-      if ((id != lastPatchId) && !isNaN(id)) arrayId.push(id);
+      if ((id !== lastPatchId) && !Number.isNaN(id)) arrayId.push(id);
     });
-    const idSelected = arrayId.length > 0 ? arrayId.sort()[arrayId.length-1] : 'orig';
-    debug('version selectionne pour la tuile ')
+    const idSelected = arrayId.length > 0 ? arrayId.sort()[arrayId.length - 1] : 'orig';
+    debug('version selectionne pour la tuile ');
     debug(idSelected);
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
@@ -293,12 +292,12 @@ router.put('/patchs/undo', [], (req, res) => {
 
 router.put('/patchs/redo', [], (req, res) => {
   // trouver le patch a rétablir (le contenu de req.app.unactivePatchs.features)
-  const features = req.app.unactivePatchs.features;
-  if (features.length == 0){
+  const { features } = req.app.unactivePatchs;
+  if (features.length === 0) {
     res.status(400).send('nothing to redo');
     return;
   }
-  let patchIdRedo = features[0].properties.patchId;
+  const patchIdRedo = features[0].properties.patchId;
   // trouver la liste des tuiles concernées par ce patch
   const tiles = getTiles(features, req.app.tileSet);
   // pour chaque tuile, modifier les liens symboliques
@@ -328,20 +327,20 @@ router.put('/patchs/redo', [], (req, res) => {
 
 router.put('/patchs/clear', [], (req, res) => {
   // pour chaque patch de req.app.activePatchs.features
-  if (req.app.activePatchs.features.length == 0){
+  if (req.app.activePatchs.features.length === 0) {
     debug('nothing');
     res.status(400).send('nothing to clear');
     return;
   }
-  let features = req.app.activePatchs.features;
+  const { features } = req.app.activePatchs;
   // trouver la liste des tuiles concernées par ces patchs
   const tiles = getTiles(features, req.app.tileSet);
-  debug('liste des tuiles')
-  debug(tiles)
+  debug('liste des tuiles');
+  debug(tiles);
   // pour chaque tuile, on retablit la version orig
   tiles.forEach((tile) => {
     const idSelected = 'orig';
-    debug('version selectionne pour la tuile ')
+    debug('version selectionne pour la tuile ');
     debug(idSelected);
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;

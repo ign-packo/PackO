@@ -17,11 +17,11 @@ const app = express();
 global.dir_cache = argv.cache ? argv.cache : 'cache';
 debug.log(`using cache directory: ${global.dir_cache}`);
 
+// const { debug_list_of_fonts } = require('pureimage/src/text');
 const wmts = require('./routes/wmts.js');
 const graph = require('./routes/graph.js');
 const files = require('./routes/files.js');
 const patchs = require('./routes/patchs.js');
-const { debug_list_of_fonts } = require('pureimage/src/text');
 
 app.cache_mtd = JSON.parse(fs.readFileSync(`${global.dir_cache}/cache_mtd.json`));
 // app.cacheRoot = argv.cache ? argv.cache : 'cache';
@@ -35,11 +35,11 @@ app.unactivePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/unactivePat
 
 // on trouve l'Id du prochain patch (max des Id + 1)
 app.currentPatchId = 0;
-for (let i=0; i<app.activePatchs.features.length; i++) {
+for (let i = 0; i < app.activePatchs.features.length; i += 1) {
   const id = app.activePatchs.features[i].properties.patchId + 1;
   if (app.currentPatchId < id) app.currentPatchId = id;
 }
-for (let i=0; i<app.unactivePatchs.features.length; i++) {
+for (let i = 0; i < app.unactivePatchs.features.length; i += 1) {
   const id = app.unactivePatchs.features[i].properties.patchId + 1;
   if (app.currentPatchId < id) app.currentPatchId = id;
 }
@@ -77,4 +77,3 @@ app.use('/', patchs);
 module.exports = app.listen(PORT, () => {
   debug.log(`URL de l'api : http://localhost:${PORT} \nURL de la documentation swagger : http://localhost:${PORT}/doc`);
 });
-
