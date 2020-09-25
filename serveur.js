@@ -35,16 +35,16 @@ try {
   app.activePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/activePatchs.geojson`));
 } catch (err) {
   app.activePatchs = {
-    type:"FeatureCollection",
-    name:"annotation",
-    crs:{
-      type:"name",
-      properties:{
-        name:"urn:ogc:def:crs:EPSG::2154"
-      }
+    type: 'FeatureCollection',
+    name: 'annotation',
+    crs: {
+      type: 'name',
+      properties: {
+        name: 'urn:ogc:def:crs:EPSG::2154',
+      },
     },
-    features:[]
-  }
+    features: [],
+  };
   fs.writeFileSync(`${global.dir_cache}/activePatchs.geojson`, JSON.stringify(app.activePatchs));
 }
 
@@ -52,16 +52,16 @@ try {
   app.unactivePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/unactivePatchs.geojson`));
 } catch (err) {
   app.unactivePatchs = {
-    type:"FeatureCollection",
-    name:"annotation",
-    crs:{
-      type:"name",
-      properties:{
-        name:"urn:ogc:def:crs:EPSG::2154"
-      }
+    type: 'FeatureCollection',
+    name: 'annotation',
+    crs: {
+      type: 'name',
+      properties: {
+        name: 'urn:ogc:def:crs:EPSG::2154',
+      },
     },
-    features:[]
-  }
+    features: [],
+  };
   fs.writeFileSync(`${global.dir_cache}/unactivePatchs.geojson`, JSON.stringify(app.unactivePatchs));
 }
 
