@@ -13,72 +13,85 @@ describe('Patchs', () => {
     done();
   });
 
-  describe('Post patchs', () => {
-    it('should return an error', (done) => {
-      chai.request(server)
-        .post('/patch')
-        .end((err, res) => {
-          should.equal(err, null);
-          res.should.have.status(500);
-          done();
-        });
+  describe('POST /patch', () => {
+    describe('body: {}', () => {
+      it('should return an error', (done) => {
+        chai.request(server)
+          .post('/patch')
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            done();
+          });
+      });
     });
-  });
 
-  describe('Post patchs', () => {
-    it('should return an works', (done) => {
-      chai.request(server)
-        .post('/patch')
-        .send({
-          type: 'FeatureCollection',
-          features: [
-            {
-              type: 'Feature',
-              properties: { color: [0, 0, 0], cliche: 'unkown' },
-              geometry: { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]] },
-            }],
-        })
-        .end((err, res) => {
-          should.equal(err, null);
-          res.should.have.status(500);
-          done();
-        });
+    describe('body: polygon geoJson', () => {
+      it('should apply the patch and return the liste of tiles impacted', (done) => {
+        chai.request(server)
+          .post('/patch')
+          .send({
+            type: 'FeatureCollection',
+            crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
+            features: [
+              {
+                type: 'Feature',
+                properties: { color: [99, 167, 133], cliche: '19FD5606Ax00020_16371' },
+                geometry: { type: 'Polygon', coordinates: [[[230748, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230748, 6759736]]] },
+              }],
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(200);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.a('array');
+
+            done();
+          });
+      });
+
+      it('should get an error: missing data', (done) => {
+        chai.request(server)
+          .post('/patch')
+          .send({
+            type: 'FeatureCollection',
+            crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
+            features: [
+              {
+                type: 'Feature',
+                properties: { color: [99, 167, 133], cliche: '19FD5606Ax00020_16371' },
+                geometry: { type: 'Polygon', coordinates: [[[230760, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230760, 6759736]]] },
+              }],
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(500);
+
+            done();
+          });
+      });
     });
   });
 
   describe('Put undo', () => {
-    it('should return an error', (done) => {
+    it('should succeed', (done) => {
       chai.request(server)
         .put('/patchs/undo')
         .end((err, res) => {
           should.equal(err, null);
-          res.should.have.status(400);
+          res.should.have.status(200);
           done();
         });
     });
   });
 
   describe('Put redo', () => {
-    it('should return an error', (done) => {
+    it('should succeed', (done) => {
       chai.request(server)
         .put('/patchs/redo')
         .end((err, res) => {
           should.equal(err, null);
-          res.should.have.status(400);
-          // todo : valider le message d'erreur
-          done();
-        });
-    });
-  });
-
-  describe('Put clear', () => {
-    it('should return an error', (done) => {
-      chai.request(server)
-        .put('/patchs/clear')
-        .end((err, res) => {
-          should.equal(err, null);
           res.should.have.status(200);
-          // todo : valider le message d'erreur
           done();
         });
     });
@@ -91,9 +104,58 @@ describe('Patchs', () => {
         .end((err, res) => {
           should.equal(err, null);
           res.should.have.status(200);
-          // todo : valider le geojson
           done();
         });
     });
   });
+
+  describe('Put clear', () => {
+    it('should succeed', (done) => {
+      chai.request(server)
+        .put('/patchs/clear')
+        .end((err, res) => {
+          should.equal(err, null);
+          res.should.have.status(200);
+          done();
+        });
+    });
+  });
+
+  describe('Put undo', () => {
+    it('should return an error (nothing to undo)', (done) => {
+      chai.request(server)
+        .put('/patchs/undo')
+        .end((err, res) => {
+          should.equal(err, null);
+          res.should.have.status(500);
+          done();
+        });
+    });
+  });
+
+  describe('Put redo', () => {
+    it('should return an error (nothing to redo)', (done) => {
+      chai.request(server)
+        .put('/patchs/redo')
+        .end((err, res) => {
+          should.equal(err, null);
+          res.should.have.status(500);
+          done();
+        });
+    });
+  });
+
+  describe('Put clear', () => {
+    it('should return an error (nothing to clear)', (done) => {
+      chai.request(server)
+        .put('/patchs/clear')
+        .end((err, res) => {
+          should.equal(err, null);
+          res.should.have.status(500);
+          done();
+        });
+    });
+  });
+
+
 });

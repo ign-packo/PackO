@@ -37,16 +37,47 @@ try {
   app.overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
 
   app.tileSet = JSON.parse(fs.readFileSync(`${global.dir_cache}/tileSet.json`));
-  app.activePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/activePatchs.geojson`));
-  app.unactivePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/unactivePatchs.geojson`));
 
+  try {
+    app.activePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/activePatchs.geojson`));
+  } catch (err) {
+    app.activePatchs = {
+      type: 'FeatureCollection',
+      name: 'annotation',
+      crs: {
+        type: 'name',
+        properties: {
+          name: 'urn:ogc:def:crs:EPSG::2154',
+        },
+      },
+      features: [],
+    };
+    fs.writeFileSync(`${global.dir_cache}/activePatchs.geojson`, JSON.stringify(app.activePatchs));
+  }
+
+  try {
+    app.unactivePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/unactivePatchs.geojson`));
+  } catch (err) {
+    app.unactivePatchs = {
+      type: 'FeatureCollection',
+      name: 'annotation',
+      crs: {
+        type: 'name',
+        properties: {
+          name: 'urn:ogc:def:crs:EPSG::2154',
+        },
+      },
+      features: [],
+    };
+    fs.writeFileSync(`${global.dir_cache}/unactivePatchs.geojson`, JSON.stringify(app.unactivePatchs));
+  }
   // on trouve l'Id du prochain patch (max des Id + 1)
   app.currentPatchId = 0;
-  for (let i = 0; i < app.activePatchs.features.length; i++) {
+  for (let i = 0; i < app.activePatchs.features.length; i += 1) {
     const id = app.activePatchs.features[i].properties.patchId + 1;
     if (app.currentPatchId < id) app.currentPatchId = id;
   }
-  for (let i = 0; i < app.unactivePatchs.features.length; i++) {
+  for (let i = 0; i < app.unactivePatchs.features.length; i += 1) {
     const id = app.unactivePatchs.features[i].properties.patchId + 1;
     if (app.currentPatchId < id) app.currentPatchId = id;
   }

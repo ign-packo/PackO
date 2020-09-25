@@ -253,7 +253,7 @@ router.put('/patchs/undo', [], (req, res) => {
   debug('undo');
   if (req.app.activePatchs.features.length === 0) {
     debug('nothing');
-    res.status(400).send('nothing to undo');
+    res.status(500).send('nothing to undo');
     return;
   }
   // trouver le patch a annuler: c'est-à-dire sortir les éléments
@@ -316,7 +316,7 @@ router.put('/patchs/redo', [], (req, res) => {
   // trouver le patch a rétablir (le contenu de req.app.unactivePatchs.features)
   const { features } = req.app.unactivePatchs;
   if (features.length === 0) {
-    res.status(400).send('nothing to redo');
+    res.status(500).send('nothing to redo');
     return;
   }
   const patchIdRedo = features[0].properties.patchId;
@@ -351,7 +351,7 @@ router.put('/patchs/clear', [], (req, res) => {
   // pour chaque patch de req.app.activePatchs.features
   if (req.app.activePatchs.features.length === 0) {
     debug('nothing');
-    res.status(400).send('nothing to clear');
+    res.status(500).send('nothing to clear');
     return;
   }
   const { features } = req.app.activePatchs;
