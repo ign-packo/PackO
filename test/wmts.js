@@ -72,7 +72,7 @@ describe('Wmts', () => {
         });
     });
 
-    it('should return an image png', (done) => {
+    it('should return a png image', (done) => {
       chai.request(server)
         .get('/wmts')
         .query({
@@ -87,7 +87,7 @@ describe('Wmts', () => {
         });
     });
 
-    it('should return an image jpeg', (done) => {
+    it('should return a jpeg image', (done) => {
       chai.request(server)
         .get('/wmts')
         .query({
@@ -104,7 +104,7 @@ describe('Wmts', () => {
   });
 
   describe('GetFeatureInfo', () => {
-    it('should return a xml', (done) => {
+    it('should return an xml', (done) => {
       chai.request(server)
         .get('/wmts')
         .query({

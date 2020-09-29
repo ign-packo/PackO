@@ -32,7 +32,7 @@ describe('Graph', () => {
 
   describe('GET /graph', () => {
     describe('query: x=0 & y=0', () => {
-      it("should return a 'out of borders'", (done) => {
+      it("should return a 'out of bounds'", (done) => {
         chai.request(server)
           .get('/graph')
           .query({ x: 0, y: 0 })
