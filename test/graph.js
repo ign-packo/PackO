@@ -42,7 +42,7 @@ describe('Graph', () => {
             const resJson = JSON.parse(res.text);
 
             resJson.should.be.jsonSchema(schema);
-            resJson.should.have.property('cliche').equal('out of borders');
+            resJson.should.have.property('cliche').equal('out of bounds');
 
             done();
           });
