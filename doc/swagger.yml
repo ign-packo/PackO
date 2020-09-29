@@ -84,7 +84,7 @@ paths:
           schema:
             type: string
             enum:
-              - WMS
+#              - WMS
               - WMTS
         - in: query
           name: REQUEST
