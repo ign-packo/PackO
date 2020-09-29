@@ -54,6 +54,8 @@ app.use('/', wmts);
 app.use('/', graph);
 app.use('/', files);
 
+app.urlApi = `http://localhost:${PORT}`;
+
 module.exports = app.listen(PORT, () => {
-  debug.log(`URL de l'api : http://localhost:${PORT} \nURL de la documentation swagger : http://localhost:${PORT}/doc`);
+  debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);
 });

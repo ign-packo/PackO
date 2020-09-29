@@ -6,8 +6,11 @@ const { matchedData, query } = require('express-validator');
 const Jimp = require('jimp');
 const path = require('path');
 
+const xml2js = require('xml2js');
+
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
+const overviews = require('../cache/overviews.json');
 
 router.get('/wmts', [
   query('SERVICE')
@@ -72,8 +75,150 @@ router.get('/wmts', [
   // GetCapabilities
   if (REQUEST === 'GetCapabilities') {
     debug('~~~GetCapabilities');
+
+    const tileMatrix = [];
+    const tileMatrixLimit = [];
+
+    const resLevelMax = overviews.resolution;
+    const levelMin = overviews.level.min;
+    const levelMax = overviews.level.max;
+
+    for (let level = levelMin; level < levelMax + 1; level += 1) {
+      const resolution = resLevelMax * 2 ** (levelMax - level);
+      const scaleDenominator = resolution / 0.00028;
+
+      tileMatrixLimit.push({
+        TileMatrix: level,
+        MinTileRow: overviews.dataSet_limits[level].MinTileRow,
+        MaxTileRow: overviews.dataSet_limits[level].MaxTileRow,
+        MinTileCol: overviews.dataSet_limits[level].MinTileCol,
+        MaxTileCol: overviews.dataSet_limits[level].MaxTileCol,
+      });
+
+      const MatrixWidth = Math.ceil(
+        (overviews.crs.boundingBox.xmax - overviews.crs.boundingBox.xmin)
+           / (overviews.tileSize.width * resolution),
+      );
+      const MatrixHeight = Math.ceil(
+        (overviews.crs.boundingBox.ymax - overviews.crs.boundingBox.ymin)
+           / (overviews.tileSize.height * resolution),
+      );
+
+      tileMatrix.push({
+        'ows:Identifier': level,
+        ScaleDenominator: scaleDenominator,
+        TopLeftCorner: `${overviews.crs.boundingBox.xmin} ${overviews.crs.boundingBox.ymax}`,
+        TileWidth: overviews.tileSize.width,
+        TileHeight: overviews.tileSize.height,
+        MatrixWidth,
+        MatrixHeight,
+      });
+    }
+
+    const layers = [];
+    ['ortho', 'graph'].forEach((layerName) => layers.push({
+      'ows:Title': layerName,
+      'ows:Abstract': layerName,
+      'ows:WGS84BoundingBox': {
+        'ows:LowerCorner': '-7.1567 40.6712',
+        'ows:UpperCorner': '11.578 51.9948',
+      },
+      'ows:Identifier': layerName,
+      Style: {
+        'ows:Title': 'Legende generique',
+        'ows:Abstract': 'Fichier de legende generique',
+        'ows:Keywords': { 'ows:Keyword': 'Defaut' },
+        'ows:Identifier': 'normal',
+        LegendeURL: {
+          $: {
+            format: 'image/jpeg',
+            height: '200',
+            maxScaleDenominator: '100000000',
+            minScaleDenominator: '200',
+            width: '200',
+            'xlink:href': 'https://wxs.ign.fr/static/legends/LEGEND.jpg',
+          },
+        },
+        $: {
+          isDefault: 'true',
+        },
+      },
+      Format: 'image/png',
+      InfoFormat: 'application/gml+xml; version=3.1',
+      TileMatrixSetLink: {
+        TileMatrixSet: 'LAMB93',
+        TileMatrixSetLimits: { TileMatrixLimits: tileMatrixLimit },
+      },
+    }));
+
+    const capabilitiesJson = {};
+    capabilitiesJson.Capabilities = {
+      $: {
+        xmlns: 'http://www.opengis.net/wmts/1.0',
+        'xmlns:gml': 'http://www.opengis.net/gml',
+        'xmlns:ows': 'http://www.opengis.net/ows/1.1',
+        'xmlns:xlink': 'http://www.w3.org/1999/xlink',
+        'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+        version: '1.0.0',
+        'xsi:schemaLocation': 'http://www.opengis.net/wmts/1.0 http://schemas.opengis.net/wmts/1.0/wmtsGetCapabilities_response.xsd',
+      },
+      'ows:ServiceIdentification': {
+        'ows:Title': 'Service WMTS',
+        'ows:Abstract': 'Proto pour API Mosaiquage',
+        'ows:Keywords': {
+          'ows:Keyword': ['WMTS', 'Mosaiquage'],
+        },
+        'ows:ServiceType': 'OGC WMTS',
+        'ows:ServiceTypeVersion': '1.0.0',
+      },
+      'ows:ServiceProvider': {
+        'ows:ProviderName': 'IGN',
+      },
+      'ows:OperationsMetadata': {
+        'ows:Operation': [],
+      },
+      Contents: {
+        Layer: layers,
+        TileMatrixSet: {
+          'ows:Identifier': 'LAMB93',
+          'ows:SupportedCRS': 'EPSG:2154',
+          TileMatrix: tileMatrix,
+        },
+      },
+    };
+
+    const operations = [];
+    ['GetCapabilities', 'GetTile', 'GetFeatureInfo'].forEach((operation) => operations.push(
+      {
+        $: {
+          name: operation,
+        },
+        'ows:DCP': {
+          'ows:HTTP': {
+            'ows:Get': {
+              $: {
+                'xlink:href': `${req.app.urlApi}/wmts`,
+              },
+              'ows:Constraint': {
+                $: {
+                  name: 'GetEncoding',
+                },
+                'ows:AllowedValues': {
+                  'ows:Value': 'KVP',
+                },
+              },
+            },
+          },
+        },
+      },
+    ));
+    capabilitiesJson.Capabilities['ows:OperationsMetadata']['ows:Operation'] = operations;
+
+    const builder = new xml2js.Builder();
+    const xml = builder.buildObject(capabilitiesJson);
+
     res.type('application/xml');
-    res.sendFile('Capabilities.xml', { root: path.join(global.dir_cache) });
+    res.send(xml);
 
     // GetTile
   } else if (REQUEST === 'GetTile') {

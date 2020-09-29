@@ -89,93 +89,6 @@ def dict_to_etree(d):
     _to_etree(body, node)
     return node
 
-def createXmlDraft( urlApi, dirCache):
-    """Return export Capabilities.xml"""
-
-    dico_xml = dict()
-    dico_xml['Capabilities'] = {
-        "@xmlns": "http://www.opengis.net/wmts/1.0",
-        "@xmlns:gml": "http://www.opengis.net/gml",
-        "@xmlns:ows": "http://www.opengis.net/ows/1.1",
-        "@xmlns:xlink": "http://www.w3.org/1999/xlink",
-        "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-        "@version": "1.0.0",
-        "@xsi:schemaLocation": "http://www.opengis.net/wmts/1.0 http://schemas.opengis.net/wmts/1.0/wmtsGetCapabilities_response.xsd",
-        "ows:ServiceIdentification" : {
-            "ows:Title":"Service WMTS",
-            "ows:Abstract": "Proto pour API Mosaiquage",
-            "ows:Keywords": {
-                "ows:Keyword": ["WMTS", "Mosaiquage"]
-            },
-            "ows:ServiceType": "OGC WMTS",
-            "ows:ServiceTypeVersion": "1.0.0"
-        },
-        "ows:ServiceProvider": {
-            "ows:ProviderName": "IGN"
-        },
-        "ows:OperationsMetadata": {
-            "ows:Operation": []
-        },
-        "Contents": {
-            "Layer": [""],
-            "TileMatrixSet": {
-                "ows:Identifier": "LAMB93",
-                "ows:SupportedCRS": "EPSG:2154",
-                "TileMatrix": []
-            }
-        }
-    }
-
-    operations = []
-    for operation in ["GetCapabilities","GetTile","GetFeatureInfo"]:
-        operations.append({
-            "@name": operation,
-            "ows:DCP": {
-                "ows:HTTP": {
-                    "ows:Get": {
-                        "@xlink:href": urlApi,
-                        "ows:Constraint": {
-                            "@name": "GetEncoding",
-                            "ows:AllowedValues": {
-                                "ows:Value": "KVP"
-                            }
-                        }
-                    }
-                }
-            }
-        })
-    dico_xml['Capabilities']['ows:OperationsMetadata']['ows:Operation'] = operations
-
-    tileMatrix = []
-
-    resLevelMax = 0.05
-    levelMin = 10
-    levelMax = 21
-
-    for level in range (levelMin, levelMax + 1):
-        resolution = resLevelMax * 2 ** (levelMax - level)
-        scaleDenominator = resolution / 0.00028
-
-        # Lamb93 Projected bounds -378305.81 6093283.21 ; 1212610.74 7186901.68
-        # 0.0 6090000 ; 1220000 7200000
-        MatrixWidth = math.ceil((1220000 - 0) / (256 * resolution))
-        MatrixHeight = math.ceil((7200000 - 6090000) / (256 * resolution))
-
-        tileMatrix.append({
-            "ows:Identifier": str(level),
-            "ScaleDenominator": str(scaleDenominator),
-            "TopLeftCorner": "0.0 7200000.0",
-            "TileWidth": str(256),
-            "TileHeight": str(256),
-            "MatrixWidth": str(MatrixWidth),
-            "MatrixHeight": str(MatrixHeight)
-        })
-
-    dico_xml['Capabilities']['Contents']['TileMatrixSet']['TileMatrix'] = tileMatrix
-
-    output_tree = ET.ElementTree(dict_to_etree(dico_xml))
-    ET.ElementTree(dict_to_etree(dico_xml)).write(dirCache+"/Capabilities.xml", encoding="UTF-8",xml_declaration=True)
-
 def get_pyramids(input_capabilities):
     """Return tiles and epsg from an XML."""
     print("~~~get_pyramids:", end ='')
@@ -273,9 +186,9 @@ def get_tile_limits(overviews, resolution, filename):
     tile_limits['MinTileRow'] = \
         math.floor(round((overviews['crs']['boundingBox']['ymax']-ul_y)/(resolution*overviews['tileSize']['height']),8))
     tile_limits['MaxTileCol'] = \
-        math.ceil(round((lr_x - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
+        math.ceil(round((lr_x - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8)) - 1
     tile_limits['MaxTileRow'] = \
-        math.ceil(round((overviews['crs']['boundingBox']['ymax']-lr_y)/(resolution*overviews['tileSize']['height']),8))
+        math.ceil(round((overviews['crs']['boundingBox']['ymax']-lr_y)/(resolution*overviews['tileSize']['height']),8)) - 1
 
     print(" DONE")
     return tile_limits
@@ -286,6 +199,7 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
     # tile_matix_set_limits = get_tile_matrix_set_limits(tiles, input_filename, overviews)
     input_image = gdal.Open(input_filename)
     stem = Path(input_filename).stem
+    overviews['dataSet_limits'] = {}
     # for z in tiles:
     for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
         print('Niveau de zoom : ', tile_z)
@@ -293,17 +207,23 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
         tile_limits = get_tile_limits(overviews, resolution, input_filename)
 
-        
-        overviews['dataSet_limits'][tile_z] = tile_limits
-
         print(tile_limits)
+        
+        if not(tile_z in overviews['dataSet_limits']):
+            overviews['dataSet_limits'][tile_z] = tile_limits
+        else:
+            if tile_limits['MinTileCol'] < overviews['dataSet_limits'][tile_z]['MinTileCol']:
+                overviews['dataSet_limits'][tile_z]['MinTileCol'] = tile_limits['MinTileCol']
+            if tile_limits['MinTileRow'] < overviews['dataSet_limits'][tile_z]['MinTileRow']:
+                overviews['dataSet_limits'][tile_z]['MinTileRow'] = tile_limits['MinTileRow']
+            if tile_limits['MaxTileCol'] > overviews['dataSet_limits'][tile_z]['MaxTileCol']:
+                overviews['dataSet_limits'][tile_z]['MaxTileCol'] = tile_limits['MaxTileCol']
+            if tile_limits['MaxTileRow'] < overviews['dataSet_limits'][tile_z]['MaxTileRow']:
+                overviews['dataSet_limits'][tile_z]['MaxTileRow'] = tile_limits['MaxTileRow']
 
-        # for tile_x in range(tile_matix_set_limits[tile_z]['MinTileCol'], tile_matix_set_limits[tile_z]['MaxTileCol']):
-        for tile_x in range(tile_limits['MinTileCol'], tile_limits['MaxTileCol']):    
-            # for tile_y in range(tile_matix_set_limits[tile_z]['MinTileRow'], tile_matix_set_limits[tile_z]['MaxTileRow']):
-            for tile_y in range(tile_limits['MinTileRow'], tile_limits['MaxTileRow']):
+        for tile_x in range(tile_limits['MinTileCol'], tile_limits['MaxTileCol'] + 1):    
+            for tile_y in range(tile_limits['MinTileRow'], tile_limits['MaxTileRow'] + 1):
                 # on cree une image 3 canaux pour la tuile
-                # opi = create_blank_tile(0, {'x': tile_x, 'y': tile_y, 'z': tile_z}, 3, out_raster_srs)
                 opi = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
                 # on reech l'OPI dans cette image
                 gdal.Warp(opi, input_image)
@@ -349,137 +269,37 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
                     PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
     print(" DONE")
 
-def export_tile_limits(cache, prefix):
-    """Return tile_matrix_set_limits for a layer in the cache"""
-    list_filename = glob.glob(cache+'/*/*/*/'+prefix+'*.*')
-    tile_matrix_set_limits = {}
-    for dirname in list_filename:
-        tab = dirname.split(os.path.sep)
-        tile_z = int(tab[1])
-        tile_y = int(tab[2])
-        tile_x = int(tab[3])
-        if tile_z in tile_matrix_set_limits:
-            tile_matrix_set_limits[tile_z]['MinTileRow'] = \
-                min(tile_y, tile_matrix_set_limits[tile_z]['MinTileRow'])
-            tile_matrix_set_limits[tile_z]['MaxTileRow'] = \
-                max(tile_y, tile_matrix_set_limits[tile_z]['MaxTileRow'])
-            tile_matrix_set_limits[tile_z]['MinTileCol'] = \
-                min(tile_x, tile_matrix_set_limits[tile_z]['MinTileCol'])
-            tile_matrix_set_limits[tile_z]['MaxTileCol'] = \
-                max(tile_x, tile_matrix_set_limits[tile_z]['MaxTileCol'])
-        else:
-            tile_matrix_set_limit = {}
-            tile_matrix_set_limit['MinTileRow'] = tile_y
-            tile_matrix_set_limit['MaxTileRow'] = tile_y
-            tile_matrix_set_limit['MinTileCol'] = tile_x
-            tile_matrix_set_limit['MaxTileCol'] = tile_x
-            tile_matrix_set_limits[tile_z] = tile_matrix_set_limit
-    return tile_matrix_set_limits
-
-def update_capabilities_and_json(cache, url, layers):
+def update_capabilities_and_json(cache, url, layers, overviews):
     print("~~~~update_capabilities_and_json")
 
-    xml = cache+'/Capabilities.xml'
-    tree = ET.parse(xml)
-    capabilities = etree_to_dict(tree.getroot())
-
-    # remise a zero des layers
-    # print('layers avant:', capabilities['{http://www.opengis.net/wmts/1.0}Capabilities']['{http://www.opengis.net/wmts/1.0}Contents']['{http://www.opengis.net/wmts/1.0}Layer'])
     capabilities_layers = []
     for layer in layers:
         print(layer)
-        try:
-            prefix = layer['prefix']
-        except:
-            prefix = layer['name']
-
-        limits = export_tile_limits(cache, prefix)
 
         source = {}
         source["url"] = url
-        source["projection"] = "EPSG:2154"
+        source["projection"] = overviews["crs"]['type'] + ":" + str(overviews["crs"]['code'])
         source["networkOptions"] = {"crossOrigin": "anonymous"}
         source["format"] = layer['format']
         source["name"] = layer['name']
-        source["tileMatrixSet"] = "LAMBB93"
-        source["tileMatrixSetLimits"] = limits
+        source["tileMatrixSet"] = args.overviews
+        source["tileMatrixSetLimits"] = overviews["dataSet_limits"]
 
-        # Création .json associé
         layerconf = {}
         layerconf["id"] = source['name']
         layerconf["source"] = source
         with open(cache+'/'+source['name']+".json", 'w') as outfile:
             json.dump(layerconf, outfile)
 
-        tms={'TileMatrixSet': 'LAMB93', 'TileMatrixSetLimits': {'TileMatrixLimits' : []}}
-        for level in limits:
-            limit = limits[level]
-            T = {}
-            T['TileMatrix'] = str(level)
-            T['MinTileRow'] = str(limit['MinTileRow'])
-            T['MaxTileRow'] = str(limit['MaxTileRow'])
-            T['MinTileCol'] = str(limit['MinTileCol'])
-            T['MaxTileCol'] = str(limit['MaxTileCol'])
-            tms['TileMatrixSetLimits']['TileMatrixLimits'].append(T)
-        # print(tms)
-
-        layer = {   'ows:Title': source['name'],
-                    'ows:Abstract': source['name'],
-                    'ows:WGS84BoundingBox': {   'ows:LowerCorner': "-7.1567 40.6712",
-                                                'ows:UpperCorner': "11.578 51.9948"
-                                            },
-                    'ows:Identifier': source['name'],
-                    'Style': {  'ows:Title': 'Legende generique',
-                                'ows:Abstract': "Fichier de legende generique",
-                                'ows:Keywords': { 'ows:Keyword': 'Defaut'},
-                                'ows:Identifier': 'normal',
-                                'LegendeURL': { '@format': "image/jpeg",
-                                                '@height': "200",
-                                                '@maxScaleDenominator': "100000000",
-                                                '@minScaleDenominator': "200",
-                                                '@width': "200",
-                                                '@xlink:href': "https://wxs.ign.fr/static/legends/LEGEND.jpg"},
-                                '@isDefault': 'true',
-                            },
-                    'Format': 'image/png',
-                    'InfoFormat':'application/gml+xml; version=3.1'}
-        layer['TileMatrixSetLink'] = tms
-
-        if source["name"] != 'opi':
-            capabilities_layers.append(layer)
-        
-        # , 'TileMatrixSetLink': tms})
-    print(capabilities_layers)
-    # update API url
-    operations=capabilities['{http://www.opengis.net/wmts/1.0}Capabilities']['{http://www.opengis.net/ows/1.1}OperationsMetadata']['{http://www.opengis.net/ows/1.1}Operation']
-    for operation in operations:
-        operation['{http://www.opengis.net/ows/1.1}DCP']['{http://www.opengis.net/ows/1.1}HTTP']['{http://www.opengis.net/ows/1.1}Get']['@{http://www.w3.org/1999/xlink}href'] = url
-    # on exporte le capabilities mis à jour
-    ET.register_namespace('', 'http://www.opengis.net/wmts/1.0')
-    ET.register_namespace('gml', 'http://www.opengis.net/gml')
-    ET.register_namespace('ows', "http://www.opengis.net/ows/1.1")
-    ET.register_namespace('xlink', "http://www.w3.org/1999/xlink")
-
-    capabilities['{http://www.opengis.net/wmts/1.0}Capabilities']['{http://www.opengis.net/wmts/1.0}Contents'].pop('{http://www.opengis.net/wmts/1.0}Layer')
-    capabilities['{http://www.opengis.net/wmts/1.0}Capabilities']['{http://www.opengis.net/wmts/1.0}Contents']['Layer'] = capabilities_layers
-
-    tree_test=dict_to_etree(capabilities)
-    
-    output_tree = ET.ElementTree(dict_to_etree(capabilities))
-    output_tree.write(cache+"/Capabilities.xml", encoding="UTF-8",xml_declaration=True)
-    
+         
 def main():
     """Create or Update the cache for list of input OPI."""
-
-    # if not os.path.exists(args.cache+'/Capabilities.xml'):
-    #    createXmlDraft(args.api,args.cache)
 
     if not os.path.exists(args.cache+'/overviews.json'):
         from shutil import copy2
         copy2("ressources/"+ args.overviews, args.cache+'/overviews.json')
 
     import json
-    # tiles, epsg = get_pyramids(args.cache+'/Capabilities.xml')
 
     with open(args.cache+'/overviews.json') as json_overviews:
         overviews_dict = json.load(json_overviews)
@@ -526,7 +346,6 @@ def main():
                 mtd[color[0]][color[1]] = {}
             mtd[color[0]][color[1]][color[2]] = cliche
             process_image(overviews_dict, db_graph, filename, color, out_raster_srs)
-            print(overviews_dict)
 
     with open(args.cache+'/cache_mtd.json', 'w') as outfile:
         json.dump(mtd, outfile)
@@ -538,7 +357,7 @@ def main():
         {'name': 'graph', 'format': 'image/png'},
         {'name': 'opi', 'format': 'image/png', 'prefix': args.prefix}]
 
-    update_capabilities_and_json(args.cache, args.api, LAYERS)
+    update_capabilities_and_json(args.cache, args.api, LAYERS, overviews_dict)
 
 if __name__ == "__main__":
     main()
