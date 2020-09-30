@@ -19,10 +19,24 @@ describe('Validator', () => {
         done();
       });
     });
+    describe('type: name, with invalid name', () => {
+      it("should return 'false'", (done) => {
+        const crs = JSON.parse('{"type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::2154b" } }');
+        validator.isCrs(crs).should.be.a('boolean').equal(false);
+        done();
+      });
+    });
     describe('type: EPSG', () => {
       it("should return 'true'", (done) => {
         const crs = JSON.parse('{"type": "EPSG", "properties": { "code": "2154" } }');
         validator.isCrs(crs).should.be.a('boolean').equal(true);
+        done();
+      });
+    });
+    describe('type: EPSG, with invalid code', () => {
+      it("should return 'false'", (done) => {
+        const crs = JSON.parse('{"type": "EPSG", "properties": { "code": "2154b" } }');
+        validator.isCrs(crs).should.be.a('boolean').equal(false);
         done();
       });
     });

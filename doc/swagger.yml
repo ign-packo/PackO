@@ -84,7 +84,7 @@ paths:
           schema:
             type: string
             enum:
-              - WMS
+#              - WMS
               - WMTS
         - in: query
           name: REQUEST
@@ -98,74 +98,94 @@ paths:
               - GetFeatureInfo
         - in: query
           name: VERSION
-          description: ex: 1.0.0
-          required: false
+#          description: ex: 1.0.0
+          required: true
           schema:
             type: string
-            pattern: '^\d+(.\d+)*$'
+#            pattern: '^\d+(.\d+)*$'
+            enum:
+              - 1.0.0
         - in: query
           name: LAYER
           description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
+            enum:
+              - ortho
+              - graph
+            example: ortho
         - in: query
           name: STYLE
           description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
+            enum:
+              - normal
+#              - default
+            example: normal  # example of a parameter value
         - in: query
           name: FORMAT
-          description: required if GetTile or GetFeatureInfo
+          description: required if GetTile
           required: false
           schema:
             type: string
             enum:
               - image/png
               - image/jpeg
+            example: image/png
         - in: query
           name: TILEMATRIXSET
           description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
+            enum:
+              - LAMB93
+            example: LAMB93
         - in: query
           name: TILEMATRIX
           description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: string
+            example: 21
         - in: query
           name: TILEROW
           description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: integer
+            example: 409395
         - in: query
           name: TILECOL
           description: required if GetTile or GetFeatureInfo
           required: false
           schema:
             type: integer
+            example: 18027
         - in: query
           name: I
           description: required if GetFeatureInfo
           required: false
           schema:
             type: integer
+            example: 109
         - in: query
           name: J
           description: required if GetFeatureInfo
           required: false
           schema:
             type: integer
+            example: 136
         - in: query
           name: INFOFORMAT
           description: required if GetFeatureInfo
           required: false
           schema:
             type: string
+            example: application/gml+xml; version=3.1
   
       responses:
         '200':

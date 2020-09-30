@@ -5,25 +5,6 @@ chai.use(require('chai-json-schema'));
 const should = chai.should();
 const server = require('..');
 
-const schema = {
-  title: 'test',
-  type: 'object',
-  required: ['color', 'cliche'],
-  properties: {
-    color: {
-      type: 'array',
-      minItems: 3,
-      maxItems: 3,
-      items: {
-        type: 'integer',
-      },
-    },
-    cliche: {
-      type: 'string',
-    },
-  },
-};
-
 describe('Wmts', () => {
   after((done) => {
     server.close();
@@ -39,7 +20,7 @@ describe('Wmts', () => {
           should.not.exist(err);
           res.should.have.status(400);
           const resJson = JSON.parse(res.text);
-          resJson.should.have.property('status').equal("SERVICE 'OTHER' non supporté");
+          resJson.should.have.property('status').equal("'OTHER': unsupported SERVICE value");
           done();
         });
     });
@@ -54,9 +35,60 @@ describe('Wmts', () => {
           should.not.exist(err);
           res.should.have.status(400);
           const resJson = JSON.parse(res.text);
-          resJson.should.have.property('status').equal("REQUEST 'Other' non supporté");
+          resJson.should.have.property('status').equal("'Other': unsupported REQUEST value");
           done();
         });
+    });
+  });
+
+  describe('GetFeatureInfo', () => {
+    describe('query: LAYER=other', () => {
+      it('should return an error', (done) => {
+        chai.request(server)
+          .get('/wmts')
+          .query({
+            REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, INFOFORMAT: 'application/gml+xml; version=3.1', LAYER: 'other', STYLE: 'normal',
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.have.property('status').equal("'other': unsupported LAYER value");
+            done();
+          });
+      });
+    });
+    describe('query: STYLE=other', () => {
+      it('should return an error', (done) => {
+        chai.request(server)
+          .get('/wmts')
+          .query({
+            REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, INFOFORMAT: 'application/gml+xml; version=3.1', LAYER: 'ortho', STYLE: 'other',
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.have.property('status').equal("'other': unsupported STYLE value");
+            done();
+          });
+      });
+    });
+    describe('query: TILEMATRIXSET=OTHER', () => {
+      it('should return an error', (done) => {
+        chai.request(server)
+          .get('/wmts')
+          .query({
+            REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'OTHER', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, INFOFORMAT: 'application/gml+xml; version=3.1', LAYER: 'ortho', STYLE: 'normal',
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.have.property('status').equal("'OTHER': unsupported TILEMATRIXSET value");
+            done();
+          });
+      });
     });
   });
 
@@ -86,12 +118,12 @@ describe('Wmts', () => {
           should.not.exist(err);
           res.should.have.status(400);
           const resJson = JSON.parse(res.text);
-          resJson.should.have.property('status').equal("FORMAT 'image/autre' non supporté");
+          resJson.should.have.property('status').equal("'image/autre': unsupported FORMAT value");
           done();
         });
     });
 
-    it('should return an image png', (done) => {
+    it('should return a png image', (done) => {
       chai.request(server)
         .get('/wmts')
         .query({
@@ -106,7 +138,7 @@ describe('Wmts', () => {
         });
     });
 
-    it('should return an image jpeg', (done) => {
+    it('should return a jpeg image', (done) => {
       chai.request(server)
         .get('/wmts')
         .query({
@@ -123,7 +155,7 @@ describe('Wmts', () => {
   });
 
   describe('GetFeatureInfo', () => {
-    it('should return a Json { "color": Array(3), "cliche": !unknown }', (done) => {
+    it('should return an xml', (done) => {
       chai.request(server)
         .get('/wmts')
         .query({
@@ -132,10 +164,8 @@ describe('Wmts', () => {
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
-          const resJson = JSON.parse(res.text);
+          res.type.should.be.a('string').equal('text/html');
 
-          resJson.should.be.jsonSchema(schema);
-          resJson.should.have.property('cliche').not.equal('unknown');
           done();
         });
     });

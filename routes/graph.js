@@ -246,7 +246,7 @@ router.get('/graph', [
 
   const url = path.join(global.dir_cache, '21', `${Ty}`, `${Tx}`, 'graph.png');
   if (!fs.existsSync(url)) {
-    res.status(200).send('{"color":[0,0,0], "cliche":"out of borders"}');
+    res.status(200).send('{"color":[0,0,0], "cliche":"out of bounds"}');
   } else {
     jimp.read(url, (err, image) => {
       if (err) {

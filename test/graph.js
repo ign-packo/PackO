@@ -32,7 +32,7 @@ describe('Graph', () => {
 
   describe('GET /graph', () => {
     describe('query: x=0 & y=0', () => {
-      it("should return a 'out of borders'", (done) => {
+      it("should return a 'out of bounds'", (done) => {
         chai.request(server)
           .get('/graph')
           .query({ x: 0, y: 0 })
@@ -42,7 +42,7 @@ describe('Graph', () => {
             const resJson = JSON.parse(res.text);
 
             resJson.should.be.jsonSchema(schema);
-            resJson.should.have.property('cliche').equal('out of borders');
+            resJson.should.have.property('cliche').equal('out of bounds');
 
             done();
           });
