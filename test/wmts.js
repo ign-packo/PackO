@@ -41,53 +41,56 @@ describe('Wmts', () => {
     });
   });
 
-   describe('GetFeatureInfo', () => {
-       describe('query: LAYER=other', () => {
-        it('should return an error', (done) => {
-          chai.request(server)
-            .get('/wmts')
-            .query({ REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, INFOFORMAT: 'application/gml+xml; version=3.1', LAYER: 'other', STYLE: 'normal' })
-            .end((err, res) => {
-              should.not.exist(err);
-              res.should.have.status(400);
-              const resJson = JSON.parse(res.text);
-              resJson.should.have.property('status').equal("'other': unsupported LAYER value");
-              done();
-            });
-        });
+  describe('GetFeatureInfo', () => {
+    describe('query: LAYER=other', () => {
+      it('should return an error', (done) => {
+        chai.request(server)
+          .get('/wmts')
+          .query({
+            REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, INFOFORMAT: 'application/gml+xml; version=3.1', LAYER: 'other', STYLE: 'normal',
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.have.property('status').equal("'other': unsupported LAYER value");
+            done();
+          });
       });
-      describe('query: STYLE=other', () => {
-        it('should return an error', (done) => {
-          chai.request(server)
-            .get('/wmts')
-            .query({ REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, INFOFORMAT: 'application/gml+xml; version=3.1', LAYER: 'ortho', STYLE: 'other' })
-            .end((err, res) => {
-              should.not.exist(err);
-              res.should.have.status(400);
-              const resJson = JSON.parse(res.text);
-              resJson.should.have.property('status').equal("'other': unsupported STYLE value");
-              done();
-            });
-        });
-      });
-      describe('query: TILEMATRIXSET=OTHER', () => {
-        it('should return an error', (done) => {
-          chai.request(server)
-            .get('/wmts')
-            .query({ REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'OTHER', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, INFOFORMAT: 'application/gml+xml; version=3.1', LAYER: 'ortho', STYLE: 'normal' })
-            .end((err, res) => {
-              should.not.exist(err);
-              res.should.have.status(400);
-              const resJson = JSON.parse(res.text);
-              resJson.should.have.property('status').equal("'OTHER': unsupported TILEMATRIXSET value");
-              done();
-            });
-        });
-      });
-
-
-
     });
+    describe('query: STYLE=other', () => {
+      it('should return an error', (done) => {
+        chai.request(server)
+          .get('/wmts')
+          .query({
+            REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, INFOFORMAT: 'application/gml+xml; version=3.1', LAYER: 'ortho', STYLE: 'other',
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.have.property('status').equal("'other': unsupported STYLE value");
+            done();
+          });
+      });
+    });
+    describe('query: TILEMATRIXSET=OTHER', () => {
+      it('should return an error', (done) => {
+        chai.request(server)
+          .get('/wmts')
+          .query({
+            REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'OTHER', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, INFOFORMAT: 'application/gml+xml; version=3.1', LAYER: 'ortho', STYLE: 'normal',
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.have.property('status').equal("'OTHER': unsupported TILEMATRIXSET value");
+            done();
+          });
+      });
+    });
+  });
 
   describe('GetCapabilities', () => {
     it('should return the Capabilities.xml', (done) => {

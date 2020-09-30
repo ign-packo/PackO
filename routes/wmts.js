@@ -21,40 +21,44 @@ router.get('/wmts', [
   query('VERSION')
     .matches(/^\d+(.\d+)*$/i).withMessage(createErrMsg.invalidParameter('VERSION')),
   query('LAYER').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
-        .exists().withMessage(createErrMsg.missingParameter('LAYER'))
-        .isIn(['ortho', 'graph'])
-        .withMessage((LAYER) => (`'${LAYER}': unsupported LAYER value`)),
+    .exists().withMessage(createErrMsg.missingParameter('LAYER'))
+    .isIn(['ortho', 'graph'])
+    .withMessage((LAYER) => (`'${LAYER}': unsupported LAYER value`)),
   query('STYLE').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
-        .exists().withMessage(createErrMsg.missingParameter('STYLE'))
-        .isIn('normal')
-        .withMessage((STYLE) => (`'${STYLE}': unsupported STYLE value`)),
+    .exists().withMessage(createErrMsg.missingParameter('STYLE'))
+    .isIn('normal')
+    .withMessage((STYLE) => (`'${STYLE}': unsupported STYLE value`)),
   query('FORMAT').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage(createErrMsg.missingParameter('FORMAT'))
     .isIn(['image/png', 'image/jpeg'])
     .withMessage((FORMAT) => (`'${FORMAT}': unsupported FORMAT value`)),
   query('INFOFORMAT').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('INFOFORMAT')),
   query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
-        .exists().withMessage(createErrMsg.missingParameter('TILEMATRIXSET'))
-        .isIn(['LAMB93'])
-        .withMessage((TILEMATRIXSET) => (`'${TILEMATRIXSET}': unsupported TILEMATRIXSET value`)),
+    .exists().withMessage(createErrMsg.missingParameter('TILEMATRIXSET'))
+    .isIn(['LAMB93'])
+    .withMessage((TILEMATRIXSET) => (`'${TILEMATRIXSET}': unsupported TILEMATRIXSET value`)),
   query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIX')),
   query('TILEROW').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
-        .exists().withMessage(createErrMsg.missingParameter('TILEROW'))
-        .isInt( {min: 0} ).withMessage(createErrMsg.invalidParameter('TILEROW')),
+    .exists().withMessage(createErrMsg.missingParameter('TILEROW'))
+    .isInt({ min: 0 })
+    .withMessage(createErrMsg.invalidParameter('TILEROW')),
   query('TILECOL').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
-        .exists().withMessage(createErrMsg.missingParameter('TILECOL'))
-        .isInt( {min: 0} ).withMessage(createErrMsg.invalidParameter('TILECOL')),
+    .exists().withMessage(createErrMsg.missingParameter('TILECOL'))
+    .isInt({ min: 0 })
+    .withMessage(createErrMsg.invalidParameter('TILECOL')),
   query('I').if(query('REQUEST').isIn(['GetFeatureInfo']))
-        .exists().withMessage(createErrMsg.missingParameter('I'))
-        .isInt( {min: 0} ).withMessage(createErrMsg.invalidParameter('I')),
+    .exists().withMessage(createErrMsg.missingParameter('I'))
+    .isInt({ min: 0 })
+    .withMessage(createErrMsg.invalidParameter('I')),
   query('J').if(query('REQUEST').isIn(['GetFeatureInfo']))
-        .exists().withMessage(createErrMsg.missingParameter('J'))
-        .isInt( {min: 0} ).withMessage(createErrMsg.invalidParameter('J')),
+    .exists().withMessage(createErrMsg.missingParameter('J'))
+    .isInt({ min: 0 })
+    .withMessage(createErrMsg.invalidParameter('J')),
 ], validateParams,
 (req, res) => {
   const params = matchedData(req);
   // const { SERVICE } = params;
   const { REQUEST } = params;
-  const { VERSION } = params;
+  //  const { VERSION } = params;
   const { LAYER } = params;
   // const STYLE = params.STYLE;
   const { FORMAT } = params;
