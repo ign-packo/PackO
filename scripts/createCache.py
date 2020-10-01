@@ -13,7 +13,6 @@ from collections import defaultdict
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--cache", help="cache directory (default: cache)", type=str, default="cache")
-# parser.add_argument("-x", "--xml", help="input GetCapabilities.xml (default: cache/Capabilities.xml)", type=str, default="cache/Capabilities.xml")
 parser.add_argument("-o", "--overviews", help="params for the mosaic (default: LAMB93_5cm.json)", type=str, default="LAMB93_5cm.json")
 parser.add_argument("-t", "--table", help="graph table (default: graphe_pcrs56_zone_test)", type=str, default="graphe_pcrs56_zone_test")
 parser.add_argument("-i", "--input", required=True, help="input OPI pattern")
@@ -22,105 +21,19 @@ parser.add_argument("-a", "--api", help="API Url (default: http://localhost:8081
 args = parser.parse_args()
 print("Arguments: ",args)
 
-# creation dossier cache
-if not os.path.isdir(args.cache):
-    os.mkdir(args.cache)
-
 user = os.getenv('PGUSER', default='postgres')
 host = os.getenv('PGHOST', default='localhost')
 database = os.getenv('PGDATABASE', default='pcrs')
 password = os.getenv('PGPASSWORD', default='postgres')  # En dur, pas top...
 port = os.getenv('PGPORT', default='5432')
-# graphtbl = os.getenv('GRAPHTABLE', default='graphe_pcrs56_zone_test')
 
-# jpegDriver = gdal.GetDriverByName( 'Jpeg' )
 PNG_DRIVER = gdal.GetDriverByName('png')
-# gtiff_driver = gdal.GetDriverByName('Gtiff')
-
-def etree_to_dict(t):
-    """Return dictonary from XML"""
-    d = {t.tag: {} if t.attrib else None}
-    children = list(t)
-    if children:
-        dd = defaultdict(list)
-        for dc in map(etree_to_dict, children):
-            for k, v in dc.items():
-                dd[k].append(v)
-        d = {t.tag: {k: v[0] if len(v) == 1 else v
-                     for k, v in dd.items()}}
-    if t.attrib:
-        d[t.tag].update(('@' + k, v)
-                        for k, v in t.attrib.items())
-    if t.text:
-        text = t.text.strip()
-        if children or t.attrib:
-            if text:
-              d[t.tag]['#text'] = text
-        else:
-            d[t.tag] = text
-    return d
-
-def dict_to_etree(d):
-    """Return XML from dictonary"""
-    def _to_etree(d, root):
-        if not d:
-            pass
-        elif isinstance(d, str):
-            root.text = d
-        elif isinstance(d, dict):
-            for k,v in d.items():
-                assert isinstance(k, str)
-                if k.startswith('#'):
-                    assert k == '#text' and isinstance(v, str)
-                    root.text = v
-                elif k.startswith('@'):
-                    assert isinstance(v, str)
-                    root.set(k[1:], v)
-                elif isinstance(v, list):
-                    for e in v:
-                        _to_etree(e, ET.SubElement(root, k))
-                else:
-                    _to_etree(v, ET.SubElement(root, k))
-        else:
-            assert d == 'invalid type', (type(d), d)
-    assert isinstance(d, dict) and len(d) == 1
-    tag, body = next(iter(d.items()))
-    node = ET.Element(tag)
-    _to_etree(body, node)
-    return node
-
-def get_pyramids(input_capabilities):
-    """Return tiles and epsg from an XML."""
-    print("~~~get_pyramids:", end ='')
-    tree = ET.parse(input_capabilities)
-    root = tree.getroot()
-
-    epsg = int(root.find('{http://www.opengis.net/wmts/1.0}Contents/{http://www.opengis.net/wmts/1.0}TileMatrixSet/{http://www.opengis.net/ows/1.1}SupportedCRS').text.split(':')[1])
-
-    tiles = {}
-    for tms in root.findall('{http://www.opengis.net/wmts/1.0}Contents/{http://www.opengis.net/wmts/1.0}TileMatrixSet/{http://www.opengis.net/wmts/1.0}TileMatrix'):
-        tile = {}
-        tile['Identifier'] = int(tms.find('{http://www.opengis.net/ows/1.1}Identifier').text)
-        tile['ScaleDenominator'] = float(tms.find('{http://www.opengis.net/wmts/1.0}ScaleDenominator').text)
-        tile['TopLeftCorner'] = [float(v) for v in
-                                 tms.find('{http://www.opengis.net/wmts/1.0}TopLeftCorner').text.split()]
-        tile['TileWidth'] = int(tms.find('{http://www.opengis.net/wmts/1.0}TileWidth').text)
-        tile['TileHeight'] = int(tms.find('{http://www.opengis.net/wmts/1.0}TileHeight').text)
-        tile['MatrixWidth'] = int(tms.find('{http://www.opengis.net/wmts/1.0}MatrixWidth').text)
-        tile['MatrixHeight'] = int(tms.find('{http://www.opengis.net/wmts/1.0}MatrixHeight').text)
-        tile['Resolution'] = tile['ScaleDenominator'] * 0.00028
-        tiles[tile['Identifier']] = tile
-    print(" DONE")
-    return tiles, epsg
-
 
 def create_blank_tile(overviews, tile, nb_canaux, out_raster_srs):
     """Return a blank georef image for a tile."""
-    # origin_x = tiles[tile['z']]['TopLeftCorner'][0] + tile['x'] * tiles[tile['z']]['Resolution'] * tiles[tile['z']]['TileWidth']
     origin_x = overviews['crs']['boundingBox']['xmin'] + tile['x'] * tile['resolution'] * overviews['tileSize']['width']
     origin_y = overviews['crs']['boundingBox']['ymax'] - tile['y'] * tile['resolution'] * overviews['tileSize']['height']
     target_ds = gdal.GetDriverByName('MEM').Create('',
-                                                   # tiles[tile['z']]['TileWidth'], tiles[tile['z']]['TileHeight'],
                                                    overviews['tileSize']['width'], overviews['tileSize']['height'],
                                                    nb_canaux, gdal.GDT_Byte)
     target_ds.SetGeoTransform((origin_x, tile['resolution'], 0,
@@ -129,45 +42,7 @@ def create_blank_tile(overviews, tile, nb_canaux, out_raster_srs):
     target_ds.FlushCache()
     return target_ds
 
-
-def get_tile_matrix_set_limits(tiles, filename, overviews):
-    """Return tms limits for a georef image"""
-    print("~~~get_tile_matrix_set_limits:", end='')
-    src_image = gdal.Open(filename)
-    geo_trans = src_image.GetGeoTransform()
-    ul_x = geo_trans[0]
-    ul_y = geo_trans[3]
-    x_dist = geo_trans[1]
-    y_dist = geo_trans[5]
-    lr_x = ul_x + src_image.RasterXSize*x_dist
-    lr_y = ul_y + src_image.RasterYSize*y_dist
-
-    tile_matrix_set_limits = {}
-    # for i in tiles:
-    for level in range (overviews['level']['min'], overviews['level']['max'] + 1):
-        # tile = tiles[i]
-        tile_matrix_limits = {}
-        resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
-        # tile_matrix_limits['TileMatrix'] = tile['Identifier']
-        tile_matrix_limits['TileMatrix'] = level
-        tile_matrix_limits['MinTileCol'] = \
-            math.floor(round((ul_x - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
-            # math.floor(round((ul_x - tile['TopLeftCorner'][0])/(tile['Resolution']*tile['TileWidth']),8))
-        tile_matrix_limits['MinTileRow'] = \
-            math.floor(round((overviews['crs']['boundingBox']['ymax']-ul_y)/(resolution*overviews['tileSize']['height']),8))
-            # math.floor(round((tile['TopLeftCorner'][1]-ul_y)/(tile['Resolution']*tile['TileHeight']),8))
-        tile_matrix_limits['MaxTileCol'] = \
-            math.ceil(round((lr_x - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
-            # math.ceil(round((lr_x - tile['TopLeftCorner'][0])/(tile['Resolution']*tile['TileWidth']),8))
-        tile_matrix_limits['MaxTileRow'] = \
-            math.ceil(round((overviews['crs']['boundingBox']['ymax']-lr_y)/(resolution*overviews['tileSize']['height']),8))
-            # math.ceil(round((tile['TopLeftCorner'][1]-lr_y)/(tile['Resolution']*tile['TileHeight']),8))
-        tile_matrix_set_limits[level] = tile_matrix_limits
-    print(" DONE")
-    print(tile_matrix_set_limits)
-    return tile_matrix_set_limits
-
-def get_tile_limits(overviews, resolution, filename):
+def get_tile_limits( filename):
     """Return tms limits for a georef image at a given level"""
     print("~~~get_tile_limits:", end='')
     src_image = gdal.Open(filename)
@@ -180,15 +55,8 @@ def get_tile_limits(overviews, resolution, filename):
     lr_y = ul_y + src_image.RasterYSize*y_dist
 
     tile_limits = {}
-
-    tile_limits['MinTileCol'] = \
-        math.floor(round((ul_x - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
-    tile_limits['MinTileRow'] = \
-        math.floor(round((overviews['crs']['boundingBox']['ymax']-ul_y)/(resolution*overviews['tileSize']['height']),8))
-    tile_limits['MaxTileCol'] = \
-        math.ceil(round((lr_x - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8)) - 1
-    tile_limits['MaxTileRow'] = \
-        math.ceil(round((overviews['crs']['boundingBox']['ymax']-lr_y)/(resolution*overviews['tileSize']['height']),8)) - 1
+    tile_limits['LowerCorner'] = [ lr_x, lr_y ]
+    tile_limits['UpperCorner'] = [ ul_x, ul_y ]
 
     print(" DONE")
     return tile_limits
@@ -196,33 +64,61 @@ def get_tile_limits(overviews, resolution, filename):
 def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
     """Update the cache for an input OPI."""
     print("~~~process_image")
-    # tile_matix_set_limits = get_tile_matrix_set_limits(tiles, input_filename, overviews)
     input_image = gdal.Open(input_filename)
     stem = Path(input_filename).stem
     overviews['dataSet_limits'] = {}
+
+    tile_limits = get_tile_limits( input_filename)
+
+    if not("boundingBox" in overviews['dataSet_limits']):
+        overviews['dataSet_limits']['boundingBox'] = tile_limits
+    else:
+        if tile_limits['LowerCorner'][0] < overviews['dataSet_limits']['boundingBox']['LowerCorner'][0]:
+            overviews['dataSet_limits']['boundingBox']['LowerCorner'][0] = tile_limits['LowerCorner'][0]
+        if tile_limits['LowerCorner'][1] < overviews['dataSet_limits']['boundingBox']['LowerCorner'][1]:
+            overviews['dataSet_limits']['boundingBox']['LowerCorner'][1] = tile_limits['LowerCorner'][1]
+        if tile_limits['UpperCorner'][0] > overviews['dataSet_limits']['boundingBox']['UpperCorner'][0]:
+            overviews['dataSet_limits']['boundingBox']['UpperCorner'][0] = tile_limits['UpperCorner'][0]
+        if tile_limits['UpperCorner'][1] > overviews['dataSet_limits']['boundingBox']['UpperCorner'][1]:
+            overviews['dataSet_limits']['boundingBox']['UpperCorner'][1] = tile_limits['UpperCorner'][1]
+
+
+    print(tile_limits)
     # for z in tiles:
     for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
         print('Niveau de zoom : ', tile_z)
 
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
-        tile_limits = get_tile_limits(overviews, resolution, input_filename)
 
-        print(tile_limits)
-        
+        MinTileCol = \
+            math.floor(round((tile_limits['UpperCorner'][0] - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
+        MinTileRow = \
+            math.floor(round((overviews['crs']['boundingBox']['ymax']-tile_limits['UpperCorner'][1])/(resolution*overviews['tileSize']['height']),8))
+        MaxTileCol = \
+            math.ceil(round((tile_limits['LowerCorner'][0] - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8)) - 1
+        MaxTileRow = \
+            math.ceil(round((overviews['crs']['boundingBox']['ymax']-tile_limits['LowerCorner'][1])/(resolution*overviews['tileSize']['height']),8)) - 1
+
         if not(tile_z in overviews['dataSet_limits']):
-            overviews['dataSet_limits'][tile_z] = tile_limits
-        else:
-            if tile_limits['MinTileCol'] < overviews['dataSet_limits'][tile_z]['MinTileCol']:
-                overviews['dataSet_limits'][tile_z]['MinTileCol'] = tile_limits['MinTileCol']
-            if tile_limits['MinTileRow'] < overviews['dataSet_limits'][tile_z]['MinTileRow']:
-                overviews['dataSet_limits'][tile_z]['MinTileRow'] = tile_limits['MinTileRow']
-            if tile_limits['MaxTileCol'] > overviews['dataSet_limits'][tile_z]['MaxTileCol']:
-                overviews['dataSet_limits'][tile_z]['MaxTileCol'] = tile_limits['MaxTileCol']
-            if tile_limits['MaxTileRow'] < overviews['dataSet_limits'][tile_z]['MaxTileRow']:
-                overviews['dataSet_limits'][tile_z]['MaxTileRow'] = tile_limits['MaxTileRow']
+            overviews['dataSet_limits'][tile_z] = {
+                'MinTileCol': MinTileCol,
+                'MinTileRow': MinTileRow,
+                'MaxTileCol': MaxTileCol,
+                'MaxTileRow': MaxTileRow,
+            }
 
-        for tile_x in range(tile_limits['MinTileCol'], tile_limits['MaxTileCol'] + 1):    
-            for tile_y in range(tile_limits['MinTileRow'], tile_limits['MaxTileRow'] + 1):
+        else:
+            if MinTileCol < overviews['dataSet_limits'][tile_z]['MinTileCol']:
+                overviews['dataSet_limits'][tile_z]['MinTileCol'] = MinTileCol
+            if MinTileRow < overviews['dataSet_limits'][tile_z]['MinTileRow']:
+                overviews['dataSet_limits'][tile_z]['MinTileRow'] = MinTileRow
+            if MaxTileCol > overviews['dataSet_limits'][tile_z]['MaxTileCol']:
+                overviews['dataSet_limits'][tile_z]['MaxTileCol'] = MaxTileCol
+            if MaxTileRow < overviews['dataSet_limits'][tile_z]['MaxTileRow']:
+                overviews['dataSet_limits'][tile_z]['MaxTileRow'] = MaxTileRow
+
+        for tile_x in range(MinTileCol, MaxTileCol + 1):    
+            for tile_y in range(MinTileRow, MaxTileRow + 1):
                 # on cree une image 3 canaux pour la tuile
                 opi = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
                 # on reech l'OPI dans cette image
@@ -269,15 +165,15 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
                     PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
     print(" DONE")
 
-def update_capabilities_and_json(cache, url, layers, overviews):
-    print("~~~~update_capabilities_and_json")
+def creation_jsonFile_itowns(cache, urlApi, layers, overviews):
+    print("~~~~creation_jsonFile_itowns")
 
     capabilities_layers = []
     for layer in layers:
         print(layer)
 
         source = {}
-        source["url"] = url
+        source["url"] = urlApi
         source["projection"] = overviews["crs"]['type'] + ":" + str(overviews["crs"]['code'])
         source["networkOptions"] = {"crossOrigin": "anonymous"}
         source["format"] = layer['format']
@@ -294,6 +190,10 @@ def update_capabilities_and_json(cache, url, layers, overviews):
          
 def main():
     """Create or Update the cache for list of input OPI."""
+
+    # creation dossier cache
+    if not os.path.isdir(args.cache):
+        os.mkdir(args.cache)
 
     if not os.path.exists(args.cache+'/overviews.json'):
         from shutil import copy2
@@ -357,7 +257,7 @@ def main():
         {'name': 'graph', 'format': 'image/png'},
         {'name': 'opi', 'format': 'image/png', 'prefix': args.prefix}]
 
-    update_capabilities_and_json(args.cache, args.api, LAYERS, overviews_dict)
+    creation_jsonFile_itowns(args.cache, args.api, LAYERS, overviews_dict)
 
 if __name__ == "__main__":
     main()
