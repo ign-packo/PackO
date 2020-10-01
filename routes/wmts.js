@@ -6,11 +6,14 @@ const { matchedData, query } = require('express-validator');
 const Jimp = require('jimp');
 const path = require('path');
 
+const fs = require('fs');
 const xml2js = require('xml2js');
+const proj4 = require('proj4');
+
+proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
 
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
-const overviews = require('../cache/overviews.json');
 
 router.get('/wmts', [
   query('SERVICE')
@@ -79,6 +82,8 @@ router.get('/wmts', [
     const tileMatrix = [];
     const tileMatrixLimit = [];
 
+    const overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
+
     const resLevelMax = overviews.resolution;
     const levelMin = overviews.level.min;
     const levelMax = overviews.level.max;
@@ -120,8 +125,8 @@ router.get('/wmts', [
       'ows:Title': layerName,
       'ows:Abstract': layerName,
       'ows:WGS84BoundingBox': {
-        'ows:LowerCorner': '-7.1567 40.6712',
-        'ows:UpperCorner': '11.578 51.9948',
+        'ows:LowerCorner': proj4(`${overviews.crs.type}:${overviews.crs.code}`, 'EPSG:4326', overviews.dataSet_limits.boundingBox.LowerCorner).join(' '),
+        'ows:UpperCorner': proj4(`${overviews.crs.type}:${overviews.crs.code}`, 'EPSG:4326', overviews.dataSet_limits.boundingBox.UpperCorner).join(' '),
       },
       'ows:Identifier': layerName,
       Style: {
@@ -146,7 +151,7 @@ router.get('/wmts', [
       Format: 'image/png',
       InfoFormat: 'application/gml+xml; version=3.1',
       TileMatrixSetLink: {
-        TileMatrixSet: 'LAMB93',
+        TileMatrixSet: overviews.identifier,
         TileMatrixSetLimits: { TileMatrixLimits: tileMatrixLimit },
       },
     }));
@@ -180,8 +185,8 @@ router.get('/wmts', [
       Contents: {
         Layer: layers,
         TileMatrixSet: {
-          'ows:Identifier': 'LAMB93',
-          'ows:SupportedCRS': 'EPSG:2154',
+          'ows:Identifier': overviews.identifier,
+          'ows:SupportedCRS': `${overviews.crs.type}:${overviews.crs.code}`,
           TileMatrix: tileMatrix,
         },
       },
