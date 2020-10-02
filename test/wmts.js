@@ -41,57 +41,7 @@ describe('Wmts', () => {
     });
   });
 
-  describe('GetFeatureInfo', () => {
-    describe('query: LAYER=other', () => {
-      it('should return an error', (done) => {
-        chai.request(server)
-          .get('/wmts')
-          .query({
-            REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, INFOFORMAT: 'application/gml+xml; version=3.1', LAYER: 'other', STYLE: 'normal',
-          })
-          .end((err, res) => {
-            should.not.exist(err);
-            res.should.have.status(400);
-            const resJson = JSON.parse(res.text);
-            resJson.should.have.property('status').equal("'other': unsupported LAYER value");
-            done();
-          });
-      });
-    });
-    describe('query: STYLE=other', () => {
-      it('should return an error', (done) => {
-        chai.request(server)
-          .get('/wmts')
-          .query({
-            REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, INFOFORMAT: 'application/gml+xml; version=3.1', LAYER: 'ortho', STYLE: 'other',
-          })
-          .end((err, res) => {
-            should.not.exist(err);
-            res.should.have.status(400);
-            const resJson = JSON.parse(res.text);
-            resJson.should.have.property('status').equal("'other': unsupported STYLE value");
-            done();
-          });
-      });
-    });
-    describe('query: TILEMATRIXSET=OTHER', () => {
-      it('should return an error', (done) => {
-        chai.request(server)
-          .get('/wmts')
-          .query({
-            REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'OTHER', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, INFOFORMAT: 'application/gml+xml; version=3.1', LAYER: 'ortho', STYLE: 'normal',
-          })
-          .end((err, res) => {
-            should.not.exist(err);
-            res.should.have.status(400);
-            const resJson = JSON.parse(res.text);
-            resJson.should.have.property('status').equal("'OTHER': unsupported TILEMATRIXSET value");
-            done();
-          });
-      });
-    });
-  });
-
+  // GetCapabilities
   describe('GetCapabilities', () => {
     it('should return the Capabilities.xml', (done) => {
       chai.request(server)
@@ -107,12 +57,13 @@ describe('Wmts', () => {
     });
   });
 
+  // GetTile
   describe('GetTile', () => {
     it('should return an error', (done) => {
       chai.request(server)
         .get('/wmts')
         .query({
-          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/autre', LAYER: 'ortho', STYLE: 'normal',
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/autre', LAYER: 'ortho', STYLE: 'normal',
         })
         .end((err, res) => {
           should.not.exist(err);
@@ -127,7 +78,7 @@ describe('Wmts', () => {
       chai.request(server)
         .get('/wmts')
         .query({
-          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'ortho', STYLE: 'normal',
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'ortho', STYLE: 'normal',
         })
         .end((err, res) => {
           should.not.exist(err);
@@ -142,7 +93,7 @@ describe('Wmts', () => {
       chai.request(server)
         .get('/wmts')
         .query({
-          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/jpeg', LAYER: 'ortho', STYLE: 'normal',
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/jpeg', LAYER: 'ortho', STYLE: 'normal',
         })
         .end((err, res) => {
           should.not.exist(err);
@@ -154,17 +105,138 @@ describe('Wmts', () => {
     });
   });
 
+  // GetFeatureInfo
   describe('GetFeatureInfo', () => {
+    /* Issue #22
+    describe('query: LAYER=other', () => {
+      it('should return an error', (done) => {
+        chai.request(server)
+          .get('/wmts')
+          .query({
+            SERVICE: 'WMTS',
+            REQUEST: 'GetFeatureInfo',
+            VERSION: '1.0.0',
+            LAYER: 'other',
+            STYLE: 'normal',
+            INFOFORMAT: 'application/gml+xml; version=3.1',
+            TILEMATRIXSET: 'LAMB93_5cm',
+            TILEMATRIX: 21,
+            TILEROW: 34395,
+            TILECOL: 18027,
+            I: 139,
+            J: 102,
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.have.property('status').equal("'other': unsupported LAYER value");
+            done();
+          });
+      });
+    });
+    */
+    describe('query: STYLE=other', () => {
+      it('should return an error', (done) => {
+        chai.request(server)
+          .get('/wmts')
+          .query({
+            SERVICE: 'WMTS',
+            REQUEST: 'GetFeatureInfo',
+            VERSION: '1.0.0',
+            LAYER: 'ortho',
+            STYLE: 'other',
+            INFOFORMAT: 'application/gml+xml; version=3.1',
+            TILEMATRIXSET: 'LAMB93_5cm',
+            TILEMATRIX: 21,
+            TILEROW: 34395,
+            TILECOL: 18027,
+            I: 139,
+            J: 102,
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.have.property('status').equal("'other': unsupported STYLE value");
+            done();
+          });
+      });
+    });
+    describe('query: TILEMATRIXSET=OTHER', () => {
+      it('should return an error', (done) => {
+        chai.request(server)
+          .get('/wmts')
+          .query({
+            SERVICE: 'WMTS',
+            REQUEST: 'GetFeatureInfo',
+            VERSION: '1.0.0',
+            LAYER: 'ortho',
+            STYLE: 'normal',
+            INFOFORMAT: 'application/gml+xml; version=3.1',
+            TILEMATRIXSET: 'Other_Xcm',
+            TILEMATRIX: 21,
+            TILEROW: 34395,
+            TILECOL: 18027,
+            I: 139,
+            J: 102,
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.have.property('status').equal("'Other_Xcm': unsupported TILEMATRIXSET value");
+            done();
+          });
+      });
+    });
     it('should return an xml', (done) => {
       chai.request(server)
         .get('/wmts')
         .query({
-          REQUEST: 'GetFeatureInfo', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93', TILEMATRIX: 21, TILEROW: 409395, TILECOL: 18027, I: 10, J: 10, INFOFORMAT: 'application/gml xml; version=3.1', LAYER: 'ortho', STYLE: 'normal',
+          SERVICE: 'WMTS',
+          REQUEST: 'GetFeatureInfo',
+          VERSION: '1.0.0',
+          LAYER: 'ortho',
+          STYLE: 'normal',
+          INFOFORMAT: 'application/gml+xml; version=3.1',
+          TILEMATRIXSET: 'LAMB93_5cm',
+          TILEMATRIX: 21,
+          TILEROW: 34395,
+          TILECOL: 18027,
+          I: 139,
+          J: 102,
         })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
           res.type.should.be.a('string').equal('text/html');
+
+          done();
+        });
+    });
+    it("should return an error: 'out of bounds'", (done) => {
+      chai.request(server)
+        .get('/wmts')
+        .query({
+          SERVICE: 'WMTS',
+          REQUEST: 'GetFeatureInfo',
+          VERSION: '1.0.0',
+          LAYER: 'ortho',
+          STYLE: 'normal',
+          INFOFORMAT: 'application/gml+xml; version=3.1',
+          TILEMATRIXSET: 'LAMB93_5cm',
+          TILEMATRIX: 21,
+          TILEROW: 34395,
+          TILECOL: 180270,
+          I: 139,
+          J: 102,
+        })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(400);
+          const resJson = JSON.parse(res.text);
+          resJson.should.have.property('status').equal('out of bounds');
 
           done();
         });

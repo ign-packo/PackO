@@ -15,6 +15,8 @@ proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
+const overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
+
 router.get('/wmts', [
   query('SERVICE')
     .exists().withMessage(createErrMsg.missingParameter('SERVICE'))
@@ -44,7 +46,7 @@ router.get('/wmts', [
   // .withMessage((LAYER) => (`'${LAYER}': unsupported LAYER value`)),
   query('STYLE').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('STYLE'))
-    .isIn('normal')
+    .isIn(['normal'])
     .withMessage((STYLE) => (`'${STYLE}': unsupported STYLE value`)),
   query('FORMAT').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage(createErrMsg.missingParameter('FORMAT'))
     .isIn(['image/png', 'image/jpeg'])
@@ -52,7 +54,7 @@ router.get('/wmts', [
   query('INFOFORMAT').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('INFOFORMAT')),
   query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('TILEMATRIXSET'))
-    .matches(/^[a-zA-Z0-9_-]+$/i)
+    .isIn([overviews.identifier])
     .withMessage((TILEMATRIXSET) => (`'${TILEMATRIXSET}': unsupported TILEMATRIXSET value`)),
   query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIX')),
   query('TILEROW').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
@@ -93,8 +95,6 @@ router.get('/wmts', [
 
     const tileMatrix = [];
     const tileMatrixLimit = [];
-
-    const overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
 
     const resLevelMax = overviews.resolution;
     const levelMin = overviews.level.min;
@@ -272,38 +272,49 @@ router.get('/wmts', [
     debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
     const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, 'graph.png');
 
-    Jimp.read(url, (err, image) => {
-      if (err) {
-        const erreur = new Error();
-        erreur.msg = {
-          status: err,
-          errors: [{
-            localisation: 'Jimp.read()',
-            msg: err,
-          }],
-        };
-        res.status(500).send(erreur);
+    if (!fs.existsSync(url)) {
+      const erreur = new Error();
+      erreur.msg = {
+        status: 'out of bounds',
+        errors: [{
+          localisation: 'GetFeatureInfo',
+          msg: 'out of bounds',
+        }],
+      };
+      res.status(400).send(erreur.msg);
+    } else {
+      Jimp.read(url, (err, image) => {
+        if (err) {
+          const erreur = new Error();
+          erreur.msg = {
+            status: err,
+            errors: [{
+              localisation: 'Jimp.read()',
+              msg: err,
+            }],
+          };
+          res.status(500).send(erreur.msg);
         // res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
-      } else {
-        const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
-        debugFeatureInfo('index: ', index);
-        const out = {
-          color: [image.bitmap.data[index],
-            image.bitmap.data[index + 1],
-            image.bitmap.data[index + 2]],
-        };
-        debugFeatureInfo(out);
-        if ((out.color[0] in req.app.cache_mtd)
+        } else {
+          const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
+          debugFeatureInfo('index: ', index);
+          const out = {
+            color: [image.bitmap.data[index],
+              image.bitmap.data[index + 1],
+              image.bitmap.data[index + 2]],
+          };
+          debugFeatureInfo(out);
+          if ((out.color[0] in req.app.cache_mtd)
           && (out.color[1] in req.app.cache_mtd[out.color[0]])
           && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-          out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
-        } else {
-          out.cliche = 'missing';
-        }
-        // res.sendFile('FeatureInfo.xml', { root: path.join('cache') });
-        // res.status(200).send(JSON.stringify(out));
+            out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+          } else {
+            out.cliche = 'missing';
+          }
+          // res.sendFile('FeatureInfo.xml', { root: path.join('cache') });
+          // res.status(200).send(JSON.stringify(out));
 
-        const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
+          const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
                            + '<ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"'
                                                     + ' xmlns:gml="http://www.opengis.net/gml"'
                                                     + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
@@ -319,9 +330,10 @@ router.get('/wmts', [
                                + `</${LAYER}>`
                              + '</featureMember>'
                            + '</ReguralGriddedElevations>';
-        res.status(200).send(testResponse);
-      }
-    });
+          res.status(200).send(testResponse);
+        }
+      });
+    }
   }
 });
 
