@@ -178,7 +178,7 @@ def creation_jsonFile_itowns(cache, urlApi, layers, overviews):
         source["networkOptions"] = {"crossOrigin": "anonymous"}
         source["format"] = layer['format']
         source["name"] = layer['name']
-        source["tileMatrixSet"] = args.overviews
+        source["tileMatrixSet"] = overviews["identifier"]
         source["tileMatrixSetLimits"] = overviews["dataSet_limits"]
 
         layerconf = {}

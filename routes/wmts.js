@@ -25,11 +25,23 @@ router.get('/wmts', [
     .isIn(['GetCapabilities', 'GetTile', 'GetFeatureInfo'])
     .withMessage((REQUEST) => (`'${REQUEST}': unsupported REQUEST value`)),
   query('VERSION')
-    .matches(/^\d+(.\d+)*$/i).withMessage(createErrMsg.invalidParameter('VERSION')),
+    .if(query('SERVICE').isIn(['WMTS']))
+    .if(query('REQUEST').isIn(['GetCapabilities']))
+    .exists()
+    .withMessage(createErrMsg.missingParameter('VERSION TEST'))
+    .matches(/^\d+(.\d+)*$/i)
+    .withMessage(createErrMsg.invalidParameter('VERSION'))
+    .if(query('SERVICE').isIn(['WMS', 'WMTS']))
+    .if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
+    .exists()
+    .withMessage(createErrMsg.missingParameter('VERSION TEST'))
+    .matches(/^\d+(.\d+)*$/i)
+    .withMessage(createErrMsg.invalidParameter('VERSION')),
   query('LAYER').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
-    .exists().withMessage(createErrMsg.missingParameter('LAYER'))
-    .isIn(['ortho', 'graph'])
-    .withMessage((LAYER) => (`'${LAYER}': unsupported LAYER value`)),
+    .exists().withMessage(createErrMsg.missingParameter('LAYER')),
+  // !!! A corriger dans une autre branche
+  // .isIn(['ortho', 'graph'])
+  // .withMessage((LAYER) => (`'${LAYER}': unsupported LAYER value`)),
   query('STYLE').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('STYLE'))
     .isIn('normal')
@@ -40,7 +52,7 @@ router.get('/wmts', [
   query('INFOFORMAT').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('INFOFORMAT')),
   query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('TILEMATRIXSET'))
-    .isIn(['LAMB93'])
+    .matches(/^[a-zA-Z0-9_-]+$/i)
     .withMessage((TILEMATRIXSET) => (`'${TILEMATRIXSET}': unsupported TILEMATRIXSET value`)),
   query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIX')),
   query('TILEROW').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
