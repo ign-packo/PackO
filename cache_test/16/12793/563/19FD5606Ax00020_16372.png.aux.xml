@@ -1,9 +1,0 @@
-<PAMDataset>
-  <GeoTransform>  2.3060479999999981e+05,  1.5999999999999988e+00,  0.0000000000000000e+00,  6.7599872000000039e+06,  0.0000000000000000e+00, -1.5999999999999988e+00</GeoTransform>
-  <Metadata domain="IMAGE_STRUCTURE">
-    <MDI key="INTERLEAVE">PIXEL</MDI>
-  </Metadata>
-  <Metadata>
-    <MDI key="AREA_OR_POINT">Area</MDI>
-  </Metadata>
-</PAMDataset>
