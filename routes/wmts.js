@@ -40,10 +40,14 @@ router.get('/wmts', [
     .matches(/^\d+(.\d+)*$/i)
     .withMessage(createErrMsg.invalidParameter('VERSION')),
   query('LAYER').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
-    .exists().withMessage(createErrMsg.missingParameter('LAYER')),
+    .exists().withMessage(createErrMsg.missingParameter('LAYER'))
   // !!! A corriger dans une autre branche
-  // .isIn(['ortho', 'graph'])
-  // .withMessage((LAYER) => (`'${LAYER}': unsupported LAYER value`)),
+    .isIn(['ortho', 'graph', 'opi'])
+    .withMessage((LAYER) => (`'${LAYER}': unsupported LAYER value`)),
+  query('Name').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
+    .if(query('LAYER').isIn(['opi']))
+    .optional(),
+  // .withMessage(createErrMsg.missingParameter('Name')),
   query('STYLE').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('STYLE'))
     .isIn(['normal'])
@@ -79,7 +83,7 @@ router.get('/wmts', [
   // const { SERVICE } = params;
   const { REQUEST } = params;
   //  const { VERSION } = params;
-  const { LAYER } = params;
+  const { LAYER, Name } = params;
   // const STYLE = params.STYLE;
   const { FORMAT } = params;
   // const TILEMATRIXSET = params.TILEMATRIXSET;
@@ -168,6 +172,52 @@ router.get('/wmts', [
       },
     }));
 
+    const dimension = {
+      'ows:Identifier': 'name',
+      'ows:title': 'opi name',
+      'ows:abstract': "nom de l'opi",
+
+      Default: '19FD5606Ax00020_16371',
+      Value: overviews.list_OPI,
+
+    };
+
+    layers.push({
+      'ows:Title': 'opi',
+      'ows:Abstract': 'opi',
+      'ows:WGS84BoundingBox': {
+        'ows:LowerCorner': proj4(`${overviews.crs.type}:${overviews.crs.code}`, 'EPSG:4326', overviews.dataSet_limits.boundingBox.LowerCorner).join(' '),
+        'ows:UpperCorner': proj4(`${overviews.crs.type}:${overviews.crs.code}`, 'EPSG:4326', overviews.dataSet_limits.boundingBox.UpperCorner).join(' '),
+      },
+      'ows:Identifier': 'opi',
+      Style: {
+        'ows:Title': 'Legende generique',
+        'ows:Abstract': 'Fichier de legende generique',
+        'ows:Keywords': { 'ows:Keyword': 'Defaut' },
+        'ows:Identifier': 'normal',
+        LegendeURL: {
+          $: {
+            format: 'image/jpeg',
+            height: '200',
+            maxScaleDenominator: '100000000',
+            minScaleDenominator: '200',
+            width: '200',
+            'xlink:href': 'https://wxs.ign.fr/static/legends/LEGEND.jpg',
+          },
+        },
+        $: {
+          isDefault: 'true',
+        },
+      },
+      Format: 'image/png',
+      InfoFormat: 'application/gml+xml; version=3.1',
+      Dimension: dimension,
+      TileMatrixSetLink: {
+        TileMatrixSet: overviews.identifier,
+        TileMatrixSetLimits: { TileMatrixLimits: tileMatrixLimit },
+      },
+    });
+
     const capabilitiesJson = {};
     capabilitiesJson.Capabilities = {
       $: {
@@ -242,12 +292,16 @@ router.get('/wmts', [
     debug('~~~GetTile');
     debugGetTile(LAYER, TILEMATRIX, TILEROW, TILECOL);
     let mime = null;
+    let layer = LAYER;
     if ((!FORMAT) || (FORMAT === 'image/png')) {
       mime = Jimp.MIME_PNG; // "image/png"
     } else if (FORMAT === 'image/jpeg') {
       mime = Jimp.MIME_JPEG; // "image/jpeg"
     }
-    const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${LAYER}.png`);
+    if (LAYER === 'opi') {
+      layer = Name;
+    }
+    const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${layer}.png`);
     Jimp.read(url, (err, image) => {
       new Promise((success, failure) => {
         if (err) {
