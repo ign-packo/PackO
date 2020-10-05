@@ -41,13 +41,11 @@ router.get('/wmts', [
     .withMessage(createErrMsg.invalidParameter('VERSION')),
   query('LAYER').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('LAYER'))
-  // !!! A corriger dans une autre branche
     .isIn(['ortho', 'graph', 'opi'])
     .withMessage((LAYER) => (`'${LAYER}': unsupported LAYER value`)),
-  query('Name').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
-    .if(query('LAYER').isIn(['opi']))
-    .optional(),
-  // .withMessage(createErrMsg.missingParameter('Name')),
+  query('Name').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).if(query('LAYER').isIn(['opi']))
+    .exists()
+    .withMessage(createErrMsg.missingParameter('Name')),
   query('STYLE').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('STYLE'))
     .isIn(['normal'])

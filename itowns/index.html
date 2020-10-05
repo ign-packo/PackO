@@ -71,6 +71,9 @@
             orthoConfig = conf[0];
             graphConfig = conf[1];
             opiConfig = conf[2];
+
+            console.log(conf[2])
+
             orthoConfig.source = new itowns.WMTSSource(orthoConfig.source);
             orthoConfig.source.extentInsideLimit = function (extent) {
                     return true;

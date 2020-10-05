@@ -88,7 +88,6 @@ describe('Wmts', () => {
           done();
         });
     });
-
     it('should return a jpeg image', (done) => {
       chai.request(server)
         .get('/wmts')
@@ -103,11 +102,25 @@ describe('Wmts', () => {
           done();
         });
     });
+
+    it('should return a oip image', (done) => {
+      chai.request(server)
+        .get('/wmts')
+        .query({
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'opi', Name: '19FD5606Ax00020_16371', STYLE: 'normal',
+        })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          res.type.should.be.a('string').equal('application/octet-stream');
+
+          done();
+        });
+    });
   });
 
   // GetFeatureInfo
   describe('GetFeatureInfo', () => {
-    /* Issue #22
     describe('query: LAYER=other', () => {
       it('should return an error', (done) => {
         chai.request(server)
@@ -135,7 +148,6 @@ describe('Wmts', () => {
           });
       });
     });
-    */
     describe('query: STYLE=other', () => {
       it('should return an error', (done) => {
         chai.request(server)
