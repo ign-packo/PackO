@@ -12,8 +12,6 @@ const validateParams = require('../paramValidation/validateParams');
 const validator = require('../paramValidation/validator');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
-const overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
-
 const geoJsonAPatcher = [
   body('geoJSON')
     .exists().withMessage(createErrMsg.missingBody)
@@ -58,6 +56,7 @@ function encapBody(req, res, next) {
 router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   ...geoJsonAPatcher,
 ], validateParams, (req, res) => {
+  const { overviews } = req.app;
   const params = matchedData(req);
   const X0 = overviews.crs.boundingBox.xmin;
   const Y0 = overviews.crs.boundingBox.ymax;
@@ -229,6 +228,7 @@ router.get('/graph', [
     .withMessage(createErrMsg.invalidParameter('y')),
 ], validateParams,
 (req, res) => {
+  const { overviews } = req.app;
   const params = matchedData(req);
   const { x } = params;
   const { y } = params;

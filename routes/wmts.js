@@ -15,8 +15,6 @@ proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
-const overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
-
 router.get('/wmts', [
   query('SERVICE')
     .exists().withMessage(createErrMsg.missingParameter('SERVICE'))
@@ -45,7 +43,8 @@ router.get('/wmts', [
     .withMessage((LAYER) => (`'${LAYER}': unsupported LAYER value`)),
   query('Name').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).if(query('LAYER').isIn(['opi']))
     .exists()
-    .withMessage(createErrMsg.missingParameter('Name')),
+    .withMessage(createErrMsg.missingParameter('Name'))
+    .optional(),
   query('STYLE').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('STYLE'))
     .isIn(['normal'])
@@ -56,7 +55,7 @@ router.get('/wmts', [
   query('INFOFORMAT').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('INFOFORMAT')),
   query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('TILEMATRIXSET'))
-    .isIn([overviews.identifier])
+    .custom((TILEMATRIXSET, { req }) => TILEMATRIXSET === req.app.overviews.identifier)
     .withMessage((TILEMATRIXSET) => (`'${TILEMATRIXSET}': unsupported TILEMATRIXSET value`)),
   query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIX')),
   query('TILEROW').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
@@ -77,6 +76,7 @@ router.get('/wmts', [
     .withMessage(createErrMsg.invalidParameter('J')),
 ], validateParams,
 (req, res) => {
+  const { overviews } = req.app;
   const params = matchedData(req);
   // const { SERVICE } = params;
   const { REQUEST } = params;
@@ -134,8 +134,29 @@ router.get('/wmts', [
       });
     }
 
+    const extra = {
+      ortho: {
+        key: 'InfoFormat',
+        value: 'application/gml+xml; version=3.1',
+      },
+      graph: {
+        key: 'InfoFormat',
+        value: 'application/gml+xml; version=3.1',
+      },
+      opi: {
+        key: 'Dimension',
+        value: {
+          'ows:Identifier': 'name',
+          'ows:title': 'opi name',
+          'ows:abstract': "nom de l'opi",
+          Default: overviews.list_OPI[0],
+          Value: overviews.list_OPI,
+        },
+      },
+    };
+
     const layers = [];
-    ['ortho', 'graph'].forEach((layerName) => layers.push({
+    ['ortho', 'graph', 'opi'].forEach((layerName) => layers.push({
       'ows:Title': layerName,
       'ows:Abstract': layerName,
       'ows:WGS84BoundingBox': {
@@ -163,58 +184,13 @@ router.get('/wmts', [
         },
       },
       Format: 'image/png',
+      [extra[layerName].key]: extra[layerName].value,
       InfoFormat: 'application/gml+xml; version=3.1',
       TileMatrixSetLink: {
         TileMatrixSet: overviews.identifier,
         TileMatrixSetLimits: { TileMatrixLimits: tileMatrixLimit },
       },
     }));
-
-    const dimension = {
-      'ows:Identifier': 'name',
-      'ows:title': 'opi name',
-      'ows:abstract': "nom de l'opi",
-
-      Default: '19FD5606Ax00020_16371',
-      Value: overviews.list_OPI,
-
-    };
-
-    layers.push({
-      'ows:Title': 'opi',
-      'ows:Abstract': 'opi',
-      'ows:WGS84BoundingBox': {
-        'ows:LowerCorner': proj4(`${overviews.crs.type}:${overviews.crs.code}`, 'EPSG:4326', overviews.dataSet_limits.boundingBox.LowerCorner).join(' '),
-        'ows:UpperCorner': proj4(`${overviews.crs.type}:${overviews.crs.code}`, 'EPSG:4326', overviews.dataSet_limits.boundingBox.UpperCorner).join(' '),
-      },
-      'ows:Identifier': 'opi',
-      Style: {
-        'ows:Title': 'Legende generique',
-        'ows:Abstract': 'Fichier de legende generique',
-        'ows:Keywords': { 'ows:Keyword': 'Defaut' },
-        'ows:Identifier': 'normal',
-        LegendeURL: {
-          $: {
-            format: 'image/jpeg',
-            height: '200',
-            maxScaleDenominator: '100000000',
-            minScaleDenominator: '200',
-            width: '200',
-            'xlink:href': 'https://wxs.ign.fr/static/legends/LEGEND.jpg',
-          },
-        },
-        $: {
-          isDefault: 'true',
-        },
-      },
-      Format: 'image/png',
-      InfoFormat: 'application/gml+xml; version=3.1',
-      Dimension: dimension,
-      TileMatrixSetLink: {
-        TileMatrixSet: overviews.identifier,
-        TileMatrixSetLimits: { TileMatrixLimits: tileMatrixLimit },
-      },
-    });
 
     const capabilitiesJson = {};
     capabilitiesJson.Capabilities = {
@@ -363,8 +339,6 @@ router.get('/wmts', [
           } else {
             out.cliche = 'missing';
           }
-          // res.sendFile('FeatureInfo.xml', { root: path.join('cache') });
-          // res.status(200).send(JSON.stringify(out));
 
           const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
                            + '<ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"'
