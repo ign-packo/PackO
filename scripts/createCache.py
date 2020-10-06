@@ -55,8 +55,8 @@ def get_tile_limits( filename):
     lr_y = ul_y + src_image.RasterYSize*y_dist
 
     tile_limits = {}
-    tile_limits['LowerCorner'] = [ lr_x, lr_y ]
-    tile_limits['UpperCorner'] = [ ul_x, ul_y ]
+    tile_limits['LowerCorner'] = [ ul_x, lr_y ]
+    tile_limits['UpperCorner'] = [ lr_x, ul_y ]
 
     print(" DONE")
     return tile_limits
@@ -71,7 +71,7 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
         overviews['dataSet']['boundingBox'] = {}
         overviews['dataSet']['limits'] = {}
 
-    tile_limits = get_tile_limits( input_filename)
+    tile_limits = get_tile_limits(input_filename)
 
     if not("LowerCorner" in overviews['dataSet']['boundingBox']):
         overviews['dataSet']['boundingBox'] = tile_limits
@@ -94,16 +94,16 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
         MinTileCol = \
-            math.floor(round((tile_limits['UpperCorner'][0] - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
+            math.floor(round((tile_limits['LowerCorner'][0] - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
         MinTileRow = \
             math.floor(round((overviews['crs']['boundingBox']['ymax']-tile_limits['UpperCorner'][1])/(resolution*overviews['tileSize']['height']),8))
         MaxTileCol = \
-            math.ceil(round((tile_limits['LowerCorner'][0] - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8)) - 1
+            math.ceil(round((tile_limits['UpperCorner'][0] - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8)) - 1
         MaxTileRow = \
             math.ceil(round((overviews['crs']['boundingBox']['ymax']-tile_limits['LowerCorner'][1])/(resolution*overviews['tileSize']['height']),8)) - 1
 
-        if not(tile_z in overviews['dataSet']['limits']):
-            overviews['dataSet']['limits'][tile_z] = {
+        if not( str(tile_z) in overviews['dataSet']['limits']):
+            overviews['dataSet']['limits'][str(tile_z)] = {
                 'MinTileCol': MinTileCol,
                 'MinTileRow': MinTileRow,
                 'MaxTileCol': MaxTileCol,
@@ -111,14 +111,14 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
             }
 
         else:
-            if MinTileCol < overviews['dataSet']['limits'][tile_z]['MinTileCol']:
-                overviews['dataSet']['limits'][tile_z]['MinTileCol'] = MinTileCol
-            if MinTileRow < overviews['dataSet']['limits'][tile_z]['MinTileRow']:
-                overviews['dataSet']['limits'][tile_z]['MinTileRow'] = MinTileRow
-            if MaxTileCol > overviews['dataSet']['limits'][tile_z]['MaxTileCol']:
-                overviews['dataSet']['limits'][tile_z]['MaxTileCol'] = MaxTileCol
-            if MaxTileRow > overviews['dataSet']['limits'][tile_z]['MaxTileRow']:
-                overviews['dataSet']['limits'][tile_z]['MaxTileRow'] = MaxTileRow
+            if MinTileCol < overviews['dataSet']['limits'][str(tile_z)]['MinTileCol']:
+                overviews['dataSet']['limits'][str(tile_z)]['MinTileCol'] = MinTileCol
+            if MinTileRow < overviews['dataSet']['limits'][str(tile_z)]['MinTileRow']:
+                overviews['dataSet']['limits'][str(tile_z)]['MinTileRow'] = MinTileRow
+            if MaxTileCol > overviews['dataSet']['limits'][str(tile_z)]['MaxTileCol']:
+                overviews['dataSet']['limits'][str(tile_z)]['MaxTileCol'] = MaxTileCol
+            if MaxTileRow > overviews['dataSet']['limits'][str(tile_z)]['MaxTileRow']:
+                overviews['dataSet']['limits'][str(tile_z)]['MaxTileRow'] = MaxTileRow
 
         for tile_x in range(MinTileCol, MaxTileCol + 1):    
             for tile_y in range(MinTileRow, MaxTileRow + 1):
