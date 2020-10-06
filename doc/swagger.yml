@@ -114,6 +114,7 @@ paths:
             enum:
               - ortho
               - graph
+              - opi
             example: ortho
         - in: query
           name: STYLE
@@ -207,6 +208,7 @@ paths:
               - graph
               - ortho
               - opi
+              - overviews
 
       responses:
         '200':
