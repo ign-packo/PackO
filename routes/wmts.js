@@ -106,10 +106,10 @@ router.get('/wmts', [
 
       tileMatrixLimit.push({
         TileMatrix: level,
-        MinTileRow: overviews.dataSet_limits[level].MinTileRow,
-        MaxTileRow: overviews.dataSet_limits[level].MaxTileRow,
-        MinTileCol: overviews.dataSet_limits[level].MinTileCol,
-        MaxTileCol: overviews.dataSet_limits[level].MaxTileCol,
+        MinTileRow: overviews.dataSet.limits[level].MinTileRow,
+        MaxTileRow: overviews.dataSet.limits[level].MaxTileRow,
+        MinTileCol: overviews.dataSet.limits[level].MinTileCol,
+        MaxTileCol: overviews.dataSet.limits[level].MaxTileCol,
       });
 
       const MatrixWidth = Math.ceil(
@@ -137,8 +137,8 @@ router.get('/wmts', [
       'ows:Title': layerName,
       'ows:Abstract': layerName,
       'ows:WGS84BoundingBox': {
-        'ows:LowerCorner': proj4(`${overviews.crs.type}:${overviews.crs.code}`, 'EPSG:4326', overviews.dataSet_limits.boundingBox.LowerCorner).join(' '),
-        'ows:UpperCorner': proj4(`${overviews.crs.type}:${overviews.crs.code}`, 'EPSG:4326', overviews.dataSet_limits.boundingBox.UpperCorner).join(' '),
+        'ows:LowerCorner': proj4(`${overviews.crs.type}:${overviews.crs.code}`, 'EPSG:4326', overviews.dataSet.boundingBox.LowerCorner).join(' '),
+        'ows:UpperCorner': proj4(`${overviews.crs.type}:${overviews.crs.code}`, 'EPSG:4326', overviews.dataSet.boundingBox.UpperCorner).join(' '),
       },
       'ows:Identifier': layerName,
       Style: {
