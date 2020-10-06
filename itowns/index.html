@@ -28,16 +28,21 @@
         itowns.proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
         /* global itowns, setupLoadingScreen, GuiTools, debug */
 
-        const overviews;
         itowns.Fetcher.json(apiUrl+'json/overviews').then ((json) => {
-            overviews = json
-        })
+            const overviews = json
 
-        console.log(overviews.identifier)
+            crs = `${overviews.crs.type}:${overviews.crs.code}`
+
+            xmin = overviews.dataSet.boundingBox.LowerCorner[0]
+            xmax = overviews.dataSet.boundingBox.UpperCorner[0]
+            ymin = overviews.dataSet.boundingBox.LowerCorner[1]
+            ymax = overviews.dataSet.boundingBox.UpperCorner[1]
+
+            console.log((xmax-xmin)/2)
 
         // !!!TODO mettre placement de maniere dynamique !
         var placement = {
-            coord: new itowns.Coordinates('EPSG:2154', 230746, 6759748),
+            coord: new itowns.Coordinates(crs, (xmax + xmin)/2, (ymax + ymin)/2),
             range: 10000,
         }
 
@@ -52,7 +57,7 @@
             0, 256 * 374491428.571429 * 0.00028,
             12000000 - 256 * 374491428.571429 * 0.00028, 12000000);
         var extent = new itowns.Extent(
-            'EPSG:2154',
+            crs,
             0, 256 * 374491428.571429 * 0.00028,
             7200000 - 256 * 374491428.571429 * 0.00028, 7200000);
 
@@ -140,9 +145,6 @@
 
         })
 
-        
-
-
         // instanciate controls
         // eslint-disable-next-line no-new
         new itowns.PlanarControls(view, {
@@ -155,7 +157,8 @@
 
         menuGlobe.addImageryLayersGUI(view.getLayers(function gui(l) { return l.isColorLayer; }));
         debug.createTileDebugUI(menuGlobe.gui, view);
+    })
+
     </script>
 </body>
-
 </html>

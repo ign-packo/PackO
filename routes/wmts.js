@@ -43,8 +43,8 @@ router.get('/wmts', [
     .withMessage((LAYER) => (`'${LAYER}': unsupported LAYER value`)),
   query('Name').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).if(query('LAYER').isIn(['opi']))
     .exists()
-    .withMessage(createErrMsg.missingParameter('Name')),
-    // .optional(),
+    .withMessage(createErrMsg.missingParameter('Name'))
+    .optional(),
   query('STYLE').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('STYLE'))
     .isIn(['normal'])
@@ -185,7 +185,6 @@ router.get('/wmts', [
       },
       Format: 'image/png',
       [extra[layerName].key]: extra[layerName].value,
-      InfoFormat: 'application/gml+xml; version=3.1',
       TileMatrixSetLink: {
         TileMatrixSet: overviews.identifier,
         TileMatrixSetLimits: { TileMatrixLimits: tileMatrixLimit },
