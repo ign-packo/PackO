@@ -66,21 +66,24 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
     print("~~~process_image")
     input_image = gdal.Open(input_filename)
     stem = Path(input_filename).stem
-    overviews['dataSet_limits'] = {}
+    if not("dataSet" in overviews):
+        overviews['dataSet'] = {}
+        overviews['dataSet']['boundingBox'] = {}
+        overviews['dataSet']['limits'] = {}
 
     tile_limits = get_tile_limits( input_filename)
 
-    if not("boundingBox" in overviews['dataSet_limits']):
-        overviews['dataSet_limits']['boundingBox'] = tile_limits
+    if not("LowerCorner" in overviews['dataSet']['boundingBox']):
+        overviews['dataSet']['boundingBox'] = tile_limits
     else:
-        if tile_limits['LowerCorner'][0] < overviews['dataSet_limits']['boundingBox']['LowerCorner'][0]:
-            overviews['dataSet_limits']['boundingBox']['LowerCorner'][0] = tile_limits['LowerCorner'][0]
-        if tile_limits['LowerCorner'][1] < overviews['dataSet_limits']['boundingBox']['LowerCorner'][1]:
-            overviews['dataSet_limits']['boundingBox']['LowerCorner'][1] = tile_limits['LowerCorner'][1]
-        if tile_limits['UpperCorner'][0] > overviews['dataSet_limits']['boundingBox']['UpperCorner'][0]:
-            overviews['dataSet_limits']['boundingBox']['UpperCorner'][0] = tile_limits['UpperCorner'][0]
-        if tile_limits['UpperCorner'][1] > overviews['dataSet_limits']['boundingBox']['UpperCorner'][1]:
-            overviews['dataSet_limits']['boundingBox']['UpperCorner'][1] = tile_limits['UpperCorner'][1]
+        if tile_limits['LowerCorner'][0] < overviews['dataSet']['boundingBox']['LowerCorner'][0]:
+            overviews['dataSet']['boundingBox']['LowerCorner'][0] = tile_limits['LowerCorner'][0]
+        if tile_limits['LowerCorner'][1] < overviews['dataSet']['boundingBox']['LowerCorner'][1]:
+            overviews['dataSet']['boundingBox']['LowerCorner'][1] = tile_limits['LowerCorner'][1]
+        if tile_limits['UpperCorner'][0] > overviews['dataSet']['boundingBox']['UpperCorner'][0]:
+            overviews['dataSet']['boundingBox']['UpperCorner'][0] = tile_limits['UpperCorner'][0]
+        if tile_limits['UpperCorner'][1] > overviews['dataSet']['boundingBox']['UpperCorner'][1]:
+            overviews['dataSet']['boundingBox']['UpperCorner'][1] = tile_limits['UpperCorner'][1]
 
 
     print(tile_limits)
@@ -99,8 +102,8 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
         MaxTileRow = \
             math.ceil(round((overviews['crs']['boundingBox']['ymax']-tile_limits['LowerCorner'][1])/(resolution*overviews['tileSize']['height']),8)) - 1
 
-        if not(tile_z in overviews['dataSet_limits']):
-            overviews['dataSet_limits'][tile_z] = {
+        if not(tile_z in overviews['dataSet']['limits']):
+            overviews['dataSet']['limits'][tile_z] = {
                 'MinTileCol': MinTileCol,
                 'MinTileRow': MinTileRow,
                 'MaxTileCol': MaxTileCol,
@@ -108,14 +111,14 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
             }
 
         else:
-            if MinTileCol < overviews['dataSet_limits'][tile_z]['MinTileCol']:
-                overviews['dataSet_limits'][tile_z]['MinTileCol'] = MinTileCol
-            if MinTileRow < overviews['dataSet_limits'][tile_z]['MinTileRow']:
-                overviews['dataSet_limits'][tile_z]['MinTileRow'] = MinTileRow
-            if MaxTileCol > overviews['dataSet_limits'][tile_z]['MaxTileCol']:
-                overviews['dataSet_limits'][tile_z]['MaxTileCol'] = MaxTileCol
-            if MaxTileRow < overviews['dataSet_limits'][tile_z]['MaxTileRow']:
-                overviews['dataSet_limits'][tile_z]['MaxTileRow'] = MaxTileRow
+            if MinTileCol < overviews['dataSet']['limits'][tile_z]['MinTileCol']:
+                overviews['dataSet']['limits'][tile_z]['MinTileCol'] = MinTileCol
+            if MinTileRow < overviews['dataSet']['limits'][tile_z]['MinTileRow']:
+                overviews['dataSet']['limits'][tile_z]['MinTileRow'] = MinTileRow
+            if MaxTileCol > overviews['dataSet']['limits'][tile_z]['MaxTileCol']:
+                overviews['dataSet']['limits'][tile_z]['MaxTileCol'] = MaxTileCol
+            if MaxTileRow < overviews['dataSet']['limits'][tile_z]['MaxTileRow']:
+                overviews['dataSet']['limits'][tile_z]['MaxTileRow'] = MaxTileRow
 
         for tile_x in range(MinTileCol, MaxTileCol + 1):    
             for tile_y in range(MinTileRow, MaxTileRow + 1):
@@ -163,6 +166,12 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
                         graph.GetRasterBand(i+1).WriteArray(graph_i)
                     PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
                     PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
+    # on ajout l'OPI traitée a la liste
+    if not ("list_OPI" in overviews):
+        overviews["list_OPI"] = [stem]
+    else:
+        overviews["list_OPI"].append(stem)
+
     print(" DONE")
 
 def creation_jsonFile_itowns(cache, urlApi, layers, overviews):
@@ -179,7 +188,7 @@ def creation_jsonFile_itowns(cache, urlApi, layers, overviews):
         source["format"] = layer['format']
         source["name"] = layer['name']
         source["tileMatrixSet"] = overviews["identifier"]
-        source["tileMatrixSetLimits"] = overviews["dataSet_limits"]
+        source["tileMatrixSetLimits"] = overviews["dataSet"]["limits"]
 
         layerconf = {}
         layerconf["id"] = source['name']
