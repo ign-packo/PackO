@@ -117,7 +117,7 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
                 overviews['dataSet']['limits'][tile_z]['MinTileRow'] = MinTileRow
             if MaxTileCol > overviews['dataSet']['limits'][tile_z]['MaxTileCol']:
                 overviews['dataSet']['limits'][tile_z]['MaxTileCol'] = MaxTileCol
-            if MaxTileRow < overviews['dataSet']['limits'][tile_z]['MaxTileRow']:
+            if MaxTileRow > overviews['dataSet']['limits'][tile_z]['MaxTileRow']:
                 overviews['dataSet']['limits'][tile_z]['MaxTileRow'] = MaxTileRow
 
         for tile_x in range(MinTileCol, MaxTileCol + 1):    
@@ -262,9 +262,11 @@ def main():
     with open(args.cache+'/overviews.json', 'w') as outfile:
         json.dump(overviews_dict, outfile)
     
-    LAYERS = [{'name': 'ortho', 'format': 'image/png'},
+    LAYERS = [
+        {'name': 'ortho', 'format': 'image/png'},
         {'name': 'graph', 'format': 'image/png'},
-        {'name': 'opi', 'format': 'image/png', 'prefix': args.prefix}]
+        {'name': 'opi', 'format': 'image/png', 'prefix': args.prefix}
+        ]
 
     creation_jsonFile_itowns(args.cache, args.api, LAYERS, overviews_dict)
 
