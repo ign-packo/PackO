@@ -199,16 +199,21 @@ def creation_jsonFile_itowns(cache, urlApi, layers, overviews):
          
 def main():
     """Create or Update the cache for list of input OPI."""
+    import shutil
+    import json
+
+    # Suppresion du cache existant (a modifier pour un ajout iteratif dans le cache)
+    if os.path.isdir(args.cache):
+        shutil.rmtree(args.cache)
 
     # creation dossier cache
     if not os.path.isdir(args.cache):
         os.mkdir(args.cache)
 
     if not os.path.exists(args.cache+'/overviews.json'):
-        from shutil import copy2
-        copy2("ressources/"+ args.overviews, args.cache+'/overviews.json')
+        shutil.copy2("ressources/"+ args.overviews, args.cache+'/overviews.json')
 
-    import json
+    
 
     with open(args.cache+'/overviews.json') as json_overviews:
         overviews_dict = json.load(json_overviews)
