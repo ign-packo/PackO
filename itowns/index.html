@@ -42,119 +42,118 @@
             const ymin = overviews.dataSet.boundingBox.LowerCorner[1]
             const ymax = overviews.dataSet.boundingBox.UpperCorner[1]
 
-        var placement = {
-            coord: new itowns.Coordinates(crs, (xmax + xmin)/2, (ymax + ymin)/2),
-            range: 10000,
-        }
+            var placement = {
+                coord: new itowns.Coordinates(crs, (xmax + xmin)/2, (ymax + ymin)/2),
+                range: 10000,
+            }
 
-        // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
-        var viewerDiv = document.getElementById('viewerDiv');
-        // var miniDiv = document.getElementById('miniDiv');
+            // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
+            var viewerDiv = document.getElementById('viewerDiv');
+            // var miniDiv = document.getElementById('miniDiv');
 
-        // Define geographic extent of level 0 : CRS, min/max X, min/max Y
-        const resolutionLv0 = overviews.resolution * 2 ** overviews.level.max;
-        
-        var extent = new itowns.Extent(
-            crs,
-            X0, X0 + ( overviews.tileSize.width * resolutionLv0),
-            Ymax - ( overviews.tileSize.height * resolutionLv0), Ymax);
+            // Define geographic extent of level 0 : CRS, min/max X, min/max Y
+            const resolutionLv0 = overviews.resolution * 2 ** overviews.level.max;
+            
+            var extent = new itowns.Extent(
+                crs,
+                X0, X0 + ( overviews.tileSize.width * resolutionLv0),
+                Ymax - ( overviews.tileSize.height * resolutionLv0), Ymax);
 
-        // Instanciate PlanarView*
-        view = new itowns.PlanarView(viewerDiv, extent, {
-            placement,
-            maxSubdivisionLevel: 30,
-            //  disableSkirt: false 
-        });
-        setupLoadingScreen(viewerDiv, view);
+            // Instanciate PlanarView*
+            view = new itowns.PlanarView(viewerDiv, extent, {
+                placement,
+                maxSubdivisionLevel: 30,
+                //  disableSkirt: false 
+            });
+            setupLoadingScreen(viewerDiv, view);
 
-        view.isDebugMode = true;
-        setupLoadingScreen(viewerDiv, view);
-        menuGlobe = new GuiTools('menuDiv', view);
-        menuGlobe.gui.width = 300;
+            view.isDebugMode = true;
+            setupLoadingScreen(viewerDiv, view);
+            menuGlobe = new GuiTools('menuDiv', view);
+            menuGlobe.gui.width = 300;
 
-        var orthoLayer, graphLayer;
-        var orthoConfig, graphConfig;
-        let promises = [itowns.Fetcher.json(apiUrl+'json/ortho'), itowns.Fetcher.json(apiUrl+'json/graph'), itowns.Fetcher.json(apiUrl+'json/opi')];
-        Promise.all(promises).then((conf) => {
-            orthoConfig = conf[0];
-            graphConfig = conf[1];
-            opiConfig = conf[2];
+            var orthoLayer, graphLayer;
+            var orthoConfig, graphConfig;
+            let promises = [itowns.Fetcher.json(apiUrl+'json/ortho'), itowns.Fetcher.json(apiUrl+'json/graph'), itowns.Fetcher.json(apiUrl+'json/opi')];
+            Promise.all(promises).then((conf) => {
+                orthoConfig = conf[0];
+                graphConfig = conf[1];
+                opiConfig = conf[2];
 
-            orthoConfig.source = new itowns.WMTSSource(orthoConfig.source);
-            orthoConfig.source.extentInsideLimit = function (extent) {
+                orthoConfig.source = new itowns.WMTSSource(orthoConfig.source);
+                orthoConfig.source.extentInsideLimit = function (extent) {
+                        return true;
+                }
+                graphConfig.source = new itowns.WMTSSource(graphConfig.source);
+                graphConfig.source.extentInsideLimit = function (extent) {
                     return true;
-            }
-            graphConfig.source = new itowns.WMTSSource(graphConfig.source);
-            graphConfig.source.extentInsideLimit = function (extent) {
-                return true;
-            }
-            graphConfig.opacity = 0.2;
-            opiConfig.sourceOri = opiConfig.source;
+                }
+                graphConfig.opacity = 0.2;
+                opiConfig.sourceOri = opiConfig.source;
 
-            opiConfig.source = new itowns.WMTSSource(opiConfig.sourceOri);
-            opiConfig.source.extentInsideLimit = function (extent) {
-                return true;
-            }
-            opiConfig.opacity = 0.2;
-            orthoLayer = new itowns.ColorLayer('Ortho', orthoConfig);
-            view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-            graphLayer = new itowns.ColorLayer('Graph', graphConfig);
-            view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-            opiLayer = new itowns.ColorLayer('Opi', opiConfig);
-            opiLayer.visible = false
-            view.addLayer(opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-            itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-            itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
-            itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+                opiConfig.source = new itowns.WMTSSource(opiConfig.sourceOri);
+                opiConfig.source.extentInsideLimit = function (extent) {
+                    return true;
+                }
+                opiConfig.opacity = 0.2;
+                orthoLayer = new itowns.ColorLayer('Ortho', orthoConfig);
+                view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+                graphLayer = new itowns.ColorLayer('Graph', graphConfig);
+                view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+                opiLayer = new itowns.ColorLayer('Opi', opiConfig);
+                opiLayer.visible = false
+                view.addLayer(opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+                itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+                itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+                itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
 
-            var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig, opiLayer, opiConfig, apiUrl });
-            saisie.cliche = 'unknown';
-            menuGlobe.gui.add(saisie, 'polygon');
-            menuGlobe.gui.add(saisie, 'freehand');
-            menuGlobe.gui.add(saisie, 'select');
-            menuGlobe.gui.add(saisie, 'cliche').listen();
-            // const eng = view.mainLoop.gfxEngine;
-            // console.log('eng:', eng);
-            // const dom = eng.renderer.domElement;
-            // console.log('dom:', dom);
-            viewerDiv.focus();
-            viewerDiv.addEventListener('mousemove', function (ev) {
-                ev.preventDefault();
-                saisie.mousemove(ev);
-                return false;
-            }, false);
-            viewerDiv.addEventListener('click', function (ev) {
-                ev.preventDefault();
-                saisie.click(ev);
-                return false;
-            }, false);
-            viewerDiv.addEventListener('mousedown', function (ev) {
-                ev.preventDefault();
-                saisie.mousedown(ev);
-                return false;
-            }, false);
-            viewerDiv.addEventListener('mouseup', function (ev) {
-                ev.preventDefault();
-                saisie.mouseup(ev);
-                return false;
-            }, false);
+                var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig, opiLayer, opiConfig, apiUrl });
+                saisie.cliche = 'unknown';
+                menuGlobe.gui.add(saisie, 'polygon');
+                menuGlobe.gui.add(saisie, 'freehand');
+                menuGlobe.gui.add(saisie, 'select');
+                menuGlobe.gui.add(saisie, 'cliche').listen();
+                // const eng = view.mainLoop.gfxEngine;
+                // console.log('eng:', eng);
+                // const dom = eng.renderer.domElement;
+                // console.log('dom:', dom);
+                viewerDiv.focus();
+                viewerDiv.addEventListener('mousemove', function (ev) {
+                    ev.preventDefault();
+                    saisie.mousemove(ev);
+                    return false;
+                }, false);
+                viewerDiv.addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    saisie.click(ev);
+                    return false;
+                }, false);
+                viewerDiv.addEventListener('mousedown', function (ev) {
+                    ev.preventDefault();
+                    saisie.mousedown(ev);
+                    return false;
+                }, false);
+                viewerDiv.addEventListener('mouseup', function (ev) {
+                    ev.preventDefault();
+                    saisie.mouseup(ev);
+                    return false;
+                }, false);
 
+            })
+
+            // instanciate controls
+            // eslint-disable-next-line no-new
+            new itowns.PlanarControls(view, {
+                maxAltitude: 80000000,
+                enableRotation: false
+            });
+
+            // Request redraw
+            view.notifyChange();
+
+            menuGlobe.addImageryLayersGUI(view.getLayers(function gui(l) { return l.isColorLayer; }));
+            debug.createTileDebugUI(menuGlobe.gui, view);
         })
-
-        // instanciate controls
-        // eslint-disable-next-line no-new
-        new itowns.PlanarControls(view, {
-            maxAltitude: 80000000,
-            enableRotation: false
-        });
-
-        // Request redraw
-        view.notifyChange();
-
-        menuGlobe.addImageryLayersGUI(view.getLayers(function gui(l) { return l.isColorLayer; }));
-        debug.createTileDebugUI(menuGlobe.gui, view);
-    })
-
     </script>
 </body>
 </html>
