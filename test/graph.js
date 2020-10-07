@@ -48,6 +48,23 @@ describe('Graph', () => {
           });
       });
     });
+    describe('query: x=0 & y=0', () => {
+      it("should return a 'missing'", (done) => {
+        chai.request(server)
+          .get('/graph')
+          .query({ x: 230746, y: 6759735 })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(200);
+            const resJson = JSON.parse(res.text);
+
+            resJson.should.be.jsonSchema(schema);
+            resJson.should.have.property('cliche').equal('missing');
+
+            done();
+          });
+      });
+    });
     describe('query: x=230752.8 & y=6759737.1', () => {
       it('should return a Json { "color": Array(3), "cliche": !unknown }', (done) => {
         chai.request(server)

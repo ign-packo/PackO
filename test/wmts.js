@@ -227,6 +227,30 @@ describe('Wmts', () => {
           done();
         });
     });
+    it("should return an error: 'missing'", (done) => {
+      chai.request(server)
+        .get('/wmts')
+        .query({
+          SERVICE: 'WMTS',
+          REQUEST: 'GetFeatureInfo',
+          VERSION: '1.0.0',
+          LAYER: 'ortho',
+          STYLE: 'normal',
+          INFOFORMAT: 'application/gml+xml; version=3.1',
+          TILEMATRIXSET: 'LAMB93_5cm',
+          TILEMATRIX: 21,
+          TILEROW: 34395,
+          TILECOL: 18027,
+          I: 30,
+          J: 185,
+        })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          res.type.should.be.a('string').equal('text/html');
+          done();
+        });
+    });
     it("should return an error: 'out of bounds'", (done) => {
       chai.request(server)
         .get('/wmts')
