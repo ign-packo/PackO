@@ -13,7 +13,7 @@ from collections import defaultdict
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--cache", help="cache directory (default: cache)", type=str, default="cache")
-parser.add_argument("-o", "--overviews", help="params for the mosaic (default: LAMB93_5cm.json)", type=str, default="LAMB93_5cm.json")
+parser.add_argument("-o", "--overviews", help="params for the mosaic (default: ressources/LAMB93_5cm.json)", type=str, default="ressources/LAMB93_5cm.json")
 parser.add_argument("-t", "--table", help="graph table (default: graphe_pcrs56_zone_test)", type=str, default="graphe_pcrs56_zone_test")
 parser.add_argument("-i", "--input", required=True, help="input OPI pattern")
 parser.add_argument("-p", "--prefix", required=True, help="OPI prefix pour créer le pattern de recherche dans le cache (pour le GetCapabilities)")
@@ -206,16 +206,13 @@ def main():
     import shutil
     import json
 
-    # Suppresion du cache existant (a modifier pour un ajout iteratif dans le cache)
-    # if os.path.isdir(args.cache):
-    #    shutil.rmtree(args.cache)
-
-    # creation dossier cache
     if not os.path.isdir(args.cache):
+        # creation dossier cache
         os.mkdir(args.cache)
 
     if not os.path.exists(args.cache+'/overviews.json'):
-        shutil.copy2("ressources/"+ args.overviews, args.cache+'/overviews.json')
+        # creation fichier overviews.json a partir d'un fichier ressource
+        shutil.copy2(args.overviews, args.cache+'/overviews.json')
 
     with open(args.cache+'/overviews.json') as json_overviews:
         overviews_dict = json.load(json_overviews)
