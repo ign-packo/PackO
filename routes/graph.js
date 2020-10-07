@@ -12,6 +12,8 @@ const validateParams = require('../paramValidation/validateParams');
 const validator = require('../paramValidation/validator');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
+const overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
+
 const geoJsonAPatcher = [
   body('geoJSON')
     .exists().withMessage(createErrMsg.missingBody)
@@ -57,9 +59,9 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   ...geoJsonAPatcher,
 ], validateParams, (req, res) => {
   const params = matchedData(req);
-  const X0 = 0;
-  const Y0 = 12000000;
-  const R = 0.05;
+  const X0 = overviews.crs.boundingBox.xmin;
+  const Y0 = overviews.crs.boundingBox.ymax;
+  const R = overviews.resolution;
   const geoJson = params.geoJSON;
   const promises = [];
 
@@ -232,17 +234,17 @@ router.get('/graph', [
   const { y } = params;
 
   debug(x, y);
-  const X = 0;
-  const Y = 12000000;
-  const R = 178.571428571429 * 0.00028;
+  const X = overviews.crs.boundingBox.xmin;
+  const Y = overviews.crs.boundingBox.ymax;
+  const R = overviews.resolution;
 
   // il faut trouver la tuile
   const Px = (x - X) / R;
   const Py = (Y - y) / R;
-  const Tx = Math.floor(Px / 256);
-  const Ty = Math.floor(Py / 256);
-  const I = Math.floor(Px - Tx * 256);
-  const J = Math.floor(Py - Ty * 256);
+  const Tx = Math.floor(Px / overviews.tileSize.width);
+  const Ty = Math.floor(Py / overviews.tileSize.height);
+  const I = Math.floor(Px - Tx * overviews.tileSize.width);
+  const J = Math.floor(Py - Ty * overviews.tileSize.height);
 
   const url = path.join(global.dir_cache, '21', `${Ty}`, `${Tx}`, 'graph.png');
   if (!fs.existsSync(url)) {

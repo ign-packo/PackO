@@ -142,8 +142,8 @@ paths:
           schema:
             type: string
             enum:
-              - LAMB93
-            example: LAMB93
+              - LAMB93_5cm
+            example: LAMB93_5cm
         - in: query
           name: TILEMATRIX
           description: required if GetTile or GetFeatureInfo

@@ -29,8 +29,9 @@
         /* global itowns, setupLoadingScreen, GuiTools, debug */
         // # Planar (EPSG:3946) viewer
 
+        // !!!TODO mettre placement de maniere dynamique !
         var placement = {
-            coord: new itowns.Coordinates('EPSG:2154', 227155, 6760500),
+            coord: new itowns.Coordinates('EPSG:2154', 230746, 6759748),
             range: 10000,
         }
 
@@ -38,12 +39,16 @@
         var viewerDiv = document.getElementById('viewerDiv');
         // var miniDiv = document.getElementById('miniDiv');
 
+        // !!!TODO definir l'extent de maniere dynamique à partir des pyramides
         // Define geographic extent: CRS, min/max X, min/max Y
         var extent = new itowns.Extent(
             'EPSG:2154',
             0, 256 * 374491428.571429 * 0.00028,
             12000000 - 256 * 374491428.571429 * 0.00028, 12000000);
-
+        var extent = new itowns.Extent(
+            'EPSG:2154',
+            0, 256 * 374491428.571429 * 0.00028,
+            7200000 - 256 * 374491428.571429 * 0.00028, 7200000);
 
         // Instanciate PlanarView*
         var view = new itowns.PlanarView(viewerDiv, extent, {
