@@ -18,8 +18,11 @@ parser.add_argument("-t", "--table", help="graph table (default: graphe_pcrs56_z
 parser.add_argument("-i", "--input", required=True, help="input OPI pattern")
 parser.add_argument("-p", "--prefix", required=True, help="OPI prefix pour créer le pattern de recherche dans le cache (pour le GetCapabilities)")
 parser.add_argument("-a", "--api", help="API Url (default: http://localhost:8081/wmts)", type=str, default="http://localhost:8081/wmts")
+parser.add_argument("-v", "--verbose", help="verbose (default: 0)", type=int, default=0)
 args = parser.parse_args()
-print("Arguments: ",args)
+verbose = args.verbose
+if verbose > 0:
+    print("Arguments: ",args)
 
 user = os.getenv('PGUSER', default='postgres')
 host = os.getenv('PGHOST', default='localhost')
@@ -44,7 +47,8 @@ def create_blank_tile(overviews, tile, nb_canaux, out_raster_srs):
 
 def get_tile_limits( filename):
     """Return tms limits for a georef image at a given level"""
-    print("~~~get_tile_limits:", end='')
+    if verbose > 0:
+        print("~~~get_tile_limits:", end='')
     src_image = gdal.Open(filename)
     geo_trans = src_image.GetGeoTransform()
     ul_x = geo_trans[0]
@@ -58,12 +62,14 @@ def get_tile_limits( filename):
     tile_limits['LowerCorner'] = [ ul_x, lr_y ]
     tile_limits['UpperCorner'] = [ lr_x, ul_y ]
 
-    print(" DONE")
+    if verbose > 0:
+        print(" DONE")
     return tile_limits
 
 def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
     """Update the cache for an input OPI."""
-    print("~~~process_image")
+    if verbose > 0:
+        print("~~~process_image")
     input_image = gdal.Open(input_filename)
     stem = Path(input_filename).stem
     if not("dataSet" in overviews):
@@ -85,8 +91,6 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
         if tile_limits['UpperCorner'][1] > overviews['dataSet']['boundingBox']['UpperCorner'][1]:
             overviews['dataSet']['boundingBox']['UpperCorner'][1] = tile_limits['UpperCorner'][1]
 
-
-    print(tile_limits)
     # for z in tiles:
     for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
         print('Niveau de zoom : ', tile_z)
@@ -164,6 +168,8 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
                             graph_i = graph.GetRasterBand(i+1).ReadAsArray()
                         graph_i[(img_mask != 0)] = color[i]
                         graph.GetRasterBand(i+1).WriteArray(graph_i)
+                    existing_ortho = None
+                    existing_graph = None
                     PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
                     PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
     # on ajout l'OPI traitée a la liste
@@ -172,15 +178,12 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
     else:
         overviews["list_OPI"].append(stem)
 
-    print(" DONE")
-
 def creation_jsonFile_itowns(cache, urlApi, layers, overviews):
-    print("~~~~creation_jsonFile_itowns")
+    if verbose > 0:
+        print("~~~~creation_jsonFile_itowns", end='')
 
     capabilities_layers = []
     for layer in layers:
-        print(layer)
-
         source = {}
         source["url"] = urlApi
         source["projection"] = overviews["crs"]['type'] + ":" + str(overviews["crs"]['code'])
@@ -195,7 +198,8 @@ def creation_jsonFile_itowns(cache, urlApi, layers, overviews):
         layerconf["source"] = source
         with open(cache+'/'+source['name']+".json", 'w') as outfile:
             json.dump(layerconf, outfile)
-
+    if verbose > 0:
+        print(": DONE")
          
 def main():
     """Create or Update the cache for list of input OPI."""
@@ -203,8 +207,8 @@ def main():
     import json
 
     # Suppresion du cache existant (a modifier pour un ajout iteratif dans le cache)
-    if os.path.isdir(args.cache):
-        shutil.rmtree(args.cache)
+    # if os.path.isdir(args.cache):
+    #    shutil.rmtree(args.cache)
 
     # creation dossier cache
     if not os.path.isdir(args.cache):
@@ -212,8 +216,6 @@ def main():
 
     if not os.path.exists(args.cache+'/overviews.json'):
         shutil.copy2("ressources/"+ args.overviews, args.cache+'/overviews.json')
-
-    
 
     with open(args.cache+'/overviews.json') as json_overviews:
         overviews_dict = json.load(json_overviews)
@@ -225,9 +227,8 @@ def main():
     if db_graph is None:
         raise ValueError("Connection to database failed")
     list_filename = glob.glob(args.input)
-    print("")
-    print(len(list_filename), " fichier(s) a traiter")
-    print("")
+    if verbose > 0:
+        print(len(list_filename), "fichier(s) a traiter")
 
     try:
         with open(args.cache+'/cache_mtd.json', 'r') as inputfile:
@@ -235,6 +236,7 @@ def main():
     except:
         mtd = {}
 
+    cliche_dejaTraites = []
     for filename in list_filename:
         # Si le fichier a deja une couleur on la recupere
         cliche = filename.split(os.path.sep)[-1].split('.')[0]
@@ -244,6 +246,7 @@ def main():
                 for _b in mtd[_r][_v]:
                     if mtd[_r][_v][_b] == cliche:
                         color = [_r, _v, _b]
+                        cliche_dejaTraites.append(cliche)
                         break
                 if color:
                     break
@@ -274,6 +277,10 @@ def main():
         ]
 
     creation_jsonFile_itowns(args.cache, args.api, LAYERS, overviews_dict)
+
+    print("\n", len(list_filename) - len(cliche_dejaTraites),"/",len(list_filename),"OPI(s) ajoutée(s)")
+    if len(cliche_dejaTraites) > 0:
+        print(cliche_dejaTraites, "déjà traitées : OPI non recalculée(s)")
 
 if __name__ == "__main__":
     main()
