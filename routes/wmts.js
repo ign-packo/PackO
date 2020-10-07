@@ -146,7 +146,7 @@ router.get('/wmts', [
       opi: {
         key: 'Dimension',
         value: {
-          'ows:Identifier': 'name',
+          'ows:Identifier': 'Name',
           'ows:title': 'opi name',
           'ows:abstract': "nom de l'opi",
           Default: overviews.list_OPI[0],
