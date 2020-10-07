@@ -117,6 +117,13 @@ paths:
               - opi
             example: ortho
         - in: query
+          name: Name
+          description: dimension to use when LAYER='opi' (REQUEST=GetTile)
+          required: false
+          schema:
+            type: string
+            example: 19FD5606Ax00020_16371
+        - in: query
           name: STYLE
           description: required if GetTile or GetFeatureInfo
           required: false
