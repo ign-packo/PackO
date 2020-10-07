@@ -124,7 +124,7 @@ class Saisie {
   }
 
   click(e) {
-    console.log('click: ', this.pickPoint(e));
+    console.log('Click: ', this.pickPoint(e));
     if (this.status == 'movePoint') {
       if (this.currentMeasure == null) {
         console.log("Click");
@@ -140,8 +140,8 @@ class Saisie {
             },
           }).then((res) => {
           res.json().then((json) => {
-            if (json) {
-              console.log(json);
+            console.log(json);
+            if (json.cliche != 'out of bounds') {
               that.json = json;
               that.cliche = json.cliche;
               that.status = 'ras';
@@ -182,7 +182,7 @@ class Saisie {
   }
 
   select() {
-    console.log('choisir le cliche');
+    console.log('select: cliquez sur le cliche choisi');
     this.currentMeasure = null;
     this.status = 'movePoint';
     this.cliche = null;

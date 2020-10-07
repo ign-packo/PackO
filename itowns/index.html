@@ -31,16 +31,17 @@
         itowns.Fetcher.json(apiUrl+'json/overviews').then ((json) => {
             const overviews = json
 
-            crs = `${overviews.crs.type}:${overviews.crs.code}`
+            // limite du crs
+            const crs = `${overviews.crs.type}:${overviews.crs.code}`
+            const X0 = overviews.crs.boundingBox.xmin
+            const Ymax = overviews.crs.boundingBox.ymax
 
-            xmin = overviews.dataSet.boundingBox.LowerCorner[0]
-            xmax = overviews.dataSet.boundingBox.UpperCorner[0]
-            ymin = overviews.dataSet.boundingBox.LowerCorner[1]
-            ymax = overviews.dataSet.boundingBox.UpperCorner[1]
+            // limite du dataSet
+            const xmin = overviews.dataSet.boundingBox.LowerCorner[0]
+            const xmax = overviews.dataSet.boundingBox.UpperCorner[0]
+            const ymin = overviews.dataSet.boundingBox.LowerCorner[1]
+            const ymax = overviews.dataSet.boundingBox.UpperCorner[1]
 
-            console.log((xmax-xmin)/2)
-
-        // !!!TODO mettre placement de maniere dynamique !
         var placement = {
             coord: new itowns.Coordinates(crs, (xmax + xmin)/2, (ymax + ymin)/2),
             range: 10000,
@@ -50,19 +51,16 @@
         var viewerDiv = document.getElementById('viewerDiv');
         // var miniDiv = document.getElementById('miniDiv');
 
-        // !!!TODO definir l'extent de maniere dynamique à partir des pyramides
-        // Define geographic extent: CRS, min/max X, min/max Y
-        var extent = new itowns.Extent(
-            'EPSG:2154',
-            0, 256 * 374491428.571429 * 0.00028,
-            12000000 - 256 * 374491428.571429 * 0.00028, 12000000);
+        // Define geographic extent of level 0 : CRS, min/max X, min/max Y
+        const resolutionLv0 = overviews.resolution * 2 ** overviews.level.max;
+        
         var extent = new itowns.Extent(
             crs,
-            0, 256 * 374491428.571429 * 0.00028,
-            7200000 - 256 * 374491428.571429 * 0.00028, 7200000);
+            X0, X0 + ( overviews.tileSize.width * resolutionLv0),
+            Ymax - ( overviews.tileSize.height * resolutionLv0), Ymax);
 
         // Instanciate PlanarView*
-        var view = new itowns.PlanarView(viewerDiv, extent, {
+        view = new itowns.PlanarView(viewerDiv, extent, {
             placement,
             maxSubdivisionLevel: 30,
             //  disableSkirt: false 
@@ -71,8 +69,7 @@
 
         view.isDebugMode = true;
         setupLoadingScreen(viewerDiv, view);
-        var menuGlobe = new GuiTools('menuDiv', view);
-        console.log(menuGlobe);
+        menuGlobe = new GuiTools('menuDiv', view);
         menuGlobe.gui.width = 300;
 
         var orthoLayer, graphLayer;
@@ -82,8 +79,6 @@
             orthoConfig = conf[0];
             graphConfig = conf[1];
             opiConfig = conf[2];
-
-            console.log(conf[2])
 
             orthoConfig.source = new itowns.WMTSSource(orthoConfig.source);
             orthoConfig.source.extentInsideLimit = function (extent) {
@@ -106,6 +101,7 @@
             graphLayer = new itowns.ColorLayer('Graph', graphConfig);
             view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
             opiLayer = new itowns.ColorLayer('Opi', opiConfig);
+            opiLayer.visible = false
             view.addLayer(opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
             itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
             itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
