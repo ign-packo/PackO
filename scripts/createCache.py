@@ -106,7 +106,7 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
         MaxTileRow = \
             math.ceil(round((overviews['crs']['boundingBox']['ymax']-tile_limits['LowerCorner'][1])/(resolution*overviews['tileSize']['height']),8)) - 1
 
-        if not( str(tile_z) in overviews['dataSet']['limits']):
+        if not( str(tile_z) in overviews['dataSet']['limits'] ):
             overviews['dataSet']['limits'][str(tile_z)] = {
                 'MinTileCol': MinTileCol,
                 'MinTileRow': MinTileRow,
