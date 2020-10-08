@@ -103,7 +103,7 @@ describe('Wmts', () => {
         });
     });
 
-    it('should return a oip image', (done) => {
+    it("should return the OPI '19FD5606Ax00020_16371' as png", (done) => {
       chai.request(server)
         .get('/wmts')
         .query({
