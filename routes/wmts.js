@@ -273,6 +273,9 @@ router.get('/wmts', [
     }
     if (LAYER === 'opi') {
       layer = Name;
+      if (!layer) {
+        [layer] = overviews.list_OPI;
+      }
     }
     const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${layer}.png`);
     Jimp.read(url, (err, image) => {
