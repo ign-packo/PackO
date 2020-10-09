@@ -33,8 +33,8 @@
 
             // limite du crs
             const crs = `${overviews.crs.type}:${overviews.crs.code}`
-            const X0 = overviews.crs.boundingBox.xmin
-            const Ymax = overviews.crs.boundingBox.ymax
+            const xOrigin = overviews.crs.boundingBox.xmin
+            const yOrigin = overviews.crs.boundingBox.ymax
 
             // limite du dataSet
             const xmin = overviews.dataSet.boundingBox.LowerCorner[0]
@@ -43,7 +43,7 @@
             const ymax = overviews.dataSet.boundingBox.UpperCorner[1]
 
             var placement = {
-                coord: new itowns.Coordinates(crs, (xmax + xmin)/2, (ymax + ymin)/2),
+                coord: new itowns.Coordinates(crs, (xmax + xmin) * 0.5, (ymax + ymin) * 0.5),
                 range: 10000,
             }
 
@@ -56,8 +56,8 @@
             
             var extent = new itowns.Extent(
                 crs,
-                X0, X0 + ( overviews.tileSize.width * resolutionLv0),
-                Ymax - ( overviews.tileSize.height * resolutionLv0), Ymax);
+                xOrigin, xOrigin + ( overviews.tileSize.width * resolutionLv0),
+                yOrigin - ( overviews.tileSize.height * resolutionLv0), yOrigin);
 
             // Instanciate PlanarView*
             view = new itowns.PlanarView(viewerDiv, extent, {

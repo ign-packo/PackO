@@ -58,8 +58,8 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 ], validateParams, (req, res) => {
   const { overviews } = req.app;
   const params = matchedData(req);
-  const X0 = overviews.crs.boundingBox.xmin;
-  const Y0 = overviews.crs.boundingBox.ymax;
+  const xOrigin = overviews.crs.boundingBox.xmin;
+  const yOrigin = overviews.crs.boundingBox.ymax;
   const R = overviews.resolution;
   const geoJson = params.geoJSON;
   const promises = [];
@@ -96,10 +96,10 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     const errors = [];
 
     for (let z = 21; z >= 10; z -= 1) {
-      const x0 = Math.floor((BBox.xmin - X0) / (resolution * 256));
-      const x1 = Math.ceil((BBox.xmax - X0) / (resolution * 256));
-      const y0 = Math.floor((Y0 - BBox.ymax) / (resolution * 256));
-      const y1 = Math.ceil((Y0 - BBox.ymin) / (resolution * 256));
+      const x0 = Math.floor((BBox.xmin - xOrigin) / (resolution * 256));
+      const x1 = Math.ceil((BBox.xmax - xOrigin) / (resolution * 256));
+      const y0 = Math.floor((yOrigin - BBox.ymax) / (resolution * 256));
+      const y1 = Math.ceil((yOrigin - BBox.ymin) / (resolution * 256));
       for (let y = y0; y < y1; y += 1) {
         for (let x = x0; x < x1; x += 1) {
           tiles.push({
@@ -150,8 +150,8 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         let first = true;
         /* eslint-disable no-restricted-syntax */
         for (const point of feature.geometry.coordinates[0]) {
-          const i = Math.round((point[0] - X0 - tile.x * 256 * tile.resolution) / tile.resolution);
-          const j = Math.round((Y0 - point[1] - tile.y * 256 * tile.resolution) / tile.resolution);
+          const i = Math.round((point[0] - xOrigin - tile.x * 256 * tile.resolution) / tile.resolution);
+          const j = Math.round((yOrigin - point[1] - tile.y * 256 * tile.resolution) / tile.resolution);
           // debugPatch(i, j);
           if (first) {
             first = false;

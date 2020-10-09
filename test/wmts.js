@@ -227,7 +227,7 @@ describe('Wmts', () => {
           done();
         });
     });
-    it("should return an error: 'missing'", (done) => {
+    it("should return a warning: 'missing'", (done) => {
       chai.request(server)
         .get('/wmts')
         .query({
