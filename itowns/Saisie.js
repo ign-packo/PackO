@@ -1,5 +1,7 @@
 // const { threshold } = require("jimp");
 
+// const { threshold } = require("jimp");
+
 class Saisie {
   constructor(options) {
     this.opiLayer = options.opiLayer;
@@ -25,10 +27,12 @@ class Saisie {
   }
 
   mousemove(e) {
-    if (this.currentMeasure == null) return;
-    if (this.status == 'movePoint') {
-      const pos = this.pickPoint(e);
-      if (pos) {
+    const pos = this.pickPoint(e);
+    if (pos) {
+      // console.log('position :', pos);
+      this.coord = `${pos.x.toFixed(2)} ${pos.y.toFixed(2)}`;
+      if (this.currentMeasure == null) return;
+      if (this.status == 'movePoint') {
         var positions = this.currentMeasure.geometry.attributes.position.array;
         // Si c'est le premier point, on fixe la position
         if (this.currentIndex == 0) {
@@ -84,6 +88,7 @@ class Saisie {
   update() {
     console.log('update');
     this.status = 'ras';
+    this.help = '';
     const positions = this.currentMeasure.geometry.attributes.position.array;
     const geojson = {
       type: 'FeatureCollection',
@@ -140,6 +145,18 @@ class Saisie {
     this.currentIndex = -1;
   }
 
+  keypress(e) {
+    if (e.key === "Escape"){
+      console.log('Escape');
+      this.status = 'ras';
+      this.help = '';
+      view.scene.remove(this.currentMeasure);
+      this.currentMeasure = null;
+      this.currentIndex = -1;
+      view.notifyChange();
+    }
+  }
+
   click(e) {
     console.log('Click: ', this.pickPoint(e));
     this.message = "";
@@ -162,7 +179,10 @@ class Saisie {
             if (res.status == 200) {
               that.json = json;
               // that.cliche = json.cliche;
+              that.cliche = json.cliche;
+              that.color = json.color;
               that.status = 'ras';
+              that.help = '';
               // On modifie la couche OPI
               this.opiConfig.opacity = this.opiLayer.opacity;
               menuGlobe.removeLayersGUI(['Opi']);
@@ -206,11 +226,13 @@ class Saisie {
     this.status = 'movePoint';
     this.cliche = null;
     this.currentIndex = 0;
+    this.help = 'choisir un cliche';
   }
 
   polygon() {
     this.message = "";
     console.log('saisir d un polygon');
+    this.help = 'saisir un polygone (Maj pour fermer)';
     const MAX_POINTS = 500;
     const geometry = new itowns.THREE.BufferGeometry();
     const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
