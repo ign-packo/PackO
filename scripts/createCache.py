@@ -211,6 +211,8 @@ def main():
 
     with open(args.cache+'/overviews.json') as json_overviews:
         overviews_dict = json.load(json_overviews)
+    if not ("list_OPI" in overviews_dict):
+        overviews_dict["list_OPI"] = []
 
     out_raster_srs = gdal.osr.SpatialReference()
     out_raster_srs.ImportFromEPSG(overviews_dict['crs']['code'])
@@ -232,7 +234,7 @@ def main():
     for filename in list_filename:
         cliche = Path(filename).stem
      
-        if ( "list_OPI" in overviews_dict and cliche in overviews_dict['list_OPI']):
+        if (cliche in overviews_dict['list_OPI']):
             # OPI déja traitée
             cliche_dejaTraites.append(cliche)
         else:
@@ -247,10 +249,7 @@ def main():
             mtd[color[0]][color[1]][color[2]] = cliche
             process_image(overviews_dict, db_graph, filename, color, out_raster_srs)
             # on ajout l'OPI traitée a la liste
-            if not ("list_OPI" in overviews_dict):
-                overviews_dict["list_OPI"] = [cliche]
-            else:
-                overviews_dict["list_OPI"].append(cliche)
+            overviews_dict["list_OPI"].append(cliche)
 
     with open(args.cache+'/cache_mtd.json', 'w') as outfile:
         json.dump(mtd, outfile)
