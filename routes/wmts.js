@@ -265,19 +265,19 @@ router.get('/wmts', [
     debug('~~~GetTile');
     debugGetTile(LAYER, TILEMATRIX, TILEROW, TILECOL);
     let mime = null;
-    let layer = LAYER;
+    let layerName = LAYER;
     if ((!FORMAT) || (FORMAT === 'image/png')) {
       mime = Jimp.MIME_PNG; // "image/png"
     } else if (FORMAT === 'image/jpeg') {
       mime = Jimp.MIME_JPEG; // "image/jpeg"
     }
     if (LAYER === 'opi') {
-      layer = Name;
-      if (!layer) {
-        [layer] = overviews.list_OPI;
+      layerName = Name;
+      if (!layerName) {
+        [layerName] = overviews.list_OPI;
       }
     }
-    const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${layer}.png`);
+    const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${layerName}.png`);
     Jimp.read(url, (err, image) => {
       new Promise((success, failure) => {
         if (err) {

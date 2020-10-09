@@ -140,10 +140,10 @@ class Saisie {
             },
           }).then((res) => {
           res.json().then((json) => {
-            console.log(json);
-            if (json.cliche != 'out of bounds') {
+            that.cliche = json.cliche;
+            if (res.status == 200) {
               that.json = json;
-              that.cliche = json.cliche;
+              // that.cliche = json.cliche;
               that.status = 'ras';
               // On modifie la couche OPI
               this.opiConfig.opacity = this.opiLayer.opacity;
