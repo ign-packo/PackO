@@ -182,7 +182,7 @@ class Saisie {
   }
 
   select() {
-    console.log("'select': En attente de sélection");
+    console.log('"select": En attente de sélection');
     this.currentMeasure = null;
     this.status = 'movePoint';
     this.cliche = null;
