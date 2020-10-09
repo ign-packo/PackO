@@ -38,11 +38,28 @@ describe('Graph', () => {
           .query({ x: 0, y: 0 })
           .end((err, res) => {
             should.not.exist(err);
-            res.should.have.status(200);
+            res.should.have.status(201);
             const resJson = JSON.parse(res.text);
 
             resJson.should.be.jsonSchema(schema);
             resJson.should.have.property('cliche').equal('out of bounds');
+
+            done();
+          });
+      });
+    });
+    describe('query: x=0 & y=0', () => {
+      it("should return a 'missing'", (done) => {
+        chai.request(server)
+          .get('/graph')
+          .query({ x: 230746, y: 6759735 })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(200);
+            const resJson = JSON.parse(res.text);
+
+            resJson.should.be.jsonSchema(schema);
+            resJson.should.have.property('cliche').equal('missing');
 
             done();
           });

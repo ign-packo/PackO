@@ -15,8 +15,6 @@ proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
-const overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
-
 router.get('/wmts', [
   query('SERVICE')
     .exists().withMessage(createErrMsg.missingParameter('SERVICE'))
@@ -40,10 +38,13 @@ router.get('/wmts', [
     .matches(/^\d+(.\d+)*$/i)
     .withMessage(createErrMsg.invalidParameter('VERSION')),
   query('LAYER').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
-    .exists().withMessage(createErrMsg.missingParameter('LAYER')),
-  // !!! A corriger dans une autre branche
-  // .isIn(['ortho', 'graph'])
-  // .withMessage((LAYER) => (`'${LAYER}': unsupported LAYER value`)),
+    .exists().withMessage(createErrMsg.missingParameter('LAYER'))
+    .isIn(['ortho', 'graph', 'opi'])
+    .withMessage((LAYER) => (`'${LAYER}': unsupported LAYER value`)),
+  query('Name').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).if(query('LAYER').isIn(['opi']))
+    .exists()
+    .withMessage(createErrMsg.missingParameter('Name'))
+    .optional(),
   query('STYLE').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('STYLE'))
     .isIn(['normal'])
@@ -54,7 +55,7 @@ router.get('/wmts', [
   query('INFOFORMAT').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('INFOFORMAT')),
   query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('TILEMATRIXSET'))
-    .isIn([overviews.identifier])
+    .custom((TILEMATRIXSET, { req }) => TILEMATRIXSET === req.app.overviews.identifier)
     .withMessage((TILEMATRIXSET) => (`'${TILEMATRIXSET}': unsupported TILEMATRIXSET value`)),
   query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIX')),
   query('TILEROW').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
@@ -75,11 +76,12 @@ router.get('/wmts', [
     .withMessage(createErrMsg.invalidParameter('J')),
 ], validateParams,
 (req, res) => {
+  const { overviews } = req.app;
   const params = matchedData(req);
   // const { SERVICE } = params;
   const { REQUEST } = params;
   //  const { VERSION } = params;
-  const { LAYER } = params;
+  const { LAYER, Name } = params;
   // const STYLE = params.STYLE;
   const { FORMAT } = params;
   // const TILEMATRIXSET = params.TILEMATRIXSET;
@@ -132,8 +134,29 @@ router.get('/wmts', [
       });
     }
 
+    const extra = {
+      ortho: {
+        key: 'InfoFormat',
+        value: 'application/gml+xml; version=3.1',
+      },
+      graph: {
+        key: 'InfoFormat',
+        value: 'application/gml+xml; version=3.1',
+      },
+      opi: {
+        key: 'Dimension',
+        value: {
+          'ows:Identifier': 'Name',
+          'ows:title': 'opi name',
+          'ows:abstract': "nom de l'opi",
+          Default: overviews.list_OPI[0],
+          Value: overviews.list_OPI,
+        },
+      },
+    };
+
     const layers = [];
-    ['ortho', 'graph'].forEach((layerName) => layers.push({
+    ['ortho', 'graph', 'opi'].forEach((layerName) => layers.push({
       'ows:Title': layerName,
       'ows:Abstract': layerName,
       'ows:WGS84BoundingBox': {
@@ -161,7 +184,7 @@ router.get('/wmts', [
         },
       },
       Format: 'image/png',
-      InfoFormat: 'application/gml+xml; version=3.1',
+      [extra[layerName].key]: extra[layerName].value,
       TileMatrixSetLink: {
         TileMatrixSet: overviews.identifier,
         TileMatrixSetLimits: { TileMatrixLimits: tileMatrixLimit },
@@ -242,12 +265,19 @@ router.get('/wmts', [
     debug('~~~GetTile');
     debugGetTile(LAYER, TILEMATRIX, TILEROW, TILECOL);
     let mime = null;
+    let layerName = LAYER;
     if ((!FORMAT) || (FORMAT === 'image/png')) {
       mime = Jimp.MIME_PNG; // "image/png"
     } else if (FORMAT === 'image/jpeg') {
       mime = Jimp.MIME_JPEG; // "image/jpeg"
     }
-    const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${LAYER}.png`);
+    if (LAYER === 'opi') {
+      layerName = Name;
+      if (!layerName) {
+        [layerName] = overviews.list_OPI;
+      }
+    }
+    const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${layerName}.png`);
     Jimp.read(url, (err, image) => {
       new Promise((success, failure) => {
         if (err) {
@@ -311,8 +341,6 @@ router.get('/wmts', [
           } else {
             out.cliche = 'missing';
           }
-          // res.sendFile('FeatureInfo.xml', { root: path.join('cache') });
-          // res.status(200).send(JSON.stringify(out));
 
           const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
                            + '<ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"'

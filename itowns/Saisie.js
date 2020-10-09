@@ -124,10 +124,10 @@ class Saisie {
   }
 
   click(e) {
-    console.log('click: ', this.pickPoint(e));
+    console.log('Click: ', this.pickPoint(e));
     if (this.status == 'movePoint') {
       if (this.currentMeasure == null) {
-        console.log("ici");
+        console.log("Click");
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         const that = this;
@@ -140,16 +140,16 @@ class Saisie {
             },
           }).then((res) => {
           res.json().then((json) => {
-            if (json) {
-              console.log(json);
+            that.cliche = json.cliche;
+            if (res.status == 200) {
               that.json = json;
-              that.cliche = json.cliche;
+              // that.cliche = json.cliche;
               that.status = 'ras';
               // On modifie la couche OPI
               this.opiConfig.opacity = this.opiLayer.opacity;
               menuGlobe.removeLayersGUI(['Opi']);
               view.removeLayer('Opi');
-              this.opiConfig.source.url = this.opiConfig.source.url.replace(/LAYER=.*\&FORMAT/, `LAYER=${json.cliche}&FORMAT`);
+              this.opiConfig.source.url = this.opiConfig.source.url.replace(/LAYER=.*\&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
               this.opiLayer = new itowns.ColorLayer('Opi', this.opiConfig);
               view.addLayer(this.opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
               itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
@@ -182,7 +182,7 @@ class Saisie {
   }
 
   select() {
-    console.log('choisir le cliche');
+    console.log('"select": En attente de sélection');
     this.currentMeasure = null;
     this.status = 'movePoint';
     this.cliche = null;

@@ -13,7 +13,7 @@ const parentDir = `${global.dir_cache}`;
 router.get('/json/:typefile', [
   param('typefile')
     .exists().withMessage(createErrMsg.missingParameter('typefile'))
-    .isIn(['ortho', 'graph', 'opi', 'test'])
+    .isIn(['ortho', 'graph', 'opi', 'overviews', 'test'])
     .withMessage(createErrMsg.invalidParameter('typefile')),
 ], validateParams,
 (req, res) => {

@@ -12,8 +12,6 @@ const validateParams = require('../paramValidation/validateParams');
 const validator = require('../paramValidation/validator');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
-const overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
-
 const geoJsonAPatcher = [
   body('geoJSON')
     .exists().withMessage(createErrMsg.missingBody)
@@ -58,9 +56,10 @@ function encapBody(req, res, next) {
 router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   ...geoJsonAPatcher,
 ], validateParams, (req, res) => {
+  const { overviews } = req.app;
   const params = matchedData(req);
-  const X0 = overviews.crs.boundingBox.xmin;
-  const Y0 = overviews.crs.boundingBox.ymax;
+  const xOrigin = overviews.crs.boundingBox.xmin;
+  const yOrigin = overviews.crs.boundingBox.ymax;
   const R = overviews.resolution;
   const geoJson = params.geoJSON;
   const promises = [];
@@ -97,10 +96,10 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     const errors = [];
 
     for (let z = 21; z >= 10; z -= 1) {
-      const x0 = Math.floor((BBox.xmin - X0) / (resolution * 256));
-      const x1 = Math.ceil((BBox.xmax - X0) / (resolution * 256));
-      const y0 = Math.floor((Y0 - BBox.ymax) / (resolution * 256));
-      const y1 = Math.ceil((Y0 - BBox.ymin) / (resolution * 256));
+      const x0 = Math.floor((BBox.xmin - xOrigin) / (resolution * 256));
+      const x1 = Math.ceil((BBox.xmax - xOrigin) / (resolution * 256));
+      const y0 = Math.floor((yOrigin - BBox.ymax) / (resolution * 256));
+      const y1 = Math.ceil((yOrigin - BBox.ymin) / (resolution * 256));
       for (let y = y0; y < y1; y += 1) {
         for (let x = x0; x < x1; x += 1) {
           tiles.push({
@@ -151,8 +150,12 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         let first = true;
         /* eslint-disable no-restricted-syntax */
         for (const point of feature.geometry.coordinates[0]) {
-          const i = Math.round((point[0] - X0 - tile.x * 256 * tile.resolution) / tile.resolution);
-          const j = Math.round((Y0 - point[1] - tile.y * 256 * tile.resolution) / tile.resolution);
+          const i = Math.round(
+            (point[0] - xOrigin - tile.x * 256 * tile.resolution) / tile.resolution,
+          );
+          const j = Math.round(
+            (yOrigin - point[1] - tile.y * 256 * tile.resolution) / tile.resolution,
+          );
           // debugPatch(i, j);
           if (first) {
             first = false;
@@ -229,6 +232,7 @@ router.get('/graph', [
     .withMessage(createErrMsg.invalidParameter('y')),
 ], validateParams,
 (req, res) => {
+  const { overviews } = req.app;
   const params = matchedData(req);
   const { x } = params;
   const { y } = params;
@@ -248,7 +252,7 @@ router.get('/graph', [
 
   const url = path.join(global.dir_cache, '21', `${Ty}`, `${Tx}`, 'graph.png');
   if (!fs.existsSync(url)) {
-    res.status(200).send('{"color":[0,0,0], "cliche":"out of bounds"}');
+    res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
   } else {
     jimp.read(url, (err, image) => {
       if (err) {
