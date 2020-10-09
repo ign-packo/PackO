@@ -38,7 +38,7 @@ describe('Graph', () => {
           .query({ x: 0, y: 0 })
           .end((err, res) => {
             should.not.exist(err);
-            res.should.have.status(200);
+            res.should.have.status(201);
             const resJson = JSON.parse(res.text);
 
             resJson.should.be.jsonSchema(schema);
