@@ -172,11 +172,6 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
                     existing_graph = None
                     PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
                     PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
-    # on ajout l'OPI traitée a la liste
-    if not ("list_OPI" in overviews):
-        overviews["list_OPI"] = [stem]
-    else:
-        overviews["list_OPI"].append(stem)
 
 def creation_jsonFile_itowns(cache, urlApi, layers, overviews):
     if verbose > 0:
@@ -235,21 +230,12 @@ def main():
 
     cliche_dejaTraites = []
     for filename in list_filename:
-        # Si le fichier a deja une couleur on la recupere
-        cliche = filename.split(os.path.sep)[-1].split('.')[0]
-        color = None
-        for _r in mtd:
-            for _v in mtd[_r]:
-                for _b in mtd[_r][_v]:
-                    if mtd[_r][_v][_b] == cliche:
-                        color = [_r, _v, _b]
-                        cliche_dejaTraites.append(cliche)
-                        break
-                if color:
-                    break
-            if color:
-                break
-        if color is None:
+        cliche = Path(filename).stem
+     
+        if ( "list_OPI" in overviews_dict and cliche in overviews_dict['list_OPI']):
+            # OPI déja traitée
+            cliche_dejaTraites.append(cliche)
+        else:
             print('nouvelle image: ', filename)
             color = [randrange(255), randrange(255), randrange(255)]
             while (color[0] in mtd) and (color[1] in mtd[color[0]]) and (color[2] in mtd[color[0]][color[1]]):
@@ -260,6 +246,11 @@ def main():
                 mtd[color[0]][color[1]] = {}
             mtd[color[0]][color[1]][color[2]] = cliche
             process_image(overviews_dict, db_graph, filename, color, out_raster_srs)
+            # on ajout l'OPI traitée a la liste
+            if not ("list_OPI" in overviews_dict):
+                overviews_dict["list_OPI"] = [cliche]
+            else:
+                overviews_dict["list_OPI"].append(cliche)
 
     with open(args.cache+'/cache_mtd.json', 'w') as outfile:
         json.dump(mtd, outfile)
