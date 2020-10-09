@@ -150,8 +150,12 @@ router.post('/graph/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         let first = true;
         /* eslint-disable no-restricted-syntax */
         for (const point of feature.geometry.coordinates[0]) {
-          const i = Math.round((point[0] - xOrigin - tile.x * 256 * tile.resolution) / tile.resolution);
-          const j = Math.round((yOrigin - point[1] - tile.y * 256 * tile.resolution) / tile.resolution);
+          const i = Math.round(
+            (point[0] - xOrigin - tile.x * 256 * tile.resolution) / tile.resolution,
+          );
+          const j = Math.round(
+            (yOrigin - point[1] - tile.y * 256 * tile.resolution) / tile.resolution,
+          );
           // debugPatch(i, j);
           if (first) {
             first = false;
