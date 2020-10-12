@@ -30,9 +30,16 @@ class Saisie {
       const pos = this.pickPoint(e);
       if (pos) {
         var positions = this.currentMeasure.geometry.attributes.position.array;
-        positions[3 * this.currentIndex] = pos.x;
-        positions[3 * this.currentIndex + 1] = pos.y;
-        positions[3 * this.currentIndex + 2] = pos.z;
+        // Si c'est le premier point, on fixe la position
+        if (this.currentIndex == 0) {
+          this.currentMeasure.position.x = Math.floor(pos.x);
+          this.currentMeasure.position.y = Math.floor(pos.y);
+          this.currentMeasure.position.z = Math.floor(pos.z);
+          this.currentMeasure.updateMatrixWorld();
+        }
+        positions[3 * this.currentIndex] = pos.x - this.currentMeasure.position.x;
+        positions[3 * this.currentIndex + 1] = pos.y - this.currentMeasure.position.y;
+        positions[3 * this.currentIndex + 2] = pos.z - this.currentMeasure.position.z;
         this.currentMeasure.geometry.attributes.position.needsUpdate = true;
         this.currentMeasure.geometry.computeBoundingSphere();
         view.notifyChange(this.currentMeasure);
@@ -41,9 +48,15 @@ class Saisie {
       const pos = this.pickPoint(e);
       if (pos) {
         var positions = this.currentMeasure.geometry.attributes.position.array;
-        positions[3 * this.currentIndex] = pos.x;
-        positions[3 * this.currentIndex + 1] = pos.y;
-        positions[3 * this.currentIndex + 2] = pos.z;
+        if (this.currentIndex == 0) {
+          this.currentMeasure.position.x = Math.floor(pos.x);
+          this.currentMeasure.position.y = Math.floor(pos.y);
+          this.currentMeasure.position.z = Math.floor(pos.z);
+          this.currentMeasure.updateMatrixWorld();
+        }
+        positions[3 * this.currentIndex] = pos.x - this.currentMeasure.position.x;
+        positions[3 * this.currentIndex + 1] = pos.y - this.currentMeasure.position.y;
+        positions[3 * this.currentIndex + 2] = pos.z - this.currentMeasure.position.z;
         positions[3 * (this.currentIndex + 1)] = positions[0];
         positions[3 * (this.currentIndex + 1) + 1] = positions[1];
         positions[3 * (this.currentIndex + 1) + 2] = positions[2];
@@ -89,9 +102,9 @@ class Saisie {
       ],
     };
     for (let i = 0; i < this.currentIndex; i++) {
-      geojson.features[0].geometry.coordinates[0].push([positions[3 * i], positions[3 * i + 1]]);
+      geojson.features[0].geometry.coordinates[0].push([positions[3 * i] + this.currentMeasure.position.x, positions[3 * i + 1] + this.currentMeasure.position.y]);
     }
-    geojson.features[0].geometry.coordinates[0].push([positions[0], positions[1]]);
+    geojson.features[0].geometry.coordinates[0].push([positions[0] + this.currentMeasure.position.x, positions[1] + this.currentMeasure.position.y]);
     const dataStr = JSON.stringify(geojson);
     view.scene.remove(this.currentMeasure);
     // On post le geojson sur l'API
