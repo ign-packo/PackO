@@ -109,12 +109,14 @@
 
                 var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig, opiLayer, opiConfig, apiUrl });
                 saisie.cliche = 'unknown';
+                saisie.modifications = '0';
                 menuGlobe.gui.add(saisie, 'polygon');
                 // menuGlobe.gui.add(saisie, 'freehand');
                 menuGlobe.gui.add(saisie, 'select');
                 menuGlobe.gui.add(saisie, 'undo');
                 menuGlobe.gui.add(saisie, 'redo');
                 menuGlobe.gui.add(saisie, 'clear');
+                menuGlobe.gui.add(saisie, 'modifications').listen();
                 menuGlobe.gui.add(saisie, 'cliche').listen();
                 // const eng = view.mainLoop.gfxEngine;
                 // console.log('eng:', eng);
