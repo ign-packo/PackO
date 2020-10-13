@@ -1,4 +1,4 @@
-const debug = require('debug')('patchs');
+const debug = require('debug')('patch');
 const router = require('express').Router();
 const fs = require('fs');
 const jimp = require('jimp');
@@ -69,8 +69,8 @@ function getTiles(features, overviews) {
 
   const tiles = [];
 
-  const lvlMin = overviews.resolution.min;
-  const lvlMax = overviews.resolution.max;
+  const lvlMin = overviews.level.min;
+  const lvlMax = overviews.level.max;
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
   const Rmax = overviews.resolution;
@@ -78,7 +78,7 @@ function getTiles(features, overviews) {
   const tileHeight = overviews.tileSize.height;
 
   // tileSet.forEach((level) => {
-  Array.from({ length: lvlMax - lvlMin }, (_, i) => i + lvlMin).forEach((level) => {
+  Array.from({ length: lvlMax - lvlMin + 1 }, (_, i) => i + lvlMin).forEach((level) => {
     const resolution = Rmax * 2 ** (lvlMax - level);
     const x0 = Math.floor((BBox.xmin - xOrigin) / (resolution * tileWidth));
     const x1 = Math.ceil((BBox.xmax - xOrigin) / (resolution * tileWidth));
@@ -104,7 +104,7 @@ function getTiles(features, overviews) {
 router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   ...geoJsonAPatcher,
 ], validateParams, (req, res) => {
-  debug('patch');
+  debug('~~~POST patch');
 
   const { overviews } = req.app;
   const params = matchedData(req);
@@ -118,10 +118,15 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   const tileWidth = overviews.tileSize.width;
   const tileHeight = overviews.tileSize.height;
 
-  debug('GeoJson: ', geoJson);
-  debug('Features: ', geoJson.features);
+  let newPatchId = 0;
+  for (let i = 0; i < req.app.activePatchs.features.length; i += 1) {
+    const id = req.app.activePatchs.features[i].properties.patchId;
+    if (newPatchId < id) newPatchId = id;
+  }
+
+  newPatchId += 1;
+
   const tiles = getTiles(geoJson.features, overviews);
-  debug(tiles);
   // Patch these tiles
   const errors = [];
   tiles.forEach((tile) => {
@@ -132,8 +137,8 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
     const urlOrtho = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
 
-    const urlGraphOutput = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph_${req.app.currentPatchId}.png`;
-    const urlOrthoOutput = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho_${req.app.currentPatchId}.png`;
+    const urlGraphOutput = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph_${newPatchId}.png`;
+    const urlOrthoOutput = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho_${newPatchId}.png`;
 
     const urlOpi = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/${geoJson.features[0].properties.cliche}.png`;
     if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
@@ -144,7 +149,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     const mask = PImage.make(tileWidth, tileHeight);
     const ctx = mask.getContext('2d');
     geoJson.features.forEach((feature) => {
-      debug(feature.properties.color);
+      // debug(feature.properties.color);
       ctx.fillStyle = '#FFFFFF';
       ctx.beginPath();
       let first = true;
@@ -154,7 +159,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
             / resolution);
         const j = Math.round((yOrigin - point[1] - tile.y * tileHeight * resolution)
             / resolution);
-        debug(i, j);
+        // debug(i, j);
         if (first) {
           first = false;
           ctx.moveTo(i, j);
@@ -208,37 +213,45 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     tiles.forEach((tile) => {
       const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
       const urlOrtho = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
-      const urlGraphOutput = `graph_${req.app.currentPatchId}.png`;
-      const urlOrthoOutput = `ortho_${req.app.currentPatchId}.png`;
+      const urlGraphOutput = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph_${newPatchId}.png`;
+      const urlOrthoOutput = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho_${newPatchId}.png`;
       // on verifie si c'est un lien symbolique ou le fichier d'origine
-      if (fs.lstatSync(urlGraph).isSymbolicLink()) {
+      // if (fs.lstatSync(urlGraph).isSymbolicLink()) {
+      if (fs.lstatSync(urlGraph).nlink > 1) {
+        debug('symbolique');
         fs.unlinkSync(urlGraph);
         fs.unlinkSync(urlOrtho);
       } else {
+        debug('origin');
         const urlGraphOrig = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph_orig.png`;
         const urlOrthoOrig = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho_orig.png`;
         fs.renameSync(urlGraph, urlGraphOrig);
         fs.renameSync(urlOrtho, urlOrthoOrig);
       }
-      fs.symlinkSync(urlGraphOutput, urlGraph);
-      fs.symlinkSync(urlOrthoOutput, urlOrtho);
+      // fs.symlinkSync(urlGraphOutput, urlGraph);
+      // fs.symlinkSync(urlOrthoOutput, urlOrtho);
+      // fs.symlinkSync(urlGraphOutput, urlGraph, 'junction');
+      // fs.symlinkSync(urlOrthoOutput, urlOrtho, 'junction');
+      fs.linkSync(urlGraphOutput, urlGraph);
+      fs.linkSync(urlOrthoOutput, urlOrtho);
     });
     // on note le patch Id
     geoJson.features.forEach((feature) => {
-      feature.properties.patchId = req.app.currentPatchId;
+      feature.properties.patchId = newPatchId;
     });
     // on ajoute ce patch à l'historique
-    debug('ici');
-    debug(req.app.activePatchs.features.length);
+    debug('New patch');
     req.app.activePatchs.features = req.app.activePatchs.features.concat(geoJson.features);
-    debug(req.app.activePatchs.features.length);
-    req.app.currentPatchId += 1;
+    debug('features in activePatchs:', req.app.activePatchs.features.length);
+
+    debug('currentPatchId', newPatchId);
+
+    // on sauve l'historique (au cas ou l'API devrait etre relancee)
+    fs.writeFileSync(`${global.dir_cache}/activePatchs.json`, JSON.stringify(req.app.activePatchs, null, 4));
+
     // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
     req.app.unactivePatchs.features = [];
-    // on sauve l'historique (au cas ou l'API devrait etre relancee)
-    fs.writeFileSync(`${global.dir_cache}/activePatchs.geojson`, JSON.stringify(req.app.activePatchs));
-    req.app.unactivePatchs.features = [];
-    fs.writeFileSync(`${global.dir_cache}/unactivePatchs.geojson`, JSON.stringify(req.app.unactivePatchs));
+    fs.writeFileSync(`${global.dir_cache}/unactivePatchs.json`, JSON.stringify(req.app.unactivePatchs, null, 4));
     res.status(200).send(JSON.stringify(tiles));
   }).catch((err) => {
     debug('erreur : ', err);
@@ -248,20 +261,23 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 });
 
 router.get('/patchs', [], (req, res) => {
+  debug('~~~GET patchs');
   res.status(200).send(JSON.stringify(req.app.activePatchs));
 });
 
 router.put('/patchs/undo', [], (req, res) => {
-  debug('undo');
+  debug('~~~PUT patchs/undo');
+  const { overviews } = req.app;
   if (req.app.activePatchs.features.length === 0) {
-    debug('nothing');
-    res.status(500).send('nothing to undo');
+    debug('nothing to undo');
+    res.status(400).send('nothing to undo');
     return;
   }
   // trouver le patch a annuler: c'est-à-dire sortir les éléments
   // de req.app.activePatchs.features avec patchId == lastPatchId
   const lastPatchId = req.app.activePatchs.features[req.app.activePatchs.features.length - 1]
     .properties.patchId;
+  debug('lastPatchId:', lastPatchId);
   const features = [];
   let index = req.app.activePatchs.features.length - 1;
   while (index >= 0) {
@@ -272,12 +288,14 @@ router.put('/patchs/undo', [], (req, res) => {
     }
     index -= 1;
   }
+  /*
   req.app.activePatchs.features.forEach((feature) => {
     if (feature.properties.patchId === lastPatchId) features.push(feature);
   });
+  */
   // trouver la liste des tuiles concernées par ces patchs
-  const tiles = getTiles(features, req.app.tileSet);
-  debug('liste des tuiles');
+  const tiles = getTiles(features, overviews);
+  debug('liste des tuiles:');
   debug(tiles);
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
   tiles.forEach((tile) => {
@@ -287,7 +305,7 @@ router.put('/patchs/undo', [], (req, res) => {
     const arrayId = [];
     arrayGraphs.forEach((name) => {
       const id = parseInt(name.split(/[_.]/)[1], 10);
-      if ((id !== lastPatchId) && !Number.isNaN(id)) arrayId.push(id);
+      if ((id < lastPatchId) && !Number.isNaN(id)) arrayId.push(id);
     });
     const idSelected = arrayId.length > 0 ? arrayId.sort()[arrayId.length - 1] : 'orig';
     debug('version selectionne pour la tuile ');
@@ -295,61 +313,86 @@ router.put('/patchs/undo', [], (req, res) => {
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
     const urlOrtho = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
-    const urlGraphSelected = `graph_${idSelected}.png`;
-    const urlOrthoSelected = `ortho_${idSelected}.png`;
+    const urlGraphSelected = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph_${idSelected}.png`;
+    const urlOrthoSelected = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho_${idSelected}.png`;
     // on supprime l'ancien lien
     fs.unlinkSync(urlGraph);
     fs.unlinkSync(urlOrtho);
     // on crée le nouveau
-    fs.symlinkSync(urlGraphSelected, urlGraph);
-    fs.symlinkSync(urlOrthoSelected, urlOrtho);
+    // fs.symlinkSync(urlGraphSelected, urlGraph);
+    // fs.symlinkSync(urlOrthoSelected, urlOrtho);
+    fs.linkSync(urlGraphSelected, urlGraph);
+    fs.linkSync(urlOrthoSelected, urlOrtho);
   });
+
+  fs.writeFileSync(`${global.dir_cache}/activePatchs.json`, JSON.stringify(req.app.activePatchs, null, 4));
+  // rque: à terme, pas besoin de sauver le unactivePatchs?
   // vider req.app.unactivePatchs.features (on ne peut faire qu'un seul redo)
   // et y insérer le patch annulé
-  req.app.unactivePatchs.features = features;
-  fs.writeFileSync(`${global.dir_cache}/activePatchs.geojson`, JSON.stringify(req.app.activePatchs));
-  // rque: à terme, pas besoin de sauver le unactivePatchs?
-  fs.writeFileSync(`${global.dir_cache}/unactivePatchs.geojson`, JSON.stringify(req.app.unactivePatchs));
+  // req.app.unactivePatchs.features = features;
+
+  debug(features.length);
+  debug(req.app.unactivePatchs.features.length);
+  req.app.unactivePatchs.features = req.app.unactivePatchs.features.concat(features);
+  fs.writeFileSync(`${global.dir_cache}/unactivePatchs.json`, JSON.stringify(req.app.unactivePatchs, null, 4));
   debug('fin du undo');
   res.status(200).send(`undo ${lastPatchId} succeed`);
 });
 
 router.put('/patchs/redo', [], (req, res) => {
-  // trouver le patch a rétablir (le contenu de req.app.unactivePatchs.features)
-  const { features } = req.app.unactivePatchs;
-  if (features.length === 0) {
-    res.status(500).send('nothing to redo');
+  debug('~~~PUT patchs/redo');
+  const { overviews } = req.app;
+  if (req.app.unactivePatchs.features.length === 0) {
+    debug('nothing to redo');
+    res.status(400).send('nothing to redo');
     return;
   }
-  const patchIdRedo = features[0].properties.patchId;
+  // trouver le patch a refaire: c'est-à-dire sortir les éléments
+  // de req.app.unactivePatchs.features avec patchId == patchIdRedo
+  const patchIdRedo = req.app.unactivePatchs.features[req.app.unactivePatchs.features.length - 1]
+    .properties.patchId;
+  debug('patchIdRedo:', patchIdRedo);
+  const features = [];
+  let index = req.app.unactivePatchs.features.length - 1;
+  while (index >= 0) {
+    const feature = req.app.unactivePatchs.features[index];
+    if (feature.properties.patchId === patchIdRedo) {
+      features.push(feature);
+      req.app.unactivePatchs.features.splice(index, 1);
+    }
+    index -= 1;
+  }
   // trouver la liste des tuiles concernées par ce patch
-  const tiles = getTiles(features, req.app.tileSet);
+  const tiles = getTiles(features, overviews);
   // pour chaque tuile, modifier les liens symboliques
   tiles.forEach((tile) => {
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
     const urlOrtho = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
-    const urlGraphSelected = `graph_${patchIdRedo}.png`;
-    const urlOrthoSelected = `ortho_${patchIdRedo}.png`;
+    const urlGraphSelected = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph_${patchIdRedo}.png`;
+    const urlOrthoSelected = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho_${patchIdRedo}.png`;
     // on supprime l'ancien lien
     fs.unlinkSync(urlGraph);
     fs.unlinkSync(urlOrtho);
     // on crée le nouveau
-    fs.symlinkSync(urlGraphSelected, urlGraph);
-    fs.symlinkSync(urlOrthoSelected, urlOrtho);
+    // fs.symlinkSync(urlGraphSelected, urlGraph);
+    // fs.symlinkSync(urlOrthoSelected, urlOrtho);
+    fs.linkSync(urlGraphSelected, urlGraph);
+    fs.linkSync(urlOrthoSelected, urlOrtho);
   });
   // on remet les features dans req.app.activePatchs.features
   req.app.activePatchs.features = req.app.activePatchs.features.concat(features);
   // on vide les req.app.unactivePatchs.features
-  req.app.unactivePatchs.features = [];
-  fs.writeFileSync(`${global.dir_cache}/activePatchs.geojson`, JSON.stringify(req.app.activePatchs));
+  // req.app.unactivePatchs.features = [];
+  fs.writeFileSync(`${global.dir_cache}/activePatchs.json`, JSON.stringify(req.app.activePatchs));
   // rque: à terme, pas besoin de sauver le unactivePatchs?
-  fs.writeFileSync(`${global.dir_cache}/unactivePatchs.geojson`, JSON.stringify(req.app.unactivePatchs));
+  fs.writeFileSync(`${global.dir_cache}/unactivePatchs.json`, JSON.stringify(req.app.unactivePatchs));
   debug('fin du redo');
   res.status(200).send(`redo ${patchIdRedo} succeed`);
 });
 
 router.put('/patchs/clear', [], (req, res) => {
+  debug('~~~PUT patchs/clear');
   // pour chaque patch de req.app.activePatchs.features
   if (req.app.activePatchs.features.length === 0) {
     debug('nothing');
@@ -357,8 +400,9 @@ router.put('/patchs/clear', [], (req, res) => {
     return;
   }
   const { features } = req.app.activePatchs;
+  const { overviews } = req.app;
   // trouver la liste des tuiles concernées par ces patchs
-  const tiles = getTiles(features, req.app.tileSet);
+  const tiles = getTiles(features, overviews);
   debug('liste des tuiles');
   debug(tiles);
   // pour chaque tuile, on retablit la version orig
@@ -369,19 +413,21 @@ router.put('/patchs/clear', [], (req, res) => {
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph.png`;
     const urlOrtho = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho.png`;
-    const urlGraphSelected = `graph_${idSelected}.png`;
-    const urlOrthoSelected = `ortho_${idSelected}.png`;
+    const urlGraphSelected = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/graph_${idSelected}.png`;
+    const urlOrthoSelected = `${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}/ortho_${idSelected}.png`;
     // on supprime l'ancien lien
     fs.unlinkSync(urlGraph);
     fs.unlinkSync(urlOrtho);
     // on crée le nouveau
-    fs.symlinkSync(urlGraphSelected, urlGraph);
-    fs.symlinkSync(urlOrthoSelected, urlOrtho);
+    // fs.symlinkSync(urlGraphSelected, urlGraph);
+    // fs.symlinkSync(urlOrthoSelected, urlOrtho);
+    fs.linkSync(urlGraphSelected, urlGraph);
+    fs.linkSync(urlOrthoSelected, urlOrtho);
   });
   req.app.activePatchs.features = [];
   req.app.unactivePatchs.features = [];
-  fs.writeFileSync(`${global.dir_cache}/activePatchs.geojson`, JSON.stringify(req.app.activePatchs));
-  fs.writeFileSync(`${global.dir_cache}/unactivePatchs.geojson`, JSON.stringify(req.app.unactivePatchs));
+  fs.writeFileSync(`${global.dir_cache}/activePatchs.json`, JSON.stringify(req.app.activePatchs));
+  fs.writeFileSync(`${global.dir_cache}/unactivePatchs.json`, JSON.stringify(req.app.unactivePatchs));
   debug('fin du clear');
   res.status(200).send('clear succeed');
 });

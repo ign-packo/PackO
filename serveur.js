@@ -36,10 +36,14 @@ try {
   app.cache_mtd = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'cache_mtd.json')));
   app.overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
 
-  app.tileSet = JSON.parse(fs.readFileSync(`${global.dir_cache}/tileSet.json`));
+  const existingPath = 'D:/Link/Linked.txt';
+  const newPath = 'D:/NewLink.txt';
+
+  // fs.linkSync(existingPath, newPath, 'junction');
+  // console.log(fs.lstatSync('D:/Link/Linked.txt'))
 
   try {
-    app.activePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/activePatchs.geojson`));
+    app.activePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/activePatchs.json`));
   } catch (err) {
     app.activePatchs = {
       type: 'FeatureCollection',
@@ -52,11 +56,11 @@ try {
       },
       features: [],
     };
-    fs.writeFileSync(`${global.dir_cache}/activePatchs.geojson`, JSON.stringify(app.activePatchs));
+    fs.writeFileSync(`${global.dir_cache}/activePatchs.json`, JSON.stringify(app.activePatchs));
   }
 
   try {
-    app.unactivePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/unactivePatchs.geojson`));
+    app.unactivePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/unactivePatchs.json`));
   } catch (err) {
     app.unactivePatchs = {
       type: 'FeatureCollection',
@@ -69,20 +73,8 @@ try {
       },
       features: [],
     };
-    fs.writeFileSync(`${global.dir_cache}/unactivePatchs.geojson`, JSON.stringify(app.unactivePatchs));
+    fs.writeFileSync(`${global.dir_cache}/unactivePatchs.json`, JSON.stringify(app.unactivePatchs));
   }
-  // on trouve l'Id du prochain patch (max des Id + 1)
-  app.currentPatchId = 0;
-  for (let i = 0; i < app.activePatchs.features.length; i += 1) {
-    const id = app.activePatchs.features[i].properties.patchId + 1;
-    if (app.currentPatchId < id) app.currentPatchId = id;
-  }
-  for (let i = 0; i < app.unactivePatchs.features.length; i += 1) {
-    const id = app.unactivePatchs.features[i].properties.patchId + 1;
-    if (app.currentPatchId < id) app.currentPatchId = id;
-  }
-  debug.log('app.currentPatchId : ');
-  debug.log(app.currentPatchId);
 
   app.use(cors());
   app.use(bodyParser.json());
