@@ -18,12 +18,10 @@ const app = express();
 global.dir_cache = argv.cache ? argv.cache : 'cache';
 debug.log(`using cache directory: ${global.dir_cache}`);
 
-// const { debug_list_of_fonts } = require('pureimage/src/text');
 const wmts = require('./routes/wmts.js');
 const graph = require('./routes/graph.js');
 const files = require('./routes/files.js');
 const patchs = require('./routes/patchs.js');
-// const { debug_list_of_fonts } = require('pureimage/src/text');
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
@@ -35,12 +33,6 @@ try {
   // on charge les mtd du cache
   app.cache_mtd = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'cache_mtd.json')));
   app.overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
-
-  const existingPath = 'D:/Link/Linked.txt';
-  const newPath = 'D:/NewLink.txt';
-
-  // fs.linkSync(existingPath, newPath, 'junction');
-  // console.log(fs.lstatSync('D:/Link/Linked.txt'))
 
   try {
     app.activePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/activePatchs.json`));
