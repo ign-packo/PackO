@@ -270,7 +270,7 @@ router.put('/patchs/undo', [], (req, res) => {
   const { overviews } = req.app;
   if (req.app.activePatchs.features.length === 0) {
     debug('nothing to undo');
-    res.status(400).send('nothing to undo');
+    res.status(201).send('nothing to undo');
     return;
   }
   // trouver le patch a annuler: c'est-à-dire sortir les éléments
@@ -344,7 +344,7 @@ router.put('/patchs/redo', [], (req, res) => {
   const { overviews } = req.app;
   if (req.app.unactivePatchs.features.length === 0) {
     debug('nothing to redo');
-    res.status(400).send('nothing to redo');
+    res.status(201).send('nothing to redo');
     return;
   }
   // trouver le patch a refaire: c'est-à-dire sortir les éléments
@@ -384,9 +384,9 @@ router.put('/patchs/redo', [], (req, res) => {
   req.app.activePatchs.features = req.app.activePatchs.features.concat(features);
   // on vide les req.app.unactivePatchs.features
   // req.app.unactivePatchs.features = [];
-  fs.writeFileSync(`${global.dir_cache}/activePatchs.json`, JSON.stringify(req.app.activePatchs));
+  fs.writeFileSync(`${global.dir_cache}/activePatchs.json`, JSON.stringify(req.app.activePatchs, null, 4));
   // rque: à terme, pas besoin de sauver le unactivePatchs?
-  fs.writeFileSync(`${global.dir_cache}/unactivePatchs.json`, JSON.stringify(req.app.unactivePatchs));
+  fs.writeFileSync(`${global.dir_cache}/unactivePatchs.json`, JSON.stringify(req.app.unactivePatchs, null, 4));
   debug('fin du redo');
   res.status(200).send(`redo ${patchIdRedo} succeed`);
 });
@@ -396,7 +396,7 @@ router.put('/patchs/clear', [], (req, res) => {
   // pour chaque patch de req.app.activePatchs.features
   if (req.app.activePatchs.features.length === 0) {
     debug('nothing');
-    res.status(500).send('nothing to clear');
+    res.status(201).send('nothing to clear');
     return;
   }
   const { features } = req.app.activePatchs;
@@ -426,8 +426,8 @@ router.put('/patchs/clear', [], (req, res) => {
   });
   req.app.activePatchs.features = [];
   req.app.unactivePatchs.features = [];
-  fs.writeFileSync(`${global.dir_cache}/activePatchs.json`, JSON.stringify(req.app.activePatchs));
-  fs.writeFileSync(`${global.dir_cache}/unactivePatchs.json`, JSON.stringify(req.app.unactivePatchs));
+  fs.writeFileSync(`${global.dir_cache}/activePatchs.json`, JSON.stringify(req.app.activePatchs, null, 4));
+  fs.writeFileSync(`${global.dir_cache}/unactivePatchs.json`, JSON.stringify(req.app.unactivePatchs, null, 4));
   debug('fin du clear');
   res.status(200).send('clear succeed');
 });

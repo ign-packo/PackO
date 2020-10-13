@@ -2,6 +2,7 @@ const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const os = require('os');
 
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
@@ -29,6 +30,7 @@ try {
   app.use(nocache());
 
   const PORT = argv.port ? argv.port : 8081;
+  const SERVER = argv.server ? argv.server : os.hostname();
 
   // on charge les mtd du cache
   app.cache_mtd = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'cache_mtd.json')));
@@ -91,7 +93,7 @@ try {
   app.use('/', files);
   app.use('/', patchs);
 
-  app.urlApi = `http://localhost:${PORT}`;
+  app.urlApi = `http://${SERVER}:${PORT}`;
 
   module.exports = app.listen(PORT, () => {
     debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);
