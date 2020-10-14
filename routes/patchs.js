@@ -378,35 +378,39 @@ router.put('/patchs/clear', [], (req, res) => {
     res.status(201).send('nothing to clear');
     return;
   }
-  const { features } = req.app.activePatchs;
   const { overviews } = req.app;
-  // trouver la liste des tuiles concernées par ces patchs
-  const tiles = getTiles(features, overviews);
-  debug(tiles.length, 'tuiles impactées');
-  // pour chaque tuile, on retablit la version orig
-  tiles.forEach((tile) => {
-    const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
-    const arrayLink = fs.readdirSync(tileDir).filter((filename) => (filename.startsWith('graph_') || filename.startsWith('ortho_')) && !filename.endsWith('orig.png'));
+  const { features } = req.app.activePatchs;
 
-    // suppression des images intermediaires
-    arrayLink.forEach((file) => fs.unlinkSync(
-      path.join(tileDir, file),
-    ));
+  features.forEach((feature) => {
+    // trouver la liste des tuiles concernées par ces patchs
+    const tiles = getTiles([feature], overviews);
+    debug(tiles.length, 'tuiles impactées');
+    // pour chaque tuile, on retablit la version orig
+    tiles.forEach((tile) => {
+      const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
+      const arrayLink = fs.readdirSync(tileDir).filter((filename) => (filename.startsWith('graph_') || filename.startsWith('ortho_')) && !filename.endsWith('orig.png'));
 
-    // modifier les liens symboliques pour pointer sur ce numéro de version
-    const urlGraph = path.join(tileDir, 'graph.png');
-    const urlOrtho = path.join(tileDir, 'ortho.png');
-    const urlGraphSelected = path.join(tileDir, 'graph_orig.png');
-    const urlOrthoSelected = path.join(tileDir, 'ortho_orig.png');
-    // on supprime l'ancien lien
-    fs.unlinkSync(urlGraph);
-    fs.unlinkSync(urlOrtho);
-    // on crée le nouveau
-    // fs.symlinkSync(urlGraphSelected, urlGraph);
-    // fs.symlinkSync(urlOrthoSelected, urlOrtho);
-    fs.linkSync(urlGraphSelected, urlGraph);
-    fs.linkSync(urlOrthoSelected, urlOrtho);
+      // suppression des images intermediaires
+      arrayLink.forEach((file) => fs.unlinkSync(
+        path.join(tileDir, file),
+      ));
+
+      // modifier les liens symboliques pour pointer sur ce numéro de version
+      const urlGraph = path.join(tileDir, 'graph.png');
+      const urlOrtho = path.join(tileDir, 'ortho.png');
+      const urlGraphSelected = path.join(tileDir, 'graph_orig.png');
+      const urlOrthoSelected = path.join(tileDir, 'ortho_orig.png');
+      // on supprime l'ancien lien
+      fs.unlinkSync(urlGraph);
+      fs.unlinkSync(urlOrtho);
+      // on crée le nouveau
+      // fs.symlinkSync(urlGraphSelected, urlGraph);
+      // fs.symlinkSync(urlOrthoSelected, urlOrtho);
+      fs.linkSync(urlGraphSelected, urlGraph);
+      fs.linkSync(urlOrthoSelected, urlOrtho);
+    });
   });
+
   req.app.activePatchs.features = [];
   req.app.unactivePatchs.features = [];
   fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
