@@ -66,7 +66,7 @@ function getTiles(features, overviews) {
       }
     });
   });
-  debug('BBox: ', BBox);
+  debug('BBox:', 'Done');
 
   const tiles = [];
 
@@ -276,11 +276,6 @@ router.put('/patchs/undo', [], (req, res) => {
     }
     index -= 1;
   }
-  /*
-  req.app.activePatchs.features.forEach((feature) => {
-    if (feature.properties.patchId === lastPatchId) features.push(feature);
-  });
-  */
   // trouver la liste des tuiles concernées par ces patchs
   const tiles = getTiles(features, overviews);
   debug(tiles.length, 'tuiles impactées');
@@ -312,10 +307,6 @@ router.put('/patchs/undo', [], (req, res) => {
   });
 
   fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
-  // rque: à terme, pas besoin de sauver le unactivePatchs?
-  // vider req.app.unactivePatchs.features (on ne peut faire qu'un seul redo)
-  // et y insérer le patch annulé
-  // req.app.unactivePatchs.features = features;
 
   req.app.unactivePatchs.features = req.app.unactivePatchs.features.concat(features);
   fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
@@ -370,10 +361,8 @@ router.put('/patchs/redo', [], (req, res) => {
   });
   // on remet les features dans req.app.activePatchs.features
   req.app.activePatchs.features = req.app.activePatchs.features.concat(features);
-  // on vide les req.app.unactivePatchs.features
-  // req.app.unactivePatchs.features = [];
+
   fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
-  // rque: à terme, pas besoin de sauver le unactivePatchs?
   fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
   debug('features in activePatchs:', req.app.activePatchs.features.length);
   debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
@@ -397,18 +386,18 @@ router.put('/patchs/clear', [], (req, res) => {
   // pour chaque tuile, on retablit la version orig
   tiles.forEach((tile) => {
     const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
-    const arrayGraphs = fs.readdirSync(tileDir).filter((filename) => (filename.startsWith('graph_') || filename.startsWith('ortho_')) && !filename.endsWith('orig.png'));
-    debug(arrayGraphs);
+    const arrayLink = fs.readdirSync(tileDir).filter((filename) => (filename.startsWith('graph_') || filename.startsWith('ortho_')) && !filename.endsWith('orig.png'));
+
     // suppression des images intermediaires
-    arrayGraphs.forEach((file) => fs.unlinkSync(
-      path.join(global.dir_cache, tile.z, tile.y, tile.x, file),
+    arrayLink.forEach((file) => fs.unlinkSync(
+      path.join(tileDir, file),
     ));
 
     // modifier les liens symboliques pour pointer sur ce numéro de version
-    const urlGraph = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph.png');
-    const urlOrtho = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'ortho.png');
-    const urlGraphSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph_orig.png');
-    const urlOrthoSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'ortho_orig.png');
+    const urlGraph = path.join(tileDir, 'graph.png');
+    const urlOrtho = path.join(tileDir, 'ortho.png');
+    const urlGraphSelected = path.join(tileDir, 'graph_orig.png');
+    const urlOrthoSelected = path.join(tileDir, 'ortho_orig.png');
     // on supprime l'ancien lien
     fs.unlinkSync(urlGraph);
     fs.unlinkSync(urlOrtho);
