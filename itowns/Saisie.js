@@ -196,6 +196,7 @@ class Saisie {
   }
 
   select() {
+    this.message = "";
     console.log('"select": En attente de sélection');
     this.currentMeasure = null;
     this.status = 'movePoint';
@@ -204,6 +205,7 @@ class Saisie {
   }
 
   polygon() {
+    this.message = "";
     console.log('saisir d un polygon');
     const MAX_POINTS = 500;
     const geometry = new itowns.THREE.BufferGeometry();
@@ -243,6 +245,7 @@ class Saisie {
   // }
 
   undo() {
+    this.message = "";
     console.log('undo');
     fetch(`${this.apiUrl}patchs/undo?`,
       {
@@ -274,6 +277,7 @@ class Saisie {
   }
 
   redo() {
+    this.message = "";
     console.log('redo');
     fetch(`${this.apiUrl}patchs/redo?`,
       {
@@ -301,6 +305,7 @@ class Saisie {
   }
 
   clear() {
+    this.message = "";
     console.log('clear');
     fetch(`${this.apiUrl}patchs/clear?`,
       {
