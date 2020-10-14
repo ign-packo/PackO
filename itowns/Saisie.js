@@ -269,10 +269,10 @@ class Saisie {
           itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
           itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
           view.notifyChange();
-        } else {
-          this.message = "nothing to undo";
         }
-        
+        res.text().then((msg) => {
+          this.message = msg
+        })
     });
   }
 
@@ -298,9 +298,10 @@ class Saisie {
           itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
           itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
           view.notifyChange();
-        } else {
-          this.message = "nothing to redo"
         }
+        res.text().then((msg) => {
+          this.message = msg
+        })
     });
   }
 
@@ -326,9 +327,10 @@ class Saisie {
           itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
           itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
           view.notifyChange();
-        } else {
-          this.message = "nothing to clear"
         }
+        res.text().then((msg) => {
+          this.message = msg
+        })
     });
   }
 }
