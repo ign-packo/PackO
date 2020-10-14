@@ -396,14 +396,19 @@ router.put('/patchs/clear', [], (req, res) => {
   debug(tiles.length, 'tuiles impactées');
   // pour chaque tuile, on retablit la version orig
   tiles.forEach((tile) => {
-    const idSelected = 'orig';
-    debug('version selectionne pour la tuile ');
-    debug(idSelected);
+    const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
+    const arrayGraphs = fs.readdirSync(tileDir).filter((filename) => (filename.startsWith('graph_') || filename.startsWith('ortho_')) && !filename.endsWith('orig.png'));
+    debug(arrayGraphs);
+    // suppression des images intermediaires
+    arrayGraphs.forEach((file) => fs.unlinkSync(
+      path.join(global.dir_cache, tile.z, tile.y, tile.x, file),
+    ));
+
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph.png');
     const urlOrtho = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'ortho.png');
-    const urlGraphSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, `graph_${idSelected}.png`);
-    const urlOrthoSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, `ortho_${idSelected}.png`);
+    const urlGraphSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph_orig.png');
+    const urlOrthoSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'ortho_orig.png');
     // on supprime l'ancien lien
     fs.unlinkSync(urlGraph);
     fs.unlinkSync(urlOrtho);
