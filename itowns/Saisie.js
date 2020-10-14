@@ -138,7 +138,7 @@ class Saisie {
 
   click(e) {
     console.log('Click: ', this.pickPoint(e));
-    this.modifications = "";
+    this.message = "";
     if (this.status == 'movePoint') {
       if (this.currentMeasure == null) {
         console.log("Click");
@@ -267,7 +267,7 @@ class Saisie {
           itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
           view.notifyChange();
         } else {
-          this.modifications = "nothing to undo";
+          this.message = "nothing to undo";
         }
         
     });
@@ -295,7 +295,7 @@ class Saisie {
           itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
           view.notifyChange();
         } else {
-          this.modifications = "nothing to redo"
+          this.message = "nothing to redo"
         }
     });
   }
@@ -322,7 +322,7 @@ class Saisie {
           itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
           view.notifyChange();
         } else {
-          this.modifications = "nothing to clear"
+          this.message = "nothing to clear"
         }
     });
   }
