@@ -247,7 +247,7 @@ class Saisie {
   undo() {
     this.message = "";
     console.log('undo');
-    fetch(`${this.apiUrl}patchs/undo?`,
+    fetch(`${this.apiUrl}patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -279,7 +279,7 @@ class Saisie {
   redo() {
     this.message = "";
     console.log('redo');
-    fetch(`${this.apiUrl}patchs/redo?`,
+    fetch(`${this.apiUrl}patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {

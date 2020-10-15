@@ -210,7 +210,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
       const urlOrthoOutput = path.join(global.dir_cache, tile.z, tile.y, tile.x, `ortho_${newPatchId}.png`);
       // on verifie si c'est un lien symbolique ou le fichier d'origine
       // if (fs.lstatSync(urlGraph).isSymbolicLink()) {
-      if (fs.lstatSync(urlGraph).nlink > 1) {
+      if (fs.lstatSync(urlGraph).nlink > 1) {// ou faire test sur la presence d'un fichier _orig ??
         fs.unlinkSync(urlGraph);
         fs.unlinkSync(urlOrtho);
       } else {

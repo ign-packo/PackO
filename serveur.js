@@ -21,8 +21,8 @@ debug.log(`using cache directory: ${global.dir_cache}`);
 
 const wmts = require('./routes/wmts.js');
 const graph = require('./routes/graph.js');
-const files = require('./routes/files.js');
-const patchs = require('./routes/patchs.js');
+const file = require('./routes/file.js');
+const patch = require('./routes/patch.js');
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
@@ -31,6 +31,9 @@ try {
 
   const PORT = argv.port ? argv.port : 8081;
   const SERVER = argv.server ? argv.server : os.hostname();
+  const PLATFORM = os.platform();
+
+  debug.log(PLATFORM);
 
   // on charge les mtd du cache
   app.cache_mtd = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'cache_mtd.json')));
@@ -90,8 +93,8 @@ try {
 
   app.use('/', wmts);
   app.use('/', graph);
-  app.use('/', files);
-  app.use('/', patchs);
+  app.use('/', file);
+  app.use('/', patch);
 
   app.urlApi = `http://${SERVER}:${PORT}`;
 
