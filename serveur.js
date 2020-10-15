@@ -31,9 +31,7 @@ try {
 
   const PORT = argv.port ? argv.port : 8081;
   const SERVER = argv.server ? argv.server : os.hostname();
-  const PLATFORM = os.platform();
-
-  debug.log(PLATFORM);
+  //  const PLATFORM = os.platform();
 
   // on charge les mtd du cache
   app.cache_mtd = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'cache_mtd.json')));
