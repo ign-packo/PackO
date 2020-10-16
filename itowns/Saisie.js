@@ -117,20 +117,24 @@ class Saisie {
         },
         body: dataStr,
       }).then((res) => {
-        // Pour le moment on force le rechargement complet des couches
-        this.orthoConfig.opacity = this.orthoLayer.opacity;
-        this.graphConfig.opacity = this.graphLayer.opacity;
-        menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
-        view.removeLayer('Ortho');
-        view.removeLayer('Graph');
-        this.orthoLayer = new itowns.ColorLayer('Ortho', this.orthoConfig);
-        view.addLayer(this.orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-        this.graphLayer = new itowns.ColorLayer('Graph', this.graphConfig);
-        view.addLayer(this.graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-        itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-        itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
-        itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
-        view.notifyChange();
+        if (res.status == 200) {
+          // Pour le moment on force le rechargement complet des couches
+          this.orthoConfig.opacity = this.orthoLayer.opacity;
+          this.graphConfig.opacity = this.graphLayer.opacity;
+          menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
+          view.removeLayer('Ortho');
+          view.removeLayer('Graph');
+          this.orthoLayer = new itowns.ColorLayer('Ortho', this.orthoConfig);
+          view.addLayer(this.orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+          this.graphLayer = new itowns.ColorLayer('Graph', this.graphConfig);
+          view.addLayer(this.graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+          view.notifyChange();
+        } else {
+          this.message = "Polygon: out of OPI bounds"
+        }
     });
     this.currentMeasure = null;
     this.currentIndex = -1;

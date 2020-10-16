@@ -210,6 +210,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     });
     if (outOfBoundsTiles.length) {
       const err = new Error();
+      err.code = 404;
       err.msg = {
         status: 'File(s) missing',
         errors: [{
@@ -272,7 +273,10 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
       res.status(500).send(err);
     });
   } catch (err) {
-    res.status(500).send(err);
+    debug('***ERROR***');
+    debug(err);
+    debug(err.msg);
+    res.status(err.code).send(err.msg);
   }
 });
 
