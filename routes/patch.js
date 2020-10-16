@@ -135,10 +135,10 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     tiles.forEach((tile) => {
       // Patch du graph
       debug(tile);
-
-      const urlGraph = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph.png');
-      const urlOrtho = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'ortho.png');
-      const urlOpi = path.join(global.dir_cache, tile.z, tile.y, tile.x, `${geoJson.features[0].properties.cliche}.png`);
+      const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
+      const urlGraph = path.join(tileDir, 'graph.png');
+      const urlOrtho = path.join(tileDir, 'ortho.png');
+      const urlOpi = path.join(tileDir, `${geoJson.features[0].properties.cliche}.png`);
 
       if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
         outOfBoundsTiles.push(`${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}`);
@@ -146,8 +146,8 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         return;
       }
 
-      const urlGraphOutput = path.join(global.dir_cache, tile.z, tile.y, tile.x, `graph_${newPatchId}.png`);
-      const urlOrthoOutput = path.join(global.dir_cache, tile.z, tile.y, tile.x, `ortho_${newPatchId}.png`);
+      const urlGraphOutput = path.join(tileDir, `graph_${newPatchId}.png`);
+      const urlOrthoOutput = path.join(tileDir, `ortho_${newPatchId}.png`);
 
       const mask = PImage.make(tileWidth, tileHeight);
       const ctx = mask.getContext('2d');
@@ -223,10 +223,11 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     Promise.all(promises).then(() => {
       debug('tout c est bien passé on peut mettre a jour les liens symboliques');
       tilesModified.forEach((tile) => {
-        const urlGraph = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph.png');
-        const urlOrtho = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'ortho.png');
-        const urlGraphOutput = path.join(global.dir_cache, tile.z, tile.y, tile.x, `graph_${newPatchId}.png`);
-        const urlOrthoOutput = path.join(global.dir_cache, tile.z, tile.y, tile.x, `ortho_${newPatchId}.png`);
+        const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
+        const urlGraph = path.join(tileDir, 'graph.png');
+        const urlOrtho = path.join(tileDir, 'ortho.png');
+        const urlGraphOutput = path.join(tileDir, `graph_${newPatchId}.png`);
+        const urlOrthoOutput = path.join(tileDir, `ortho_${newPatchId}.png`);
         // on verifie si c'est un lien symbolique ou le fichier d'origine
         // if (fs.lstatSync(urlGraph).isSymbolicLink()) {
         if (fs.lstatSync(urlGraph).nlink > 1) {
@@ -234,8 +235,8 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
           fs.unlinkSync(urlGraph);
           fs.unlinkSync(urlOrtho);
         } else {
-          const urlGraphOrig = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph_orig.png');
-          const urlOrthoOrig = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'ortho_orig.png');
+          const urlGraphOrig = path.join(tileDir, 'graph_orig.png');
+          const urlOrthoOrig = path.join(tileDir, 'ortho_orig.png');
           fs.renameSync(urlGraph, urlGraphOrig);
           fs.renameSync(urlOrtho, urlOrthoOrig);
         }
