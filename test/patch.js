@@ -151,17 +151,4 @@ describe('Patch', () => {
         });
     });
   });
-  /*
-  describe('Put undo', () => {
-    it('should return an error (nothing to undo)', (done) => {
-      chai.request(server)
-        .put('/patchs/undo')
-        .end((err, res) => {
-          should.equal(err, null);
-          res.should.have.status(500);
-          done();
-        });
-    });
-  });
-  */
 });
