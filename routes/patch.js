@@ -277,6 +277,17 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     debug(err);
     debug(err.msg);
     res.status(err.code).send(err.msg);
+    if (err.code === 404) {
+      Promise.all(promises).then(() => {
+        debug('Erreur => clean up');
+        tilesModified.forEach((tile) => {
+          const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
+          debug(tileDir);
+          fs.unlinkSync(path.join(tileDir, `graph_${newPatchId}.png`));
+          fs.unlinkSync(path.join(tileDir, `ortho_${newPatchId}.png`));
+        });
+      });
+    }
   }
 });
 
