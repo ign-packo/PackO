@@ -1,6 +1,3 @@
-
-// const { threshold } = require("jimp");
-
 class Saisie {
   constructor(options) {
     this.opiLayer = options.opiLayer;
@@ -10,12 +7,15 @@ class Saisie {
     this.orthoConfig = options.orthoConfig;
     this.graphConfig = options.graphConfig;
     this.apiUrl = options.apiUrl;
+    this.validClicheSelected = false;
+
 
     this.status = 'ras';
     this.currentMeasure = null;
     this.currentIndex = -1;
     console.log('Saisie', this.status);
   }
+
 
   pickPoint(e) {
     const pointUnderCursor = new itowns.THREE.Vector3();
@@ -47,47 +47,14 @@ class Saisie {
         this.currentMeasure.geometry.computeBoundingSphere();
         view.notifyChange(this.currentMeasure);
       }
-    } else if ((this.status == 'freehand') && (e.buttons == 2)) {
-      const pos = this.pickPoint(e);
-      if (pos) {
-        var positions = this.currentMeasure.geometry.attributes.position.array;
-        if (this.currentIndex == 0) {
-          this.currentMeasure.position.x = Math.floor(pos.x);
-          this.currentMeasure.position.y = Math.floor(pos.y);
-          this.currentMeasure.position.z = Math.floor(pos.z);
-          this.currentMeasure.updateMatrixWorld();
-        }
-        positions[3 * this.currentIndex] = pos.x - this.currentMeasure.position.x;
-        positions[3 * this.currentIndex + 1] = pos.y - this.currentMeasure.position.y;
-        positions[3 * this.currentIndex + 2] = pos.z - this.currentMeasure.position.z;
-        positions[3 * (this.currentIndex + 1)] = positions[0];
-        positions[3 * (this.currentIndex + 1) + 1] = positions[1];
-        positions[3 * (this.currentIndex + 1) + 2] = positions[2];
-        this.currentIndex += 1;
-        this.currentMeasure.geometry.setDrawRange(0, this.currentIndex + 1);
-        this.currentMeasure.geometry.attributes.position.needsUpdate = true;
-        this.currentMeasure.geometry.computeBoundingSphere();
-        view.notifyChange(this.currentMeasure);
-      }
-    }
-  }
-
-  mousedown(e) {
-    if (this.status == 'freehand-wait') {
-      this.status = 'freehand';
-    }
-  }
-
-  mouseup(e) {
-    if (this.status == 'freehand') {
-      this.update();
     }
   }
 
   update() {
     console.log('update');
     this.status = 'ras';
-    this.help = '';
+    this.message = '';
+    document.getElementById("viewerDiv").style.cursor="auto";
     const positions = this.currentMeasure.geometry.attributes.position.array;
     const geojson = {
       type: 'FeatureCollection',
@@ -146,9 +113,10 @@ class Saisie {
 
   keypress(e) {
     if (e.key === "Escape"){
+      document.getElementById("viewerDiv").style.cursor="auto";
       console.log('Escape');
       this.status = 'ras';
-      this.help = '';
+      this.message = '';
       view.scene.remove(this.currentMeasure);
       this.currentMeasure = null;
       this.currentIndex = -1;
@@ -165,6 +133,7 @@ class Saisie {
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         const that = this;
+        document.getElementById("viewerDiv").style.cursor="auto";
         fetch(`${this.apiUrl}/graph?x=${pos.x}&y=${pos.y}`,
           {
             method: 'GET',
@@ -181,7 +150,8 @@ class Saisie {
               that.cliche = json.cliche;
               that.color = json.color;
               that.status = 'ras';
-              that.help = '';
+              that.message = '';
+              document.getElementById("viewerDiv").style.cursor="auto";
               // On modifie la couche OPI
               this.opiConfig.opacity = this.opiLayer.opacity;
               menuGlobe.removeLayersGUI(['Opi']);
@@ -193,6 +163,7 @@ class Saisie {
               itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
               itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
               view.notifyChange();
+              that.validClicheSelected = true;
             }
           });
         });
@@ -220,17 +191,24 @@ class Saisie {
 
   select() {
     this.message = "";
+    document.getElementById("viewerDiv").style.cursor="crosshair";
     console.log('"select": En attente de sélection');
     this.currentMeasure = null;
     this.status = 'movePoint';
     this.cliche = null;
     this.currentIndex = 0;
-    this.help = 'choisir un cliche';
+    this.message = 'choisir un cliche';
+    this.validClicheSelected = false;
   }
 
   polygon() {
-    this.message = "";
-    console.log("saisie d'un polygone");
+    if (!this.validClicheSelected){
+      this.message = 'pas de cliche valide';
+      return;
+    }
+    document.getElementById("viewerDiv").style.cursor="crosshair";
+    console.log("saisie d'un polygon");
+    this.message = "saisie d'un polygone (Maj pour fermer)";
     const MAX_POINTS = 500;
     const geometry = new itowns.THREE.BufferGeometry();
     const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
@@ -248,25 +226,6 @@ class Saisie {
     this.status = 'movePoint';
     this.currentIndex = 0;
   }
-
-  // freehand() {
-  //   console.log('saisir d un freehand');
-  //   const MAX_POINTS = 10000;
-  //   const geometry = new itowns.THREE.BufferGeometry();
-  //   const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
-  //   geometry.setAttribute('position', new itowns.THREE.BufferAttribute(positions, 3));
-  //   geometry.setDrawRange(0, 1);
-  //   const material = new itowns.THREE.LineBasicMaterial({
-  //     color: 0xFF0000,
-  //     depthTest: false,
-  //     depthWrite: false,
-  //   });
-  //   this.currentMeasure = new itowns.THREE.Line(geometry, material);
-  //   this.currentMeasure.maxMarkers = -1;
-  //   view.scene.add(this.currentMeasure);
-  //   this.status = 'freehand-wait';
-  //   this.currentIndex = 0;
-  // }
 
   undo() {
     this.message = "";
