@@ -1,4 +1,3 @@
-// const { threshold } = require("jimp");
 
 class Saisie {
   constructor(options) {
@@ -108,7 +107,7 @@ class Saisie {
     const dataStr = JSON.stringify(geojson);
     view.scene.remove(this.currentMeasure);
     // On post le geojson sur l'API
-    fetch(`${this.apiUrl}patch?`,
+    fetch(`${this.apiUrl}/patch?`,
       {
         method: 'POST',
         headers: {
@@ -149,7 +148,7 @@ class Saisie {
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         const that = this;
-        fetch(`${this.apiUrl}graph?x=${pos.x}&y=${pos.y}`,
+        fetch(`${this.apiUrl}/graph?x=${pos.x}&y=${pos.y}`,
           {
             method: 'GET',
             headers: {
@@ -251,7 +250,7 @@ class Saisie {
   undo() {
     this.message = "";
     console.log('undo');
-    fetch(`${this.apiUrl}patch/undo?`,
+    fetch(`${this.apiUrl}/patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -283,7 +282,7 @@ class Saisie {
   redo() {
     this.message = "";
     console.log('redo');
-    fetch(`${this.apiUrl}patch/redo?`,
+    fetch(`${this.apiUrl}/patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -312,7 +311,7 @@ class Saisie {
   clear() {
     this.message = "";
     console.log('clear');
-    fetch(`${this.apiUrl}patchs/clear?`,
+    fetch(`${this.apiUrl}/patchs/clear?`,
       {
         method: 'PUT',
       }).then((res) => {
