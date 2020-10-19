@@ -352,7 +352,7 @@ router.put('/patch/undo', [], (req, res) => {
   debug('features in activePatchs:', req.app.activePatchs.features.length);
   debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
   debug('fin du undo');
-  res.status(200).send(`undo ${lastPatchId} succeed`);
+  res.status(200).send(`undo: patch ${lastPatchId} canceled`);
 });
 
 router.put('/patch/redo', [], (req, res) => {
@@ -405,7 +405,7 @@ router.put('/patch/redo', [], (req, res) => {
   debug('features in activePatchs:', req.app.activePatchs.features.length);
   debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
   debug('fin du redo');
-  res.status(200).send(`redo ${patchIdRedo} succeed`);
+  res.status(200).send(`redo: patch ${patchIdRedo} reapplied`);
 });
 
 router.put('/patchs/clear', [], (req, res) => {
