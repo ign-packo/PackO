@@ -168,6 +168,7 @@ class Saisie {
           });
         });
       } else if (e.shiftKey == false) {
+        this.message = 'Maj pour fermer';
         // sinon, on ajoute un point au polygone
         this.currentIndex += 1;
         const positions = this.currentMeasure.geometry.attributes.position.array;
@@ -223,6 +224,7 @@ class Saisie {
     this.currentMeasure = new itowns.THREE.Line(geometry, material);
     this.currentMeasure.maxMarkers = -1;
     view.scene.add(this.currentMeasure);
+    view.notifyChange(this.currentMeasure);
     this.status = 'movePoint';
     this.currentIndex = 0;
   }
