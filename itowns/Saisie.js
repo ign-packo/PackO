@@ -210,7 +210,7 @@ class Saisie {
 
   polygon() {
     this.message = "";
-    console.log('saisie d un polygon');
+    console.log('saisie d un polygone');
     const MAX_POINTS = 500;
     const geometry = new itowns.THREE.BufferGeometry();
     const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
