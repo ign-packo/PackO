@@ -16,7 +16,6 @@ parser.add_argument("-c", "--cache", help="cache directory (default: cache)", ty
 parser.add_argument("-o", "--overviews", help="params for the mosaic (default: ressources/LAMB93_5cm.json)", type=str, default="ressources/LAMB93_5cm.json")
 parser.add_argument("-t", "--table", help="graph table (default: graphe_pcrs56_zone_test)", type=str, default="graphe_pcrs56_zone_test")
 parser.add_argument("-i", "--input", required=True, help="input OPI pattern")
-parser.add_argument("-p", "--prefix", required=True, help="OPI prefix pour créer le pattern de recherche dans le cache (pour le GetCapabilities)")
 parser.add_argument("-a", "--api", help="API Url (default: http://localhost:8081/wmts)", type=str, default="http://localhost:8081/wmts")
 parser.add_argument("-v", "--verbose", help="verbose (default: 0)", type=int, default=0)
 args = parser.parse_args()
@@ -172,29 +171,6 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
                     existing_graph = None
                     PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
                     PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
-
-def creation_jsonFile_itowns(cache, urlApi, layers, overviews):
-    if verbose > 0:
-        print("~~~~creation_jsonFile_itowns", end='')
-
-    capabilities_layers = []
-    for layer in layers:
-        source = {}
-        source["url"] = urlApi
-        source["projection"] = overviews["crs"]['type'] + ":" + str(overviews["crs"]['code'])
-        source["networkOptions"] = {"crossOrigin": "anonymous"}
-        source["format"] = layer['format']
-        source["name"] = layer['name']
-        source["tileMatrixSet"] = overviews["identifier"]
-        source["tileMatrixSetLimits"] = overviews["dataSet"]["limits"]
-
-        layerconf = {}
-        layerconf["id"] = source['name']
-        layerconf["source"] = source
-        with open(cache+'/'+source['name']+".json", 'w') as outfile:
-            json.dump(layerconf, outfile)
-    if verbose > 0:
-        print(": DONE")
          
 def main():
     """Create or Update the cache for list of input OPI."""
@@ -256,14 +232,6 @@ def main():
 
     with open(args.cache+'/overviews.json', 'w') as outfile:
         json.dump(overviews_dict, outfile)
-    
-    LAYERS = [
-        {'name': 'ortho', 'format': 'image/png'},
-        {'name': 'graph', 'format': 'image/png'},
-        {'name': 'opi', 'format': 'image/png', 'prefix': args.prefix}
-        ]
-
-    creation_jsonFile_itowns(args.cache, args.api, LAYERS, overviews_dict)
 
     print("\n", len(list_filename) - len(cliche_dejaTraites),"/",len(list_filename),"OPI(s) ajoutée(s)")
     if len(cliche_dejaTraites) > 0:
