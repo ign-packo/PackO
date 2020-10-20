@@ -249,8 +249,8 @@ paths:
     get:
       tags:
         - file
-      summary: "Récupération des fichiers json pour iTowns"
-      description: "Route permettant la récupération des 3 fichiers json nécessaires à l'exécution de la partie iTowns"
+      summary: "Récupération de fichier json pour iTowns"
+      description: "Route permettant la récupération du fichiers overviews.json"
       parameters:
         - in: path
           name: filetype
@@ -258,9 +258,6 @@ paths:
           schema:
             type: string
             enum:
-              - graph
-              - ortho
-              - opi
               - overviews
 
       responses:
