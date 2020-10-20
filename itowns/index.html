@@ -77,80 +77,81 @@
             menuGlobe = new GuiTools('menuDiv', view);
             menuGlobe.gui.width = 300;
 
-            var orthoLayer, graphLayer;
-            var orthoConfig, graphConfig;
-            let promises = [itowns.Fetcher.json(apiUrl+'/json/ortho'), itowns.Fetcher.json(apiUrl+'/json/graph'), itowns.Fetcher.json(apiUrl+'/json/opi')];
-            Promise.all(promises).then((conf) => {
-                orthoConfig = conf[0];
-                graphConfig = conf[1];
-                opiConfig = conf[2];
+            var orthoLayer, graphLayer, opiLayer;
+            var orthoConfig, graphConfig, opiConfig;
+             
+            const config = {};
+            ['ortho', 'graph', 'opi'].forEach((layerName) => {
 
-                orthoConfig.source = new itowns.WMTSSource(orthoConfig.source);
-                orthoConfig.source.extentInsideLimit = function (extent) {
-                        return true;
+                config[layerName] = {
+                    id: layerName,
+                    source: {
+                        url: apiUrl+'/wmts',
+                        projection: crs,
+                        format: 'image/png',
+                        name: layerName,
+                        tileMatrixSet: overviews.identifier,
+                        tileMatrixSetLimits: overviews.dataSet.limits
+                    }
                 }
-                graphConfig.source = new itowns.WMTSSource(graphConfig.source);
-                graphConfig.source.extentInsideLimit = function (extent) {
+
+                config[layerName].source = new itowns.WMTSSource(config[layerName].source);
+                config[layerName].source.extentInsideLimit = function (extent) {
                     return true;
                 }
-                graphConfig.opacity = 0.2;
-                opiConfig.sourceOri = opiConfig.source;
 
-                opiConfig.source = new itowns.WMTSSource(opiConfig.sourceOri);
-                opiConfig.source.extentInsideLimit = function (extent) {
-                    return true;
-                }
-                opiConfig.opacity = 0.2;
-                orthoLayer = new itowns.ColorLayer('Ortho', orthoConfig);
-                view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-                graphLayer = new itowns.ColorLayer('Graph', graphConfig);
-                view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-                opiLayer = new itowns.ColorLayer('Opi', opiConfig);
-                opiLayer.visible = false
-                view.addLayer(opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-                itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-                itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
-                itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+            });
+            config.graph.opacity = 0.2;
+            config.opi.opacity = 0.2;
+            orthoLayer = new itowns.ColorLayer('Ortho', config.ortho);
+            view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            graphLayer = new itowns.ColorLayer('Graph', config.graph);
+            view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            opiLayer = new itowns.ColorLayer('Opi', config.opi);
+            opiLayer.visible = false
+            view.addLayer(opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+            itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+            itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
 
-                var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig, opiLayer, opiConfig, apiUrl });
-                saisie.cliche = 'unknown';
-                saisie.message = '';
-                menuGlobe.gui.add(saisie, 'select');
-                menuGlobe.gui.add(saisie, 'cliche').listen();
-                menuGlobe.gui.add(saisie, 'polygon');
-                // menuGlobe.gui.add(saisie, 'freehand');
-                menuGlobe.gui.add(saisie, 'undo');
-                menuGlobe.gui.add(saisie, 'redo');
-                menuGlobe.gui.add(saisie, 'clear');
-                menuGlobe.gui.add(saisie, 'message').listen();
-                
-                // const eng = view.mainLoop.gfxEngine;
-                // console.log('eng:', eng);
-                // const dom = eng.renderer.domElement;
-                // console.log('dom:', dom);
-                viewerDiv.focus();
-                viewerDiv.addEventListener('mousemove', function (ev) {
-                    ev.preventDefault();
-                    saisie.mousemove(ev);
-                    return false;
-                }, false);
-                viewerDiv.addEventListener('click', function (ev) {
-                    ev.preventDefault();
-                    saisie.click(ev);
-                    return false;
-                }, false);
-                viewerDiv.addEventListener('mousedown', function (ev) {
-                    ev.preventDefault();
-                    saisie.mousedown(ev);
-                    return false;
-                }, false);
-                viewerDiv.addEventListener('mouseup', function (ev) {
-                    ev.preventDefault();
-                    saisie.mouseup(ev);
-                    return false;
-                }, false);
+            graphConfig=config.graph
+            orthoConfig=config.ortho
+            opiConfig=config.opi
 
-            })
+            var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig, opiLayer, opiConfig, apiUrl });
+            saisie.cliche = 'unknown';
+            saisie.message = '';
+            menuGlobe.gui.add(saisie, 'select');
+            menuGlobe.gui.add(saisie, 'cliche').listen();
+            menuGlobe.gui.add(saisie, 'polygon');
+            // menuGlobe.gui.add(saisie, 'freehand');
+            menuGlobe.gui.add(saisie, 'undo');
+            menuGlobe.gui.add(saisie, 'redo');
+            menuGlobe.gui.add(saisie, 'clear');
+            menuGlobe.gui.add(saisie, 'message').listen();
+            
+            viewerDiv.focus();
+            viewerDiv.addEventListener('mousemove', function (ev) {
+                ev.preventDefault();
+                saisie.mousemove(ev);
+                return false;
+            }, false);
+            viewerDiv.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                saisie.click(ev);
+                return false;
+            }, false);
+            viewerDiv.addEventListener('mousedown', function (ev) {
+                ev.preventDefault();
+                saisie.mousedown(ev);
+                return false;
+            }, false);
+            viewerDiv.addEventListener('mouseup', function (ev) {
+                ev.preventDefault();
+                saisie.mouseup(ev);
+                return false;
+            }, false);
+            console.log(config)
 
             // instanciate controls
             // eslint-disable-next-line no-new
