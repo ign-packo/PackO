@@ -25,7 +25,10 @@ const { argv } = require('yargs')
     alias: 's',
     describe: "API server (default: 'localhost')",
   })
-  .help();
+  .help()
+  .alias('help', 'h')
+  ;
+
 
 const app = express();
 
