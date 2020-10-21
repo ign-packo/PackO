@@ -108,7 +108,7 @@ class Saisie {
     const dataStr = JSON.stringify(geojson);
     view.scene.remove(this.currentMeasure);
     // On post le geojson sur l'API
-    fetch(`${this.apiUrl}graph/patch?`,
+    fetch(`${this.apiUrl}patch?`,
       {
         method: 'POST',
         headers: {
@@ -117,20 +117,24 @@ class Saisie {
         },
         body: dataStr,
       }).then((res) => {
-        // Pour le moment on force le rechargement complet des couches
-        this.orthoConfig.opacity = this.orthoLayer.opacity;
-        this.graphConfig.opacity = this.graphLayer.opacity;
-        menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
-        view.removeLayer('Ortho');
-        view.removeLayer('Graph');
-        this.orthoLayer = new itowns.ColorLayer('Ortho', this.orthoConfig);
-        view.addLayer(this.orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-        this.graphLayer = new itowns.ColorLayer('Graph', this.graphConfig);
-        view.addLayer(this.graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-        itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-        itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
-        itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
-        view.notifyChange();
+        if (res.status == 200) {
+          // Pour le moment on force le rechargement complet des couches
+          this.orthoConfig.opacity = this.orthoLayer.opacity;
+          this.graphConfig.opacity = this.graphLayer.opacity;
+          menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
+          view.removeLayer('Ortho');
+          view.removeLayer('Graph');
+          this.orthoLayer = new itowns.ColorLayer('Ortho', this.orthoConfig);
+          view.addLayer(this.orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+          this.graphLayer = new itowns.ColorLayer('Graph', this.graphConfig);
+          view.addLayer(this.graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+          view.notifyChange();
+        } else {
+          this.message = "polygon: out of OPI's bounds"
+        }
     });
     this.currentMeasure = null;
     this.currentIndex = -1;
@@ -138,6 +142,7 @@ class Saisie {
 
   click(e) {
     console.log('Click: ', this.pickPoint(e));
+    this.message = "";
     if (this.status == 'movePoint') {
       if (this.currentMeasure == null) {
         console.log("Click");
@@ -195,6 +200,7 @@ class Saisie {
   }
 
   select() {
+    this.message = "";
     console.log('"select": En attente de sélection');
     this.currentMeasure = null;
     this.status = 'movePoint';
@@ -203,7 +209,8 @@ class Saisie {
   }
 
   polygon() {
-    console.log('saisir d un polygon');
+    this.message = "";
+    console.log("saisie d'un polygone");
     const MAX_POINTS = 500;
     const geometry = new itowns.THREE.BufferGeometry();
     const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
@@ -222,22 +229,112 @@ class Saisie {
     this.currentIndex = 0;
   }
 
-  freehand() {
-    console.log('saisir d un freehand');
-    const MAX_POINTS = 10000;
-    const geometry = new itowns.THREE.BufferGeometry();
-    const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
-    geometry.setAttribute('position', new itowns.THREE.BufferAttribute(positions, 3));
-    geometry.setDrawRange(0, 1);
-    const material = new itowns.THREE.LineBasicMaterial({
-      color: 0xFF0000,
-      depthTest: false,
-      depthWrite: false,
+  // freehand() {
+  //   console.log('saisir d un freehand');
+  //   const MAX_POINTS = 10000;
+  //   const geometry = new itowns.THREE.BufferGeometry();
+  //   const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
+  //   geometry.setAttribute('position', new itowns.THREE.BufferAttribute(positions, 3));
+  //   geometry.setDrawRange(0, 1);
+  //   const material = new itowns.THREE.LineBasicMaterial({
+  //     color: 0xFF0000,
+  //     depthTest: false,
+  //     depthWrite: false,
+  //   });
+  //   this.currentMeasure = new itowns.THREE.Line(geometry, material);
+  //   this.currentMeasure.maxMarkers = -1;
+  //   view.scene.add(this.currentMeasure);
+  //   this.status = 'freehand-wait';
+  //   this.currentIndex = 0;
+  // }
+
+  undo() {
+    this.message = "";
+    console.log('undo');
+    fetch(`${this.apiUrl}patch/undo?`,
+      {
+        method: 'PUT',
+      }).then((res) => {
+
+        console.log(res.status)
+
+        if (res.status == 200) {
+          // Pour le moment on force le rechargement complet des couches
+          this.orthoConfig.opacity = this.orthoLayer.opacity;
+          this.graphConfig.opacity = this.graphLayer.opacity;
+          menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
+          view.removeLayer('Ortho');
+          view.removeLayer('Graph');
+          this.orthoLayer = new itowns.ColorLayer('Ortho', this.orthoConfig);
+          view.addLayer(this.orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+          this.graphLayer = new itowns.ColorLayer('Graph', this.graphConfig);
+          view.addLayer(this.graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+          view.notifyChange();
+        }
+        res.text().then((msg) => {
+          this.message = msg
+        })
     });
-    this.currentMeasure = new itowns.THREE.Line(geometry, material);
-    this.currentMeasure.maxMarkers = -1;
-    view.scene.add(this.currentMeasure);
-    this.status = 'freehand-wait';
-    this.currentIndex = 0;
+  }
+
+  redo() {
+    this.message = "";
+    console.log('redo');
+    fetch(`${this.apiUrl}patch/redo?`,
+      {
+        method: 'PUT',
+      }).then((res) => {
+        if (res.status == 200) {
+          // Pour le moment on force le rechargement complet des couches
+          this.orthoConfig.opacity = this.orthoLayer.opacity;
+          this.graphConfig.opacity = this.graphLayer.opacity;
+          menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
+          view.removeLayer('Ortho');
+          view.removeLayer('Graph');
+          this.orthoLayer = new itowns.ColorLayer('Ortho', this.orthoConfig);
+          view.addLayer(this.orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+          this.graphLayer = new itowns.ColorLayer('Graph', this.graphConfig);
+          view.addLayer(this.graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+          view.notifyChange();
+        }
+        res.text().then((msg) => {
+          this.message = msg
+        })
+    });
+  }
+
+  clear() {
+    this.message = "";
+    console.log('clear');
+    fetch(`${this.apiUrl}patchs/clear?`,
+      {
+        method: 'PUT',
+      }).then((res) => {
+        if (res.status == 200) {
+          // Pour le moment on force le rechargement complet des couches
+          this.orthoConfig.opacity = this.orthoLayer.opacity;
+          this.graphConfig.opacity = this.graphLayer.opacity;
+          menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
+          view.removeLayer('Ortho');
+          view.removeLayer('Graph');
+          this.orthoLayer = new itowns.ColorLayer('Ortho', this.orthoConfig);
+          view.addLayer(this.orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+          this.graphLayer = new itowns.ColorLayer('Graph', this.graphConfig);
+          view.addLayer(this.graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+          view.notifyChange();
+        }
+        res.text().then((msg) => {
+          this.message = msg
+        })
+    });
   }
 }

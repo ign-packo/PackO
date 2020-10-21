@@ -10,13 +10,43 @@ tags:
   - name: wmts
     description: Requête sur les tuiles
   - name: graph
-    description: Modification du mosaïquage
-
+    description: Requête sur le graph de mosaïquage
+  - name: patch
+    description: Modification du graphe de mosaïquage
+  - name: file
+    description: Récupération de fichiers
 paths:
-  '/graph/patch':
+  '/patch/undo':
+    put:
+      tags:
+        - patch
+      summary: "Annulation de la dernière modification"
+      description: ""
+      responses:
+        '200':
+          description: OK
+  '/patch/redo':
+    put:
+      tags:
+        - patch
+      summary: "Reprise en compte de la dernière modification annulée"
+      description: ""
+      responses:
+        '200':
+          description: OK
+  '/patchs/clear':
+    put:
+      tags:
+        - patch
+      summary: "Annulation de toutes les modifications"
+      description: ""
+      responses:
+        '200':
+          description: OK
+  '/patch':
     post:
       tags:
-        - graph
+        - patch
       summary: "Application d'un patch de correction"
       description: "Mise a jour du graph de mosaiquage a partir d'un geoJSON"
       requestBody:
@@ -47,7 +77,15 @@ paths:
       responses:
         '200':
           description: OK
-
+  '/patchs':
+    get:
+      tags:
+        - patch
+      summary: "Récupération de tous les patchs de correction"
+      description: ""
+      responses:
+        '200':
+          description: OK
   '/graph':
     get:
       tags:
@@ -202,7 +240,7 @@ paths:
   '/json/{filetype}':
     get:
       tags:
-        - files
+        - file
       summary: "Récupération des fichiers json pour iTowns"
       description: "Route permettant la récupération des 3 fichiers json nécessaires à l'exécution de la partie iTowns"
       parameters:

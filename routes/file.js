@@ -1,4 +1,4 @@
-const debug = require('debug')('files');
+const debug = require('debug')('file');
 const router = require('express').Router();
 const { matchedData, param } = require('express-validator');
 const path = require('path');
