@@ -130,13 +130,13 @@ describe('Patch', () => {
     });
   });
   describe('PUT /patchs/clear', () => {
-    it("should return 'clear: all patch(es) deleted'", (done) => {
+    it("should return 'clear: all patches deleted'", (done) => {
       chai.request(server)
         .put('/patchs/clear')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
-          res.text.should.equal('clear: all patch(es) deleted');
+          res.text.should.equal('clear: all patches deleted');
           done();
         });
     });

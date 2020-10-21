@@ -133,7 +133,7 @@ class Saisie {
           itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
           view.notifyChange();
         } else {
-          this.message = "Polygon: out of OPI's bounds"
+          this.message = "polygon: out of OPI's bounds"
         }
     });
     this.currentMeasure = null;
@@ -210,7 +210,7 @@ class Saisie {
 
   polygon() {
     this.message = "";
-    console.log('saisie d un polygone');
+    console.log("saisie d'un polygone");
     const MAX_POINTS = 500;
     const geometry = new itowns.THREE.BufferGeometry();
     const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point

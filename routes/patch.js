@@ -456,7 +456,7 @@ router.put('/patchs/clear', [], (req, res) => {
   debug('features in activePatchs:', req.app.activePatchs.features.length);
   debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
   debug('fin du clear');
-  res.status(200).send('clear: all patch(es) deleted');
+  res.status(200).send('clear: all patches deleted');
 });
 
 module.exports = router;
