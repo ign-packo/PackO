@@ -26,7 +26,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const server = urlParams.get('server') ? urlParams.get('server') : 'localhost';
         const port = urlParams.get('port') ? urlParams.get('port') : 8081;
-        console.log(server, port)
+        console.log("server:", server, "port:", port)
 
         apiUrl = "http://" + server + ":" + port
         // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
@@ -151,7 +151,6 @@
                 saisie.mouseup(ev);
                 return false;
             }, false);
-            console.log(config)
 
             // instanciate controls
             // eslint-disable-next-line no-new
