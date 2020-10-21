@@ -27,11 +27,7 @@
         const server = urlParams.get('server') ? urlParams.get('server') : 'localhost';
         const port = urlParams.get('port') ? urlParams.get('port') : 8081;
         console.log("server:", server, "port:", port)
-
-        apiUrl = "http://" + server + ":" + port
-        // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
-        itowns.proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
-        /* global itowns, setupLoadingScreen, GuiTools, debug */
+        apiUrl = "http://" + server + ":" + port;
 
         itowns.Fetcher.json(apiUrl+'/json/overviews').then ((json) => {
             const overviews = json
@@ -40,6 +36,9 @@
             const crs = `${overviews.crs.type}:${overviews.crs.code}`
             const xOrigin = overviews.crs.boundingBox.xmin
             const yOrigin = overviews.crs.boundingBox.ymax
+
+            // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
+            itowns.proj4.defs(crs, overviews.crs.proj4Definition);
 
             // limite du dataSet
             const xmin = overviews.dataSet.boundingBox.LowerCorner[0]
