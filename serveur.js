@@ -9,10 +9,23 @@ const YAML = require('yamljs');
 const debugServer = require('debug')('serveur');
 const debug = require('debug');
 const path = require('path');
-
-const { argv } = require('yargs');
-
 const nocache = require('nocache');
+
+const { argv } = require('yargs')
+  .version(false)
+  .option('cache', {
+    alias: 'c',
+    describe: "cache directory (default: 'cache')",
+  })
+  .option('port', {
+    alias: 'p',
+    describe: "API port (default: '8081')",
+  })
+  .option('server', {
+    alias: 's',
+    describe: "API server (default: 'localhost')",
+  })
+  .help();
 
 const app = express();
 
