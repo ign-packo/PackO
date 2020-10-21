@@ -48,7 +48,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const serverAPI = urlParams.get('serverapi') ? urlParams.get('serverapi') : 'localhost';
         const portAPI = urlParams.get('portapi') ? urlParams.get('portapi') : 8081;
-        console.log(serverAPI, portAPI)
+        console.log("serverAPI:", serverAPI, "portAPI:",  portAPI)
 
         apiUrl = "http://" + serverAPI + ":" + portAPI;
 
@@ -213,7 +213,6 @@
                 saisie.click(ev);
                 return false;
             }, false);
-
 
             // instanciate controls
             // eslint-disable-next-line no-new
