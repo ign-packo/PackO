@@ -51,6 +51,10 @@ class Saisie {
   }
 
   update() {
+    if (!this.currentMeasure) {
+      console.log('pas de polygone');
+      return;
+    }
     console.log('update');
     this.status = 'ras';
     this.message = '';
@@ -205,6 +209,11 @@ class Saisie {
   polygon() {
     if (!this.validClicheSelected){
       this.message = 'pas de cliche valide';
+      return;
+    }
+    if (this.currentMeasure){
+      console.log('saisie deja en cours');
+      // saisie deja en cours
       return;
     }
     document.getElementById("viewerDiv").style.cursor="crosshair";
