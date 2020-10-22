@@ -166,7 +166,9 @@
             debug.createTileDebugUI(menuGlobe.gui, view);
         })
         .catch ( (err) => {
-            prompt(`API non accessible a l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl)
+            apiUrl = prompt(`API non accessible a l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl)
+            apiUrlSplit = apiUrl.split('/')[2].split(':')
+            window.location.assign(`http://localhost:8000/?serverapi=${apiUrlSplit[0]}&portapi=${apiUrlSplit[1]}`)
         })
     </script>
 </body>
