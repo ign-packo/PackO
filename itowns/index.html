@@ -165,6 +165,9 @@
             menuGlobe.addImageryLayersGUI(view.getLayers(function gui(l) { return l.isColorLayer; }));
             debug.createTileDebugUI(menuGlobe.gui, view);
         })
+        .catch ( (err) => {
+            prompt(`API non accessible a l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl)
+        })
     </script>
 </body>
 </html>
