@@ -188,7 +188,7 @@ class Saisie {
           });
         });
       } else if (e.shiftKey == false) {
-        this.message = 'Maj pour fermer';
+        this.message = 'Maj pour terminer';
         // sinon, on ajoute un point au polygone
         this.currentIndex += 1;
         const positions = this.currentMeasure.geometry.attributes.position.array;
@@ -250,6 +250,9 @@ class Saisie {
       depthWrite: false,
     });
     this.currentMeasure = new itowns.THREE.Line(geometry, material);
+    // Pour eviter que l'object disparaisse dans certains cas
+    this.currentMeasure.renderOrder = 1;
+    console.log(this.currentMeasure);
     this.currentMeasure.maxMarkers = -1;
     view.scene.add(this.currentMeasure);
     view.notifyChange(this.currentMeasure);
