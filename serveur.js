@@ -9,10 +9,24 @@ const YAML = require('yamljs');
 const debugServer = require('debug')('serveur');
 const debug = require('debug');
 const path = require('path');
-
-const { argv } = require('yargs');
-
 const nocache = require('nocache');
+
+const { argv } = require('yargs')
+  .version(false)
+  .option('cache', {
+    alias: 'c',
+    describe: "cache directory (default: 'cache')",
+  })
+  .option('port', {
+    alias: 'p',
+    describe: "API port (default: '8081')",
+  })
+  .option('server', {
+    alias: 's',
+    describe: "API server (default: 'localhost')",
+  })
+  .help()
+  .alias('help', 'h');
 
 const app = express();
 
@@ -31,6 +45,7 @@ try {
 
   const PORT = argv.port ? argv.port : 8081;
   const SERVER = argv.server ? argv.server : os.hostname();
+  app.urlApi = `http://${SERVER}:${PORT}`;
   //  const PLATFORM = os.platform();
 
   // on charge les mtd du cache
@@ -86,15 +101,14 @@ try {
   };
 
   const swaggerDocument = YAML.load('./doc/swagger.yml');
-
   app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerDocument, options));
+  swaggerDocument.info.version = '0.1.0';
+  swaggerDocument.servers[0].url = app.urlApi;
 
   app.use('/', wmts);
   app.use('/', graph);
   app.use('/', file);
   app.use('/', patch);
-
-  app.urlApi = `http://${SERVER}:${PORT}`;
 
   module.exports = app.listen(PORT, () => {
     debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);

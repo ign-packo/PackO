@@ -1,3 +1,10 @@
+const status = {
+  RAS: 0,
+  EN_COURS: 1,
+  MOVE_POINT: 2,
+}
+
+
 class Saisie {
   constructor(options) {
     this.opiLayer = options.opiLayer;
@@ -10,10 +17,9 @@ class Saisie {
     this.validClicheSelected = false;
 
 
-    this.status = 'ras';
+    this.currentStatus = status.RAS;
     this.currentMeasure = null;
     this.currentIndex = -1;
-    console.log('Saisie', this.status);
   }
 
 
@@ -31,7 +37,7 @@ class Saisie {
       // console.log('position :', pos);
       this.coord = `${pos.x.toFixed(2)} ${pos.y.toFixed(2)}`;
       if (this.currentMeasure == null) return;
-      if (this.status == 'movePoint') {
+      if (this.currentStatus == status.MOVE_POINT) {
         var positions = this.currentMeasure.geometry.attributes.position.array;
         // Si c'est le premier point, on fixe la position
         if (this.currentIndex == 0) {
@@ -51,8 +57,12 @@ class Saisie {
   }
 
   update() {
+    if (!this.currentMeasure) {
+      console.log('pas de polygone');
+      return;
+    }
     console.log('update');
-    this.status = 'ras';
+    this.currentStatus = status.RAS;
     this.message = '';
     document.getElementById("viewerDiv").style.cursor="auto";
     const positions = this.currentMeasure.geometry.attributes.position.array;
@@ -79,7 +89,7 @@ class Saisie {
     const dataStr = JSON.stringify(geojson);
     view.scene.remove(this.currentMeasure);
     // On post le geojson sur l'API
-    fetch(`${this.apiUrl}patch?`,
+    fetch(`${this.apiUrl}/patch?`,
       {
         method: 'POST',
         headers: {
@@ -88,6 +98,9 @@ class Saisie {
         },
         body: dataStr,
       }).then((res) => {
+        this.currentStatus = status.RAS;
+        this.message = "";
+        this.currentMeasure = null;
         if (res.status == 200) {
           // Pour le moment on force le rechargement complet des couches
           this.orthoConfig.opacity = this.orthoLayer.opacity;
@@ -104,11 +117,31 @@ class Saisie {
           itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
           view.notifyChange();
         } else {
-          this.message = "Polygon: out of OPI bounds"
+          this.message = "polygon: out of OPI's bounds"
         }
     });
-    this.currentMeasure = null;
-    this.currentIndex = -1;
+    this.currentStatus = status.EN_COURS;
+    this.message = "calcul en cours";    
+  }
+
+  cancelCurrentMeasure() {
+    if (this.currentMeasure){
+      // on annule la saisie en cours
+      this.currentStatus = status.RAS;
+      this.message = '';
+      view.scene.remove(this.currentMeasure);
+      this.currentMeasure = null;
+      view.notifyChange();
+    }
+  }
+
+  keypress(e) {
+    if (this.currentStatus === status.EN_COURS) return;
+    if (e.key === "Escape"){
+      document.getElementById("viewerDiv").style.cursor="auto";
+      console.log('Escape');
+      this.cancelCurrentMeasure();
+    }
   }
 
   keypress(e) {
@@ -127,14 +160,14 @@ class Saisie {
   click(e) {
     console.log('Click: ', this.pickPoint(e));
     this.message = "";
-    if (this.status == 'movePoint') {
+    if (this.currentStatus == status.MOVE_POINT) {
       if (this.currentMeasure == null) {
         console.log("Click");
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         const that = this;
         document.getElementById("viewerDiv").style.cursor="auto";
-        fetch(`${this.apiUrl}graph?x=${pos.x}&y=${pos.y}`,
+        fetch(`${this.apiUrl}/graph?x=${pos.x}&y=${pos.y}`,
           {
             method: 'GET',
             headers: {
@@ -149,7 +182,7 @@ class Saisie {
               // that.cliche = json.cliche;
               that.cliche = json.cliche;
               that.color = json.color;
-              that.status = 'ras';
+              that.currentStatus = status.RAS;
               that.message = '';
               document.getElementById("viewerDiv").style.cursor="auto";
               // On modifie la couche OPI
@@ -168,6 +201,7 @@ class Saisie {
           });
         });
       } else if (e.shiftKey == false) {
+        this.message = 'Maj pour terminer';
         // sinon, on ajoute un point au polygone
         this.currentIndex += 1;
         const positions = this.currentMeasure.geometry.attributes.position.array;
@@ -190,11 +224,13 @@ class Saisie {
   }
 
   select() {
+    if (this.currentStatus === status.EN_COURS) return;
+    this.cancelCurrentMeasure();
     this.message = "";
     document.getElementById("viewerDiv").style.cursor="crosshair";
     console.log('"select": En attente de sélection');
     this.currentMeasure = null;
-    this.status = 'movePoint';
+    this.currentStatus = status.MOVE_POINT;
     this.cliche = null;
     this.currentIndex = 0;
     this.message = 'choisir un cliche';
@@ -202,13 +238,19 @@ class Saisie {
   }
 
   polygon() {
+    if (this.currentStatus === status.EN_COURS) return;
     if (!this.validClicheSelected){
       this.message = 'pas de cliche valide';
       return;
     }
+    if (this.currentMeasure){
+      this.message = 'saisie déjà en cours';
+      // saisie deja en cours
+      return;
+    }
     document.getElementById("viewerDiv").style.cursor="crosshair";
-    console.log('saisir d un polygon');
-    this.message = 'saisir un polygone (Maj pour fermer)';
+    console.log("saisie d'un polygon");
+    this.message = "saisie d'un polygone";
     const MAX_POINTS = 500;
     const geometry = new itowns.THREE.BufferGeometry();
     const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
@@ -221,16 +263,22 @@ class Saisie {
       depthWrite: false,
     });
     this.currentMeasure = new itowns.THREE.Line(geometry, material);
+    // Pour eviter que l'object disparaisse dans certains cas
+    this.currentMeasure.renderOrder = 1;
+    console.log(this.currentMeasure);
     this.currentMeasure.maxMarkers = -1;
     view.scene.add(this.currentMeasure);
-    this.status = 'movePoint';
+    view.notifyChange(this.currentMeasure);
+    this.currentStatus = status.MOVE_POINT;
     this.currentIndex = 0;
   }
 
   undo() {
+    if (this.currentStatus === status.EN_COURS) return;
+    this.cancelCurrentMeasure();
     this.message = "";
     console.log('undo');
-    fetch(`${this.apiUrl}patch/undo?`,
+    fetch(`${this.apiUrl}/patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -260,9 +308,11 @@ class Saisie {
   }
 
   redo() {
+    if (this.currentStatus === status.EN_COURS) return;
+    this.cancelCurrentMeasure();
     this.message = "";
     console.log('redo');
-    fetch(`${this.apiUrl}patch/redo?`,
+    fetch(`${this.apiUrl}/patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -289,9 +339,13 @@ class Saisie {
   }
 
   clear() {
+    if (this.currentStatus === status.EN_COURS) return;
+    let ok = confirm("Voulez-vous effacer toutes les modifications?");
+    if (!ok) return;
+    this.cancelCurrentMeasure();
     this.message = "";
     console.log('clear');
-    fetch(`${this.apiUrl}patchs/clear?`,
+    fetch(`${this.apiUrl}/patchs/clear?`,
       {
         method: 'PUT',
       }).then((res) => {

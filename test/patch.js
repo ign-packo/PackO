@@ -86,13 +86,13 @@ describe('Patch', () => {
   });
 
   describe('PUT /patch/undo', () => {
-    it('should succeed', (done) => {
+    it("should return 'undo: patch 1 canceled'", (done) => {
       chai.request(server)
         .put('/patch/undo')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
-          res.text.should.equal('undo 1 succeed');
+          res.text.should.equal('undo: patch 1 canceled');
           done();
         });
     });
@@ -108,13 +108,13 @@ describe('Patch', () => {
     });
   });
   describe('PUT /patch/redo', () => {
-    it('should succeed', (done) => {
+    it("should return 'redo: patch 1 reapplied'", (done) => {
       chai.request(server)
         .put('/patch/redo')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
-          res.text.should.equal('redo 1 succeed');
+          res.text.should.equal('redo: patch 1 reapplied');
           done();
         });
     });
@@ -130,13 +130,13 @@ describe('Patch', () => {
     });
   });
   describe('PUT /patchs/clear', () => {
-    it('should succeed', (done) => {
+    it("should return 'clear: all patches deleted'", (done) => {
       chai.request(server)
         .put('/patchs/clear')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
-          res.text.should.equal('clear succeed');
+          res.text.should.equal('clear: all patches deleted');
           done();
         });
     });
