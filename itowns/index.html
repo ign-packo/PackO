@@ -148,8 +148,7 @@
                 saisie.controllers['redo'] = menuGlobe.gui.add(saisie, 'redo');
                 saisie.controllers['clear'] = menuGlobe.gui.add(saisie, 'clear');
                 saisie.controllers['message'] = menuGlobe.gui.add(saisie, 'message');
-                saisie.controllers['message'].listen();
-
+                saisie.controllers['message'].listen().domElement.parentElement.style.pointerEvents = 'none';
                 
                 viewerDiv.focus();
                 view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
