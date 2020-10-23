@@ -2,6 +2,7 @@ const status = {
   RAS: 0,
   EN_COURS: 1,
   MOVE_POINT: 2,
+  ENDING: 3,
 }
 
 
@@ -20,6 +21,7 @@ class Saisie {
     this.currentStatus = status.RAS;
     this.currentMeasure = null;
     this.currentIndex = -1;
+    this.lastPos = null;
   }
 
 
@@ -33,6 +35,7 @@ class Saisie {
 
   mousemove(e) {
     const pos = this.pickPoint(e);
+    this.lastPos = pos;
     if (pos) {
       // console.log('position :', pos);
       this.coord = `${pos.x.toFixed(2)} ${pos.y.toFixed(2)}`;
@@ -61,6 +64,10 @@ class Saisie {
       console.log('pas de polygone');
       return;
     }
+    if (this.currentIndex<2){
+      this.message = 'Pas assez de points';
+      return;
+    }
     console.log('update');
     this.currentStatus = status.RAS;
     this.message = '';
@@ -82,10 +89,9 @@ class Saisie {
         },
       ],
     };
-    for (let i = 0; i < this.currentIndex; i++) {
+    for (let i = 0; i <= (this.currentIndex+1); i++) {
       geojson.features[0].geometry.coordinates[0].push([positions[3 * i] + this.currentMeasure.position.x, positions[3 * i + 1] + this.currentMeasure.position.y]);
     }
-    geojson.features[0].geometry.coordinates[0].push([positions[0] + this.currentMeasure.position.x, positions[1] + this.currentMeasure.position.y]);
     const dataStr = JSON.stringify(geojson);
     view.scene.remove(this.currentMeasure);
     this.currentStatus = status.EN_COURS;
@@ -139,12 +145,54 @@ class Saisie {
     }
   }
 
-  keypress(e) {
+  keydown(e) {
     if (this.currentStatus === status.EN_COURS) return;
+    console.log(e.key);
     if (e.key === "Escape"){
       document.getElementById("viewerDiv").style.cursor="auto";
-      console.log('Escape');
       this.cancelCurrentMeasure();
+    }
+    else if (e.key == "Shift"){
+      if (this.currentStatus === status.MOVE_POINT){
+        if (this.currentMeasure && (this.currentIndex > 1)){
+          this.currentStatus = status.ENDING;
+          // on supprime le dernier point du polygone
+          const positions = this.currentMeasure.geometry.attributes.position.array;
+          this.currentIndex -= 1;
+          positions[3 * (this.currentIndex + 1)] = positions[0];
+          positions[3 * (this.currentIndex + 1) + 1] = positions[1];
+          positions[3 * (this.currentIndex + 1) + 2] = positions[2];
+          this.currentMeasure.geometry.setDrawRange(0, this.currentIndex + 2);
+          this.currentMeasure.geometry.attributes.position.needsUpdate = true;
+          this.currentMeasure.geometry.computeBoundingSphere();
+          view.notifyChange(this.currentMeasure);
+        }
+      }
+    }
+  }
+
+  keyup(e) {
+    if (this.currentStatus === status.EN_COURS) return;
+    console.log(e.key);
+    if (e.key == "Shift"){
+      if (this.currentStatus === status.ENDING){
+        if (this.currentMeasure && (this.currentIndex > 0)){
+          // on ferme le polygone sur le point en cours
+          const positions = this.currentMeasure.geometry.attributes.position.array;
+          this.currentIndex += 1;
+          positions[3 * this.currentIndex] = this.lastPos.x - this.currentMeasure.position.x;
+          positions[3 * this.currentIndex + 1] = this.lastPos.y - this.currentMeasure.position.y;
+          positions[3 * this.currentIndex + 2] = this.lastPos.z - this.currentMeasure.position.z;
+          positions[3 * (this.currentIndex + 1)] = positions[0];
+          positions[3 * (this.currentIndex + 1) + 1] = positions[1];
+          positions[3 * (this.currentIndex + 1) + 2] = positions[2];
+          this.currentMeasure.geometry.setDrawRange(0, this.currentIndex + 2);
+          this.currentMeasure.geometry.attributes.position.needsUpdate = true;
+          this.currentMeasure.geometry.computeBoundingSphere();
+          view.notifyChange(this.currentMeasure);
+        }
+        this.currentStatus = status.MOVE_POINT;
+      }
     }
   }
 
@@ -191,7 +239,7 @@ class Saisie {
             }
           });
         });
-      } else if (e.shiftKey == false) {
+      } else {
         this.message = 'Maj pour terminer';
         // sinon, on ajoute un point au polygone
         this.currentIndex += 1;
@@ -207,10 +255,10 @@ class Saisie {
         this.currentMeasure.geometry.computeBoundingSphere();
         view.notifyChange(this.currentMeasure);
       }
+    }
+    else if (this.currentStatus == status.ENDING){
       // on termine la ployline ou polygon
-      else {
-        this.update();
-      }
+      this.update();
     }
   }
 

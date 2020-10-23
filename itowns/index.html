@@ -160,8 +160,11 @@
                     updateScaleWidget();
                 });
                 window.addEventListener('keydown', function (ev) {
-                    // ev.preventDefault();
-                    saisie.keypress(ev);
+                    saisie.keydown(ev);
+                    return false;
+                });
+                window.addEventListener('keyup', function (ev) {
+                    saisie.keyup(ev);
                     return false;
                 });
                 viewerDiv.addEventListener('mousemove', function (ev) {
