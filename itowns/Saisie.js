@@ -88,6 +88,9 @@ class Saisie {
     geojson.features[0].geometry.coordinates[0].push([positions[0] + this.currentMeasure.position.x, positions[1] + this.currentMeasure.position.y]);
     const dataStr = JSON.stringify(geojson);
     view.scene.remove(this.currentMeasure);
+    this.currentStatus = status.EN_COURS;
+    document.getElementById("viewerDiv").style.cursor="wait";
+    this.message = "calcul en cours";
     // On post le geojson sur l'API
     fetch(`${this.apiUrl}/patch?`,
       {
@@ -98,9 +101,7 @@ class Saisie {
         },
         body: dataStr,
       }).then((res) => {
-        this.currentStatus = status.RAS;
-        this.message = "";
-        this.currentMeasure = null;
+        this.cancelCurrentMeasure();
         if (res.status == 200) {
           // Pour le moment on force le rechargement complet des couches
           this.orthoConfig.opacity = this.orthoLayer.opacity;
@@ -119,19 +120,22 @@ class Saisie {
         } else {
           this.message = "polygon: out of OPI's bounds"
         }
-    });
-    this.currentStatus = status.EN_COURS;
-    this.message = "calcul en cours";    
+    });    
   }
 
   cancelCurrentMeasure() {
     if (this.currentMeasure){
       // on annule la saisie en cours
-      this.currentStatus = status.RAS;
-      this.message = '';
       view.scene.remove(this.currentMeasure);
       this.currentMeasure = null;
       view.notifyChange();
+    }
+    document.getElementById("viewerDiv").style.cursor="auto";
+    this.currentStatus = status.RAS;
+    this.message = '';
+    for (var key in this.controllers){
+      if (key != 'cliche')
+        this.controllers[key].__li.style.backgroundColor = '';
     }
   }
 
@@ -144,21 +148,9 @@ class Saisie {
     }
   }
 
-  keypress(e) {
-    if (e.key === "Escape"){
-      document.getElementById("viewerDiv").style.cursor="auto";
-      console.log('Escape');
-      this.status = 'ras';
-      this.message = '';
-      view.scene.remove(this.currentMeasure);
-      this.currentMeasure = null;
-      this.currentIndex = -1;
-      view.notifyChange();
-    }
-  }
-
   click(e) {
-    console.log('Click: ', this.pickPoint(e));
+    if (this.currentStatus === status.EN_COURS) return;
+    console.log('Click: ', this.pickPoint(e), this.currentStatus, this.currentStatus);
     this.message = "";
     if (this.currentStatus == status.MOVE_POINT) {
       if (this.currentMeasure == null) {
@@ -177,14 +169,13 @@ class Saisie {
           }).then((res) => {
           res.json().then((json) => {
             that.cliche = json.cliche;
+            this.cancelCurrentMeasure();
             if (res.status == 200) {
               that.json = json;
               // that.cliche = json.cliche;
               that.cliche = json.cliche;
               that.color = json.color;
-              that.currentStatus = status.RAS;
-              that.message = '';
-              document.getElementById("viewerDiv").style.cursor="auto";
+              that.controllers['cliche'].__li.style.backgroundColor = `rgb(${that.color[0]},${that.color[1]},${that.color[2]})`;
               // On modifie la couche OPI
               this.opiConfig.opacity = this.opiLayer.opacity;
               menuGlobe.removeLayersGUI(['Opi']);
@@ -226,13 +217,12 @@ class Saisie {
   select() {
     if (this.currentStatus === status.EN_COURS) return;
     this.cancelCurrentMeasure();
-    this.message = "";
+    this.controllers['select'].__li.style.backgroundColor = '#FF000055';
     document.getElementById("viewerDiv").style.cursor="crosshair";
     console.log('"select": En attente de sélection');
-    this.currentMeasure = null;
     this.currentStatus = status.MOVE_POINT;
     this.cliche = null;
-    this.currentIndex = 0;
+    this.controllers['cliche'].__li.style.backgroundColor = '';
     this.message = 'choisir un cliche';
     this.validClicheSelected = false;
   }
@@ -248,6 +238,7 @@ class Saisie {
       // saisie deja en cours
       return;
     }
+    this.controllers['polygon'].__li.style.backgroundColor = '#FF000055';
     document.getElementById("viewerDiv").style.cursor="crosshair";
     console.log("saisie d'un polygon");
     this.message = "saisie d'un polygone";
@@ -278,13 +269,14 @@ class Saisie {
     this.cancelCurrentMeasure();
     this.message = "";
     console.log('undo');
+    this.currentStatus = status.EN_COURS;
+    document.getElementById("viewerDiv").style.cursor="wait";
+    this.message = "calcul en cours";
     fetch(`${this.apiUrl}/patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
-
-        console.log(res.status)
-
+        this.cancelCurrentMeasure();
         if (res.status == 200) {
           // Pour le moment on force le rechargement complet des couches
           this.orthoConfig.opacity = this.orthoLayer.opacity;
@@ -312,10 +304,14 @@ class Saisie {
     this.cancelCurrentMeasure();
     this.message = "";
     console.log('redo');
+    this.currentStatus = status.EN_COURS;
+    document.getElementById("viewerDiv").style.cursor="wait";
+    this.message = "calcul en cours";
     fetch(`${this.apiUrl}/patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
+        this.cancelCurrentMeasure();
         if (res.status == 200) {
           // Pour le moment on force le rechargement complet des couches
           this.orthoConfig.opacity = this.orthoLayer.opacity;
@@ -342,13 +338,16 @@ class Saisie {
     if (this.currentStatus === status.EN_COURS) return;
     let ok = confirm("Voulez-vous effacer toutes les modifications?");
     if (!ok) return;
-    this.cancelCurrentMeasure();
-    this.message = "";
     console.log('clear');
+    this.currentStatus = status.EN_COURS;
+    document.getElementById("viewerDiv").style.cursor="wait";
+    this.message = "calcul en cours";
+
     fetch(`${this.apiUrl}/patchs/clear?`,
       {
         method: 'PUT',
       }).then((res) => {
+        this.cancelCurrentMeasure();
         if (res.status == 200) {
           // Pour le moment on force le rechargement complet des couches
           this.orthoConfig.opacity = this.orthoLayer.opacity;

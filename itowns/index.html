@@ -137,20 +137,20 @@
                 saisie.message = '';
                 saisie.coord = 'xxx';
                 saisie.color = [0, 0, 0];
-                menuGlobe.gui.add(saisie, 'select');
-                menuGlobe.gui.add(saisie, 'cliche').listen().domElement.parentElement.style.pointerEvents = 'none';
-                menuGlobe.gui.addColor(saisie, 'color').listen().domElement.parentElement.style.pointerEvents = 'none';
-                menuGlobe.gui.add(saisie, 'coord').listen().domElement.parentElement.style.pointerEvents = 'none';
-                menuGlobe.gui.add(saisie, 'polygon');
-                menuGlobe.gui.add(saisie, 'undo');
-                menuGlobe.gui.add(saisie, 'redo');
-                menuGlobe.gui.add(saisie, 'clear');
-                menuGlobe.gui.add(saisie, 'message').listen();
+                saisie.controllers = {};
+                saisie.controllers['select'] = menuGlobe.gui.add(saisie, 'select');
+                saisie.controllers['cliche'] = menuGlobe.gui.add(saisie, 'cliche');
+                saisie.controllers['cliche'].listen().domElement.parentElement.style.pointerEvents = 'none';
+                saisie.controllers['coord'] = menuGlobe.gui.add(saisie, 'coord');
+                saisie.controllers['coord'].listen().domElement.parentElement.style.pointerEvents = 'none';
+                saisie.controllers['polygon'] = menuGlobe.gui.add(saisie, 'polygon');
+                saisie.controllers['undo'] = menuGlobe.gui.add(saisie, 'undo');
+                saisie.controllers['redo'] = menuGlobe.gui.add(saisie, 'redo');
+                saisie.controllers['clear'] = menuGlobe.gui.add(saisie, 'clear');
+                saisie.controllers['message'] = menuGlobe.gui.add(saisie, 'message');
+                saisie.controllers['message'].listen();
+
                 
-                // const eng = view.mainLoop.gfxEngine;
-                // console.log('eng:', eng);
-                // const dom = eng.renderer.domElement;
-                // console.log('dom:', dom);
                 viewerDiv.focus();
                 view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
                     // eslint-disable-next-line no-console
@@ -202,19 +202,23 @@
                         // this.view.domElement.style.cursor = 'auto';
                         break;
                     case STATE.DRAG:
-                        this.defaultCursor = this.view.domElement.style.cursor;
+                        if (this.view.domElement.style.cursor!='wait')
+                            this.defaultCursor = this.view.domElement.style.cursor;
                         this.view.domElement.style.cursor = 'move';
                         break;
                     case STATE.PAN:
-                        this.defaultCursor = this.view.domElement.style.cursor;
+                        if (this.view.domElement.style.cursor!='wait')
+                            this.defaultCursor = this.view.domElement.style.cursor;
                         this.view.domElement.style.cursor = 'cell';
                         break;
                     case STATE.TRAVEL:
-                        this.defaultCursor = this.view.domElement.style.cursor;
+                        if (this.view.domElement.style.cursor!='wait')
+                            this.defaultCursor = this.view.domElement.style.cursor;
                         this.view.domElement.style.cursor = 'wait';
                         break;
                     case STATE.ROTATE:
-                        this.defaultCursor = this.view.domElement.style.cursor;
+                        if (this.view.domElement.style.cursor!='wait')
+                            this.defaultCursor = this.view.domElement.style.cursor;
                         this.view.domElement.style.cursor = 'move';
                         break;
                     default:
