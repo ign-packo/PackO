@@ -166,6 +166,7 @@
             itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
             itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
             itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+            // Et ouvrir l'onglet "Color Layers" par defaut ?
 
             graphConfig=config.graph
             orthoConfig=config.ortho
@@ -272,9 +273,18 @@
             debug.createTileDebugUI(menuGlobe.gui, view);
         })
         .catch ( (err) => {
+<<<<<<< HEAD
             apiUrl = prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl)
             apiUrlSplit = apiUrl.split('/')[2].split(':')
             window.location.assign(`${window.location.origin}?serverapi=${apiUrlSplit[0]}&portapi=${apiUrlSplit[1]}`)
+=======
+            console.log(err)
+            if (err == 'TypeError: Failed to fetch') {
+                apiUrl = prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl)
+                apiUrlSplit = apiUrl.split('/')[2].split(':')
+                window.location.assign(`http://localhost:8000/?serverapi=${apiUrlSplit[0]}&portapi=${apiUrlSplit[1]}`)
+            }
+>>>>>>> relaod itowns seulemnt dans le cas 'failed to fetch'
         })
     </script>
 </body>
