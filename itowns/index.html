@@ -92,7 +92,9 @@
             const yOrigin = overviews.crs.boundingBox.ymax
 
             // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
-            itowns.proj4.defs(crs, overviews.crs.proj4Definition);
+            if (overviews.crs.proj4Definition) {
+                itowns.proj4.defs(crs, overviews.crs.proj4Definition);
+            }
 
             // limite du dataSet
             const xmin = overviews.dataSet.boundingBox.LowerCorner[0]
