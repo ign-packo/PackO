@@ -15,7 +15,7 @@
     <div id="viewerDiv">
         <div id="menuDiv"></div>
     </div>
-    <span id="divScaleWidget"> Scale </span>
+    <!--<span id="divScaleWidget"> Scale </span>-->
     <div id="miniDiv"></div>
     <script src="node_modules/itowns/examples/js/GUI/GuiTools.js"></script>
     <script src="node_modules/itowns/dist/itowns.js"></script>
@@ -33,7 +33,7 @@
         itowns.proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
         /* global itowns, setupLoadingScreen, GuiTools, debug */
 
-        function updateScaleWidget() {
+/*         function updateScaleWidget() {
             var pix = 200;
             const point1 = new itowns.THREE.Vector3();
             const point2 = new itowns.THREE.Vector3();
@@ -50,7 +50,7 @@
             }
             divScaleWidget.innerHTML = `${value.toFixed(2)} ${unit}`;
             divScaleWidget.style.width = `${pix}px`;
-        }
+        } */
 
 
         itowns.Fetcher.json(apiUrl+'/json/overviews').then ((json) => {
@@ -154,10 +154,10 @@
                 view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
                     // eslint-disable-next-line no-console
                     console.info('View initialized');
-                    updateScaleWidget();
+                    // updateScaleWidget();
                 });
                 viewerDiv.addEventListener('mousewheel', function (ev) {
-                    updateScaleWidget();
+                    // updateScaleWidget();
                 });
                 window.addEventListener('keydown', function (ev) {
                     saisie.keydown(ev);
