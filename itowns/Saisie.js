@@ -220,7 +220,6 @@ class Saisie {
             this.cancelCurrentMeasure();
             if (res.status == 200) {
               that.json = json;
-              // that.cliche = json.cliche;
               that.color = json.color;
               that.controllers['cliche'].__li.style.backgroundColor = `rgb(${that.color[0]},${that.color[1]},${that.color[2]})`;
               // On modifie la couche OPI
@@ -237,7 +236,7 @@ class Saisie {
               that.validClicheSelected = true;
             }
             if (res.status == 201) {
-              console.log("out of bonds")
+              console.log("out of bounds")
               this.opiLayer.visible = false;
               view.notifyChange(this.opiLayer,true);
             }
