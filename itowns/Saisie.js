@@ -216,12 +216,11 @@ class Saisie {
             },
           }).then((res) => {
           res.json().then((json) => {
-            that.cliche = json.cliche;
+            this.cliche = json.cliche;
             this.cancelCurrentMeasure();
             if (res.status == 200) {
               that.json = json;
               // that.cliche = json.cliche;
-              that.cliche = json.cliche;
               that.color = json.color;
               that.controllers['cliche'].__li.style.backgroundColor = `rgb(${that.color[0]},${that.color[1]},${that.color[2]})`;
               // On modifie la couche OPI
@@ -236,6 +235,11 @@ class Saisie {
               itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
               view.notifyChange();
               that.validClicheSelected = true;
+            }
+            if (res.status == 201) {
+              console.log("out of bonds")
+              this.opiLayer.visible = false;
+              view.notifyChange(this.opiLayer,true);
             }
           });
         });
