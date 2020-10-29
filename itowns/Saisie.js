@@ -237,6 +237,8 @@ class Saisie {
             }
             if (res.status == 201) {
               console.log("out of bounds")
+              this.opiLayer.visible = false;
+              view.notifyChange(this.opiLayer,true);
             }
           });
         });
@@ -270,12 +272,12 @@ class Saisie {
     document.getElementById("viewerDiv").style.cursor="crosshair";
     console.log('"select": En attente de sélection');
     this.currentStatus = status.MOVE_POINT;
-    this.cliche = null;
+    // this.cliche = null;
     this.controllers['cliche'].__li.style.backgroundColor = '';
     this.message = 'choisir un cliche';
     this.validClicheSelected = false;
-    this.opiLayer.visible = false;
-    view.notifyChange(this.opiLayer,true);
+    // this.opiLayer.visible = false;
+    // view.notifyChange(this.opiLayer,true);
   }
 
   polygon() {
