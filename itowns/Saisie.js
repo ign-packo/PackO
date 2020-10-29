@@ -237,8 +237,6 @@ class Saisie {
             }
             if (res.status == 201) {
               console.log("out of bounds")
-              this.opiLayer.visible = false;
-              view.notifyChange(this.opiLayer,true);
             }
           });
         });
@@ -276,6 +274,8 @@ class Saisie {
     this.controllers['cliche'].__li.style.backgroundColor = '';
     this.message = 'choisir un cliche';
     this.validClicheSelected = false;
+    this.opiLayer.visible = false;
+    view.notifyChange(this.opiLayer,true);
   }
 
   polygon() {
