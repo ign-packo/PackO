@@ -285,7 +285,7 @@ class Saisie {
   polygon() {
     if (this.currentStatus === status.EN_COURS) return;
     if (!this.validClicheSelected){
-      this.message = 'pas de cliche valide';
+      this.message = (this.currentStatus == status.MOVE_POINT) ? 'choisir un cliche valide' : 'cliche non valide';
       return;
     }
     if (this.currentMeasure){
