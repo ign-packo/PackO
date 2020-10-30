@@ -142,7 +142,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 
       if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
         outOfBoundsTiles.push(`${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}`);
-        debug('Out of bonds');
+        debug('Out of bounds');
         return;
       }
 

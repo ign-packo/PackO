@@ -15,7 +15,7 @@
     <div id="viewerDiv">
         <div id="menuDiv"></div>
     </div>
-    <span id="divScaleWidget"> Scale </span>
+    <!--<span id="divScaleWidget"> Scale </span>-->
     <div id="miniDiv"></div>
     <script src="node_modules/itowns/examples/js/GUI/GuiTools.js"></script>
     <script src="node_modules/itowns/dist/itowns.js"></script>
@@ -32,6 +32,26 @@
         // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
         itowns.proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
         /* global itowns, setupLoadingScreen, GuiTools, debug */
+
+/*         function updateScaleWidget() {
+            var pix = 200;
+            const point1 = new itowns.THREE.Vector3();
+            const point2 = new itowns.THREE.Vector3();
+            const mousePosition = new itowns.THREE.Vector2();
+            mousePosition.set(0, 0);
+            view.getPickingPositionFromDepth(mousePosition, point1);
+            mousePosition.set(pix, 0);
+            view.getPickingPositionFromDepth(mousePosition, point2);
+            var value = point1.distanceTo(point2);
+            var unit = 'm';
+            if (value >= 1000) {
+                value /= 1000;
+                unit = 'km';
+            }
+            divScaleWidget.innerHTML = `${value.toFixed(2)} ${unit}`;
+            divScaleWidget.style.width = `${pix}px`;
+        } */
+
 
         itowns.Fetcher.json(apiUrl+'/json/overviews').then ((json) => {
             const overviews = json
@@ -100,7 +120,7 @@
                 opiConfig.source.extentInsideLimit = function (extent) {
                     return true;
                 }
-                opiConfig.opacity = 0.2;
+                opiConfig.opacity = 0.5;
                 orthoLayer = new itowns.ColorLayer('Ortho', orthoConfig);
                 view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
                 graphLayer = new itowns.ColorLayer('Graph', graphConfig);
@@ -115,20 +135,38 @@
                 var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig, opiLayer, opiConfig, apiUrl });
                 saisie.cliche = 'unknown';
                 saisie.message = '';
-                menuGlobe.gui.add(saisie, 'select');
-                menuGlobe.gui.add(saisie, 'cliche').listen();
-                menuGlobe.gui.add(saisie, 'polygon');
-                // menuGlobe.gui.add(saisie, 'freehand');
-                menuGlobe.gui.add(saisie, 'undo');
-                menuGlobe.gui.add(saisie, 'redo');
-                menuGlobe.gui.add(saisie, 'clear');
-                menuGlobe.gui.add(saisie, 'message').listen();
+                saisie.coord = 'xxx';
+                saisie.color = [0, 0, 0];
+                saisie.controllers = {};
+                saisie.controllers['select'] = menuGlobe.gui.add(saisie, 'select');
+                saisie.controllers['cliche'] = menuGlobe.gui.add(saisie, 'cliche');
+                saisie.controllers['cliche'].listen().domElement.parentElement.style.pointerEvents = 'none';
+                saisie.controllers['coord'] = menuGlobe.gui.add(saisie, 'coord');
+                saisie.controllers['coord'].listen().domElement.parentElement.style.pointerEvents = 'none';
+                saisie.controllers['polygon'] = menuGlobe.gui.add(saisie, 'polygon');
+                saisie.controllers['undo'] = menuGlobe.gui.add(saisie, 'undo');
+                saisie.controllers['redo'] = menuGlobe.gui.add(saisie, 'redo');
+                saisie.controllers['clear'] = menuGlobe.gui.add(saisie, 'clear');
+                saisie.controllers['message'] = menuGlobe.gui.add(saisie, 'message');
+                saisie.controllers['message'].listen().domElement.parentElement.style.pointerEvents = 'none';
                 
-                // const eng = view.mainLoop.gfxEngine;
-                // console.log('eng:', eng);
-                // const dom = eng.renderer.domElement;
-                // console.log('dom:', dom);
                 viewerDiv.focus();
+                view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
+                    // eslint-disable-next-line no-console
+                    console.info('View initialized');
+                    // updateScaleWidget();
+                });
+                viewerDiv.addEventListener('mousewheel', function (ev) {
+                    // updateScaleWidget();
+                });
+                window.addEventListener('keydown', function (ev) {
+                    saisie.keydown(ev);
+                    return false;
+                });
+                window.addEventListener('keyup', function (ev) {
+                    saisie.keyup(ev);
+                    return false;
+                });
                 viewerDiv.addEventListener('mousemove', function (ev) {
                     ev.preventDefault();
                     saisie.mousemove(ev);
@@ -139,25 +177,56 @@
                     saisie.click(ev);
                     return false;
                 }, false);
-                viewerDiv.addEventListener('mousedown', function (ev) {
-                    ev.preventDefault();
-                    saisie.mousedown(ev);
-                    return false;
-                }, false);
-                viewerDiv.addEventListener('mouseup', function (ev) {
-                    ev.preventDefault();
-                    saisie.mouseup(ev);
-                    return false;
-                }, false);
 
             })
 
             // instanciate controls
             // eslint-disable-next-line no-new
-            new itowns.PlanarControls(view, {
+            let myControl = new itowns.PlanarControls(view, {
                 maxAltitude: 80000000,
                 enableRotation: false
             });
+
+            // Patch du PlanarControls pour gérer correctement les changements de curseur
+            // todo: faire une PR pour iTowns
+            myControl.updateMouseCursorType = function updateMouseCursorType() {
+                // control state
+                const STATE = {
+                    NONE: -1,
+                    DRAG: 0,
+                    PAN: 1,
+                    ROTATE: 2,
+                    TRAVEL: 3,
+                };
+                switch (this.state) {
+                    case STATE.NONE:
+                        this.view.domElement.style.cursor = this.defaultCursor;
+                        // this.view.domElement.style.cursor = 'auto';
+                        break;
+                    case STATE.DRAG:
+                        if (this.view.domElement.style.cursor!='wait')
+                            this.defaultCursor = this.view.domElement.style.cursor;
+                        this.view.domElement.style.cursor = 'move';
+                        break;
+                    case STATE.PAN:
+                        if (this.view.domElement.style.cursor!='wait')
+                            this.defaultCursor = this.view.domElement.style.cursor;
+                        this.view.domElement.style.cursor = 'cell';
+                        break;
+                    case STATE.TRAVEL:
+                        if (this.view.domElement.style.cursor!='wait')
+                            this.defaultCursor = this.view.domElement.style.cursor;
+                        this.view.domElement.style.cursor = 'wait';
+                        break;
+                    case STATE.ROTATE:
+                        if (this.view.domElement.style.cursor!='wait')
+                            this.defaultCursor = this.view.domElement.style.cursor;
+                        this.view.domElement.style.cursor = 'move';
+                        break;
+                    default:
+                        break;
+                }
+            };
 
             // Request redraw
             view.notifyChange();
