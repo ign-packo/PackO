@@ -135,7 +135,7 @@
                 var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig, opiLayer, opiConfig, apiUrl });
                 saisie.cliche = 'unknown';
                 saisie.message = '';
-                saisie.coord = 'xxx';
+                saisie.coord = `${((xmax + xmin) * 0.5).toFixed(2)} ${((ymax + ymin) * 0.5).toFixed(2)}`;
                 saisie.color = [0, 0, 0];
                 saisie.controllers = {};
                 saisie.controllers['select'] = menuGlobe.gui.add(saisie, 'select');
