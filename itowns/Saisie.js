@@ -238,6 +238,8 @@ class Saisie {
             if (res.status == 201) {
               console.log("out of bounds")
               this.opiLayer.visible = false;
+              this.validClicheSelected = false;
+              this.controllers['cliche'].__li.style.backgroundColor = '';
               view.notifyChange(this.opiLayer,true);
             }
           });
@@ -272,16 +274,18 @@ class Saisie {
     document.getElementById("viewerDiv").style.cursor="crosshair";
     console.log('"select": En attente de sélection');
     this.currentStatus = status.MOVE_POINT;
-    this.cliche = null;
-    this.controllers['cliche'].__li.style.backgroundColor = '';
+    // this.cliche = null;
+    //this.controllers['cliche'].__li.style.backgroundColor = '';
     this.message = 'choisir un cliche';
-    this.validClicheSelected = false;
+    // this.validClicheSelected = false;
+    // this.opiLayer.visible = false;
+    // view.notifyChange(this.opiLayer,true);
   }
 
   polygon() {
     if (this.currentStatus === status.EN_COURS) return;
     if (!this.validClicheSelected){
-      this.message = 'pas de cliche valide';
+      this.message = (this.currentStatus == status.MOVE_POINT) ? 'choisir un cliche valide' : 'cliche non valide';
       return;
     }
     if (this.currentMeasure){
@@ -289,6 +293,7 @@ class Saisie {
       // saisie deja en cours
       return;
     }
+    this.controllers['select'].__li.style.backgroundColor = '';
     this.controllers['polygon'].__li.style.backgroundColor = '#FF000055';
     document.getElementById("viewerDiv").style.cursor="crosshair";
     console.log("saisie d'un polygon");
