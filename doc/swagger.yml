@@ -15,6 +15,15 @@ tags:
   - name: file
     description: Récupération de fichiers
 paths:
+  '/version':
+    get:
+      tags:
+        - version
+      summary: "Version git"
+      description: ""
+      responses:
+        '200':
+          description: OK
   '/patch/undo':
     put:
       tags:

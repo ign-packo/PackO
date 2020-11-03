@@ -119,6 +119,10 @@ try {
   app.use('/', file);
   app.use('/', patch);
 
+  app.get('/version', (_req, res) => {
+    res.send(swaggerDocument.info.version);
+  });
+
   module.exports = app.listen(PORT, () => {
     debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);
   });
