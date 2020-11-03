@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const os = require('os');
+const vers_commit = require('git-last-commit');
 
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
