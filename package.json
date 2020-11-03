@@ -41,7 +41,8 @@
     "swagger-ui-express": "^4.1.4",
     "xml2js": "^0.4.23",
     "yamljs": "^0.3.0",
-    "yargs": "^15.4.1"
+    "yargs": "^15.4.1",
+    "git-describe": "^4.0.4"
   },
   "devDependencies": {
     "eslint": "^7.2.0",

@@ -1,7 +1,6 @@
 openapi: "3.0.1"
 info: 
   title: "API MOSAIQUAGE"
-  version: "0.1.0"
   description: "Documentation de l'API pour le controle et les retouches de mosaiquage."
 servers: 
   - url: "http://localhost:8081"

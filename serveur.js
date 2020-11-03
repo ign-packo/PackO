@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const os = require('os');
-const vers_commit = require('git-last-commit');
+const { gitDescribe } = require('git-describe');
 
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
@@ -103,8 +103,16 @@ try {
 
   const swaggerDocument = YAML.load('./doc/swagger.yml');
   app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerDocument, options));
-  swaggerDocument.info.version = '0.1.0';
+  swaggerDocument.info.version = '???';
   swaggerDocument.servers[0].url = app.urlApi;
+
+  gitDescribe(__dirname, (err, gitInfo) => {
+    if (err) {
+      debug.log(err);
+    }
+    debug.log(`Git version: ${gitInfo.raw}`);
+    swaggerDocument.info.version = gitInfo.raw;
+  });
 
   app.use('/', wmts);
   app.use('/', graph);
