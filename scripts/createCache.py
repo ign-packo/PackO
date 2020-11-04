@@ -65,10 +65,10 @@ def get_tile_limits( filename):
         print(" DONE")
     return tile_limits
 
-def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
-    """Update the cache for an input OPI."""
+def cut_image(input_filename, out_raster_srs, overviews):
+    """Update the cache for an input OPI: cut"""
     if verbose > 0:
-        print("~~~process_image")
+        print("~~~cut_image")
     input_image = gdal.Open(input_filename)
     stem = Path(input_filename).stem
     if not("dataSet" in overviews):
@@ -92,7 +92,7 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
 
     # for z in tiles:
     for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
-        print('Niveau de zoom : ', tile_z)
+        print('  zoom :', tile_z)
 
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
@@ -134,6 +134,130 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
                 Path(tile_dir).mkdir(parents=True, exist_ok=True)
                 # on export en jpeg (todo: gerer le niveau de Q)
                 PNG_DRIVER.CreateCopy(tile_dir+"/"+stem+".png", opi)
+
+def create_ortho_and_graph(tile, overviews, db_graph, out_raster_srs):
+    """Update the cache for an input OPI: create ortho and graph"""
+    if verbose > 0:
+        print("~~~create_ortho_and_graph")
+
+    # besoin : tile_z, tile_x, tile_y
+    tile_x = tile['x']
+    tile_y = tile['y']
+    tile_z = tile['z']
+
+    resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
+
+    # on cree le graphe et l'ortho
+    ortho = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
+    graph = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
+
+    tile_dir = args.cache+'/'+str(tile_z)+'/'+str(tile_y)+'/'+str(tile_x)
+    list_filename = glob.glob(tile_dir+'/*.png')
+    for filename in list_filename:
+        stem = Path(filename).stem
+
+        color = overviews["list_OPI"][stem]
+        
+        # on cree une image mono canal pour la tuile
+        mask = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
+
+        # on rasterise la partie du graphe qui concerne ce cliche
+        gdal.Rasterize(mask, db_graph, SQLStatement='select geom from ' + args.table + ' where cliche = \''+stem+'\' ')
+        img_mask = mask.GetRasterBand(1).ReadAsArray()
+        # si le mask est vide, on a termine
+        val_max = np.amax(img_mask)
+        if val_max > 0:
+
+            opi = gdal.Open(filename)
+
+            for i in range(3):
+                opi_i = opi.GetRasterBand(i+1).ReadAsArray()
+                opi_i[(img_mask == 0)] = 0
+
+                ortho_i = ortho.GetRasterBand(i+1).ReadAsArray()
+
+                ortho_i[(img_mask != 0)] = 0
+                ortho.GetRasterBand(i+1).WriteArray(np.add(opi_i, ortho_i))
+
+                graph_i = graph.GetRasterBand(i+1).ReadAsArray()
+
+                graph_i[(img_mask != 0)] = color[i]
+                graph.GetRasterBand(i+1).WriteArray(graph_i)
+
+            PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
+            PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
+
+def process_image_save(overviews, db_graph, input_filename, color, out_raster_srs):
+    """Update the cache for an input OPI."""
+    if verbose > 0:
+        print("~~~process_image")
+    input_image = gdal.Open(input_filename)
+    stem = Path(input_filename).stem
+    if not("dataSet" in overviews):
+        overviews['dataSet'] = {}
+        overviews['dataSet']['boundingBox'] = {}
+        overviews['dataSet']['limits'] = {}
+
+    tile_limits = get_tile_limits(input_filename)
+
+    if not("LowerCorner" in overviews['dataSet']['boundingBox']):
+        overviews['dataSet']['boundingBox'] = tile_limits
+    else:
+        if tile_limits['LowerCorner'][0] < overviews['dataSet']['boundingBox']['LowerCorner'][0]:
+            overviews['dataSet']['boundingBox']['LowerCorner'][0] = tile_limits['LowerCorner'][0]
+        if tile_limits['LowerCorner'][1] < overviews['dataSet']['boundingBox']['LowerCorner'][1]:
+            overviews['dataSet']['boundingBox']['LowerCorner'][1] = tile_limits['LowerCorner'][1]
+        if tile_limits['UpperCorner'][0] > overviews['dataSet']['boundingBox']['UpperCorner'][0]:
+            overviews['dataSet']['boundingBox']['UpperCorner'][0] = tile_limits['UpperCorner'][0]
+        if tile_limits['UpperCorner'][1] > overviews['dataSet']['boundingBox']['UpperCorner'][1]:
+            overviews['dataSet']['boundingBox']['UpperCorner'][1] = tile_limits['UpperCorner'][1]
+
+    # for z in tiles:
+    for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
+        print('Niveau de zoom :', tile_z)
+
+        resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
+
+        MinTileCol = \
+            math.floor(round((tile_limits['LowerCorner'][0] - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
+        MinTileRow = \
+            math.floor(round((overviews['crs']['boundingBox']['ymax']-tile_limits['UpperCorner'][1])/(resolution*overviews['tileSize']['height']),8))
+        MaxTileCol = \
+            math.ceil(round((tile_limits['UpperCorner'][0] - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8)) - 1
+        MaxTileRow = \
+            math.ceil(round((overviews['crs']['boundingBox']['ymax']-tile_limits['LowerCorner'][1])/(resolution*overviews['tileSize']['height']),8)) - 1
+
+        if not( str(tile_z) in overviews['dataSet']['limits'] ):
+            overviews['dataSet']['limits'][str(tile_z)] = {
+                'MinTileCol': MinTileCol,
+                'MinTileRow': MinTileRow,
+                'MaxTileCol': MaxTileCol,
+                'MaxTileRow': MaxTileRow,
+            }
+
+        else:
+            if MinTileCol < overviews['dataSet']['limits'][str(tile_z)]['MinTileCol']:
+                overviews['dataSet']['limits'][str(tile_z)]['MinTileCol'] = MinTileCol
+            if MinTileRow < overviews['dataSet']['limits'][str(tile_z)]['MinTileRow']:
+                overviews['dataSet']['limits'][str(tile_z)]['MinTileRow'] = MinTileRow
+            if MaxTileCol > overviews['dataSet']['limits'][str(tile_z)]['MaxTileCol']:
+                overviews['dataSet']['limits'][str(tile_z)]['MaxTileCol'] = MaxTileCol
+            if MaxTileRow > overviews['dataSet']['limits'][str(tile_z)]['MaxTileRow']:
+                overviews['dataSet']['limits'][str(tile_z)]['MaxTileRow'] = MaxTileRow
+
+        for tile_x in range(MinTileCol, MaxTileCol + 1):    
+            for tile_y in range(MinTileRow, MaxTileRow + 1):
+                # on cree une image 3 canaux pour la tuile
+                opi = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
+                # on reech l'OPI dans cette image
+                gdal.Warp(opi, input_image)
+                # si necessaire on cree le dossier de la tuile
+                tile_dir = args.cache+'/'+str(tile_z)+'/'+str(tile_y)+'/'+str(tile_x)
+                Path(tile_dir).mkdir(parents=True, exist_ok=True)
+                # on export en jpeg (todo: gerer le niveau de Q)
+                PNG_DRIVER.CreateCopy(tile_dir+"/"+stem+".png", opi)
+
+
                 # on cree une image mono canal pour la tuile
                 mask = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
                 # on rasterise la partie du graphe qui concerne ce cliche
@@ -188,14 +312,15 @@ def main():
     with open(args.cache+'/overviews.json') as json_overviews:
         overviews_dict = json.load(json_overviews)
     if not ("list_OPI" in overviews_dict):
-        overviews_dict["list_OPI"] = []
+        overviews_dict["list_OPI"] = {}
 
     out_raster_srs = gdal.osr.SpatialReference()
     out_raster_srs.ImportFromEPSG(overviews_dict['crs']['code'])
     conn_string = "PG:host="+host+" dbname="+database+" user="+user+" password="+password
-    db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
-    if db_graph is None:
-        raise ValueError("Connection to database failed")
+
+    if os.path.isdir(args.input):
+        args.input = args.input + '\*.tif'
+
     list_filename = glob.glob(args.input)
     if verbose > 0:
         print(len(list_filename), "fichier(s) a traiter")
@@ -207,14 +332,17 @@ def main():
         mtd = {}
 
     cliche_dejaTraites = []
+
+    # Decoupage des images
+    print("Decoupe des images :")
     for filename in list_filename:
         cliche = Path(filename).stem
      
-        if (cliche in overviews_dict['list_OPI']):
+        if (cliche in overviews_dict['list_OPI'].keys()):
             # OPI déja traitée
             cliche_dejaTraites.append(cliche)
         else:
-            print('nouvelle image: ', filename)
+            print(' image :', filename)
             color = [randrange(255), randrange(255), randrange(255)]
             while (color[0] in mtd) and (color[1] in mtd[color[0]]) and (color[2] in mtd[color[0]][color[1]]):
                 color = [randrange(255), randrange(255), randrange(255)]
@@ -223,9 +351,32 @@ def main():
             if color[1] not in mtd[color[0]]:
                 mtd[color[0]][color[1]] = {}
             mtd[color[0]][color[1]][color[2]] = cliche
-            process_image(overviews_dict, db_graph, filename, color, out_raster_srs)
-            # on ajout l'OPI traitée a la liste
-            overviews_dict["list_OPI"].append(cliche)
+            cut_image(filename, out_raster_srs, overviews_dict)
+            # process_image(overviews_dict, db_graph, filename, color, out_raster_srs)
+            # on ajout l'OPI traitée a la liste (avec sa couleur)
+            overviews_dict["list_OPI"][cliche] = color
+    
+    print("Création du graph et de l'ortho (par tuile) :")
+    db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
+    if db_graph is None:
+        raise ValueError("Connection to database failed")
+    # Calcul des ortho et graph
+
+    for level in overviews_dict["dataSet"]["limits"]:
+
+        print(" level :", level)
+
+        level_limits = overviews_dict["dataSet"]["limits"][level]
+
+        for tile_x in range(level_limits["MinTileCol"], level_limits["MaxTileCol"] + 1):    
+            for tile_y in range(level_limits["MinTileRow"], level_limits["MaxTileRow"] + 1):
+
+                print("  tuile :", tile_x, tile_y)
+
+                create_ortho_and_graph({'x': tile_x, 'y': tile_y, 'z': int(level)}, overviews_dict, db_graph, out_raster_srs)
+                # create_ortho_and_graph(overviews_dict, db_graph, filename, color, out_raster_srs)
+
+
 
     with open(args.cache+'/cache_mtd.json', 'w') as outfile:
         json.dump(mtd, outfile)
