@@ -7,6 +7,27 @@
     <link rel="stylesheet" type="text/css" href="node_modules/itowns/examples/css/example.css">
     <link rel="stylesheet" type="text/css" href="node_modules/itowns/examples/css/LoadingScreen.css">
 
+    <style type="text/css" media="screen">
+        #divAPIVersion {
+            display: block;
+            position: absolute;
+            left: 25px;
+            bottom: 20;
+            text-align: center;
+            display: block;
+            background-image: linear-gradient(rgba(200, 200, 250, 0.8), rgba(250, 200, 200, 0.5));
+            height: 18px;
+            color: black;
+            font-family: 'Open Sans', sans-serif;
+            font-size: 16px;
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+    </style>
+    
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
 </head>
@@ -16,6 +37,7 @@
         <div id="menuDiv"></div>
     </div>
     <!--<span id="divScaleWidget"> Scale </span>-->
+    <div id="divAPIVersion"> Version API : <span id="spAPIVersion_val">???</span> </div>
     <div id="miniDiv"></div>
     <script src="node_modules/itowns/examples/js/GUI/GuiTools.js"></script>
     <script src="node_modules/itowns/dist/itowns.js"></script>
@@ -28,7 +50,15 @@
         const portAPI = urlParams.get('portapi') ? urlParams.get('portapi') : 8081;
         console.log(serverAPI, portAPI)
 
-        apiUrl = "http://" + serverAPI + ":" + portAPI
+        apiUrl = "http://" + serverAPI + ":" + portAPI;
+
+        itowns.Fetcher.json(apiUrl+'/version').then ( (obj) => {
+            document.getElementById('spAPIVersion_val').innerText = obj.version_git;
+        })
+        .catch ( (err) => {
+            document.getElementById('spAPIVersion_val').innerText = 'unknown';
+        })
+
         // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
         itowns.proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
         /* global itowns, setupLoadingScreen, GuiTools, debug */
