@@ -120,7 +120,7 @@ try {
   app.use('/', patch);
 
   app.get('/version', (_req, res) => {
-    res.send(swaggerDocument.info.version);
+    res.send({ version_git: swaggerDocument.info.version });
   });
 
   module.exports = app.listen(PORT, () => {
