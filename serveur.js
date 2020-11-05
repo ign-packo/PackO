@@ -10,6 +10,7 @@ const debugServer = require('debug')('serveur');
 const debug = require('debug');
 const path = require('path');
 const nocache = require('nocache');
+const workerpool = require('workerpool');
 
 const { argv } = require('yargs')
   .version(false)
@@ -100,6 +101,11 @@ try {
   const options = {
     customCss: '.swagger-ui .topbar { display: none }',
   };
+
+  // Creation d'un pool de workers pour traiter les calculs lourds (patchs)
+  // par defaut, autant de workers que de coeurs sur la machine
+  app.workerpool = workerpool.pool();
+  debug.log(app.workerpool.stats());
 
   // swaggerDocument global var because needed in routes/misc.js
   global.swaggerDocument = YAML.load('./doc/swagger.yml');

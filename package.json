@@ -39,6 +39,7 @@
     "swagger-editor-dist": "^3.10.0",
     "swagger-ui-dist": "^3.25.5",
     "swagger-ui-express": "^4.1.4",
+    "workerpool": "^6.0.3",
     "xml2js": "^0.4.23",
     "yamljs": "^0.3.0",
     "yargs": "^15.4.1",

@@ -5,7 +5,7 @@ const path = require('path');
 const jimp = require('jimp');
 const { body, matchedData } = require('express-validator');
 const GJV = require('geojson-validation');
-const PImage = require('pureimage');
+// const PImage = require('pureimage');
 const validator = require('../paramValidation/validator');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
@@ -95,6 +95,115 @@ function getTiles(features, overviews) {
   return tiles;
 }
 
+async function processTile(dir_cache, tile, newPatchId, overviews, geoJson) {
+/* eslint-disable global-require */
+  const debug = require('debug')('patch');
+  const path = require('path');
+  const PImage = require('pureimage');
+  const jimp = require('jimp');
+  const fs = require('fs');
+  /* eslint-disable global-require */
+
+  debug("process ", tile);
+  const tileDir = path.join(dir_cache, tile.z, tile.y, tile.x);
+  const tileWidth = overviews.tileSize.width;
+  const tileHeight = overviews.tileSize.height;
+  const Rmax = overviews.resolution;
+  const lvlMax = overviews.level.max;
+  const xOrigin = overviews.crs.boundingBox.xmin;
+  const yOrigin = overviews.crs.boundingBox.ymax;
+  const promises = [];
+
+  const urlGraph = path.join(tileDir, 'graph.png');
+  const urlOrtho = path.join(tileDir, 'ortho.png');
+  const urlOpi = path.join(tileDir, `${geoJson.features[0].properties.cliche}.png`);
+  const urlGraphOutput = path.join(tileDir, `graph_${newPatchId}.png`);
+  const urlOrthoOutput = path.join(tileDir, `ortho_${newPatchId}.png`);
+
+  // Il y a parfois un bug sur le dessin du premier pixel
+  // on cree donc un masque une ligne de plus
+  const mask = PImage.make(tileWidth, tileHeight + 1);
+  const ctx = mask.getContext('2d');
+  geoJson.features.forEach((feature) => {
+    // debug(feature.properties.color);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    let first = true;
+    /* eslint-disable no-restricted-syntax */
+    const resolution = Rmax * 2 ** (lvlMax - tile.z);
+    for (const point of feature.geometry.coordinates[0]) {
+      const i = Math.round((point[0] - xOrigin - tile.x * tileWidth * resolution)
+            / resolution);
+      const j = Math.round((yOrigin - point[1] - tile.y * tileHeight * resolution)
+            / resolution);
+      if (first) {
+        first = false;
+        ctx.moveTo(i, j);
+      } else {
+        ctx.lineTo(i, j);
+      }
+    }
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  // On verifie si le masque est vide
+  let empty = true;
+  for (let idx = 0; (idx < 256 * 256 * 4) && empty; idx += 4) {
+    // le shift de 1024 = la ligne de marge en plus sur le masque
+    if (mask.data[1024 + idx + 3]) {
+      empty = false;
+    }
+  }
+  
+  if (empty) {
+    return;
+  }
+
+  if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
+    // outOfBoundsTiles.push(`${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}`);
+    return false;
+  }
+
+  // On patch le graph
+  /* eslint-disable no-param-reassign */
+  promises.push(jimp.read(urlGraph).then((graph) => {
+    for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
+      if (mask.data[idx + 3]) {
+        [graph.bitmap.data[1024 + idx],
+          graph.bitmap.data[idx + 1],
+          graph.bitmap.data[idx + 2]] = geoJson.features[0].properties.color;
+      }
+    }
+    return graph.writeAsync(urlGraphOutput);
+  }).then(() => {
+    debug('graph done');
+  }));
+
+  // On patch l ortho
+  /* eslint-disable no-param-reassign */
+  const promiseOrthoOpi = [jimp.read(urlOrtho), jimp.read(urlOpi)];
+  promises.push(Promise.all(promiseOrthoOpi).then((images) => {
+    const ortho = images[0];
+    const opi = images[1];
+    for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
+      if (mask.data[1024 + idx + 3]) {
+        ortho.bitmap.data[idx] = opi.bitmap.data[idx];
+        ortho.bitmap.data[idx + 1] = opi.bitmap.data[idx + 1];
+        ortho.bitmap.data[idx + 2] = opi.bitmap.data[idx + 2];
+      }
+    }
+    return ortho.writeAsync(urlOrthoOutput);
+  }).then(() => {
+    debug('ortho done');
+  }));
+  await Promise.all(promises);
+  return true;
+  // .then(() => {
+  //   debug('traitement de la tuile terminé : ', tileDir);
+  // })
+}
+
 router.get('/patchs', [], (req, res) => {
   debug('~~~GET patchs');
   res.status(200).send(JSON.stringify(req.app.activePatchs));
@@ -110,12 +219,12 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   const geoJson = params.geoJSON;
   const promises = [];
 
-  const xOrigin = overviews.crs.boundingBox.xmin;
-  const yOrigin = overviews.crs.boundingBox.ymax;
-  const Rmax = overviews.resolution;
-  const lvlMax = overviews.level.max;
-  const tileWidth = overviews.tileSize.width;
-  const tileHeight = overviews.tileSize.height;
+  // const xOrigin = overviews.crs.boundingBox.xmin;
+  // const yOrigin = overviews.crs.boundingBox.ymax;
+  // const Rmax = overviews.resolution;
+  // const lvlMax = overviews.level.max;
+  // const tileWidth = overviews.tileSize.width;
+  // const tileHeight = overviews.tileSize.height;
 
   let newPatchId = 0;
   for (let i = 0; i < req.app.activePatchs.features.length; i += 1) {
@@ -135,96 +244,26 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     tiles.forEach((tile) => {
       // Patch du graph
       debug(tile);
-      // Il y a parfois un bug sur le dessin du premier pixel
-      // on cree donc un masque une ligne de plus
-      const mask = PImage.make(tileWidth, tileHeight + 1);
-
-      const ctx = mask.getContext('2d');
-      geoJson.features.forEach((feature) => {
-        // debug(feature.properties.color);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath();
-        let first = true;
-        /* eslint-disable no-restricted-syntax */
-        const resolution = Rmax * 2 ** (lvlMax - tile.z);
-        for (const point of feature.geometry.coordinates[0]) {
-          const i = Math.round((point[0] - xOrigin - tile.x * tileWidth * resolution)
-                / resolution);
-          const j = Math.round((yOrigin - point[1] - tile.y * tileHeight * resolution)
-                / resolution) + 1;
-          if (first) {
-            first = false;
-            ctx.moveTo(i, j);
-          } else {
-            ctx.lineTo(i, j);
-          }
+      promises.push(req.app.workerpool.exec(processTile, [global.dir_cache, tile, newPatchId, overviews, geoJson]).then((res) => {
+        if (res == false){
+          outOfBoundsTiles.push(tile);
+          debug('outofbound ', tile);
         }
-        ctx.closePath();
-        ctx.fill();
-      });
-
-      // On verifie si le masque est vide
-      let empty = true;
-      for (let idx = 0; (idx < 256 * 256 * 4) && empty; idx += 4) {
-        // le shift de 1024 = la ligne de marge en plus sur le masque
-        if (mask.data[1024 + idx + 3]) {
-          empty = false;
+        else if (res == true){
+          tilesModified.push(tile);
+          debug('modified ', tile);
         }
+        else{
+          debug('useless ', tile);
+        }
+      }).catch((error) => {
+      if ((error.message !== 'Pool terminated')
+            && (error.message !== 'Worker terminated')) {
+        debug('Worker error : ', error);
       }
-      debug(empty);
-      if (empty) {
-        debug('masque vide, on passe a la suite : ', tile);
-        return;
-      }
-
-      const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
-      const urlGraph = path.join(tileDir, 'graph.png');
-      const urlOrtho = path.join(tileDir, 'ortho.png');
-      const urlOpi = path.join(tileDir, `${geoJson.features[0].properties.cliche}.png`);
-
-      if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
-        outOfBoundsTiles.push(`${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}`);
-        debug('Out of bounds');
-        return;
-      }
-
-      const urlGraphOutput = path.join(tileDir, `graph_${newPatchId}.png`);
-      const urlOrthoOutput = path.join(tileDir, `ortho_${newPatchId}.png`);
-
-      // On patch le graph
-      /* eslint-disable no-param-reassign */
-      promises.push(jimp.read(urlGraph).then((graph) => {
-        for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
-          if (mask.data[1024 + idx + 3]) {
-            [graph.bitmap.data[idx],
-              graph.bitmap.data[idx + 1],
-              graph.bitmap.data[idx + 2]] = geoJson.features[0].properties.color;
-          }
-        }
-        return graph.writeAsync(urlGraphOutput);
-      }).then(() => {
-        debug('graph done');
-      }));
-
-      // On patch l ortho
-      /* eslint-disable no-param-reassign */
-      const promiseOrthoOpi = [jimp.read(urlOrtho), jimp.read(urlOpi)];
-      promises.push(Promise.all(promiseOrthoOpi).then((images) => {
-        const ortho = images[0];
-        const opi = images[1];
-        for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
-          if (mask.data[1024 + idx + 3]) {
-            ortho.bitmap.data[idx] = opi.bitmap.data[idx];
-            ortho.bitmap.data[idx + 1] = opi.bitmap.data[idx + 1];
-            ortho.bitmap.data[idx + 2] = opi.bitmap.data[idx + 2];
-          }
-        }
-        return ortho.writeAsync(urlOrthoOutput);
-      }).then(() => {
-        debug('ortho done');
-      }));
-      tilesModified.push(tile);
+    }));
     });
+    debug(outOfBoundsTiles);
     if (outOfBoundsTiles.length) {
       const err = new Error();
       err.code = 404;
@@ -240,7 +279,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     }
     Promise.all(promises).then(() => {
       debug('tout c est bien passé on peut mettre a jour les liens symboliques');
-      tilesModified.forEach((tile) => {
+      tiles.forEach((tile) => {
         const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
         const urlGraph = path.join(tileDir, 'graph.png');
         const urlOrtho = path.join(tileDir, 'ortho.png');
