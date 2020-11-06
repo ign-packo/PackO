@@ -455,6 +455,13 @@ router.put('/patchs/clear', [], (req, res) => {
     // pour chaque tuile, on retablit la version orig
     tiles.forEach((tile) => {
       const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
+      // on verifie si la tuile a été effectivement modifiée par un patch
+      const urlGraphSelected = path.join(tileDir, 'graph_orig.png');
+      const urlOrthoSelected = path.join(tileDir, 'ortho_orig.png');
+      if (!fs.existsSync(urlGraphSelected) || !fs.existsSync(urlOrthoSelected)) {
+        debug('Rien a faire sur cette tuile');
+        return;
+      }
       const arrayLink = fs.readdirSync(tileDir).filter((filename) => (filename.startsWith('graph_') || filename.startsWith('ortho_')) && !filename.endsWith('orig.png'));
 
       // suppression des images intermediaires
@@ -465,8 +472,6 @@ router.put('/patchs/clear', [], (req, res) => {
       // modifier les liens symboliques pour pointer sur ce numéro de version
       const urlGraph = path.join(tileDir, 'graph.png');
       const urlOrtho = path.join(tileDir, 'ortho.png');
-      const urlGraphSelected = path.join(tileDir, 'graph_orig.png');
-      const urlOrthoSelected = path.join(tileDir, 'ortho_orig.png');
       // on supprime l'ancien lien
       fs.unlinkSync(urlGraph);
       fs.unlinkSync(urlOrtho);
