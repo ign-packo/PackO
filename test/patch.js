@@ -47,7 +47,7 @@ describe('Patch', () => {
 
             done();
           });
-      });
+      }).timeout(10000);
       // TODO gestion des polygones Out of bounds
       it("should get an error: 'File(s) missing", (done) => {
         chai.request(server)
