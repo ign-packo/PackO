@@ -107,14 +107,12 @@ async function processTile(dir_cache, tile, newPatchId, overviews, geoJson) {
 =======
 async function processTile(dirCache, tile, newPatchId, overviews, geoJson) {
   /* eslint-disable global-require */
-  const processDebug = require('debug')('patch');
   const processPath = require('path');
   const PImage = require('pureimage');
   const jimp = require('jimp');
   /* eslint-enable global-require */
 >>>>>>> fix Lint
 
-  processDebug('process ', tile);
   const tileDir = processPath.join(dirCache, tile.z, tile.y, tile.x);
   const tileWidth = overviews.tileSize.width;
   const tileHeight = overviews.tileSize.height;
@@ -135,7 +133,6 @@ async function processTile(dirCache, tile, newPatchId, overviews, geoJson) {
   const mask = PImage.make(tileWidth, tileHeight + 1);
   const ctx = mask.getContext('2d');
   geoJson.features.forEach((feature) => {
-    // processDebug(feature.properties.color);
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
     let first = true;
@@ -186,8 +183,6 @@ async function processTile(dirCache, tile, newPatchId, overviews, geoJson) {
       }
     }
     return graph.writeAsync(urlGraphOutput);
-  }).then(() => {
-    processDebug('graph done');
   }));
 
   // On patch l ortho
@@ -204,8 +199,6 @@ async function processTile(dirCache, tile, newPatchId, overviews, geoJson) {
       }
     }
     return ortho.writeAsync(urlOrthoOutput);
-  }).then(() => {
-    processDebug('ortho done');
   }));
   await Promise.all(promises);
 <<<<<<< HEAD
@@ -232,13 +225,6 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   const geoJson = params.geoJSON;
   const promises = [];
 
-  // const xOrigin = overviews.crs.boundingBox.xmin;
-  // const yOrigin = overviews.crs.boundingBox.ymax;
-  // const Rmax = overviews.resolution;
-  // const lvlMax = overviews.level.max;
-  // const tileWidth = overviews.tileSize.width;
-  // const tileHeight = overviews.tileSize.height;
-
   let newPatchId = 0;
   for (let i = 0; i < req.app.activePatchs.features.length; i += 1) {
     const id = req.app.activePatchs.features[i].properties.patchId;
@@ -249,7 +235,6 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 
   const tiles = getTiles(geoJson.features, overviews);
   debug(tiles.length, 'tuiles intersectées');
-  const tilesModified = [];
 
   try {
     // Patch these tiles
@@ -274,10 +259,23 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
             && (error.message !== 'Worker terminated')) {
         debug('Worker error : ', error);
       }
+<<<<<<< HEAD
     }));
+=======
+
+      promises.push(req.app.workerpool.exec(processTile,
+        [global.dir_cache, tile, newPatchId, overviews, geoJson]).catch((error) => {
+        if ((error.message !== 'Pool terminated')
+              && (error.message !== 'Worker terminated')) {
+          debug('Worker error : ', error);
+        }
+      }));
+>>>>>>> partial fix for tests
     });
     debug(outOfBoundsTiles);
     if (outOfBoundsTiles.length) {
+      // on arrete les traitement en cours, s'il y en a
+      req.app.workerpool.terminate(true);
       const err = new Error();
       err.code = 404;
       err.msg = {
@@ -350,11 +348,13 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     if (err.code === 404) {
       Promise.all(promises).then(() => {
         debug('Erreur => clean up');
-        tilesModified.forEach((tile) => {
+        tiles.forEach((tile) => {
           const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
           debug(tileDir);
-          fs.unlinkSync(path.join(tileDir, `graph_${newPatchId}.png`));
-          fs.unlinkSync(path.join(tileDir, `ortho_${newPatchId}.png`));
+          const urlGraph = path.join(tileDir, `graph_${newPatchId}.png`);
+          if (fs.existsSync(urlGraph)) fs.unlinkSync(urlGraph);
+          const urlOrtho = path.join(tileDir, `ortho_${newPatchId}.png`);
+          if (fs.existsSync(urlOrtho)) fs.unlinkSync(urlOrtho);
         });
       });
     }

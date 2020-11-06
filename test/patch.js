@@ -8,6 +8,7 @@ const server = require('..');
 
 describe('Patch', () => {
   after((done) => {
+    server.workerpool.terminate();
     server.close();
     done();
   });
