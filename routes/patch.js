@@ -337,6 +337,13 @@ router.put('/patch/undo', [], (req, res) => {
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
   tiles.forEach((tile) => {
     const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
+    // on verifie si la tuile a été effectivement modifiée par ce patch
+    const urlGraphPatched = path.join(global.dir_cache, tile.z, tile.y, tile.x, `graph_${lastPatchId}.png`);
+    const urlOrthoPatched = path.join(global.dir_cache, tile.z, tile.y, tile.x, `ortho_${lastPatchId}.png`);
+    if (!fs.existsSync(urlGraphPatched) || !fs.existsSync(urlOrthoPatched)) {
+      debug('Rien a faire sur cette tuile');
+      return;
+    }
     const arrayGraphs = fs.readdirSync(tileDir).filter((fn) => fn.startsWith('graph_'));
     debug(arrayGraphs);
     const arrayId = [];
@@ -400,11 +407,16 @@ router.put('/patch/redo', [], (req, res) => {
   debug(tiles.length, 'tuiles impactées');
   // pour chaque tuile, modifier les liens symboliques
   tiles.forEach((tile) => {
+    // on verifie si la tuile a été effectivement modifiée par ce patch
+    const urlGraphSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, `graph_${patchIdRedo}.png`);
+    const urlOrthoSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, `ortho_${patchIdRedo}.png`);
+    if (!fs.existsSync(urlGraphSelected) || !fs.existsSync(urlOrthoSelected)) {
+      debug('Rien a faire sur cette tuile');
+      return;
+    }
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph.png');
     const urlOrtho = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'ortho.png');
-    const urlGraphSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, `graph_${patchIdRedo}.png`);
-    const urlOrthoSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, `ortho_${patchIdRedo}.png`);
     // on supprime l'ancien lien
     fs.unlinkSync(urlGraph);
     fs.unlinkSync(urlOrtho);
