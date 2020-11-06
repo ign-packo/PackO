@@ -16,15 +16,10 @@ jobs:
     - uses: actions/checkout@v2
     - name: install
       run: npm install
-      
-    - name: test
-      env:
-        DEBUG: patch
-      run: npx mocha test -c cache_test
-      
+            
     - name: test coveralls
       env:
-        DEBUG: patch
+        DEBUG: 
       run: |
         git checkout cache_test
         npm run test-coveralls
