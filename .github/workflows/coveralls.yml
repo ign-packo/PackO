@@ -18,7 +18,7 @@ jobs:
       run: npm install
     - name: test
       env:
-        DEBUG:
+        DEBUG: patch
       run: |
         npm run test-coveralls
 
