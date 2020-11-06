@@ -235,6 +235,11 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 
   const tiles = getTiles(geoJson.features, overviews);
   debug(tiles.length, 'tuiles intersectées');
+  if (tiles.length > global.minJobForWorkers) {
+    debug('on va utiliser de workers');
+  } else {
+    debug('on reste en monothread');
+  }
 
   try {
     // Patch these tiles
@@ -263,6 +268,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     }));
 =======
 
+<<<<<<< HEAD
       promises.push(req.app.workerpool.exec(processTile,
         [global.dir_cache, tile, newPatchId, overviews, geoJson]).catch((error) => {
         if ((error.message !== 'Pool terminated')
@@ -271,6 +277,27 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         }
       }));
 >>>>>>> partial fix for tests
+=======
+      if (tiles.length > global.minJobForWorkers) {
+        // on utilise des workers
+        promises.push(req.app.workerpool.exec(processTile,
+          [global.dir_cache, tile, newPatchId, overviews, geoJson]).catch((error) => {
+          if ((error.message !== 'Pool terminated')
+                && (error.message !== 'Worker terminated')) {
+            debug('Worker error : ', error);
+          }
+        }));
+      } else {
+        // on utise de simple promise
+        promises.push(processTile(global.dir_cache,
+          tile,
+          newPatchId,
+          overviews,
+          geoJson).catch((error) => {
+          debug('error : ', error);
+        }));
+      }
+>>>>>>> adaptation de la strategie en fonction de la taille du patch
     });
     debug(outOfBoundsTiles);
     if (outOfBoundsTiles.length) {

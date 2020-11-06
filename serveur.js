@@ -34,6 +34,8 @@ const app = express();
 global.dir_cache = argv.cache ? argv.cache : 'cache';
 debug.log(`using cache directory: ${global.dir_cache}`);
 
+global.minJobForWorkers = 20;
+
 const wmts = require('./routes/wmts.js');
 const graph = require('./routes/graph.js');
 const file = require('./routes/file.js');
