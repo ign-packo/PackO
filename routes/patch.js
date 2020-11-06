@@ -172,7 +172,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         }
       }
       debug(empty);
-      if (empty){
+      if (empty) {
         debug('masque vide, on passe a la suite : ', tile);
         return;
       }
