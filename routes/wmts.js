@@ -10,8 +10,6 @@ const fs = require('fs');
 const xml2js = require('xml2js');
 const proj4 = require('proj4');
 
-proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
-
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
@@ -154,14 +152,15 @@ router.get('/wmts', [
         },
       },
     };
-
+    const crs = `${overviews.crs.type}:${overviews.crs.code}`;
+    proj4.defs(crs, overviews.crs.proj4Definition);
     const layers = [];
     ['ortho', 'graph', 'opi'].forEach((layerName) => layers.push({
       'ows:Title': layerName,
       'ows:Abstract': layerName,
       'ows:WGS84BoundingBox': {
-        'ows:LowerCorner': proj4(`${overviews.crs.type}:${overviews.crs.code}`, 'EPSG:4326', overviews.dataSet.boundingBox.LowerCorner).join(' '),
-        'ows:UpperCorner': proj4(`${overviews.crs.type}:${overviews.crs.code}`, 'EPSG:4326', overviews.dataSet.boundingBox.UpperCorner).join(' '),
+        'ows:LowerCorner': proj4(crs, 'EPSG:4326', overviews.dataSet.boundingBox.LowerCorner).join(' '),
+        'ows:UpperCorner': proj4(crs, 'EPSG:4326', overviews.dataSet.boundingBox.UpperCorner).join(' '),
       },
       'ows:Identifier': layerName,
       Style: {

@@ -48,7 +48,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const serverAPI = urlParams.get('serverapi') ? urlParams.get('serverapi') : 'localhost';
         const portAPI = urlParams.get('portapi') ? urlParams.get('portapi') : 8081;
-        console.log(serverAPI, portAPI)
+        console.log("serverAPI:", serverAPI, "portAPI:",  portAPI)
 
         apiUrl = "http://" + serverAPI + ":" + portAPI;
 
@@ -59,8 +59,6 @@
             document.getElementById('spAPIVersion_val').innerText = 'unknown';
         })
 
-        // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
-        itowns.proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
         /* global itowns, setupLoadingScreen, GuiTools, debug */
 
 /*         function updateScaleWidget() {
@@ -90,6 +88,13 @@
             const crs = `${overviews.crs.type}:${overviews.crs.code}`
             const xOrigin = overviews.crs.boundingBox.xmin
             const yOrigin = overviews.crs.boundingBox.ymax
+
+            // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
+            if (crs !='EPSG:4326' && overviews.crs.proj4Definition) {
+                itowns.proj4.defs(crs, overviews.crs.proj4Definition);
+            } else {
+                throw 'EPSG proj4.defs not defined in overviews.json'
+            }
 
             // limite du dataSet
             const xmin = overviews.dataSet.boundingBox.LowerCorner[0]
@@ -127,88 +132,99 @@
             menuGlobe = new GuiTools('menuDiv', view);
             menuGlobe.gui.width = 300;
 
-            var orthoLayer, graphLayer;
-            var orthoConfig, graphConfig;
-            let promises = [itowns.Fetcher.json(apiUrl+'/json/ortho'), itowns.Fetcher.json(apiUrl+'/json/graph'), itowns.Fetcher.json(apiUrl+'/json/opi')];
-            Promise.all(promises).then((conf) => {
-                orthoConfig = conf[0];
-                graphConfig = conf[1];
-                opiConfig = conf[2];
+            var orthoLayer, graphLayer, opiLayer;
+            var orthoConfig, graphConfig, opiConfig;
+             
+            const config = {};
+            ['ortho', 'graph', 'opi'].forEach((layerName) => {
 
-                orthoConfig.source = new itowns.WMTSSource(orthoConfig.source);
-                orthoConfig.source.extentInsideLimit = function (extent) {
-                        return true;
+                config[layerName] = {
+                    id: layerName,
+                    source: {
+                        url: apiUrl+'/wmts',
+                        projection: crs,
+                        format: 'image/png',
+                        name: layerName,
+                        tileMatrixSet: overviews.identifier,
+                        tileMatrixSetLimits: overviews.dataSet.limits
+                    }
                 }
-                graphConfig.source = new itowns.WMTSSource(graphConfig.source);
-                graphConfig.source.extentInsideLimit = function (extent) {
+
+                config[layerName].source = new itowns.WMTSSource(config[layerName].source);
+                config[layerName].source.extentInsideLimit = function (extent) {
                     return true;
                 }
-                graphConfig.opacity = 0.2;
-                opiConfig.sourceOri = opiConfig.source;
 
-                opiConfig.source = new itowns.WMTSSource(opiConfig.sourceOri);
-                opiConfig.source.extentInsideLimit = function (extent) {
-                    return true;
-                }
-                opiConfig.opacity = 0.5;
-                orthoLayer = new itowns.ColorLayer('Ortho', orthoConfig);
-                view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-                graphLayer = new itowns.ColorLayer('Graph', graphConfig);
-                view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-                opiLayer = new itowns.ColorLayer('Opi', opiConfig);
-                opiLayer.visible = false
-                view.addLayer(opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-                itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-                itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
-                itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+            });
+            config.graph.opacity = 0.2;
+            config.opi.opacity = 0.5;
+            orthoLayer = new itowns.ColorLayer('Ortho', config.ortho);
+            view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            graphLayer = new itowns.ColorLayer('Graph', config.graph);
+            view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            opiLayer = new itowns.ColorLayer('Opi', config.opi);
+            opiLayer.visible = false
+            view.addLayer(opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+            itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+            itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+            itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+            // Et ouvrir l'onglet "Color Layers" par defaut ?
 
-                var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig, opiLayer, opiConfig, apiUrl });
-                saisie.cliche = 'unknown';
-                saisie.message = '';
-                saisie.coord = `${((xmax + xmin) * 0.5).toFixed(2)} ${((ymax + ymin) * 0.5).toFixed(2)}`;
-                saisie.color = [0, 0, 0];
-                saisie.controllers = {};
-                saisie.controllers['select'] = menuGlobe.gui.add(saisie, 'select');
-                saisie.controllers['cliche'] = menuGlobe.gui.add(saisie, 'cliche');
-                saisie.controllers['cliche'].listen().domElement.parentElement.style.pointerEvents = 'none';
-                saisie.controllers['coord'] = menuGlobe.gui.add(saisie, 'coord');
-                saisie.controllers['coord'].listen().domElement.parentElement.style.pointerEvents = 'none';
-                saisie.controllers['polygon'] = menuGlobe.gui.add(saisie, 'polygon');
-                saisie.controllers['undo'] = menuGlobe.gui.add(saisie, 'undo');
-                saisie.controllers['redo'] = menuGlobe.gui.add(saisie, 'redo');
-                saisie.controllers['clear'] = menuGlobe.gui.add(saisie, 'clear');
-                saisie.controllers['message'] = menuGlobe.gui.add(saisie, 'message');
-                saisie.controllers['message'].listen().domElement.parentElement.style.pointerEvents = 'none';
-                
-                viewerDiv.focus();
-                view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
-                    // eslint-disable-next-line no-console
-                    console.info('View initialized');
-                    // updateScaleWidget();
-                });
-                viewerDiv.addEventListener('mousewheel', function (ev) {
-                    // updateScaleWidget();
-                });
-                window.addEventListener('keydown', function (ev) {
-                    saisie.keydown(ev);
-                    return false;
-                });
-                window.addEventListener('keyup', function (ev) {
-                    saisie.keyup(ev);
-                    return false;
-                });
-                viewerDiv.addEventListener('mousemove', function (ev) {
-                    ev.preventDefault();
-                    saisie.mousemove(ev);
-                    return false;
-                }, false);
-                viewerDiv.addEventListener('click', function (ev) {
-                    ev.preventDefault();
-                    saisie.click(ev);
-                    return false;
-                }, false);
+            graphConfig=config.graph
+            orthoConfig=config.ortho
+            opiConfig=config.opi
 
-            })
+            // Request redraw
+            view.notifyChange();
+
+            menuGlobe.addImageryLayersGUI(view.getLayers(function gui(l) { return l.isColorLayer; }));
+            // debug.createTileDebugUI(menuGlobe.gui, view);
+
+            var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig, opiLayer, opiConfig, apiUrl });
+            saisie.cliche = 'unknown';
+            saisie.message = '';
+            saisie.coord = `${((xmax + xmin) * 0.5).toFixed(2)} ${((ymax + ymin) * 0.5).toFixed(2)}`;
+            saisie.color = [0, 0, 0];
+            saisie.controllers = {};
+            saisie.controllers['select'] = menuGlobe.gui.add(saisie, 'select');
+            saisie.controllers['cliche'] = menuGlobe.gui.add(saisie, 'cliche');
+            saisie.controllers['cliche'].listen().domElement.parentElement.style.pointerEvents = 'none';
+            saisie.controllers['coord'] = menuGlobe.gui.add(saisie, 'coord');
+            saisie.controllers['coord'].listen().domElement.parentElement.style.pointerEvents = 'none';
+            saisie.controllers['polygon'] = menuGlobe.gui.add(saisie, 'polygon');
+            saisie.controllers['undo'] = menuGlobe.gui.add(saisie, 'undo');
+            saisie.controllers['redo'] = menuGlobe.gui.add(saisie, 'redo');
+            saisie.controllers['clear'] = menuGlobe.gui.add(saisie, 'clear');
+            saisie.controllers['message'] = menuGlobe.gui.add(saisie, 'message');
+            saisie.controllers['message'].listen().domElement.parentElement.style.pointerEvents = 'none';
+        
+            viewerDiv.focus();
+            view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
+                // eslint-disable-next-line no-console
+                console.info('View initialized');
+                // updateScaleWidget();
+            });
+            viewerDiv.addEventListener('mousewheel', function (ev) {
+                // updateScaleWidget();
+            });
+            window.addEventListener('keydown', function (ev) {
+                saisie.keydown(ev);
+                return false;
+            });
+            window.addEventListener('keyup', function (ev) {
+                saisie.keyup(ev);
+                return false;
+            });
+            viewerDiv.addEventListener('mousemove', function (ev) {
+                ev.preventDefault();
+                saisie.mousemove(ev);
+                return false;
+            }, false);
+            viewerDiv.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                saisie.click(ev);
+                return false;
+            }, false);
 
             // instanciate controls
             // eslint-disable-next-line no-new
@@ -257,17 +273,16 @@
                         break;
                 }
             };
-
-            // Request redraw
-            view.notifyChange();
-
-            menuGlobe.addImageryLayersGUI(view.getLayers(function gui(l) { return l.isColorLayer; }));
-            debug.createTileDebugUI(menuGlobe.gui, view);
         })
         .catch ( (err) => {
-            apiUrl = prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl)
-            apiUrlSplit = apiUrl.split('/')[2].split(':')
-            window.location.assign(`${window.location.origin}?serverapi=${apiUrlSplit[0]}&portapi=${apiUrlSplit[1]}`)
+            console.log(err)
+            if (err == 'TypeError: Failed to fetch') {
+                apiUrl = prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl)
+                apiUrlSplit = apiUrl.split('/')[2].split(':')
+                window.location.assign(`${window.location.origin}?serverapi=${apiUrlSplit[0]}&portapi=${apiUrlSplit[1]}`)
+            } else {
+                alert(err)
+            }
         })
     </script>
 </body>

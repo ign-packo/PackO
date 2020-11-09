@@ -15,13 +15,14 @@ describe('Files', () => {
     describe('filetype = graph', () => {
       it('should return a json file', (done) => {
         chai.request(server)
-          .get('/json/graph')
+          .get('/json/overviews')
           .end((err, res) => {
             should.not.exist(err);
             res.should.be.a('object');
             res.should.have.status(200);
             res.body.should.be.a('object');
-            res.body.should.have.property('id').equal('graph');
+            res.body.should.have.property('identifier').equal('LAMB93_5cm');
+            res.body.should.have.property('dataSet');
 
             done();
           });
