@@ -266,6 +266,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
       // on note le patch Id
       geoJson.features.forEach((feature) => {
         feature.properties.patchId = newPatchId;
+        feature.properties.tiles = tilesModified;
       });
       // on ajoute ce patch à l'historique
       debug('New patch, Id:', newPatchId);
@@ -323,27 +324,21 @@ router.put('/patch/undo', [], (req, res) => {
   debug('lastPatchId:', lastPatchId);
   const features = [];
   let index = req.app.activePatchs.features.length - 1;
+  let tiles = [];
   while (index >= 0) {
     const feature = req.app.activePatchs.features[index];
     if (feature.properties.patchId === lastPatchId) {
       features.push(feature);
       req.app.activePatchs.features.splice(index, 1);
+      tiles = tiles.concat(feature.properties.tiles.filter((item) => tiles.indexOf(item) < 0))
     }
     index -= 1;
   }
-  // trouver la liste des tuiles concernées par ces patchs
-  const tiles = getTiles(features, overviews);
   debug(tiles.length, 'tuiles impactées');
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
   tiles.forEach((tile) => {
     const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
     // on verifie si la tuile a été effectivement modifiée par ce patch
-    const urlGraphPatched = path.join(global.dir_cache, tile.z, tile.y, tile.x, `graph_${lastPatchId}.png`);
-    const urlOrthoPatched = path.join(global.dir_cache, tile.z, tile.y, tile.x, `ortho_${lastPatchId}.png`);
-    if (!fs.existsSync(urlGraphPatched) || !fs.existsSync(urlOrthoPatched)) {
-      debug('Rien a faire sur cette tuile');
-      return;
-    }
     const arrayGraphs = fs.readdirSync(tileDir).filter((fn) => fn.startsWith('graph_'));
     debug(arrayGraphs);
     const arrayId = [];
@@ -393,27 +388,23 @@ router.put('/patch/redo', [], (req, res) => {
     .properties.patchId;
   debug('patchIdRedo:', patchIdRedo);
   const features = [];
+  let tiles = [];
   let index = req.app.unactivePatchs.features.length - 1;
   while (index >= 0) {
     const feature = req.app.unactivePatchs.features[index];
     if (feature.properties.patchId === patchIdRedo) {
       features.push(feature);
+      tiles = tiles.concat(feature.properties.tiles.filter((item) => tiles.indexOf(item) < 0))
       req.app.unactivePatchs.features.splice(index, 1);
     }
     index -= 1;
   }
-  // trouver la liste des tuiles concernées par ce patch
-  const tiles = getTiles(features, overviews);
   debug(tiles.length, 'tuiles impactées');
   // pour chaque tuile, modifier les liens symboliques
   tiles.forEach((tile) => {
     // on verifie si la tuile a été effectivement modifiée par ce patch
     const urlGraphSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, `graph_${patchIdRedo}.png`);
     const urlOrthoSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, `ortho_${patchIdRedo}.png`);
-    if (!fs.existsSync(urlGraphSelected) || !fs.existsSync(urlOrthoSelected)) {
-      debug('Rien a faire sur cette tuile');
-      return;
-    }
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph.png');
     const urlOrtho = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'ortho.png');
@@ -450,18 +441,13 @@ router.put('/patchs/clear', [], (req, res) => {
 
   features.forEach((feature) => {
     // trouver la liste des tuiles concernées par ces patchs
-    const tiles = getTiles([feature], overviews);
+    const tiles = feature.properties.tiles;
     debug(tiles.length, 'tuiles impactées');
     // pour chaque tuile, on retablit la version orig
     tiles.forEach((tile) => {
       const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
-      // on verifie si la tuile a été effectivement modifiée par un patch
       const urlGraphSelected = path.join(tileDir, 'graph_orig.png');
       const urlOrthoSelected = path.join(tileDir, 'ortho_orig.png');
-      if (!fs.existsSync(urlGraphSelected) || !fs.existsSync(urlOrthoSelected)) {
-        debug('Rien a faire sur cette tuile');
-        return;
-      }
       const arrayLink = fs.readdirSync(tileDir).filter((filename) => (filename.startsWith('graph_') || filename.startsWith('ortho_')) && !filename.endsWith('orig.png'));
 
       // suppression des images intermediaires
