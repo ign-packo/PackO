@@ -311,7 +311,6 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 
 router.put('/patch/undo', [], (req, res) => {
   debug('~~~PUT patch/undo');
-  const { overviews } = req.app;
   if (req.app.activePatchs.features.length === 0) {
     debug('nothing to undo');
     res.status(201).send('nothing to undo');
@@ -324,13 +323,13 @@ router.put('/patch/undo', [], (req, res) => {
   debug('lastPatchId:', lastPatchId);
   const features = [];
   let index = req.app.activePatchs.features.length - 1;
-  let tiles = [];
+  const tiles = new Set();
   while (index >= 0) {
     const feature = req.app.activePatchs.features[index];
     if (feature.properties.patchId === lastPatchId) {
       features.push(feature);
       req.app.activePatchs.features.splice(index, 1);
-      tiles = tiles.concat(feature.properties.tiles.filter((item) => tiles.indexOf(item) < 0))
+      feature.properties.tiles.forEach((item) => tiles.add(item));
     }
     index -= 1;
   }
@@ -376,7 +375,6 @@ router.put('/patch/undo', [], (req, res) => {
 
 router.put('/patch/redo', [], (req, res) => {
   debug('~~~PUT patch/redo');
-  const { overviews } = req.app;
   if (req.app.unactivePatchs.features.length === 0) {
     debug('nothing to redo');
     res.status(201).send('nothing to redo');
@@ -388,13 +386,13 @@ router.put('/patch/redo', [], (req, res) => {
     .properties.patchId;
   debug('patchIdRedo:', patchIdRedo);
   const features = [];
-  let tiles = [];
+  const tiles = new Set();
   let index = req.app.unactivePatchs.features.length - 1;
   while (index >= 0) {
     const feature = req.app.unactivePatchs.features[index];
     if (feature.properties.patchId === patchIdRedo) {
       features.push(feature);
-      tiles = tiles.concat(feature.properties.tiles.filter((item) => tiles.indexOf(item) < 0))
+      feature.properties.tiles.forEach((item) => tiles.add(item));
       req.app.unactivePatchs.features.splice(index, 1);
     }
     index -= 1;
@@ -436,12 +434,11 @@ router.put('/patchs/clear', [], (req, res) => {
     res.status(201).send('nothing to clear');
     return;
   }
-  const { overviews } = req.app;
   const { features } = req.app.activePatchs;
 
   features.forEach((feature) => {
     // trouver la liste des tuiles concernées par ces patchs
-    const tiles = feature.properties.tiles;
+    const { tiles } = feature.properties;
     debug(tiles.length, 'tuiles impactées');
     // pour chaque tuile, on retablit la version orig
     tiles.forEach((tile) => {
