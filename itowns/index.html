@@ -59,8 +59,6 @@
             document.getElementById('spAPIVersion_val').innerText = 'unknown';
         })
 
-        // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
-        itowns.proj4.defs('EPSG:2154', '+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
         /* global itowns, setupLoadingScreen, GuiTools, debug */
 
 /*         function updateScaleWidget() {
@@ -176,6 +174,12 @@
             orthoConfig=config.ortho
             opiConfig=config.opi
 
+            // Request redraw
+            view.notifyChange();
+
+            menuGlobe.addImageryLayersGUI(view.getLayers(function gui(l) { return l.isColorLayer; }));
+            // debug.createTileDebugUI(menuGlobe.gui, view);
+
             var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig, opiLayer, opiConfig, apiUrl });
             saisie.cliche = 'unknown';
             saisie.message = '';
@@ -269,28 +273,16 @@
                         break;
                 }
             };
-
-            // Request redraw
-            view.notifyChange();
-
-            menuGlobe.addImageryLayersGUI(view.getLayers(function gui(l) { return l.isColorLayer; }));
-            debug.createTileDebugUI(menuGlobe.gui, view);
         })
         .catch ( (err) => {
-<<<<<<< HEAD
-            apiUrl = prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl)
-            apiUrlSplit = apiUrl.split('/')[2].split(':')
-            window.location.assign(`${window.location.origin}?serverapi=${apiUrlSplit[0]}&portapi=${apiUrlSplit[1]}`)
-=======
             console.log(err)
             if (err == 'TypeError: Failed to fetch') {
                 apiUrl = prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl)
                 apiUrlSplit = apiUrl.split('/')[2].split(':')
-                window.location.assign(`http://localhost:8000/?serverapi=${apiUrlSplit[0]}&portapi=${apiUrlSplit[1]}`)
+                window.location.assign(`${window.location.origin}?serverapi=${apiUrlSplit[0]}&portapi=${apiUrlSplit[1]}`)
             } else {
                 alert(err)
             }
->>>>>>> relaod itowns seulemnt dans le cas 'failed to fetch'
         })
     </script>
 </body>
