@@ -339,13 +339,15 @@ router.put('/patch/undo', [], (req, res) => {
     const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
     // on verifie si la tuile a été effectivement modifiée par ce patch
     const arrayGraphs = fs.readdirSync(tileDir).filter((fn) => fn.startsWith('graph_'));
-    debug(arrayGraphs);
-    const arrayId = [];
+    debug('arrayGraphs : ', arrayGraphs);
+    let idSelected = null;
     arrayGraphs.forEach((name) => {
       const id = parseInt(name.split(/[_.]/)[1], 10);
-      if ((id < lastPatchId) && !Number.isNaN(id)) arrayId.push(id);
+      if ((id < lastPatchId) && !Number.isNaN(id)) {
+        if ((idSelected == null) || (idSelected < id)) idSelected = id;
+      }
     });
-    const idSelected = arrayId.length > 0 ? arrayId.sort()[arrayId.length - 1] : 'orig';
+    if (idSelected == null) idSelected = 'orig';
     debug('version selectionne pour la tuile :', idSelected);
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph.png');
