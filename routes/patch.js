@@ -95,23 +95,13 @@ function getTiles(features, overviews) {
   return tiles;
 }
 
-<<<<<<< HEAD
-async function processTile(dir_cache, tile, newPatchId, overviews, geoJson) {
-/* eslint-disable global-require */
-  const debug = require('debug')('patch');
-  const path = require('path');
-  const PImage = require('pureimage');
-  const jimp = require('jimp');
-  const fs = require('fs');
-  /* eslint-disable global-require */
-=======
 async function processTile(dirCache, tile, newPatchId, overviews, geoJson) {
   /* eslint-disable global-require */
+  const fsProcess = require('fs');
   const processPath = require('path');
   const PImage = require('pureimage');
   const jimp = require('jimp');
   /* eslint-enable global-require */
->>>>>>> fix Lint
 
   const tileDir = processPath.join(dirCache, tile.z, tile.y, tile.x);
   const tileWidth = overviews.tileSize.width;
@@ -162,13 +152,14 @@ async function processTile(dirCache, tile, newPatchId, overviews, geoJson) {
       empty = false;
     }
   }
-  
+
   if (empty) {
-    return;
+    return null;
   }
 
-  if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
-    // outOfBoundsTiles.push(`${global.dir_cache}/${tile.z}/${tile.y}/${tile.x}`);
+  if (!fsProcess.existsSync(urlGraph)
+    || !fsProcess.existsSync(urlOrtho)
+    || !fsProcess.existsSync(urlOpi)) {
     return false;
   }
 
@@ -201,13 +192,7 @@ async function processTile(dirCache, tile, newPatchId, overviews, geoJson) {
     return ortho.writeAsync(urlOrthoOutput);
   }));
   await Promise.all(promises);
-<<<<<<< HEAD
   return true;
-  // .then(() => {
-  //   debug('traitement de la tuile terminé : ', tileDir);
-  // })
-=======
->>>>>>> fix Lint
 }
 
 router.get('/patchs', [], (req, res) => {
@@ -235,69 +220,27 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 
   const tiles = getTiles(geoJson.features, overviews);
   debug(tiles.length, 'tuiles intersectées');
-  if (tiles.length > global.minJobForWorkers) {
-    debug('on va utiliser de workers');
-  } else {
-    debug('on reste en monothread');
-  }
 
+  const outOfBoundsTiles = [];
+  const tilesModified = [];
   try {
     // Patch these tiles
-    const outOfBoundsTiles = [];
     tiles.forEach((tile) => {
       // Patch du graph
       debug(tile);
-      promises.push(req.app.workerpool.exec(processTile, [global.dir_cache, tile, newPatchId, overviews, geoJson]).then((res) => {
-        if (res == false){
+      promises.push(req.app.workerpool.exec(processTile,
+        [global.dir_cache, tile, newPatchId, overviews, geoJson]).then((ok) => {
+        if (ok === false) {
           outOfBoundsTiles.push(tile);
-          debug('outofbound ', tile);
-        }
-        else if (res == true){
+        } else if (ok === true) {
           tilesModified.push(tile);
-          debug('modified ', tile);
-        }
-        else{
-          debug('useless ', tile);
         }
       }).catch((error) => {
-      if ((error.message !== 'Pool terminated')
-            && (error.message !== 'Worker terminated')) {
-        debug('Worker error : ', error);
-      }
-<<<<<<< HEAD
-    }));
-=======
-
-<<<<<<< HEAD
-      promises.push(req.app.workerpool.exec(processTile,
-        [global.dir_cache, tile, newPatchId, overviews, geoJson]).catch((error) => {
         if ((error.message !== 'Pool terminated')
-              && (error.message !== 'Worker terminated')) {
+            && (error.message !== 'Worker terminated')) {
           debug('Worker error : ', error);
         }
       }));
->>>>>>> partial fix for tests
-=======
-      if (tiles.length > global.minJobForWorkers) {
-        // on utilise des workers
-        promises.push(req.app.workerpool.exec(processTile,
-          [global.dir_cache, tile, newPatchId, overviews, geoJson]).catch((error) => {
-          if ((error.message !== 'Pool terminated')
-                && (error.message !== 'Worker terminated')) {
-            debug('Worker error : ', error);
-          }
-        }));
-      } else {
-        // on utise de simple promise
-        promises.push(processTile(global.dir_cache,
-          tile,
-          newPatchId,
-          overviews,
-          geoJson).catch((error) => {
-          debug('error : ', error);
-        }));
-      }
->>>>>>> adaptation de la strategie en fonction de la taille du patch
     });
     debug(outOfBoundsTiles);
     if (outOfBoundsTiles.length) {
@@ -317,7 +260,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     }
     Promise.all(promises).then(() => {
       debug('tout c est bien passé on peut mettre a jour les liens symboliques');
-      tiles.forEach((tile) => {
+      tilesModified.forEach((tile) => {
         const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
         const urlGraph = path.join(tileDir, 'graph.png');
         const urlOrtho = path.join(tileDir, 'ortho.png');
@@ -375,7 +318,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     if (err.code === 404) {
       Promise.all(promises).then(() => {
         debug('Erreur => clean up');
-        tiles.forEach((tile) => {
+        tilesModified.forEach((tile) => {
           const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
           debug(tileDir);
           const urlGraph = path.join(tileDir, `graph_${newPatchId}.png`);
@@ -408,11 +351,12 @@ router.put('/patch/undo', [], (req, res) => {
     if (feature.properties.patchId === lastPatchId) {
       features.push(feature);
       req.app.activePatchs.features.splice(index, 1);
+      debug(feature.properties.tiles);
       feature.properties.tiles.forEach((item) => tiles.add(item));
     }
     index -= 1;
   }
-  debug(tiles.length, 'tuiles impactées');
+  debug(tiles, ' tuiles impactées');
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
   tiles.forEach((tile) => {
     const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
@@ -478,7 +422,7 @@ router.put('/patch/redo', [], (req, res) => {
     }
     index -= 1;
   }
-  debug(tiles.length, 'tuiles impactées');
+  debug(tiles, ' tuiles impactées');
   // pour chaque tuile, modifier les liens symboliques
   tiles.forEach((tile) => {
     // on verifie si la tuile a été effectivement modifiée par ce patch
@@ -520,6 +464,7 @@ router.put('/patchs/clear', [], (req, res) => {
   features.forEach((feature) => {
     // trouver la liste des tuiles concernées par ces patchs
     const { tiles } = feature.properties;
+
     debug(tiles.length, 'tuiles impactées');
     // pour chaque tuile, on retablit la version orig
     tiles.forEach((tile) => {
