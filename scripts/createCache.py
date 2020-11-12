@@ -476,8 +476,8 @@ def main():
                 argument4process.append(argument_zyx)
 
     print(" Calcul")
-    POOL = multiprocessing.Pool(cpu_dispo-1)
 
+    POOL = multiprocessing.Pool(cpu_dispo-1)
     POOL.map(create_ortho_and_graph_1arg, argument4process)
 
     POOL.close()
