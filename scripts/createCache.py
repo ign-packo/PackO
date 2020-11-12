@@ -11,13 +11,10 @@ import gdal
 import argparse
 from collections import defaultdict
 
-os.environ['PROJ_LIB'] = 'C:\\Users\\ftoromanoff\\AppData\\Local\\Programs\\Python\\Python37-32\\Lib\\site-packages\\osgeo\\data\\proj'
+# os.environ['PROJ_LIB'] = 'C:\\Users\\ftoromanoff\\AppData\\Local\\Programs\\Python\\Python37-32\\Lib\\site-packages\\osgeo\\data\\proj'
 
 import multiprocessing
 cpu_dispo = multiprocessing.cpu_count()
-
-# scripts\createCache.py -i D:\PackO\Donnees\OPI_Test\*.tif -c cache_new
-# scripts\createCache.py -i Z:\PackO\mini_selectOPI_hardlink\*.tif -c Z:\PackO\minicache_camV2_56_Multi_
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--cache", help="cache directory (default: cache)", type=str, default="cache")
