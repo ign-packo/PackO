@@ -176,81 +176,86 @@ def cut_image_1arg(arguments):
                     'y': overviews['crs']['boundingBox']['ymax'] - tile_y * resolution * overviews['tileSize']['height']
                 }
 
+                # calcul du chemin en base 36
+
                 tile_dir = args.cache+'/'+str(tile_z)+'/'+str(tile_y)+'/'+str(tile_x)
                 tile = {'x': tile_x, 'y': tile_y, 'resolution': resolution}
 
                 # si necessaire on cree le dossier de la tuile             
                 Path(tile_dir).mkdir(parents=True, exist_ok=True)
+                dalle_size_px = {
+                    'width': overviews['tileSize'].width * overviews['dalleSize'].width,
+                    'height': overviews['tileSize'].height * overviews['dalleSize'].height
+                }
+                cut_opi_1tile(filename, tile_dir, stem, origin, dalle_size_px, tile, out_srs, nb_bands)
 
-                cut_opi_1tile(filename, tile_dir, stem, origin, overviews['tileSize'], tile, out_srs, nb_bands)
+# def create_ortho_and_graph_1arg(arguments):
+#     """Creation of the ortho and the graph images on a specified tile"""
+#     if verbose > 0:
+#         print("~~~create_ortho_and_graph_1arg")
 
-def create_ortho_and_graph_1arg(arguments):
-    """Creation of the ortho and the graph images on a specified tile"""
-    if verbose > 0:
-        print("~~~create_ortho_and_graph_1arg")
+#     tile = arguments['tile']
+#     overviews = arguments['overviews']
+#     conn_string = arguments['conn_string']
+#     out_srs = arguments['out_srs']
 
-    tile = arguments['tile']
-    overviews = arguments['overviews']
-    conn_string = arguments['conn_string']
-    out_srs = arguments['out_srs']
+#     tile_x = tile['x']
+#     tile_y = tile['y']
+#     tile_z = tile['z']
 
-    tile_x = tile['x']
-    tile_y = tile['y']
-    tile_z = tile['z']
+#     print("*",end='')
+#     #print("  level :", str(tile_z), "- tuile", tile_x, tile_y)
 
-    print("*",end='')
-    #print("  level :", str(tile_z), "- tuile", tile_x, tile_y)
+#     resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
-    resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
+#     # on cree le graphe et l'ortho
+#     ortho = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_srs)
+#     graph = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_srs)
 
-    # on cree le graphe et l'ortho
-    ortho = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_srs)
-    graph = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_srs)
+#     tile_dir = args.cache+'/'+str(tile_z)+'/'+str(tile_y)+'/'+str(tile_x)
+#     list_filename = glob.glob(tile_dir+'/*.png')
 
-    tile_dir = args.cache+'/'+str(tile_z)+'/'+str(tile_y)+'/'+str(tile_x)
-    list_filename = glob.glob(tile_dir+'/*.png')
+#     is_empty = True
 
-    is_empty = True
+#     for filename in list_filename:
+#         stem = Path(filename).stem
 
-    for filename in list_filename:
-        stem = Path(filename).stem
-
-        color = overviews["list_OPI"][stem]
+#         color = overviews["list_OPI"][stem]
         
-        # on cree une image mono canal pour la tuile
-        mask = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_srs)
+#         # on cree une image mono canal pour la tuile
+#         mask = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_srs)
 
-        # on rasterise la partie du graphe qui concerne ce cliche
-        db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
-        gdal.Rasterize(mask, db_graph, SQLStatement='select geom from ' + args.table + ' where cliche = \''+stem+'\' ')
-        img_mask = mask.GetRasterBand(1).ReadAsArray()
-        # si le mask est vide, on a termine
-        val_max = np.amax(img_mask)
-        if val_max > 0:
-            is_empty = False
+#         # on rasterise la partie du graphe qui concerne ce cliche
+#         db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
+#         gdal.Rasterize(mask, db_graph, SQLStatement='select geom from ' + args.table + ' where cliche = \''+stem+'\' ')
+#         img_mask = mask.GetRasterBand(1).ReadAsArray()
+#         # si le mask est vide, on a termine
+#         val_max = np.amax(img_mask)
+#         if val_max > 0:
+#             is_empty = False
 
-            opi = gdal.Open(filename)
-            for i in range(3):
-                opi_i = opi.GetRasterBand(i+1).ReadAsArray()
-                opi_i[(img_mask == 0)] = 0
+#             opi = gdal.Open(filename)
+#             for i in range(3):
+#                 opi_i = opi.GetRasterBand(i+1).ReadAsArray()
+#                 opi_i[(img_mask == 0)] = 0
 
-                ortho_i = ortho.GetRasterBand(i+1).ReadAsArray()
+#                 ortho_i = ortho.GetRasterBand(i+1).ReadAsArray()
 
-                ortho_i[(img_mask != 0)] = 0
-                ortho.GetRasterBand(i+1).WriteArray(np.add(opi_i, ortho_i))
+#                 ortho_i[(img_mask != 0)] = 0
+#                 ortho.GetRasterBand(i+1).WriteArray(np.add(opi_i, ortho_i))
 
-                graph_i = graph.GetRasterBand(i+1).ReadAsArray()
+#                 graph_i = graph.GetRasterBand(i+1).ReadAsArray()
 
-                graph_i[(img_mask != 0)] = color[i]
-                graph.GetRasterBand(i+1).WriteArray(graph_i)
+#                 graph_i[(img_mask != 0)] = color[i]
+#                 graph.GetRasterBand(i+1).WriteArray(graph_i)
 
-    if not is_empty:
-        dst_ortho = PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
-        dst_graph = PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
-        dst_ortho = None
-        dst_graph = None
-    ortho = None
-    graph = None
+#     if not is_empty:
+#         dst_ortho = PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
+#         dst_graph = PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
+#         dst_ortho = None
+#         dst_graph = None
+#     ortho = None
+#     graph = None
          
 def main():
     """Create or Update the cache for list of input OPI."""
@@ -354,21 +359,21 @@ def main():
     print(" Préparation")
     
     # Calcul des ortho et graph
-    for level in overviews_dict["dataSet"]["limits"]:
-        print("  level :", level)
+    # for level in overviews_dict["dataSet"]["limits"]:
+    #     print("  level :", level)
 
-        level_limits = overviews_dict["dataSet"]["limits"][level]
+    #     level_limits = overviews_dict["dataSet"]["limits"][level]
 
-        for tile_x in range(level_limits["MinTileCol"], level_limits["MaxTileCol"] + 1):    
-            for tile_y in range(level_limits["MinTileRow"], level_limits["MaxTileRow"] + 1):
+    #     for tile_x in range(level_limits["MinTileCol"], level_limits["MaxTileCol"] + 1):    
+    #         for tile_y in range(level_limits["MinTileRow"], level_limits["MaxTileRow"] + 1):
 
-                argument_zyx = {
-                    'tile': {'x': tile_x, 'y': tile_y, 'z': int(level)},
-                    'overviews': overviews_dict,
-                    'conn_string': conn_string,
-                    'out_srs': out_srs
-                }
-                args_create_ortho_and_graph.append(argument_zyx)
+    #             argument_zyx = {
+    #                 'tile': {'x': tile_x, 'y': tile_y, 'z': int(level)},
+    #                 'overviews': overviews_dict,
+    #                 'conn_string': conn_string,
+    #                 'out_srs': out_srs
+    #             }
+    #             args_create_ortho_and_graph.append(argument_zyx)
 
     print(" Calcul")
 
