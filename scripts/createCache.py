@@ -200,10 +200,10 @@ def cut_image_1arg(arguments):
                 # si necessaire on cree le dossier de la tuile             
                 Path(tile_dir).mkdir(parents=True, exist_ok=True)
                 dalle_size_px = {
-                    'width': overviews['tileSize'].width * overviews['slabSize'].width,
-                    'height': overviews['tileSize'].height * overviews['slabSize'].height
+                    'width': overviews['tileSize']['width'] * overviews['slabSize']['width'],
+                    'height': overviews['tileSize']['height'] * overviews['slabSize']['height']
                 }
-                cut_opi_1tile(filename, tile_dir, str_x[i] + str_y[i] + '_' + stem, origin, dalle_size_px, tile, out_srs, nb_bands)
+                cut_opi_1tile(filename, tile_dir, str_x[-1] + str_y[-1] + '_' + stem, origin, dalle_size_px, tile, out_srs, nb_bands)
 
 # def create_ortho_and_graph_1arg(arguments):
 #     """Creation of the ortho and the graph images on a specified tile"""
@@ -305,7 +305,7 @@ def main():
     out_raster_srs.ImportFromEPSG(overviews_init['crs']['code'])
     out_srs = out_raster_srs.ExportToWkt()
 
-    conn_string = "PG:host="+host+" dbname="+database+" user="+user+" password="+password
+    # conn_string = "PG:host="+host+" dbname="+database+" user="+user+" password="+password
 
     list_filename = glob.glob(args.input)
     if verbose > 0:
@@ -346,7 +346,7 @@ def main():
                 'filename': filename,
                 'outSrs': out_srs,
                 'overviews': overviews_init,
-                'slabBox': slabbox_image,
+                'slabbox': slabbox_image,
                 'nbBands': nb_bands
             }
 
@@ -365,14 +365,14 @@ def main():
 
     print('=> DONE')
     
-    print("Génération du graph et de l'ortho (par tuile) :")
-    db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
-    if db_graph is None:
-        raise ValueError("Connection to database failed")
+    # print("Génération du graph et de l'ortho (par tuile) :")
+    # db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
+    # if db_graph is None:
+    #     raise ValueError("Connection to database failed")
 
-    args_create_ortho_and_graph = []
+    # args_create_ortho_and_graph = []
 
-    print(" Préparation")
+    # print(" Préparation")
     
     # Calcul des ortho et graph
     # for level in overviews_dict["dataSet"]["limits"]:
@@ -391,15 +391,15 @@ def main():
     #             }
     #             args_create_ortho_and_graph.append(argument_zyx)
 
-    print(" Calcul")
+    # print(" Calcul")
 
-    POOL = multiprocessing.Pool(cpu_dispo-1)
-    POOL.map(create_ortho_and_graph_1arg, args_create_ortho_and_graph)
+    # POOL = multiprocessing.Pool(cpu_dispo-1)
+    # POOL.map(create_ortho_and_graph_1arg, args_create_ortho_and_graph)
 
-    POOL.close()
-    POOL.join()
+    # POOL.close()
+    # POOL.join()
 
-    print('\n=> DONE')
+    # print('\n=> DONE')
 
     #Finitions
     with open(args.cache+'/cache_mtd.json', 'w') as outfile:
