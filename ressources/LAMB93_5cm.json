@@ -19,5 +19,10 @@
 	"tileSize": {
 		"width": 256,
 		"height": 256
-	}
+	},
+	"dalleSize": {
+		"width": 16,
+		"height": 16
+	},
+	"pathDepth": 4
 }
