@@ -297,18 +297,18 @@ def main():
     except:
         mtd = {}
 
-    cliche_already_calculated = []
+    opi_already_calculated = []
 
     args_cut_image = []
     # Decoupage des images et calcul de l'emprise globale
     print("Découpe des images :")
     print(" Préparation")
     for filename in list_filename:
-        cliche = Path(filename).stem
+        opi = Path(filename).stem
      
-        if (cliche in overviews_dict['list_OPI'].keys()):
+        if (opi in overviews_dict['list_OPI'].keys()):
             # OPI déja traitée
-            cliche_already_calculated.append(cliche)
+            opi_already_calculated.append(opi)
         else:
             print('  image :', filename)
             color = [randrange(255), randrange(255), randrange(255)]
@@ -318,7 +318,7 @@ def main():
                 mtd[color[0]] = {}
             if color[1] not in mtd[color[0]]:
                 mtd[color[0]][color[1]] = {}
-            mtd[color[0]][color[1]][color[2]] = cliche
+            mtd[color[0]][color[1]][color[2]] = opi
  
             tilebox_image = get_tilebox(filename, overviews_init)
 
@@ -333,7 +333,7 @@ def main():
             args_cut_image.append(argument_zyx)  
 
             # on ajout l'OPI traitée a la liste (avec sa couleur)
-            overviews_dict["list_OPI"][cliche] = color
+            overviews_dict["list_OPI"][opi] = color
     
     print(" Découpage" )
 
@@ -397,9 +397,9 @@ def main():
     with open(args.cache+'/overviews.json', 'w') as outfile:
         json.dump(overviews_dict, outfile)
 
-    print("\n", len(list_filename) - len(cliche_already_calculated),"/",len(list_filename),"OPI(s) ajoutée(s)")
-    if len(cliche_already_calculated) > 0:
-        print(cliche_already_calculated, "déjà traitées : OPI non recalculée(s)")
+    print("\n", len(list_filename) - len(opi_already_calculated),"/",len(list_filename),"OPI(s) ajoutée(s)")
+    if len(opi_already_calculated) > 0:
+        print(opi_already_calculated, "déjà traitées : OPI non recalculée(s)")
 
 if __name__ == "__main__":
     main()
