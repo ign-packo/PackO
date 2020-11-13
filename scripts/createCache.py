@@ -14,8 +14,6 @@ from collections import defaultdict
 import multiprocessing
 cpu_dispo = multiprocessing.cpu_count()
 
-os.environ['PROJ_LIB'] = 'C:\\Users\\ftoromanoff\\AppData\\Local\\Programs\\Python\\Python37-32\\Lib\\site-packages\\osgeo\\data\\proj'
-
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--cache", help="cache directory (default: cache)", type=str, default="cache")
 parser.add_argument("-o", "--overviews", help="params for the mosaic (default: ressources/LAMB93_5cm.json)", type=str, default="ressources/LAMB93_5cm.json")
