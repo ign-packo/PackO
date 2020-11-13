@@ -1,3 +1,5 @@
+# coding: utf-8
+
 """This script create or update a cache from a list of OPI"""
 import os
 import math
@@ -295,14 +297,15 @@ def create_ortho_and_graph_1arg(arguments):
     overviews = arguments['overviews']
     conn_string = arguments['conn_string']
     out_srs = arguments['out_srs']
+    advancement = arguments['advancement']
+
+    if advancement != 0:
+        print("█", end='', flush=True)
 
     # besoin : tile_z, tile_x, tile_y
     tile_x = tile['x']
     tile_y = tile['y']
     tile_z = tile['z']
-
-    print("*",end='')
-    #print("  level :", str(tile_z), "- tuile", tile_x, tile_y)
 
     resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
@@ -476,14 +479,30 @@ def main():
                 argument4process.append(argument_zyx)
 
     print(" Calcul")
-    POOL = multiprocessing.Pool(cpu_dispo-1)
+    nb_tiles = len(args_create_ortho_and_graph)
+    print(" ", nb_tiles, "tuiles à traiter")
 
-    POOL.map(create_ortho_and_graph_1arg, argument4process)
+    counter = 0
+    nb_steps = 20
+    if nb_tiles < nb_steps:
+        nb_steps = nb_tiles
+
+    print("   0" + nb_steps * "_" + "100")
+
+    for i in range(nb_tiles):
+        args_create_ortho_and_graph[i]['advancement'] = 0
+        if ( math.floor(i%(nb_tiles / nb_steps )) == 0 ):
+            counter = counter + 1
+            args_create_ortho_and_graph[i]['advancement'] = counter * nb_steps
+    
+    print('   |', end='', flush=True)
+    POOL = multiprocessing.Pool(cpu_dispo - 1)
+    POOL.map(create_ortho_and_graph_1arg, args_create_ortho_and_graph)
 
     POOL.close()
     POOL.join()
-
-    print('\n=> DONE')
+    print("|")
+    print('=> DONE')
 
     #Finitions
     with open(args.cache+'/cache_mtd.json', 'w') as outfile:
