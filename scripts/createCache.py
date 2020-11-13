@@ -193,13 +193,14 @@ def create_ortho_and_graph_1arg(arguments):
     overviews = arguments['overviews']
     conn_string = arguments['conn_string']
     out_srs = arguments['out_srs']
+    advancement = arguments['advancement']
+
+    if advancement != 0:
+        print("  ",advancement,"% terminée")
 
     tile_x = tile['x']
     tile_y = tile['y']
     tile_z = tile['z']
-
-    print("*",end='')
-    #print("  level :", str(tile_z), "- tuile", tile_x, tile_y)
 
     resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
@@ -371,6 +372,15 @@ def main():
                 args_create_ortho_and_graph.append(argument_zyx)
 
     print(" Calcul")
+    nb_tiles = len(args_create_ortho_and_graph)
+    print(" ", nb_tiles, "tuiles a traitées")
+
+    counter = 0
+    for i in range(nb_tiles):
+        args_create_ortho_and_graph[i]['advancement'] = 0
+        if ( math.floor(i%(nb_tiles * 0.1)) == 0 ):
+            counter = counter + 1
+            args_create_ortho_and_graph[i]['advancement'] = counter * 10
 
     POOL = multiprocessing.Pool(cpu_dispo-1)
     POOL.map(create_ortho_and_graph_1arg, args_create_ortho_and_graph)
@@ -378,7 +388,7 @@ def main():
     POOL.close()
     POOL.join()
 
-    print('\n=> DONE')
+    print('=> DONE')
 
     #Finitions
     with open(args.cache+'/cache_mtd.json', 'w') as outfile:
