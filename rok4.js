@@ -2,13 +2,30 @@ const path = require('path');
 const fs = require('fs');
 const debug = require('debug')('rok4');
 
-function getNbBytes(dataType){
-  switch(dataType){
+const TAGS = {
+  256: 'ImageWidth',
+  257: 'ImageHeight',
+  258: 'BitsPerSample',
+  259: 'Compression',
+  262: 'PhotometricInterpretation',
+  273: 'StripOffsets',
+  277: 'SamplesPerPixel',
+  278: 'RowsPerStrip',
+  279: 'StripByteCounts',
+  322: 'TileWidth',
+  323: 'TileLength',
+  324: 'TileOffsets',
+  325: 'TileByteCounts',
+  339: 'SampleFormat',
+};
+
+function getNbBytes(dataType) {
+  switch (dataType) {
     case 7:
-    case 1: 
+    case 1:
     case 6:
       return 1;
-    case 2: 
+    case 2:
       return null;
     case 3:
     case 8:
@@ -16,17 +33,19 @@ function getNbBytes(dataType){
     case 4:
     case 9:
     case 11:
-        return 4;
+      return 4;
     case 5:
     case 10:
     case 12:
-        return 8;
+      return 8;
+    default:
+      return null;
   }
 }
 
 // Lecture d'un Tag Tiff
-function readTag(buffer, offset){
-  let tag = {};
+function readTag(buffer, offset) {
+  const tag = {};
   tag.tagID = buffer.readUInt16(offset);
   tag.dataType = buffer.readUInt16(offset + 2);
   tag.dataCount = buffer.readUInt32(offset + 4);
@@ -34,193 +53,213 @@ function readTag(buffer, offset){
   const nbBytes = getNbBytes(tag.dataType);
   if ((nbBytes * tag.dataCount) <= 4) tag.dataOffset = offset + 8;
   tag.values = [];
-  switch(tag.dataType){
+  switch (tag.dataType) {
     case 7:
-    case 1: 
+    case 1:
     // Byte
-      for(let i = 0; i < tag.dataCount; i+= 1){
+      for (let i = 0; i < tag.dataCount; i += 1) {
         tag.values.push(buffer.readUInt8(tag.dataOffset + i * nbBytes));
       }
       break;
-    case 2: 
+    case 2:
       // Null terminated string
-        // values = buffer.readUInt8(offset + 8);
+      // values = buffer.readUInt8(offset + 8);
       break;
     case 3:
       // Short
-      for(let i = 0; i < tag.dataCount; i+= 1){
+      for (let i = 0; i < tag.dataCount; i += 1) {
         tag.values.push(buffer.readUInt16(tag.dataOffset + i * nbBytes));
       }
       break;
     case 4:
-        // Long
-        for(let i = 0; i < tag.dataCount; i+= 1){
-          tag.values.push(buffer.readUInt32(tag.dataOffset + i * nbBytes));
-        }
-        break;
+      // Long
+      for (let i = 0; i < tag.dataCount; i += 1) {
+        tag.values.push(buffer.readUInt32(tag.dataOffset + i * nbBytes));
+      }
+      break;
     case 5:
-        // Rational
-        for(let i = 0; i < tag.dataCount; i+= 1){
-          tag.values.push([buffer.readUInt32(tag.dataOffset + i * nbBytes), buffer.readUInt32(tag.dataOffset + i * nbBytes+ 4)]);
-        }
-        break;
+      // Rational
+      for (let i = 0; i < tag.dataCount; i += 1) {
+        tag.values.push([
+          buffer.readUInt32(tag.dataOffset + i * nbBytes),
+          buffer.readUInt32(tag.dataOffset + i * nbBytes + 4)]);
+      }
+      break;
     case 6:
-        // Signed Byte
-        for(let i = 0; i < tag.dataCount; i+= 1){
-          tag.values.push(buffer.readInt8(tag.dataOffset + i * nbBytes));
-        }
-        break;
+      // Signed Byte
+      for (let i = 0; i < tag.dataCount; i += 1) {
+        tag.values.push(buffer.readInt8(tag.dataOffset + i * nbBytes));
+      }
+      break;
     case 8:
-        // Signed Short
-        for(let i = 0; i < tag.dataCount; i+= 1){
-          tag.values.push(buffer.readInt16(tag.dataOffset + i * nbBytes));
-        }
-        break;
+      // Signed Short
+      for (let i = 0; i < tag.dataCount; i += 1) {
+        tag.values.push(buffer.readInt16(tag.dataOffset + i * nbBytes));
+      }
+      break;
     case 9:
-        // Signed Long
-        for(let i = 0; i < tag.dataCount; i+= 1){
-          tag.values.push(buffer.readInt32(tag.dataOffset + i * nbBytes));
-        }
-        break;
+      // Signed Long
+      for (let i = 0; i < tag.dataCount; i += 1) {
+        tag.values.push(buffer.readInt32(tag.dataOffset + i * nbBytes));
+      }
+      break;
     case 10:
-        // Signed Rational
-        for(let i = 0; i < tag.dataCount; i+= 1){
-          tag.values.push([buffer.readInt32(tag.dataOffset), buffer.readInt32(tag.dataOffset + 4)]);
-        }
-        break;
+      // Signed Rational
+      for (let i = 0; i < tag.dataCount; i += 1) {
+        tag.values.push([buffer.readInt32(tag.dataOffset), buffer.readInt32(tag.dataOffset + 4)]);
+      }
+      break;
     case 11:
       // Float
-      for(let i = 0; i < tag.dataCount; i+= 1){
+      for (let i = 0; i < tag.dataCount; i += 1) {
         tag.values.push(buffer.readFloat(tag.dataOffset + i * nbBytes));
       }
       break;
     case 12:
       // Double
-      for(let i = 0; i < tag.dataCount; i+= 1){
+      for (let i = 0; i < tag.dataCount; i += 1) {
         tag.values.push(buffer.readDouble(tag.dataOffset + i * nbBytes));
       }
       break;
+    default:
   }
   return tag;
 }
 
-function createTag(tag, buffer, offset){
-  let pos = offset;
+function createTag(tag, buffer, offset) {
+  const pos = offset;
   pos.in = buffer.writeUInt16(tag.tagID, pos.in);
   pos.in = buffer.writeUInt16(tag.dataType, pos.in);
   pos.in = buffer.writeUInt32(tag.dataCount, pos.in);
   const nbBytes = getNbBytes(tag.dataType);
   let p = pos.in;
-  if ((nbBytes * tag.dataCount) > 4){
+  if ((nbBytes * tag.dataCount) > 4) {
     pos.in = buffer.writeUInt32(pos.out, pos.in);
     p = pos.out;
   }
-  switch(tag.dataType){
+  switch (tag.dataType) {
     case 7:
-    case 1: 
+    case 1:
     // Byte
-      for(let i = 0; i < tag.dataCount; i+= 1){
+      for (let i = 0; i < tag.dataCount; i += 1) {
         p = buffer.writeUInt8(tag.values[i], p);
       }
       break;
-    case 2: 
+    case 2:
       // Null terminated string
-        // values = buffer.readUInt8(offset + 8);
+      // values = buffer.readUInt8(offset + 8);
       break;
     case 3:
       // Short
-      for(let i = 0; i < tag.dataCount; i+= 1){
+      for (let i = 0; i < tag.dataCount; i += 1) {
         p = buffer.writeUInt16(tag.values[i], p);
       }
       break;
     case 4:
-        // Long
-        for(let i = 0; i < tag.dataCount; i+= 1){
-          p = buffer.writeUInt32(tag.values[i], p);
-        }
-        break;
+      // Long
+      for (let i = 0; i < tag.dataCount; i += 1) {
+        p = buffer.writeUInt32(tag.values[i], p);
+      }
+      break;
     case 5:
-        // Rational
-        for(let i = 0; i < tag.dataCount; i+= 1){
-          p = buffer.writeUInt32(tag.values[i][0], p);
-          p = buffer.writeUInt32(tag.values[i][1], p);
-        }
-        break;
+      // Rational
+      for (let i = 0; i < tag.dataCount; i += 1) {
+        p = buffer.writeUInt32(tag.values[i][0], p);
+        p = buffer.writeUInt32(tag.values[i][1], p);
+      }
+      break;
     case 6:
-        // Signed Byte
-        for(let i = 0; i < tag.dataCount; i+= 1){
-          p = buffer.writeInt8(tag.values[i], p);
-        }
-        break;
+      // Signed Byte
+      for (let i = 0; i < tag.dataCount; i += 1) {
+        p = buffer.writeInt8(tag.values[i], p);
+      }
+      break;
     case 8:
-        // Signed Short
-        for(let i = 0; i < tag.dataCount; i+= 1){
-          p = buffer.writeInt16(tag.values[i], p);
-        }
-        break;
+      // Signed Short
+      for (let i = 0; i < tag.dataCount; i += 1) {
+        p = buffer.writeInt16(tag.values[i], p);
+      }
+      break;
     case 9:
-        // Signed Long
-        for(let i = 0; i < tag.dataCount; i+= 1){
-          p = buffer.writeInt32(tag.values[i], p);
-        }
-        break;
+      // Signed Long
+      for (let i = 0; i < tag.dataCount; i += 1) {
+        p = buffer.writeInt32(tag.values[i], p);
+      }
+      break;
     case 10:
-        // Signed Rational
-        for(let i = 0; i < tag.dataCount; i+= 1){
-          p = buffer.writeInt32(tag.values[i][0], p);
-          p = buffer.writeInt32(tag.values[i][1], p);
-        }
-        break;
+      // Signed Rational
+      for (let i = 0; i < tag.dataCount; i += 1) {
+        p = buffer.writeInt32(tag.values[i][0], p);
+        p = buffer.writeInt32(tag.values[i][1], p);
+      }
+      break;
     case 11:
       // Float
-      for(let i = 0; i < tag.dataCount; i+= 1){
+      for (let i = 0; i < tag.dataCount; i += 1) {
         p = buffer.writeFloat(tag.values[i], p);
       }
       break;
     case 12:
       // Double
-      for(let i = 0; i < tag.dataCount; i+= 1){
+      for (let i = 0; i < tag.dataCount; i += 1) {
         p = buffer.writeDouble(tag.values[i], p);
       }
       break;
+    default:
   }
-  if ((nbBytes * tag.dataCount) > 4){
+  if ((nbBytes * tag.dataCount) > 4) {
     pos.out = p;
-  }
-  else {
+  } else {
     pos.in += 4;
   }
   return pos;
 }
 
 // Lecture d'un IFD Tiff
-function readIFD(buffer, offset){
-  let ifd = {};
+function readIFD(buffer, offset) {
+  const ifd = {};
   ifd.numDirEntries = buffer.readUInt16(offset);
   ifd.nextIFDOffset = buffer.readUInt32(offset + 2 + ifd.numDirEntries * 12);
-  debug(ifd);
-  for(let i = 0;i < ifd.numDirEntries; i += 1){
-    let tag = readTag(buffer, offset + 2 + i * 12);
-    debug(tag);
+  for (let i = 0; i < ifd.numDirEntries; i += 1) {
+    const tag = readTag(buffer, offset + 2 + i * 12);
     ifd[tag.tagID] = tag;
   }
   return ifd;
 }
 
 // Creation d'un IFD Tiff
-function createTileIFD(ifd, buffer, tileSize, offset){
+function createTileIFD(ifd, buffer, tileSize, offset) {
   let pos = offset;
   pos.in = buffer.writeUInt16(11, pos.in);
-  pos = createTag({tagID: 256, dataType: 4, dataCount:1, values: ifd[322].values}, buffer, pos);
-  pos = createTag({tagID: 257, dataType: 4, dataCount:1, values: ifd[323].values}, buffer, pos);
+  // width = tileWidth
+  pos = createTag({
+    tagID: 256, dataType: 4, dataCount: 1, values: ifd[322].values,
+  }, buffer, pos);
+  // height = tileHeight
+  pos = createTag({
+    tagID: 257, dataType: 4, dataCount: 1, values: ifd[323].values,
+  }, buffer, pos);
+  // BitsPerSample
   pos = createTag(ifd[258], buffer, pos);
+  // Compression
   pos = createTag(ifd[259], buffer, pos);
+  // PhotometricInterpretation
   pos = createTag(ifd[262], buffer, pos);
+  // StripOffsets
+  pos = createTag({
+    tagID: 273, dataType: 4, dataCount: 1, values: [4096],
+  }, buffer, pos);
+  // SamplesPerPixel
   pos = createTag(ifd[277], buffer, pos);
-  pos = createTag(ifd[322], buffer, pos);
-  pos = createTag(ifd[323], buffer, pos);
-  pos = createTag({tagID: 324, dataType: 4, dataCount:1, values: [4096]}, buffer, pos);
-  pos = createTag({tagID: 325, dataType: 4, dataCount:1, values: [tileSize]}, buffer, pos);
+  // RowsPerStrip = tileHeight
+  pos = createTag({
+    tagID: 278, dataType: 4, dataCount: 1, values: ifd[323].values,
+  }, buffer, pos);
+  // StripByteCounts
+  pos = createTag({
+    tagID: 279, dataType: 4, dataCount: 1, values: [tileSize],
+  }, buffer, pos);
+  // SampleFormat
   pos = createTag(ifd[339], buffer, pos);
   pos.in = buffer.writeUInt32(0, pos.in);
   return pos;
@@ -232,19 +271,18 @@ function getHeader(url) {
   const dalle = fs.openSync(url);
   // decodage de l'enete Tiff
   const buffer = Buffer.alloc(4096);
-  let header = {};
+  const header = {};
   fs.readSync(dalle, buffer, 0, buffer.byteLength);
   // Byte order
   header.magic = buffer.toString('utf8', 0, 2);
-  if (header.magic === 'II'){
+  if (header.magic === 'II') {
     buffer.readUInt16 = buffer.readUInt16LE;
     buffer.readInt16 = buffer.readInt16LE;
     buffer.readUInt32 = buffer.readUInt32LE;
     buffer.readInt32 = buffer.readUInt32LE;
     buffer.readFloat = buffer.readFloatLE;
     buffer.readDouble = buffer.readDoubleLE;
-  }
-  else{
+  } else {
     buffer.readUInt16 = buffer.readUInt16BE;
     buffer.readInt16 = buffer.readInt16BE;
     buffer.readUInt32 = buffer.readUInt32BE;
@@ -255,9 +293,8 @@ function getHeader(url) {
   header.tiffFormat = buffer.readUInt16(2);
   header.ifds = [];
   let ifdOffset = buffer.readUInt16(4);
-  debug('ifdOffset :', ifdOffset);
-  while(ifdOffset != 0){
-    let ifd = readIFD(buffer, ifdOffset);
+  while (ifdOffset !== 0) {
+    const ifd = readIFD(buffer, ifdOffset);
     header.ifds.push(ifd);
     ifdOffset = ifd.nextIFDOffset;
   }
@@ -266,17 +303,16 @@ function getHeader(url) {
   return header;
 }
 
-function createTileHeader(header, tileSize){
+function createTileHeader(header, tileSize) {
   const buffer = Buffer.alloc(4096, 0);
-  if (header.magic === 'II'){
+  if (header.magic === 'II') {
     buffer.writeUInt16 = buffer.writeUInt16LE;
     buffer.writeInt16 = buffer.writeInt16LE;
     buffer.writeUInt32 = buffer.writeUInt32LE;
     buffer.writeInt32 = buffer.writeUInt32LE;
     buffer.writeFloat = buffer.writeFloatLE;
     buffer.writeDouble = buffer.writeDoubleLE;
-  }
-  else{
+  } else {
     buffer.writeUInt16 = buffer.writeUInt16BE;
     buffer.writeInt16 = buffer.writeInt16BE;
     buffer.writeUInt32 = buffer.writeUInt32BE;
@@ -286,8 +322,9 @@ function createTileHeader(header, tileSize){
   }
   let pos = buffer.write(header.magic);
   pos = buffer.writeUInt16(header.tiffFormat, pos);
-  pos = buffer.writeUInt16(pos+2, pos);
-  createTileIFD(header.ifds[0], buffer, tileSize, {in:pos, out:2048});
+  pos = buffer.writeUInt16(16, pos);
+  pos = 16;
+  createTileIFD(header.ifds[0], buffer, tileSize, { in: pos, out: 2048 });
   return buffer;
 }
 
@@ -393,10 +430,10 @@ function test() {
   setTile(tile1, 16, 3, '.', '.tif', buffer1);
   const buffer2 = Buffer.alloc(200, 7);
   const tile2 = { x: 415, y: 3134, z: 12 };
-  setTile(tile2, 16, 3, '.', '.tif',  buffer2);
+  setTile(tile2, 16, 3, '.', '.tif', buffer2);
   const buffer3 = Buffer.alloc(400, 255);
   const tile3 = { x: 415, y: 3135, z: 12 };
-  setTile(tile3, 16, 3, '.', '.tif',  buffer3);
+  setTile(tile3, 16, 3, '.', '.tif', buffer3);
 
   // Lecture d'un tuile
   const buffer1Verif = getTile(tile1, 16, 3, '.', '.tif');
@@ -407,58 +444,37 @@ function test() {
     && buffer3.equals(buffer3Verif);
 }
 
-const url = '/Users/gmaillet/GitHub/ign-packo/PackO-CreateCacheROK4/cache/20/00/00/FT/LO_19FD5606Ax00013_03353.tif';
-const header = getHeader(url);
-debug('Nombre de tuiles : ', header.ifds[0][324].values.length);
-// for(let i = 0; i < header.ifds[0][324].values.length; i += 1){
-//   debug(i, ' -- off : ', header.ifds[0][324].values[i], 'size : ', header.ifds[0][325].values[i]); 
-// }
-// Les tags à gérer
-const TAGS = {
-  256: 'ImageWidth',
-  257: 'ImageHeight',
-  258: 'BitsPerSample',
-  259: 'Compression',
-  262: 'PhotometricInterpretation',
-  277: 'SamplesPerPixel',
-  322: 'TileWidth',
-  323: 'TileLength',
-  324: 'TileOffsets',
-  325: 'TileByteCounts',
-  339: 'SampleFormat',
+function tiffInfo(url) {
+  const header = getHeader(url);
+  Object.keys(TAGS).forEach((tagId) => {
+    if (header.ifds[0][tagId]) debug(TAGS[tagId], ' -- ', header.ifds[0][tagId].values);
+  });
 }
 
-for(const tagId in TAGS){
-  // debug(TAGS[tagId], ' -- ', header.ifds[0][tagId].values);
-  debug(TAGS[tagId], ' -- ', header.ifds[0][tagId]);
-}
-
-for(let i = 0; i < 1/*header.ifds[0][324].values.length*/; i += 1){
-  // create d'un fichier Tiff pour la tuile
-  const tileUrl = `tile_${i}.tif`;
-  const tile = fs.openSync(tileUrl, 'w');
-  // on ecrit le header
-  tileHeader = createTileHeader(header, header.ifds[0][325].values[i]);
-  let pos = fs.writeSync(tile, tileHeader, 0, tileHeader.byteLength);
-  // on charge la tuile
-  const dalle = fs.openSync(url);
-  const buffer = Buffer.alloc(header.ifds[0][325].values[i]);
-  fs.readSync(dalle, buffer, 0, buffer.byteLength, header.ifds[0][324].values[i]);
-  // on ferme le fichier de la dalle
-  fs.closeSync(dalle);
-  // on ecrit le buffer
-  fs.writeSync(tile, buffer, 0, buffer.byteLength, pos);
-  // on ferme le fichier de la tuile
-  fs.closeSync(tile);
-  const headerTile = getHeader(tileUrl);
-  debug(headerTile);
-  for(const tagId in TAGS){
-    // debug(TAGS[tagId], ' -- ', header.ifds[0][tagId].values);
-    debug(TAGS[tagId], ' -- ', headerTile.ifds[0][tagId]);
+function extractAllTiles(urlIn, urlOut) {
+  const header = getHeader(urlIn);
+  for (let i = 0; i < header.ifds[0][324].values.length; i += 1) {
+    // create d'un fichier Tiff pour la tuile
+    const tileUrl = `${urlOut}_${i}.tif`;
+    const tile = fs.openSync(tileUrl, 'w');
+    // on ecrit le header
+    const tileHeader = createTileHeader(header, header.ifds[0][325].values[i]);
+    const pos = fs.writeSync(tile, tileHeader, 0, tileHeader.byteLength);
+    // on charge la tuile
+    const dalle = fs.openSync(urlIn);
+    const buffer = Buffer.alloc(header.ifds[0][325].values[i]);
+    fs.readSync(dalle, buffer, 0, buffer.byteLength, header.ifds[0][324].values[i]);
+    // on ferme le fichier de la dalle
+    fs.closeSync(dalle);
+    // on ecrit le buffer
+    fs.writeSync(tile, buffer, 0, buffer.byteLength, pos);
+    // on ferme le fichier de la tuile
+    fs.closeSync(tile);
   }
 }
 
-
+tiffInfo('test.tif');
+extractAllTiles('test.tif', 'out');
 
 exports.getTile = getTile;
 exports.setTile = setTile;
