@@ -196,7 +196,7 @@ def create_ortho_and_graph_1arg(arguments):
     advancement = arguments['advancement']
 
     if advancement != 0:
-        print("  ",advancement,"% terminée")
+        print("  ",advancement,"% terminé")
 
     tile_x = tile['x']
     tile_y = tile['y']
