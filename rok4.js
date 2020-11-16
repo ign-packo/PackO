@@ -265,12 +265,9 @@ function createTileIFD(ifd, buffer, tileSize, offset) {
   return pos;
 }
 
-// Recuperation des infos sur une dalle
-function getHeader(dalle) {
-  // decodage de l'enete Tiff
-  const buffer = Buffer.alloc(4096);
+// deocde du header tiff
+function decodeHeader(buffer) {
   const header = {};
-  fs.readSync(dalle, buffer, 0, buffer.byteLength, 0);
   // Byte order
   header.magic = buffer.toString('utf8', 0, 2);
   if (header.magic === 'II') {
@@ -297,6 +294,14 @@ function getHeader(dalle) {
     ifdOffset = ifd.nextIFDOffset;
   }
   return header;
+}
+
+// Recuperation des infos sur une dalle
+function getHeader(dalle) {
+  // decodage de l'enete Tiff
+  const buffer = Buffer.alloc(4096);
+  fs.readSync(dalle, buffer, 0, buffer.byteLength, 0);
+  return decodeHeader(buffer);
 }
 
 function createTileHeader(header, tileSize, buffer) {
@@ -343,16 +348,18 @@ function getTile(dalle, numTile, png) {
 }
 
 // Mise à jour d'une tuile dans une dalle au format rok4
-function setTile(urlDalle, numTile, buffer) {
-  let bufferDalle;
+function setTile(urlDalle, numTile, png, buffer) {
+  if (!png){
+    debug('Cas non géré');
+    return;
+  }
   debug('Mise a jour de la dalle ', urlDalle);
   debug('Ecriture de la tuile : ', numTile);
-  // ouverture en lecture seule de la dalle
-  const dalle = fs.openSync(urlDalle);
   // lecture complete du fichier
-  bufferDalle = fs.readFileSync(dalle);
-  // fermeture de la dalle
-  fs.closeSync(dalle);
+  bufferDalle = fs.readFileSync(urlDalle);
+  // decodage de l'entete
+  const header = decodeHeader(bufferDalle);
+  const nbTiles = header.ifds[0][325].values.length;
   // decodage des offsets/ByteCounts
   const offsets = new Uint32Array(
     bufferDalle.buffer,
@@ -360,12 +367,12 @@ function setTile(urlDalle, numTile, buffer) {
     2 * nbTiles,
   );
   // création d'un offsets mis à jour
-  const oldBufferByteCount = offsets[N + numTile];
+  const oldBufferByteCount = offsets[nbTiles + numTile];
   const newOffsets = Uint32Array.from(offsets);
-  for (let n = (numTile + 1); n < N; n += 1) {
+  for (let n = (numTile + 1); n < nbTiles; n += 1) {
     newOffsets[n] += buffer.byteLength - oldBufferByteCount;
   }
-  newOffsets[N + numTile] = buffer.byteLength;
+  newOffsets[nbTiles + numTile] = buffer.byteLength;
   // on ecrase la dalle avec la mise à jour
   const newDalle = fs.openSync(urlDalle, 'w');
   // ecriture du header
@@ -377,12 +384,12 @@ function setTile(urlDalle, numTile, buffer) {
     fs.writeSync(newDalle,
       bufferDalle,
       2048 + offsets.byteLength,
-      offsets[numTile - 1] + offsets[N + numTile - 1]);
+      offsets[numTile - 1] + offsets[nbTiles + numTile - 1]);
   }
   // ecriture de la nouvelle tuile
   fs.writeSync(newDalle, buffer, 0, buffer.byteLength);
   // ecriture des dernières tuiles si necessaire
-  if ((numTile + 1) < N) {
+  if ((numTile + 1) < nbTiles) {
     fs.writeSync(newDalle,
       bufferDalle,
       offsets[numTile + 1],
@@ -428,6 +435,21 @@ function extractAllTiles(urlIn, urlOut, ext) {
   });
 }
 
+function getUrl(X, Y, Z, slabSize, pathDepth) {
+  const strX = Math.trunc(X / slabSize.width).toString(36).padStart(pathDepth, 0).toUpperCase();
+  const strY = Math.trunc(Y / slabSize.height).toString(36).padStart(pathDepth, 0).toUpperCase();
+  debug(strX, strY);
+  let url = Z;	  
+  for (let i = 0; i < (pathDepth - 1); i += 1) {
+    url = path.join(url, strX[i] + strY[i]);
+  }
+  return path.join(url, strX[3] + strY[3]);
+}
+
+function getNumTile(X, Y, slabSize) {
+  return (Y % slabSize.height) * slabSize.width + (X % slabSize.width);
+}
+
 // tiffInfo('testJPG.tif');
 // extractAllTiles('testPNG.tif', 'outPNG', true);
 // extractAllTiles('testLZW.tif', 'outLZW', false);
@@ -435,3 +457,5 @@ function extractAllTiles(urlIn, urlOut, ext) {
 
 exports.getTile = getTile;
 exports.setTile = setTile;
+exports.getUrl = getUrl;
+exports.getNumTile = getNumTile;

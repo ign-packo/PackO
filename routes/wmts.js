@@ -277,16 +277,10 @@ router.get('/wmts', [
         [layerName] = overviews.list_OPI;
       }
     }
-    const X = Math.trunc(TILECOL / 16).toString(36).padStart(4, 0).toUpperCase();
-    const Y = Math.trunc(TILEROW / 16).toString(36).padStart(4, 0).toUpperCase();
-    let url = path.join(global.dir_cache, TILEMATRIX);	  
-    for (let i = 0; i < 3; i += 1) {
-      url = path.join(url, X[i] + Y[i]);
-    }
-    layerName = '19FD5606Ax00013_03352';
-    url = path.join(url, X[3] + Y[3] + `_${layerName}.tif`);
+    url = path.join(global.dir_cache, rok4.getUrl(TILECOL, TILEROW, TILEMATRIX, overviews.slabSize, overviews.pathDepth));
+    // layerName = '19FD5606Ax00013_03352';
+    url += `_${layerName}.tif`;
     debugGetTile('Traitement de ', url, ' pour ', TILEMATRIX, TILECOL, TILEROW);
-    const png = false;
     fs.open(url, 'r', (err, dalle) => {
       if (err) {
         debugGetTile('error sur ', TILEMATRIX, TILECOL, TILEROW, ' -> on renvoit une dalle noire');
@@ -297,12 +291,12 @@ router.get('/wmts', [
         });
         return;
       }
-      const numTile = (TILEROW % 16) * 16 + (TILECOL % 16);
-      const tile = rok4.getTile(dalle, numTile, png);
+      const numTile = rok4.getNumTile(TILECOL,TILEROW, overviews.slabSize);
+      const tile = rok4.getTile(dalle, numTile, overviews.png);
       fs.close(dalle, (err) => {
         if (err) throw err;
       });
-      if (png && mime === Jimp.MIME_PNG){
+      if (overviews.png && mime === Jimp.MIME_PNG){
         debugGetTile('version sans transtypage');
         res.send(tile);
       } else {
@@ -318,33 +312,27 @@ router.get('/wmts', [
   } else if (REQUEST === 'GetFeatureInfo') {
     debug('~~~GetFeatureInfo');
     debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-    const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, 'graph.png');
-
-    if (!fs.existsSync(url)) {
-      const erreur = new Error();
-      erreur.msg = {
-        status: 'out of bounds',
-        errors: [{
-          localisation: 'GetFeatureInfo',
-          msg: 'out of bounds',
-        }],
-      };
-      res.status(400).send(erreur.msg);
-    } else {
-      Jimp.read(url, (err, image) => {
-        if (err) {
-          const erreur = new Error();
-          erreur.msg = {
-            status: err,
-            errors: [{
-              localisation: 'Jimp.read()',
-              msg: err,
-            }],
-          };
-          res.status(500).send(erreur.msg);
-        // res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
-        } else {
-          const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
+    url = path.join(global.dir_cache, rok4.getUrl(TILECOL, TILEROW, TILEMATRIX, overviews.slabSize, overviews.pathDepth));
+    url += '_graph.tif';
+    fs.open(url, 'r', (err, dalle) => {
+      if (err) {
+        const erreur = new Error();
+        erreur.msg = {
+          status: 'out of bounds',
+          errors: [{
+            localisation: 'GetFeatureInfo',
+            msg: 'out of bounds',
+          }],
+        };
+        res.status(400).send(erreur.msg);
+      }
+      const numTile = rok4.getNumTile(X,Y, overviews.slabSize);
+      const tile = rok4.getTile(dalle, numTile, overviews.png);
+      fs.close(dalle, (err) => {
+        if (err) throw err;
+      });
+      Jimp.read(tile).then( (image) => {
+        const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
           debugFeatureInfo('index: ', index);
           const out = {
             color: [image.bitmap.data[index],
@@ -377,10 +365,9 @@ router.get('/wmts', [
                              + '</featureMember>'
                            + '</ReguralGriddedElevations>';
           res.status(200).send(testResponse);
-        }
+        });
       });
     }
-  }
 });
 
 module.exports = router;

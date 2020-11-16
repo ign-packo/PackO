@@ -60,18 +60,19 @@ def cut_opi_1tile(filename, tile_dir, image_name, origin, tileSize, tile, out_ra
 
     return
 
-# def create_blank_tile(overviews, tile, nb_canaux, out_srs):
-#     """Return a blank georef image for a tile."""
-#     origin_x = overviews['crs']['boundingBox']['xmin'] + tile['x'] * tile['resolution'] * overviews['tileSize']['width']
-#     origin_y = overviews['crs']['boundingBox']['ymax'] - tile['y'] * tile['resolution'] * overviews['tileSize']['height']
-#     target_ds = gdal.GetDriverByName('MEM').Create('',
-#                                                    overviews['tileSize']['width'], overviews['tileSize']['height'],
-#                                                    nb_canaux, gdal.GDT_Byte)
-#     target_ds.SetGeoTransform((origin_x, tile['resolution'], 0,
-#                                origin_y, 0, -tile['resolution']))
-#     target_ds.SetProjection(out_srs)
-#     target_ds.FlushCache()
-#     return target_ds
+def create_blank_slab(overviews, slab, nb_canaux, out_srs):
+    """Return a blank georef image for a slab."""
+    origin_x = overviews['crs']['boundingBox']['xmin'] + slab['x'] * slab['resolution'] * overviews['tileSize']['width'] * overviews['slabSize']['width']
+    origin_y = overviews['crs']['boundingBox']['ymax'] - slab['y'] * slab['resolution'] * overviews['tileSize']['height'] * overviews['slabSize']['height']
+    target_ds = gdal.GetDriverByName('MEM').Create('',
+                                                   overviews['tileSize']['width'] * overviews['slabSize']['width'], 
+                                                   overviews['tileSize']['height'] * overviews['slabSize']['height'],
+                                                   nb_canaux, gdal.GDT_Byte)
+    target_ds.SetGeoTransform((origin_x, slab['resolution'], 0,
+                               origin_y, 0, -slab['resolution']))
+    target_ds.SetProjection(out_srs)
+    target_ds.FlushCache()
+    return target_ds
 
 def get_image_limits(filename):
     """Return limits for a georef image"""
@@ -205,73 +206,80 @@ def cut_image_1arg(arguments):
                 }
                 cut_opi_1tile(filename, tile_dir, str_x[-1] + str_y[-1] + '_' + stem, origin, dalle_size_px, tile, out_srs, nb_bands)
 
-# def create_ortho_and_graph_1arg(arguments):
-#     """Creation of the ortho and the graph images on a specified tile"""
-#     if verbose > 0:
-#         print("~~~create_ortho_and_graph_1arg")
+def create_ortho_and_graph_1arg(arguments):
+    """Creation of the ortho and the graph images on a specified tile"""
+    if verbose > 0:
+        print("~~~create_ortho_and_graph_1arg")
 
-#     tile = arguments['tile']
-#     overviews = arguments['overviews']
-#     conn_string = arguments['conn_string']
-#     out_srs = arguments['out_srs']
+    slab = arguments['slab']
+    overviews = arguments['overviews']
+    conn_string = arguments['conn_string']
+    out_srs = arguments['out_srs']
 
-#     tile_x = tile['x']
-#     tile_y = tile['y']
-#     tile_z = tile['z']
+    slab_x = slab['x']
+    slab_y = slab['y']
+    slab_z = slab['z']
 
-#     print("*",end='')
-#     #print("  level :", str(tile_z), "- tuile", tile_x, tile_y)
+    print("*",end='')
+    #print("  level :", str(tile_z), "- tuile", tile_x, tile_y)
 
-#     resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
+    resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - slab_z)
 
-#     # on cree le graphe et l'ortho
-#     ortho = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_srs)
-#     graph = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_srs)
+    # on cree le graphe et l'ortho
+    ortho = create_blank_slab(overviews, {'x': slab_x, 'y': slab_y, 'resolution': resolution}, 3, out_srs)
+    graph = create_blank_slab(overviews, {'x': slab_x, 'y': slab_y, 'resolution': resolution}, 3, out_srs)
 
-#     tile_dir = args.cache+'/'+str(tile_z)+'/'+str(tile_y)+'/'+str(tile_x)
-#     list_filename = glob.glob(tile_dir+'/*.png')
+    # calcul du chemin en base 36 avec la bonne profondeur
+    str_x = base_repr(slab_x, 36).zfill(overviews['pathDepth'])
+    str_y = base_repr(slab_y, 36).zfill(overviews['pathDepth'])
+    slab_dir = args.cache+'/'+str(slab_z)
+    for i in range(overviews['pathDepth']):
+        slab_dir += '/' + str_x[i] + str_y[i]
 
-#     is_empty = True
+    # tile_dir = args.cache+'/'+str(tile_z)+'/'+str(tile_y)+'/'+str(tile_x)
+    list_filename = glob.glob(slab_dir+'_*.png')
 
-#     for filename in list_filename:
-#         stem = Path(filename).stem
+    is_empty = True
 
-#         color = overviews["list_OPI"][stem]
+    for filename in list_filename:
+        stem = Path(filename).stem[3:]
+
+        color = overviews["list_OPI"][stem]
         
-#         # on cree une image mono canal pour la tuile
-#         mask = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_srs)
+        # on cree une image mono canal pour la tuile
+        mask = create_blank_slab(overviews, {'x': slab_x, 'y': slab_y, 'resolution': resolution}, 3, out_srs)
 
-#         # on rasterise la partie du graphe qui concerne ce cliche
-#         db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
-#         gdal.Rasterize(mask, db_graph, SQLStatement='select geom from ' + args.table + ' where cliche = \''+stem+'\' ')
-#         img_mask = mask.GetRasterBand(1).ReadAsArray()
-#         # si le mask est vide, on a termine
-#         val_max = np.amax(img_mask)
-#         if val_max > 0:
-#             is_empty = False
+        # on rasterise la partie du graphe qui concerne ce cliche
+        db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
+        gdal.Rasterize(mask, db_graph, SQLStatement='select geom from ' + args.table + ' where cliche = \''+stem+'\' ')
+        img_mask = mask.GetRasterBand(1).ReadAsArray()
+        # si le mask est vide, on a termine
+        val_max = np.amax(img_mask)
+        if val_max > 0:
+            is_empty = False
 
-#             opi = gdal.Open(filename)
-#             for i in range(3):
-#                 opi_i = opi.GetRasterBand(i+1).ReadAsArray()
-#                 opi_i[(img_mask == 0)] = 0
+            opi = gdal.Open(filename)
+            for i in range(3):
+                opi_i = opi.GetRasterBand(i+1).ReadAsArray()
+                opi_i[(img_mask == 0)] = 0
 
-#                 ortho_i = ortho.GetRasterBand(i+1).ReadAsArray()
+                ortho_i = ortho.GetRasterBand(i+1).ReadAsArray()
 
-#                 ortho_i[(img_mask != 0)] = 0
-#                 ortho.GetRasterBand(i+1).WriteArray(np.add(opi_i, ortho_i))
+                ortho_i[(img_mask != 0)] = 0
+                ortho.GetRasterBand(i+1).WriteArray(np.add(opi_i, ortho_i))
 
-#                 graph_i = graph.GetRasterBand(i+1).ReadAsArray()
+                graph_i = graph.GetRasterBand(i+1).ReadAsArray()
 
-#                 graph_i[(img_mask != 0)] = color[i]
-#                 graph.GetRasterBand(i+1).WriteArray(graph_i)
+                graph_i[(img_mask != 0)] = color[i]
+                graph.GetRasterBand(i+1).WriteArray(graph_i)
 
-#     if not is_empty:
-#         dst_ortho = PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
-#         dst_graph = PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
-#         dst_ortho = None
-#         dst_graph = None
-#     ortho = None
-#     graph = None
+    if not is_empty:
+        dst_ortho = PNG_DRIVER.CreateCopy(slab_dir+"_ortho.png", ortho)
+        dst_graph = PNG_DRIVER.CreateCopy(slab_dir+"_graph.png", graph)
+        dst_ortho = None
+        dst_graph = None
+    ortho = None
+    graph = None
          
 def main():
     """Create or Update the cache for list of input OPI."""
@@ -305,7 +313,7 @@ def main():
     out_raster_srs.ImportFromEPSG(overviews_init['crs']['code'])
     out_srs = out_raster_srs.ExportToWkt()
 
-    # conn_string = "PG:host="+host+" dbname="+database+" user="+user+" password="+password
+    conn_string = "PG:host="+host+" dbname="+database+" user="+user+" password="+password
 
     list_filename = glob.glob(args.input)
     if verbose > 0:
@@ -365,41 +373,43 @@ def main():
 
     print('=> DONE')
     
-    # print("Génération du graph et de l'ortho (par tuile) :")
-    # db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
-    # if db_graph is None:
-    #     raise ValueError("Connection to database failed")
+    print("Génération du graph et de l'ortho (par tuile) :")
+    db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
+    if db_graph is None:
+        raise ValueError("Connection to database failed")
 
-    # args_create_ortho_and_graph = []
+    args_create_ortho_and_graph = []
 
-    # print(" Préparation")
+    print(" Préparation")
     
     # Calcul des ortho et graph
-    # for level in overviews_dict["dataSet"]["limits"]:
-    #     print("  level :", level)
+    for level in overviews_dict["dataSet"]["limits"]:
+        print("  level :", level)
 
-    #     level_limits = overviews_dict["dataSet"]["limits"][level]
+        level_limits = overviews_dict["dataSet"]["limits"][level]
 
-    #     for tile_x in range(level_limits["MinTileCol"], level_limits["MaxTileCol"] + 1):    
-    #         for tile_y in range(level_limits["MinTileRow"], level_limits["MaxTileRow"] + 1):
+        for slab_x in range(int(level_limits["MinTileCol"]/overviews_dict['slabSize']['width']), 
+                            int(level_limits["MaxTileCol"]/overviews_dict['slabSize']['width'] + 1)):    
+            for slab_y in range(int(level_limits["MinTileRow"]/overviews_dict['slabSize']['height']), 
+                            int(level_limits["MaxTileRow"]/overviews_dict['slabSize']['height'] + 1)):
 
-    #             argument_zyx = {
-    #                 'tile': {'x': tile_x, 'y': tile_y, 'z': int(level)},
-    #                 'overviews': overviews_dict,
-    #                 'conn_string': conn_string,
-    #                 'out_srs': out_srs
-    #             }
-    #             args_create_ortho_and_graph.append(argument_zyx)
+                argument_zyx = {
+                    'slab': {'x': slab_x, 'y': slab_y, 'z': int(level)},
+                    'overviews': overviews_dict,
+                    'conn_string': conn_string,
+                    'out_srs': out_srs
+                }
+                args_create_ortho_and_graph.append(argument_zyx)
 
-    # print(" Calcul")
+    print(" Calcul")
 
-    # POOL = multiprocessing.Pool(cpu_dispo-1)
-    # POOL.map(create_ortho_and_graph_1arg, args_create_ortho_and_graph)
+    POOL = multiprocessing.Pool(cpu_dispo-1)
+    POOL.map(create_ortho_and_graph_1arg, args_create_ortho_and_graph)
 
-    # POOL.close()
-    # POOL.join()
+    POOL.close()
+    POOL.join()
 
-    # print('\n=> DONE')
+    print('\n=> DONE')
 
     #Finitions
     with open(args.cache+'/cache_mtd.json', 'w') as outfile:

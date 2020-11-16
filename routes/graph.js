@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { matchedData, query } = require('express-validator');
 const jimp = require('jimp');
+const rok4 = require('../rok4');
 
 // const GJV = require('geojson-validation');
 const validateParams = require('../paramValidation/validateParams');
@@ -50,11 +51,17 @@ router.get('/graph', [
   const I = Math.floor(Px - Tx * overviews.tileSize.width);
   const J = Math.floor(Py - Ty * overviews.tileSize.height);
 
-  const url = path.join(global.dir_cache, '21', `${Ty}`, `${Tx}`, 'graph.png');
-  if (!fs.existsSync(url)) {
-    res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
-  } else {
-    jimp.read(url, (err, image) => {
+  const url = path.join(global.dir_cache, rok4.getUrl(Tx, Ty, `${overviews.level.max}`, overviews.slabSize, overviews.pathDepth)) + '_graph.tif';
+  fs.open(url, 'r', (err, dalle) => {
+    if (err) {
+      res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
+    }
+    const numTile = rok4.getNumTile(Tx,Ty, overviews.slabSize);
+    const tile = rok4.getTile(dalle, numTile, overviews.png);
+    fs.close(dalle, (err) => {
+      if (err) throw err;
+    });
+    jimp.read(tile).then( (image) => {
       if (err) {
         const erreur = new Error();
         erreur.msg = {
@@ -87,7 +94,7 @@ router.get('/graph', [
         res.status(200).send(JSON.stringify(out));
       }
     });
-  }
+  });
 });
 
 module.exports = router;
