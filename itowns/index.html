@@ -132,47 +132,45 @@
             menuGlobe = new GuiTools('menuDiv', view);
             menuGlobe.gui.width = 300;
 
-            var orthoLayer, graphLayer, opiLayer;
-            var orthoConfig, graphConfig, opiConfig;
+            const opacity = {
+                ortho: 1,
+                graph: 0.2,
+                opi: 0.5
+            }
              
-            const config = {};
-            ['ortho', 'graph', 'opi'].forEach((layerName) => {
+            const layer = {};
+            ['ortho', 'graph', 'opi'].forEach((id) => {
 
-                config[layerName] = {
-                    id: layerName,
-                    source: {
-                        url: apiUrl+'/wmts',
-                        projection: crs,
-                        format: 'image/png',
-                        name: layerName,
-                        tileMatrixSet: overviews.identifier,
-                        tileMatrixSetLimits: overviews.dataSet.limits
+                layer[id] = {
+                    name: id.charAt(0).toUpperCase() + id.slice(1),
+                    config: {
+                        source: {
+                            url: apiUrl+'/wmts',
+                            projection: crs,
+                            format: 'image/png',
+                            name: id,
+                            tileMatrixSet: overviews.identifier,
+                            tileMatrixSetLimits: overviews.dataSet.limits
+                        },
+                        opacity: opacity[id]
                     }
                 }
 
-                config[layerName].source = new itowns.WMTSSource(config[layerName].source);
-                config[layerName].source.extentInsideLimit = function (extent) {
+                layer[id].config.source = new itowns.WMTSSource(layer[id].config.source);
+                layer[id].config.source.extentInsideLimit = function (extent) {
                     return true;
                 }
 
+                layer[id].colorLayer = new itowns.ColorLayer(layer[id].name, layer[id].config);
+                if (id == 'opi') layer[id].colorLayer.visible = false
+                view.addLayer(layer[id].colorLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+
             });
-            config.graph.opacity = 0.2;
-            config.opi.opacity = 0.5;
-            orthoLayer = new itowns.ColorLayer('Ortho', config.ortho);
-            view.addLayer(orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-            graphLayer = new itowns.ColorLayer('Graph', config.graph);
-            view.addLayer(graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-            opiLayer = new itowns.ColorLayer('Opi', config.opi);
-            opiLayer.visible = false
-            view.addLayer(opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+
             itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
             itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
             itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
             // Et ouvrir l'onglet "Color Layers" par defaut ?
-
-            graphConfig=config.graph
-            orthoConfig=config.ortho
-            opiConfig=config.opi
 
             // Request redraw
             view.notifyChange();
@@ -180,7 +178,7 @@
             menuGlobe.addImageryLayersGUI(view.getLayers(function gui(l) { return l.isColorLayer; }));
             // debug.createTileDebugUI(menuGlobe.gui, view);
 
-            var saisie = new Saisie({ graphLayer, orthoLayer, graphConfig, orthoConfig, opiLayer, opiConfig, apiUrl });
+            var saisie = new Saisie(layer, apiUrl);
             saisie.cliche = 'unknown';
             saisie.message = '';
             saisie.coord = `${((xmax + xmin) * 0.5).toFixed(2)} ${((ymax + ymin) * 0.5).toFixed(2)}`;

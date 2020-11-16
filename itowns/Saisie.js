@@ -7,23 +7,33 @@ const status = {
 
 
 class Saisie {
-  constructor(options) {
-    this.opiLayer = options.opiLayer;
-    this.orthoLayer = options.orthoLayer;
-    this.graphLayer = options.graphLayer;
-    this.opiConfig = options.opiConfig;
-    this.orthoConfig = options.orthoConfig;
-    this.graphConfig = options.graphConfig;
-    this.apiUrl = options.apiUrl;
+  constructor(layer, apiUrl) {
+    this.layer = layer
+    this.apiUrl = apiUrl;
+
     this.validClicheSelected = false;
-
-
     this.currentStatus = status.RAS;
     this.currentMeasure = null;
     this.currentIndex = -1;
     this.lastPos = null;
   }
 
+  refreshView(layers){
+
+    // Pour le moment on force le rechargement complet des couches
+    layers.forEach((id) => {
+      menuGlobe.removeLayersGUI([this.layer[id].colorLayer.id]);
+      view.removeLayer(this.layer[id].colorLayer.id);
+      this.layer[id].config.opacity = this.layer[id].colorLayer.opacity;
+      this.layer[id].colorLayer = new itowns.ColorLayer(this.layer[id].name, this.layer[id].config);
+      view.addLayer(this.layer[id].colorLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
+    })
+
+    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+    view.notifyChange();
+  }
 
   pickPoint(e) {
     const pointUnderCursor = new itowns.THREE.Vector3();
@@ -109,20 +119,7 @@ class Saisie {
       }).then((res) => {
         this.cancelCurrentMeasure();
         if (res.status == 200) {
-          // Pour le moment on force le rechargement complet des couches
-          this.orthoConfig.opacity = this.orthoLayer.opacity;
-          this.graphConfig.opacity = this.graphLayer.opacity;
-          menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
-          view.removeLayer('Ortho');
-          view.removeLayer('Graph');
-          this.orthoLayer = new itowns.ColorLayer('Ortho', this.orthoConfig);
-          view.addLayer(this.orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-          this.graphLayer = new itowns.ColorLayer('Graph', this.graphConfig);
-          view.addLayer(this.graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
-          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
-          view.notifyChange();
+          this.refreshView(['ortho','graph'])
         } else {
           this.message = "polygon: out of OPI's bounds"
         }
@@ -198,11 +195,11 @@ class Saisie {
 
   click(e) {
     if (this.currentStatus === status.EN_COURS) return;
-    console.log('Click: ', this.pickPoint(e), this.currentStatus, this.currentStatus);
+    console.log('Click: ', this.pickPoint(e), this.currentStatus);
     this.message = "";
     if (this.currentStatus == status.MOVE_POINT) {
       if (this.currentMeasure == null) {
-        console.log("Click");
+        console.log("get OPI");
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         const that = this;
@@ -222,25 +219,19 @@ class Saisie {
               that.json = json;
               that.color = json.color;
               that.controllers['cliche'].__li.style.backgroundColor = `rgb(${that.color[0]},${that.color[1]},${that.color[2]})`;
+              
               // On modifie la couche OPI
-              this.opiConfig.opacity = this.opiLayer.opacity;
-              menuGlobe.removeLayersGUI(['Opi']);
-              view.removeLayer('Opi');
-              this.opiConfig.source.url = this.opiConfig.source.url.replace(/LAYER=.*\&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
-              this.opiLayer = new itowns.ColorLayer('Opi', this.opiConfig);
-              view.addLayer(this.opiLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-              itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-              itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
-              itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
-              view.notifyChange();
+              this.layer['opi'].config.source.url = this.layer['opi'].config.source.url.replace(/LAYER=.*\&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
+              this.refreshView(['opi'])
+
               that.validClicheSelected = true;
             }
             if (res.status == 201) {
               console.log("out of bounds")
-              this.opiLayer.visible = false;
+              this.layer['opi'].colorLayer.visible = false;
               this.validClicheSelected = false;
               this.controllers['cliche'].__li.style.backgroundColor = '';
-              view.notifyChange(this.opiLayer,true);
+              view.notifyChange(this.layer['opi'].colorLayer,true);
             }
           });
         });
@@ -274,12 +265,7 @@ class Saisie {
     document.getElementById("viewerDiv").style.cursor="crosshair";
     console.log('"select": En attente de sélection');
     this.currentStatus = status.MOVE_POINT;
-    // this.cliche = null;
-    //this.controllers['cliche'].__li.style.backgroundColor = '';
     this.message = 'choisir un cliche';
-    // this.validClicheSelected = false;
-    // this.opiLayer.visible = false;
-    // view.notifyChange(this.opiLayer,true);
   }
 
   polygon() {
@@ -334,20 +320,7 @@ class Saisie {
       }).then((res) => {
         this.cancelCurrentMeasure();
         if (res.status == 200) {
-          // Pour le moment on force le rechargement complet des couches
-          this.orthoConfig.opacity = this.orthoLayer.opacity;
-          this.graphConfig.opacity = this.graphLayer.opacity;
-          menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
-          view.removeLayer('Ortho');
-          view.removeLayer('Graph');
-          this.orthoLayer = new itowns.ColorLayer('Ortho', this.orthoConfig);
-          view.addLayer(this.orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-          this.graphLayer = new itowns.ColorLayer('Graph', this.graphConfig);
-          view.addLayer(this.graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
-          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
-          view.notifyChange();
+          this.refreshView(['ortho','graph'])
         }
         res.text().then((msg) => {
           this.message = msg
@@ -369,20 +342,7 @@ class Saisie {
       }).then((res) => {
         this.cancelCurrentMeasure();
         if (res.status == 200) {
-          // Pour le moment on force le rechargement complet des couches
-          this.orthoConfig.opacity = this.orthoLayer.opacity;
-          this.graphConfig.opacity = this.graphLayer.opacity;
-          menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
-          view.removeLayer('Ortho');
-          view.removeLayer('Graph');
-          this.orthoLayer = new itowns.ColorLayer('Ortho', this.orthoConfig);
-          view.addLayer(this.orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-          this.graphLayer = new itowns.ColorLayer('Graph', this.graphConfig);
-          view.addLayer(this.graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
-          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
-          view.notifyChange();
+          this.refreshView(['ortho','graph'])
         }
         res.text().then((msg) => {
           this.message = msg
@@ -405,20 +365,7 @@ class Saisie {
       }).then((res) => {
         this.cancelCurrentMeasure();
         if (res.status == 200) {
-          // Pour le moment on force le rechargement complet des couches
-          this.orthoConfig.opacity = this.orthoLayer.opacity;
-          this.graphConfig.opacity = this.graphLayer.opacity;
-          menuGlobe.removeLayersGUI(['Ortho', 'Graph']);
-          view.removeLayer('Ortho');
-          view.removeLayer('Graph');
-          this.orthoLayer = new itowns.ColorLayer('Ortho', this.orthoConfig);
-          view.addLayer(this.orthoLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-          this.graphLayer = new itowns.ColorLayer('Graph', this.graphConfig);
-          view.addLayer(this.graphLayer).then(menuGlobe.addLayerGUI.bind(menuGlobe));
-          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
-          itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
-          view.notifyChange();
+          this.refreshView(['ortho','graph'])
         }
         res.text().then((msg) => {
           this.message = msg
