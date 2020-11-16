@@ -36,14 +36,14 @@ nb_bands = 3
 
 PNG_DRIVER = gdal.GetDriverByName('png')
 
-def cut_opi_1tile(filename, tile_dir, image_name, origin, tileSize, tile, out_raster_srs, nb_canaux):
+def cut_opi_1tile(filename, tile_dir, image_name, origin, tileSize, tile, out_raster_srs, nb_bands):
     """Cut and reseample a specified image at a given level"""
     if verbose > 0:
         print("~~~cut_opi_1tile")
 
     input_image = gdal.Open(filename)
     
-    target_ds = gdal.GetDriverByName('MEM').Create('', tileSize['width'], tileSize['height'], nb_canaux, gdal.GDT_Byte)
+    target_ds = gdal.GetDriverByName('MEM').Create('', tileSize['width'], tileSize['height'], nb_bands, gdal.GDT_Byte)
     target_ds.SetGeoTransform((origin['x'], tile['resolution'], 0, origin['y'], 0, -tile['resolution']))
     target_ds.SetProjection(out_raster_srs)
     target_ds.FlushCache()
@@ -59,13 +59,13 @@ def cut_opi_1tile(filename, tile_dir, image_name, origin, tileSize, tile, out_ra
 
     return
 
-def create_blank_tile(overviews, tile, nb_canaux, out_srs):
+def create_blank_tile(overviews, tile, nb_bands, out_srs):
     """Return a blank georef image for a tile."""
     origin_x = overviews['crs']['boundingBox']['xmin'] + tile['x'] * tile['resolution'] * overviews['tileSize']['width']
     origin_y = overviews['crs']['boundingBox']['ymax'] - tile['y'] * tile['resolution'] * overviews['tileSize']['height']
     target_ds = gdal.GetDriverByName('MEM').Create('',
                                                    overviews['tileSize']['width'], overviews['tileSize']['height'],
-                                                   nb_canaux, gdal.GDT_Byte)
+                                                   nb_bands, gdal.GDT_Byte)
     target_ds.SetGeoTransform((origin_x, tile['resolution'], 0,
                                origin_y, 0, -tile['resolution']))
     target_ds.SetProjection(out_srs)
@@ -373,7 +373,7 @@ def main():
 
     print(" Calcul")
     nb_tiles = len(args_create_ortho_and_graph)
-    print(" ", nb_tiles, "tuiles a traitées")
+    print(" ", nb_tiles, "tuiles à traiter")
 
     counter = 0
     for i in range(nb_tiles):
