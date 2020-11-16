@@ -327,16 +327,18 @@ function createTileHeader(header, tileSize, buffer) {
 }
 
 // Recuperation d'une tuile dans une dalle au format rok4
-function getTile(dalle, numTile) {
+function getTile(dalle, numTile, png) {
   debug('Extraction de la tuile ', numTile, 'dans la dalle : ', dalle);
   // on analyse le header
   const header = getHeader(dalle);
+  const bufferSize = png ? header.ifds[0][325].values[numTile] : 4096 + header.ifds[0][325].values[numTile];
   // on crée le buffer
-  const tile = Buffer.alloc(4096 + header.ifds[0][324].values[numTile])
+  let tile = Buffer.alloc(bufferSize)
   // preparation du tileHeader (todo: sauf dans le cas d'un PNG)
-  createTileHeader(header, header.ifds[0][325].values[numTile], tile);
+  if (!png)
+    createTileHeader(header, header.ifds[0][325].values[numTile], tile);
   // lecture de la tuile
-  fs.readSync(dalle, tile, 4096, header.ifds[0][324].values[numTile], header.ifds[0][324].values[numTile]);
+  fs.readSync(dalle, tile, png ? 0 : 4096, header.ifds[0][325].values[numTile], header.ifds[0][324].values[numTile]);
   return tile;
 }
 
@@ -405,15 +407,16 @@ function tiffInfo(url) {
   });
 }
 
-function extractAllTiles(urlIn, urlOut) {
+function extractAllTiles(urlIn, urlOut, ext) {
   debug('extractAllTiles ', urlIn, urlOut);
+  const createHeader = (ext != 'png');
   fs.open(urlIn, 'r', (err, dalle) => {
     if (err) throw err;
     const header = getHeader(dalle);
     for (let i = 0; i < header.ifds[0][324].values.length; i += 1) {
       // create d'un fichier Tiff pour la tuile
-      fs.writeFile(`${urlOut}_${i}.tif`, 
-        getTile(dalle, i),
+      fs.writeFile(`${urlOut}_${i}.${ext}`, 
+        getTile(dalle, i, createHeader),
         (err) => {
           if (err) throw err;
         });
@@ -425,8 +428,10 @@ function extractAllTiles(urlIn, urlOut) {
   });
 }
 
-tiffInfo('test.tif');
-extractAllTiles('test.tif', 'out');
+// tiffInfo('testJPG.tif');
+// extractAllTiles('testPNG.tif', 'outPNG', true);
+// extractAllTiles('testLZW.tif', 'outLZW', false);
+// extractAllTiles('testJPG.tif', 'outJPG', 'tif');
 
 exports.getTile = getTile;
 exports.setTile = setTile;

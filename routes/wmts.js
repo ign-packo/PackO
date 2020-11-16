@@ -5,6 +5,7 @@ const router = require('express').Router();
 const { matchedData, query } = require('express-validator');
 const Jimp = require('jimp');
 const path = require('path');
+const rok4 = require('../rok4');
 
 const fs = require('fs');
 const xml2js = require('xml2js');
@@ -276,25 +277,43 @@ router.get('/wmts', [
         [layerName] = overviews.list_OPI;
       }
     }
-    const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${layerName}.png`);
-    Jimp.read(url, (err, image) => {
-      new Promise((success, failure) => {
-        if (err) {
-          /* eslint-disable no-new */
-          new Jimp(256, 256, 0x000000ff, (errJimp, img) => {
-            if (errJimp) {
-              failure(err);
-            }
-            success(img);
-          });
-        } else {
-          success(image);
-        }
-      }).then((img) => {
-        img.getBuffer(mime, (err2, buffer) => { res.send(buffer); });
+    const X = Math.trunc(TILECOL / 16).toString(36).padStart(4, 0).toUpperCase();
+    const Y = Math.trunc(TILEROW / 16).toString(36).padStart(4, 0).toUpperCase();
+    let url = path.join(global.dir_cache, TILEMATRIX);	  
+    for (let i = 0; i < 3; i += 1) {
+      url = path.join(url, X[i] + Y[i]);
+    }
+    layerName = '19FD5606Ax00013_03352';
+    url = path.join(url, X[3] + Y[3] + `_${layerName}.tif`);
+    debugGetTile('Traitement de ', url, ' pour ', TILEMATRIX, TILECOL, TILEROW);
+    const png = false;
+    fs.open(url, 'r', (err, dalle) => {
+      if (err) {
+        debugGetTile('error sur ', TILEMATRIX, TILECOL, TILEROW, ' -> on renvoit une dalle noire');
+        /* eslint-disable no-new */
+        new Jimp(256, 256, 0x000000ff, (errJimp, img) => {
+          img.getBuffer(mime, (err2, buffer) => { 
+            res.send(buffer); });
+        });
+        return;
+      }
+      const numTile = (TILEROW % 16) * 16 + (TILECOL % 16);
+      const tile = rok4.getTile(dalle, numTile, png);
+      fs.close(dalle, (err) => {
+        if (err) throw err;
       });
+      if (png && mime === Jimp.MIME_PNG){
+        debugGetTile('version sans transtypage');
+        res.send(tile);
+      } else {
+        debugGetTile('version avec transtypage');
+        Jimp.read(tile).then( (img) => {
+          img.getBufferAsync(mime).then((buffer) => {
+            res.send(buffer);
+          });
+        });
+      }
     });
-
     // GetFeatureInfo
   } else if (REQUEST === 'GetFeatureInfo') {
     debug('~~~GetFeatureInfo');
