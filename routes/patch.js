@@ -122,7 +122,6 @@ function createPatchs(tile, geoJson, overviews) {
   const mask = PImage.make(tileWidth, tileHeight + 1);
   const ctx = mask.getContext('2d');
   geoJson.features.forEach((feature) => {
-    // debug(feature.properties.color);
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
     let first = true;
@@ -172,7 +171,6 @@ function processPatch(patch, png) {
   Object.keys(tilesGraph).forEach((numTile) => {
     const tileGraph = tilesGraph[numTile];
     const mask = patch.masks[numTile];
-    debug('tileGraph : ', tileGraph, ' pour numTile : ', numTile);
     // on decode l'image
     graphPromises.push(jimp.read(tileGraph).then((image) => {
       // on patche
@@ -255,13 +253,12 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   newPatchId += 1;
 
   const tiles = getTiles(geoJson.features, overviews);
-  debug(tiles.length, 'tuiles intersectées');
 
   // on groupe les patchs par dalle
   let patchs={};
   for(let numTile = 0; numTile < tiles.length; numTile+=1) {
     const patch = createPatchs(tiles[numTile], geoJson, overviews);
-    if (patch === null) continue;
+    if (patch == null) continue;
     if (!patchs[patch.slab]) {
       // on vérifie si la dalle est valide avant de continuer
       const urlGraph =  patch.slab + '_graph.tif';
@@ -301,16 +298,20 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     debug('tout c est bien passé on peut mettre a jour les liens symboliques');
     Object.keys(patchs).forEach((slab) => {
       const patch = patchs[slab];
-      debug(patch);
       const urlGraph = patch.urlGraph;
       const urlOrtho = patch.urlOrtho;
       const urlGraphOutput = patch.urlGraphOutput;
       const urlOrthoOutput = patch.urlOrthoOutput;
       // on verifie si c'est un lien symbolique ou le fichier d'origine
       if (fs.lstatSync(urlGraph).nlink > 1) {
+        let history = fs.readFileSync(patch.slab + '_history') + ';' + `${newPatchId}`;
+        debug('history : ', history);
+        fs.writeFileSync(patch.slab + '_history', history);
         fs.unlinkSync(urlGraph);
         fs.unlinkSync(urlOrtho);
       } else {
+        let history = 'orig' + ';' + `${newPatchId}`;
+        fs.writeFileSync(patch.slab + '_history', history);
         const urlGraphOrig = patch.slab + '_graph_orig.tif';
         const urlOrthoOrig = patch.slab + '_ortho_orig.tif';
         fs.renameSync(urlGraph, urlGraphOrig);
@@ -357,43 +358,40 @@ router.put('/patch/undo', [], (req, res) => {
   debug('lastPatchId:', lastPatchId);
   const features = [];
   let index = req.app.activePatchs.features.length - 1;
-  const tiles = new Set();
+  const slabs = new Set();
   while (index >= 0) {
     const feature = req.app.activePatchs.features[index];
     if (feature.properties.patchId === lastPatchId) {
       features.push(feature);
       req.app.activePatchs.features.splice(index, 1);
-      feature.properties.tiles.forEach((item) => tiles.add(item));
+      feature.properties.slabs.forEach((item) => slabs.add(item));
     }
     index -= 1;
   }
-  debug(tiles.length, 'tuiles impactées');
-  // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
-  tiles.forEach((tile) => {
-    const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
-    // on verifie si la tuile a été effectivement modifiée par ce patch
-    const arrayGraphs = fs.readdirSync(tileDir).filter((fn) => fn.startsWith('graph_'));
-    debug('arrayGraphs : ', arrayGraphs);
-    let idSelected = null;
-    arrayGraphs.forEach((name) => {
-      const id = parseInt(name.split(/[_.]/)[1], 10);
-      if ((id < lastPatchId) && !Number.isNaN(id)) {
-        if ((idSelected == null) || (idSelected < id)) idSelected = id;
-      }
-    });
-    if (idSelected == null) idSelected = 'orig';
-    debug('version selectionne pour la tuile :', idSelected);
+  debug(slabs, 'dalles impactées');
+  // pour chaque dalle, trouver le numéro de version le plus élevé inférieur au numéro de patch
+  slabs.forEach((slab) => {
+    // on récupère l'historique de cette dalle
+    let history = fs.readFileSync(slab + '_history').toString().split(';');
+    // on récupère la version à restaurer
+    let idSelected = history[history.length-2];
+    // mise à jour de l'historique
+    let newHistory = '';
+    for(let i = 0;i < (history.length - 1); i += 1) {
+      newHistory += history[i];
+      if (i < (history.length - 2)) newHistory += ';';
+    }
+    fs.writeFileSync(slab + '_history', newHistory);
+    debug('version selectionne pour la dalle :', idSelected);
     // modifier les liens symboliques pour pointer sur ce numéro de version
-    const urlGraph = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph.png');
-    const urlOrtho = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'ortho.png');
-    const urlGraphSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, `graph_${idSelected}.png`);
-    const urlOrthoSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, `ortho_${idSelected}.png`);
+    const urlGraph = slab + '_graph.tif';
+    const urlOrtho = slab + '_ortho.tif';
+    const urlGraphSelected = slab + '_graph_' + idSelected + '.tif';
+    const urlOrthoSelected = slab + '_ortho_' + idSelected + '.tif';
     // on supprime l'ancien lien
     fs.unlinkSync(urlGraph);
     fs.unlinkSync(urlOrtho);
     // on crée le nouveau
-    // fs.symlinkSync(urlGraphSelected, urlGraph);
-    // fs.symlinkSync(urlOrthoSelected, urlOrtho);
     fs.linkSync(urlGraphSelected, urlGraph);
     fs.linkSync(urlOrthoSelected, urlOrtho);
   });
@@ -422,32 +420,33 @@ router.put('/patch/redo', [], (req, res) => {
     .properties.patchId;
   debug('patchIdRedo:', patchIdRedo);
   const features = [];
-  const tiles = new Set();
+  const slabs = new Set();
   let index = req.app.unactivePatchs.features.length - 1;
   while (index >= 0) {
     const feature = req.app.unactivePatchs.features[index];
     if (feature.properties.patchId === patchIdRedo) {
       features.push(feature);
-      feature.properties.tiles.forEach((item) => tiles.add(item));
+      feature.properties.slabs.forEach((item) => slabs.add(item));
       req.app.unactivePatchs.features.splice(index, 1);
     }
     index -= 1;
   }
-  debug(tiles.length, 'tuiles impactées');
+  debug(slabs, 'dalles impactées');
   // pour chaque tuile, modifier les liens symboliques
-  tiles.forEach((tile) => {
+  slabs.forEach((slab) => {
+    // on met a jour l'historique
+    let history = fs.readFileSync(slab + '_history') + ';' + `${patchIdRedo}`;
+    fs.writeFileSync(slab + '_history', history);
     // on verifie si la tuile a été effectivement modifiée par ce patch
-    const urlGraphSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, `graph_${patchIdRedo}.png`);
-    const urlOrthoSelected = path.join(global.dir_cache, tile.z, tile.y, tile.x, `ortho_${patchIdRedo}.png`);
+    const urlGraphSelected = slab + `_graph_${patchIdRedo}.tif`;
+    const urlOrthoSelected = slab + `_ortho_${patchIdRedo}.tif`;
     // modifier les liens symboliques pour pointer sur ce numéro de version
-    const urlGraph = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph.png');
-    const urlOrtho = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'ortho.png');
+    const urlGraph = slab + '_graph.tif';
+    const urlOrtho = slab + '_ortho.tif';
     // on supprime l'ancien lien
     fs.unlinkSync(urlGraph);
     fs.unlinkSync(urlOrtho);
     // on crée le nouveau
-    // fs.symlinkSync(urlGraphSelected, urlGraph);
-    // fs.symlinkSync(urlOrthoSelected, urlOrtho);
     fs.linkSync(urlGraphSelected, urlGraph);
     fs.linkSync(urlOrthoSelected, urlOrtho);
   });
@@ -472,34 +471,40 @@ router.put('/patchs/clear', [], (req, res) => {
   }
   const { features } = req.app.activePatchs;
 
-  features.forEach((feature) => {
-    // trouver la liste des tuiles concernées par ces patchs
-    const { tiles } = feature.properties;
-    debug(tiles.length, 'tuiles impactées');
-    // pour chaque tuile, on retablit la version orig
-    tiles.forEach((tile) => {
-      const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
-      const urlGraphSelected = path.join(tileDir, 'graph_orig.png');
-      const urlOrthoSelected = path.join(tileDir, 'ortho_orig.png');
-      const arrayLink = fs.readdirSync(tileDir).filter((filename) => (filename.startsWith('graph_') || filename.startsWith('ortho_')) && !filename.endsWith('orig.png'));
+  const slabs = new Set();
+  for (let i = 0 ; i < features.length; i += 1) {
+    features[i].properties.slabs.forEach((item) => slabs.add(item));
+  }
+  debug(slabs, 'dalles impactées');
 
-      // suppression des images intermediaires
-      arrayLink.forEach((file) => fs.unlinkSync(
-        path.join(tileDir, file),
-      ));
+  // pour chaque dalle, on retablit la version orig
+  slabs.forEach((slab) => {
+    debug('clear de : ', slab);
+    const urlGraphSelected = slab + '_graph_orig.tif';
+    const urlOrthoSelected = slab + '_ortho_orig.tif';
+    const arrayLink = fs.readdirSync(path.dirname(slab)).filter(
+      (filename) => 
+      (filename.startsWith(path.basename(slab) + '_graph_') || 
+      filename.startsWith(path.basename(slab) + '_ortho_')) && 
+      !filename.endsWith('orig.tif'));
 
-      // modifier les liens symboliques pour pointer sur ce numéro de version
-      const urlGraph = path.join(tileDir, 'graph.png');
-      const urlOrtho = path.join(tileDir, 'ortho.png');
-      // on supprime l'ancien lien
-      fs.unlinkSync(urlGraph);
-      fs.unlinkSync(urlOrtho);
-      // on crée le nouveau
-      // fs.symlinkSync(urlGraphSelected, urlGraph);
-      // fs.symlinkSync(urlOrthoSelected, urlOrtho);
-      fs.linkSync(urlGraphSelected, urlGraph);
-      fs.linkSync(urlOrthoSelected, urlOrtho);
+    // suppression des images intermediaires
+    arrayLink.forEach((file) => {
+      fs.unlinkSync(path.join(path.dirname(slab), file));
     });
+
+    // modification de l'historique de la dalle
+    fs.writeFileSync(slab + '_history', 'orig');
+
+    // modifier les liens symboliques pour pointer sur ce numéro de version
+    const urlGraph = slab +  '_graph.tif';
+    const urlOrtho = slab +  '_ortho.tif';
+    // on supprime l'ancien lien
+    fs.unlinkSync(urlGraph);
+    fs.unlinkSync(urlOrtho);
+    // on crée le nouveau
+    fs.linkSync(urlGraphSelected, urlGraph);
+    fs.linkSync(urlOrthoSelected, urlOrtho);
   });
 
   req.app.activePatchs.features = [];
