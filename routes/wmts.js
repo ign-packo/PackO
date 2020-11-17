@@ -5,11 +5,11 @@ const router = require('express').Router();
 const { matchedData, query } = require('express-validator');
 const Jimp = require('jimp');
 const path = require('path');
-const rok4 = require('../rok4');
 
 const fs = require('fs');
 const xml2js = require('xml2js');
 const proj4 = require('proj4');
+const rok4 = require('../rok4');
 
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
@@ -277,7 +277,8 @@ router.get('/wmts', [
         [layerName] = overviews.list_OPI;
       }
     }
-    url = path.join(global.dir_cache, rok4.getUrl(TILECOL, TILEROW, TILEMATRIX, overviews.slabSize, overviews.pathDepth));
+    let url = path.join(global.dir_cache,
+      rok4.getUrl(TILECOL, TILEROW, TILEMATRIX, overviews.slabSize, overviews.pathDepth));
     // layerName = '19FD5606Ax00013_03352';
     url += `_${layerName}.tif`;
     debugGetTile('Traitement de ', url, ' pour ', TILEMATRIX, TILECOL, TILEROW);
@@ -286,22 +287,23 @@ router.get('/wmts', [
         debugGetTile('error sur ', TILEMATRIX, TILECOL, TILEROW, ' -> on renvoit une dalle noire');
         /* eslint-disable no-new */
         new Jimp(256, 256, 0x000000ff, (errJimp, img) => {
-          img.getBuffer(mime, (err2, buffer) => { 
-            res.send(buffer); });
+          img.getBuffer(mime, (err2, buffer) => {
+            res.send(buffer);
+          });
         });
         return;
       }
-      const numTile = rok4.getNumTile(TILECOL,TILEROW, overviews.slabSize);
+      const numTile = rok4.getNumTile(TILECOL, TILEROW, overviews.slabSize);
       const tile = rok4.getTile(dalle, numTile, overviews.png);
-      fs.close(dalle, (err) => {
-        if (err) throw err;
+      fs.close(dalle, (err2) => {
+        if (err2) throw err2;
       });
-      if (overviews.png && mime === Jimp.MIME_PNG){
+      if (overviews.png && mime === Jimp.MIME_PNG) {
         debugGetTile('version sans transtypage');
         res.send(tile);
       } else {
         debugGetTile('version avec transtypage');
-        Jimp.read(tile).then( (img) => {
+        Jimp.read(tile).then((img) => {
           img.getBufferAsync(mime).then((buffer) => {
             res.send(buffer);
           });
@@ -312,7 +314,8 @@ router.get('/wmts', [
   } else if (REQUEST === 'GetFeatureInfo') {
     debug('~~~GetFeatureInfo');
     debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-    url = path.join(global.dir_cache, rok4.getUrl(TILECOL, TILEROW, TILEMATRIX, overviews.slabSize, overviews.pathDepth));
+    let url = path.join(global.dir_cache,
+      rok4.getUrl(TILECOL, TILEROW, TILEMATRIX, overviews.slabSize, overviews.pathDepth));
     url += '_graph.tif';
     fs.open(url, 'r', (err, dalle) => {
       if (err) {
@@ -326,29 +329,29 @@ router.get('/wmts', [
         };
         res.status(400).send(erreur.msg);
       }
-      const numTile = rok4.getNumTile(X,Y, overviews.slabSize);
+      const numTile = rok4.getNumTile(TILECOL, TILEROW, overviews.slabSize);
       const tile = rok4.getTile(dalle, numTile, overviews.png);
-      fs.close(dalle, (err) => {
-        if (err) throw err;
+      fs.close(dalle, (err2) => {
+        if (err2) throw err2;
       });
-      Jimp.read(tile).then( (image) => {
+      Jimp.read(tile).then((image) => {
         const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
-          debugFeatureInfo('index: ', index);
-          const out = {
-            color: [image.bitmap.data[index],
-              image.bitmap.data[index + 1],
-              image.bitmap.data[index + 2]],
-          };
-          debugFeatureInfo(out);
-          if ((out.color[0] in req.app.cache_mtd)
+        debugFeatureInfo('index: ', index);
+        const out = {
+          color: [image.bitmap.data[index],
+            image.bitmap.data[index + 1],
+            image.bitmap.data[index + 2]],
+        };
+        debugFeatureInfo(out);
+        if ((out.color[0] in req.app.cache_mtd)
           && (out.color[1] in req.app.cache_mtd[out.color[0]])
           && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-            out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
-          } else {
-            out.cliche = 'missing';
-          }
+          out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+        } else {
+          out.cliche = 'missing';
+        }
 
-          const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
+        const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
                            + '<ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"'
                                                     + ' xmlns:gml="http://www.opengis.net/gml"'
                                                     + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
@@ -364,10 +367,10 @@ router.get('/wmts', [
                                + `</${LAYER}>`
                              + '</featureMember>'
                            + '</ReguralGriddedElevations>';
-          res.status(200).send(testResponse);
-        });
+        res.status(200).send(testResponse);
       });
-    }
+    });
+  }
 });
 
 module.exports = router;

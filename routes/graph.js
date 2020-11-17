@@ -51,17 +51,17 @@ router.get('/graph', [
   const I = Math.floor(Px - Tx * overviews.tileSize.width);
   const J = Math.floor(Py - Ty * overviews.tileSize.height);
 
-  const url = path.join(global.dir_cache, rok4.getUrl(Tx, Ty, `${overviews.level.max}`, overviews.slabSize, overviews.pathDepth)) + '_graph.tif';
+  const url = `${path.join(global.dir_cache, rok4.getUrl(Tx, Ty, `${overviews.level.max}`, overviews.slabSize, overviews.pathDepth))}_graph.tif`;
   fs.open(url, 'r', (err, dalle) => {
     if (err) {
       res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
     }
-    const numTile = rok4.getNumTile(Tx,Ty, overviews.slabSize);
+    const numTile = rok4.getNumTile(Tx, Ty, overviews.slabSize);
     const tile = rok4.getTile(dalle, numTile, overviews.png);
-    fs.close(dalle, (err) => {
-      if (err) throw err;
+    fs.close(dalle, (err2) => {
+      if (err2) throw err2;
     });
-    jimp.read(tile).then( (image) => {
+    jimp.read(tile).then((image) => {
       if (err) {
         const erreur = new Error();
         erreur.msg = {

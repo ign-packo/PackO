@@ -1,7 +1,5 @@
 const path = require('path');
 const fs = require('fs');
-const { head } = require('./routes/patch');
-const { off } = require('process');
 const debug = require('debug')('rok4');
 
 const TAGS = {
@@ -268,6 +266,7 @@ function createTileIFD(ifd, buffer, tileSize, offset) {
 }
 
 // deocde du header tiff
+/* eslint-disable no-param-reassign */
 function decodeHeader(buffer) {
   const header = {};
   // Byte order
@@ -297,6 +296,7 @@ function decodeHeader(buffer) {
   }
   return header;
 }
+/* eslint-disable no-param-reassign */
 
 // Recuperation des infos sur une dalle
 function getHeader(dalle) {
@@ -306,8 +306,9 @@ function getHeader(dalle) {
   return decodeHeader(buffer);
 }
 
+/* eslint-disable no-param-reassign */
 function createTileHeader(header, tileSize, buffer) {
-  if (buffer === null){
+  if (buffer === null) {
     buffer = Buffer.alloc(4096, 0);
   }
   if (header.magic === 'II') {
@@ -332,20 +333,22 @@ function createTileHeader(header, tileSize, buffer) {
   createTileIFD(header.ifds[0], buffer, tileSize, { in: pos, out: 2048 });
   return buffer;
 }
+/* eslint-disable no-param-reassign */
 
 // Recuperation d'une tuile dans une dalle au format rok4
 function getTile(dalle, numTile, png) {
   // debug('Extraction de la tuile ', numTile, 'dans la dalle : ', dalle);
   // on analyse le header
   const header = getHeader(dalle);
-  const bufferSize = png ? header.ifds[0][325].values[numTile] : 4096 + header.ifds[0][325].values[numTile];
+  const bufferSize = png ? header.ifds[0][325].values[numTile]
+    : 4096 + header.ifds[0][325].values[numTile];
   // on crée le buffer
-  let tile = Buffer.alloc(bufferSize)
+  const tile = Buffer.alloc(bufferSize);
   // preparation du tileHeader (todo: sauf dans le cas d'un PNG)
-  if (!png)
-    createTileHeader(header, header.ifds[0][325].values[numTile], tile);
+  if (!png) createTileHeader(header, header.ifds[0][325].values[numTile], tile);
   // lecture de la tuile
-  fs.readSync(dalle, tile, png ? 0 : 4096, header.ifds[0][325].values[numTile], header.ifds[0][324].values[numTile]);
+  fs.readSync(dalle, tile, png ? 0
+    : 4096, header.ifds[0][325].values[numTile], header.ifds[0][324].values[numTile]);
   return tile;
 }
 
@@ -356,16 +359,18 @@ function getTiles(urlDalle, numTiles, png) {
   const dalle = fs.openSync(urlDalle, 'r');
   // on analyse le header
   const header = getHeader(dalle);
-  let tiles = {};
+  const tiles = {};
   numTiles.forEach((numTile) => {
-    const bufferSize = png ? header.ifds[0][325].values[numTile] : 4096 + header.ifds[0][325].values[numTile];
+    const bufferSize = png ? header.ifds[0][325].values[numTile]
+      : 4096 + header.ifds[0][325].values[numTile];
     // on crée le buffer
-    const tile = Buffer.alloc(bufferSize)
+    const tile = Buffer.alloc(bufferSize);
     // preparation du tileHeader (todo: sauf dans le cas d'un PNG)
-    if (!png)
-      createTileHeader(header, header.ifds[0][325].values[numTile], tile);
+    if (!png) createTileHeader(header, header.ifds[0][325].values[numTile], tile);
     // lecture de la tuile
-    fs.readSync(dalle, tile, png ? 0 : 4096, header.ifds[0][325].values[numTile], header.ifds[0][324].values[numTile]);
+    fs.readSync(dalle, tile, png ? 0 : 4096,
+      header.ifds[0][325].values[numTile],
+      header.ifds[0][324].values[numTile]);
     tiles[numTile] = tile;
   });
   fs.closeSync(dalle);
@@ -374,14 +379,14 @@ function getTiles(urlDalle, numTiles, png) {
 
 // Mise à jour d'une ou plusieurs tuiles dans une dalle au format rok4
 function setTiles(urlDalleIn, urlDalleOut, tiles, png) {
-  if (!png){
+  if (!png) {
     debug('Cas non géré');
     return;
   }
   debug('Mise a jour de la dalle ', urlDalleIn, ' vers ', urlDalleOut);
   debug('Ecriture des tuiles : ', tiles);
   // lecture complete du fichier
-  bufferDalle = fs.readFileSync(urlDalleIn);
+  const bufferDalle = fs.readFileSync(urlDalleIn);
   // decodage de l'entete
   const header = decodeHeader(bufferDalle);
   const nbTiles = header.ifds[0][325].values.length;
@@ -394,15 +399,14 @@ function setTiles(urlDalleIn, urlDalleOut, tiles, png) {
   // création d'un offsets mis à jour
   const newOffsets = new Uint32Array(nbTiles * 2);
   let shift = 0;
-  for(let numTile = 0; numTile < nbTiles; numTile += 1) {
+  for (let numTile = 0; numTile < nbTiles; numTile += 1) {
     newOffsets[numTile] = offsets[numTile] + shift;
     newOffsets[nbTiles + numTile] = offsets[nbTiles + numTile];
     const newTile = tiles[numTile];
     if (newTile) {
       shift += newTile.byteLength - offsets[nbTiles + numTile];
       newOffsets[nbTiles + numTile] = newTile.byteLength;
-    }
-    else {
+    } else {
       newOffsets[nbTiles + numTile] = offsets[nbTiles + numTile];
     }
   }
@@ -413,15 +417,18 @@ function setTiles(urlDalleIn, urlDalleOut, tiles, png) {
   // ecriture des offets
   fs.writeSync(newDalle, newOffsets, 0, newOffsets.byteLength);
   // ecriture tuile par tuile
-  for(let numTile = 0; numTile < nbTiles; numTile += 1) {
+  for (let numTile = 0; numTile < nbTiles; numTile += 1) {
     const newTile = tiles[numTile];
-    if (newTile){
+    if (newTile) {
       // une tuile à patcher
       fs.writeSync(newDalle, newTile, 0, newTile.byteLength, newOffsets[numTile]);
-    }
-    else {
+    } else {
       // une tuile non modifée
-      fs.writeSync(newDalle, bufferDalle, offsets[numTile], offsets[nbTiles + numTile], newOffsets[numTile]);
+      fs.writeSync(newDalle,
+        bufferDalle,
+        offsets[numTile],
+        offsets[nbTiles + numTile],
+        newOffsets[numTile]);
     }
   }
   // on ferme le fichier de la dalle
@@ -433,19 +440,18 @@ function tiffInfo(url) {
   fs.open(url, (err, img) => {
     if (err) throw err;
     const header = getHeader(img);
-    fs.close(img, (err) => {
-      if (err) throw err;
+    fs.close(img, (err2) => {
+      if (err2) throw err2;
     });
     Object.keys(TAGS).forEach((tagId) => {
-      if (header.ifds[0][tagId]) 
-        debug(TAGS[tagId], ' -- ', header.ifds[0][tagId].values);
+      if (header.ifds[0][tagId]) { debug(TAGS[tagId], ' -- ', header.ifds[0][tagId].values); }
     });
   });
 }
 
 function extractAllTiles(urlIn, urlOut, ext) {
   debug('extractAllTiles ', urlIn, urlOut);
-  const createHeader = (ext != 'png');
+  const createHeader = (ext !== 'png');
   debug(createHeader);
   debug(ext);
   fs.open(urlIn, 'r', (err, dalle) => {
@@ -454,15 +460,15 @@ function extractAllTiles(urlIn, urlOut, ext) {
     debug(header.ifds[0][259]);
     for (let i = 0; i < header.ifds[0][324].values.length; i += 1) {
       // create d'un fichier pour la tuile
-      fs.writeFile(`${urlOut}_${i}.${ext}`, 
+      fs.writeFile(`${urlOut}_${i}.${ext}`,
         getTile(dalle, i, !createHeader),
-        (err) => {
-          if (err) throw err;
+        (err2) => {
+          if (err2) throw err2;
         });
     }
     // on ferme le fichier de la dalle
-    fs.close(dalle, (err) => {
-      if (err) throw err;
+    fs.close(dalle, (err2) => {
+      if (err2) throw err2;
     });
   });
 }
@@ -471,7 +477,7 @@ function getUrl(X, Y, Z, slabSize, pathDepth) {
   const strX = Math.trunc(X / slabSize.width).toString(36).padStart(pathDepth, 0).toUpperCase();
   const strY = Math.trunc(Y / slabSize.height).toString(36).padStart(pathDepth, 0).toUpperCase();
   debug(strX, strY);
-  let url = Z;	  
+  let url = Z;
   for (let i = 0; i < (pathDepth - 1); i += 1) {
     url = path.join(url, strX[i] + strY[i]);
   }
@@ -482,18 +488,8 @@ function getNumTile(X, Y, slabSize) {
   return (Y % slabSize.height) * slabSize.width + (X % slabSize.width);
 }
 
-// tiffInfo('testJPG.tif');
-// extractAllTiles('testPNG.tif', 'outPNG', 'png');
-// extractAllTiles('testLZW.tif', 'outLZW', false);
-// extractAllTiles('testJPG.tif', 'outJPG', 'tif');
-
-// extractAllTiles('cacheV2/21/00/01/VN/7O_graph_1.tif', 'verif', 'png');
-// extractAllTiles('cacheV2/21/00/01/VN/7O_graph_orig.tif', 'orig', 'png');
-
-// extractAllTiles('cacheV2/21/00/01/VN/8O_graph.tif', 'out_', 'png');
-// extractAllTiles('cacheV2/21/00/01/VN/8O_graph_1.tif', 'out_1', 'png');
-// extractAllTiles('cacheV2/21/00/01/VN/8O_graph_orig.tif', 'out_orig', 'png');
-
+exports.tiffInfo = tiffInfo;
+exports.extractAllTiles = extractAllTiles;
 exports.getTile = getTile;
 exports.getTiles = getTiles;
 exports.setTiles = setTiles;
