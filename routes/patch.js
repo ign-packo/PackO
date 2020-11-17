@@ -102,9 +102,15 @@ router.get('/patchs', [], (req, res) => {
   res.status(200).send(JSON.stringify(req.app.activePatchs));
 });
 
-async function patchATile(tile, geoJson, overviews) {
-  // Patch du graph
-  debug(tile);
+
+const patchResult = {
+  Unchanged: 0,
+  OutOfBounds: 1,
+  Changed: 2,
+}
+
+// on prépare les patchs qui contiennent: tileDir, urlGraph, urlOrtho, urlOpi, mask, numTile
+function createPatchs(tile, geoJson, overviews) {
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
   const Rmax = overviews.resolution;
@@ -114,7 +120,6 @@ async function patchATile(tile, geoJson, overviews) {
   // Il y a parfois un bug sur le dessin du premier pixel
   // on cree donc un masque une ligne de plus
   const mask = PImage.make(tileWidth, tileHeight + 1);
-
   const ctx = mask.getContext('2d');
   geoJson.features.forEach((feature) => {
     // debug(feature.properties.color);
@@ -147,87 +152,90 @@ async function patchATile(tile, geoJson, overviews) {
       empty = false;
     }
   }
-  debug(empty);
-  if (empty) {
-    debug('masque vide, on passe a la suite : ', tile);
-    return 0;
-  }
+  if (empty) return null;
+  return {
+    numTile: rok4.getNumTile(tile.x,tile.y, overviews.slabSize),
+    mask: mask,
+    slab: path.join(global.dir_cache, rok4.getUrl(tile.x, tile.y, tile.z, overviews.slabSize, overviews.pathDepth)),
+  };
+}
 
-  const tileDir = path.join(global.dir_cache, rok4.getUrl(tile.x, tile.y, tile.z, overviews.slabSize, overviews.pathDepth));
-  // const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
-  const urlGraph = tileDir + '_graph.tif';
-  const urlOrtho = tileDir + '_ortho.tif';
-  const urlOpi = tileDir + `_${geoJson.features[0].properties.cliche}.tif`;
-
-  if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
-    outOfBoundsTiles.push(tile);
-    debug('Out of bounds');
-    return 1;
-  }
-
-  const numTile = rok4.getNumTile(tile.x,tile.y, overviews.slabSize);
-
-  // On patch le graph
-  await util.promisify(fs.open)(urlGraph, 'r').then((dalle) => {
-    const tile = rok4.getTile(dalle, numTile, overviews.png);
-    fs.close(dalle, (err) => {
-      if (err){
-        debug(err);
-        throw err;
-      }
-    });
-    debug('tile : ', tile);
-    Promise.all([jimp.read(tile).then( (image) => {
+function processPatch(patch, png) {
+  // On fait toutes les corrections pour une dalle
+  // on récupère toutes les tuiles dont on va avoir besoin
+  tilesGraph = rok4.getTiles(patch.urlGraph, Object.keys(patch.masks), png);
+  tilesOrtho = rok4.getTiles(patch.urlOrtho, Object.keys(patch.masks), png);
+  tilesOpi = rok4.getTiles(patch.urlOpi, Object.keys(patch.masks), png);
+  // on prépare les mises à jour du graph
+  let tilesGraphOut = {};
+  let graphPromises = [];
+  Object.keys(tilesGraph).forEach((numTile) => {
+    const tileGraph = tilesGraph[numTile];
+    const mask = patch.masks[numTile];
+    debug('tileGraph : ', tileGraph, ' pour numTile : ', numTile);
+    // on decode l'image
+    graphPromises.push(jimp.read(tileGraph).then((image) => {
+      // on patche
       for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
         if (mask.data[1024 + idx + 3]) {
           [image.bitmap.data[idx],
           image.bitmap.data[idx + 1],
-          image.bitmap.data[idx + 2]] = geoJson.features[0].properties.color;
+          image.bitmap.data[idx + 2]] = patch.color;
         }
       }
-      // ecriture de la tuile dans la dalle
-      image.getBuffer(jimp.MIME_PNG, (err, buffer) => {
+      // on encode
+      return image.getBuffer(jimp.MIME_PNG, (err, buffer) => {
         if (err){
           debug(err);
           throw err;
         }
-        rok4.setTile(urlGraph, numTile, overviews.png, buffer);
+        return tilesGraphOut[numTile] = buffer;
       });
     }).catch((err) => {
-      debug(err);
-      throw(err);
-    })]);
+      debug('erreur de decodage jimp : ',err);
+    }));
   });
-
-  // On patch l ortho
-  let getDalleOrtho = util.promisify(fs.open)(urlOrtho, 'r');
-  let getDalleOpi = util.promisify(fs.open)(urlOpi, 'r');
-  Promise.all([getDalleOrtho, getDalleOpi]).then((dalles) => {
-    debug(dalles);
-    const tileOrtho = rok4.getTile(dalles[0], numTile, overviews.png);
-    const tileOpi = rok4.getTile(dalles[1], numTile, overviews.png);
-    let getOrtho = jimp.read(tileOrtho);
-    let getOpi = jimp.read(tileOrtho);
-    Promise.all([getOrtho, getOpi]).then((images) =>{
-      ortho = images[0];
-      opi = images[1];
+  // quand toutes les tuiles de graph sont prêtes, on les écrits
+  let graphUpdated = Promise.all(graphPromises).then(() => {
+    rok4.setTiles(patch.urlGraph, patch.urlGraphOutput, tilesGraphOut, png);
+  });
+  // on prépare les mises à jour de l'ortho
+  let tilesOrthoOut = {};
+  let orthoPromises = [];
+  Object.keys(tilesOrtho).forEach((numTile) => {
+    const tileOrtho = tilesOrtho[numTile];
+    const tileOpi = tilesOpi[numTile];
+    const mask = patch.masks[numTile];
+    // on decode les images
+    orthoPromises.push(Promise.all([jimp.read(tileOrtho), jimp.read(tileOpi)]).then((images) => {
+      // on patche
+      const imageOrtho = images[0];
+      const imageOpi = images[1];
       for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
         if (mask.data[1024 + idx + 3]) {
-          ortho.bitmap.data[idx] = opi.bitmap.data[idx];
-          ortho.bitmap.data[idx + 1] = opi.bitmap.data[idx + 1];
-          ortho.bitmap.data[idx + 2] = opi.bitmap.data[idx + 2];
+          for(let k=0; k < 3; k += 1) {
+            imageOrtho.bitmap.data[idx + k] = imageOpi.bitmap.data[idx + k];
+          }
         }
       }
-      ortho.getBuffer(jimp.MIME_PNG, (err, buffer) => {
-        if (err) throw err;
-        debug('buffer : ', buffer);
-        rok4.setTile(urlOrtho, numTile, overviews.png, buffer);
+      // on encode
+      return imageOrtho.getBuffer(jimp.MIME_PNG, (err, buffer) => {
+        if (err){
+          debug(err);
+          throw err;
+        }
+        return tilesOrthoOut[numTile] = buffer;
       });
-    });
+    }).catch((err) => {
+      debug('erreur de decodage jimp : ',err);
+    }));
   });
-  return 2;
+  // quand toutes les tuiles d'ortho sont prêtes, on les écrits
+  let orthoUpdated = Promise.all(orthoPromises).then(() => {
+    rok4.setTiles(patch.urlOrtho, patch.urlOrthoOutput, tilesOrthoOut, png);
+  });
+  return Promise.all([graphUpdated, orthoUpdated]);
 }
-
 
 router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   ...geoJsonAPatcher,
@@ -237,13 +245,6 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   const { overviews } = req.app;
   const params = matchedData(req);
   const geoJson = params.geoJSON;
-
-  const xOrigin = overviews.crs.boundingBox.xmin;
-  const yOrigin = overviews.crs.boundingBox.ymax;
-  const Rmax = overviews.resolution;
-  const lvlMax = overviews.level.max;
-  const tileWidth = overviews.tileSize.width;
-  const tileHeight = overviews.tileSize.height;
 
   let newPatchId = 0;
   for (let i = 0; i < req.app.activePatchs.features.length; i += 1) {
@@ -255,63 +256,73 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 
   const tiles = getTiles(geoJson.features, overviews);
   debug(tiles.length, 'tuiles intersectées');
-  const tilesModified = [];
-  const outOfBoundsTiles = [];
 
-  try {
-    // Patch these tiles
-    tiles.forEach((tile) => {
-      let codeRetour = patchATile(tile, geoJson, overviews);
-      if (codeRetour === 2){
-        tilesModified.push(tile);
+  // on groupe les patchs par dalle
+  let patchs={};
+  for(let numTile = 0; numTile < tiles.length; numTile+=1) {
+    const patch = createPatchs(tiles[numTile], geoJson, overviews);
+    if (patch === null) continue;
+    if (!patchs[patch.slab]) {
+      // on vérifie si la dalle est valide avant de continuer
+      const urlGraph =  patch.slab + '_graph.tif';
+      const urlOrtho = patch.slab + '_ortho.tif';
+      const urlGraphOutput = patch.slab + `_graph_${newPatchId}.tif`;
+      const urlOrthoOutput = patch.slab + `_ortho_${newPatchId}.tif`;
+      const urlOpi = patch.slab + `_${geoJson.features[0].properties.cliche}.tif`;
+      if (!fs.existsSync(urlGraph) || !fs.existsSync(urlOrtho) || !fs.existsSync(urlOpi)) {
+        res.status(204).send(JSON.stringify([]));
+        return;
       }
-      else if (codeRetour === 1){
-        outOfBoundsTiles.push(tile);
-      }
-    });
-    if (outOfBoundsTiles.length) {
-      const err = new Error();
-      err.code = 404;
-      err.msg = {
-        status: 'File(s) missing',
-        errors: [{
-          localisation: outOfBoundsTiles,
-          value: `${geoJson.features[0].properties.cliche}.png ou graph.png ou ortho.png`,
-          msg: 'File(s) missing',
-        }],
+      patchs[patch.slab] = {
+        slab: patch.slab, 
+        masks:{},
+        urlGraph,
+        urlOrtho,
+        urlOpi,
+        urlGraphOutput,
+        urlOrthoOutput,
+        color: geoJson.features[0].properties.color,
       };
-      throw err;
     }
+    patchs[patch.slab].masks[patch.numTile] = patch.mask;
+  }
+
+  // on traite dalle par dalle
+  let promises = [];
+  Object.keys(patchs).forEach((slab) => {
+    promises.push(processPatch(patchs[slab], overviews.png).catch((err) =>{
+      debug(err);
+      throw err;
+    }));
+  });
+
+  Promise.all(promises).then(() => {
+    // Tout c'est bien passé
     debug('tout c est bien passé on peut mettre a jour les liens symboliques');
-    tilesModified.forEach((tile) => {
-      const tileDir = path.join(global.dir_cache, rok4.getUrl(tile.x, tile.y, tile.z, overviews.slabSize, overviews.pathDepth));
-      debug(tileDir);
-      // const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
-      const urlGraph = tileDir + '_graph.tif';
-      const urlOrtho = tileDir + '_ortho.tif';
-      const urlGraphOutput = tileDir + `_graph_${newPatchId}.tif`;
-      const urlOrthoOutput = tileDir + `_ortho_${newPatchId}.tif`;
+    Object.keys(patchs).forEach((slab) => {
+      const patch = patchs[slab];
+      debug(patch);
+      const urlGraph = patch.urlGraph;
+      const urlOrtho = patch.urlOrtho;
+      const urlGraphOutput = patch.urlGraphOutput;
+      const urlOrthoOutput = patch.urlOrthoOutput;
       // on verifie si c'est un lien symbolique ou le fichier d'origine
-      // if (fs.lstatSync(urlGraph).isSymbolicLink()) {
       if (fs.lstatSync(urlGraph).nlink > 1) {
-        // ou faire test sur la presence d'un fichier _orig ??
         fs.unlinkSync(urlGraph);
         fs.unlinkSync(urlOrtho);
       } else {
-        const urlGraphOrig = tileDir + '_graph_orig.tif';
-        const urlOrthoOrig = tileDir + '_ortho_orig.tif';
+        const urlGraphOrig = patch.slab + '_graph_orig.tif';
+        const urlOrthoOrig = patch.slab + '_ortho_orig.tif';
         fs.renameSync(urlGraph, urlGraphOrig);
         fs.renameSync(urlOrtho, urlOrthoOrig);
       }
-      // fs.symlinkSync(urlGraphOutput, urlGraph);
-      // fs.symlinkSync(urlOrthoOutput, urlOrtho);
       fs.linkSync(urlGraphOutput, urlGraph);
       fs.linkSync(urlOrthoOutput, urlOrtho);
     });
     // on note le patch Id
     geoJson.features.forEach((feature) => {
       feature.properties.patchId = newPatchId;
-      feature.properties.tiles = tilesModified;
+      feature.properties.slabs = Object.keys(patchs);
     });
     // on ajoute ce patch à l'historique
     debug('New patch, Id:', newPatchId);
@@ -325,29 +336,11 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     req.app.unactivePatchs.features = [];
     debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
     fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
-    if (outOfBoundsTiles.length) {
-      res.status(204).send(JSON.stringify(tiles));
-    } else {
-      res.status(200).send(JSON.stringify(tiles));
-    }    
-  } catch (err) {
-    debug('***ERROR***');
+    res.status(200).send(JSON.stringify([]));
+  }).catch((err) =>{
     debug(err);
-    debug(err.msg);
-    res.status(err.code).send(err.msg);
-    if (err.code === 404) {
-      Promise.all(promises).then(() => {
-        debug('Erreur => clean up');
-        tilesModified.forEach((tile) => {
-          const tileDir = path.join(global.dir_cache, rok4.getUrl(tile.x, tile.y, tile.z, overviews.slabSize, overviews.pathDepth));
-          // const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
-          debug(tileDir);
-          fs.unlinkSync(tileDir + `_graph_${newPatchId}.tif`);
-          fs.unlinkSync(tileDir + `_ortho_${newPatchId}.tif`);
-        });
-      });
-    }
-  }
+    throw err;
+  });
 });
 
 router.put('/patch/undo', [], (req, res) => {

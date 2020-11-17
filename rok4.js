@@ -1,5 +1,7 @@
 const path = require('path');
 const fs = require('fs');
+const { head } = require('./routes/patch');
+const { off } = require('process');
 const debug = require('debug')('rok4');
 
 const TAGS = {
@@ -333,7 +335,7 @@ function createTileHeader(header, tileSize, buffer) {
 
 // Recuperation d'une tuile dans une dalle au format rok4
 function getTile(dalle, numTile, png) {
-  debug('Extraction de la tuile ', numTile, 'dans la dalle : ', dalle);
+  // debug('Extraction de la tuile ', numTile, 'dans la dalle : ', dalle);
   // on analyse le header
   const header = getHeader(dalle);
   const bufferSize = png ? header.ifds[0][325].values[numTile] : 4096 + header.ifds[0][325].values[numTile];
@@ -347,16 +349,39 @@ function getTile(dalle, numTile, png) {
   return tile;
 }
 
-// Mise à jour d'une tuile dans une dalle au format rok4
-function setTile(urlDalle, numTile, png, buffer) {
+// Recuperation d'une sélection de tuiles dans une dalle au format rok4
+// fonction synchrone
+function getTiles(urlDalle, numTiles, png) {
+  debug('Extraction des tuiles ', numTiles, 'dans la dalle : ', urlDalle);
+  const dalle = fs.openSync(urlDalle, 'r');
+  // on analyse le header
+  const header = getHeader(dalle);
+  let tiles = {};
+  numTiles.forEach((numTile) => {
+    const bufferSize = png ? header.ifds[0][325].values[numTile] : 4096 + header.ifds[0][325].values[numTile];
+    // on crée le buffer
+    const tile = Buffer.alloc(bufferSize)
+    // preparation du tileHeader (todo: sauf dans le cas d'un PNG)
+    if (!png)
+      createTileHeader(header, header.ifds[0][325].values[numTile], tile);
+    // lecture de la tuile
+    fs.readSync(dalle, tile, png ? 0 : 4096, header.ifds[0][325].values[numTile], header.ifds[0][324].values[numTile]);
+    tiles[numTile] = tile;
+  });
+  fs.closeSync(dalle);
+  return tiles;
+}
+
+// Mise à jour d'une ou plusieurs tuiles dans une dalle au format rok4
+function setTiles(urlDalleIn, urlDalleOut, tiles, png) {
   if (!png){
     debug('Cas non géré');
     return;
   }
-  debug('Mise a jour de la dalle ', urlDalle);
-  debug('Ecriture de la tuile : ', numTile);
+  debug('Mise a jour de la dalle ', urlDalleIn, ' vers ', urlDalleOut);
+  debug('Ecriture des tuiles : ', tiles);
   // lecture complete du fichier
-  bufferDalle = fs.readFileSync(urlDalle);
+  bufferDalle = fs.readFileSync(urlDalleIn);
   // decodage de l'entete
   const header = decodeHeader(bufferDalle);
   const nbTiles = header.ifds[0][325].values.length;
@@ -367,33 +392,37 @@ function setTile(urlDalle, numTile, png, buffer) {
     2 * nbTiles,
   );
   // création d'un offsets mis à jour
-  const oldBufferByteCount = offsets[nbTiles + numTile];
-  const newOffsets = Uint32Array.from(offsets);
-  for (let n = (numTile + 1); n < nbTiles; n += 1) {
-    newOffsets[n] += buffer.byteLength - oldBufferByteCount;
+  const newOffsets = new Uint32Array(nbTiles * 2);
+  let shift = 0;
+  for(let numTile = 0; numTile < nbTiles; numTile += 1) {
+    newOffsets[numTile] = offsets[numTile] + shift;
+    newOffsets[nbTiles + numTile] = offsets[nbTiles + numTile];
+    const newTile = tiles[numTile];
+    if (newTile) {
+      shift += newTile.byteLength - offsets[nbTiles + numTile];
+      newOffsets[nbTiles + numTile] = newTile.byteLength;
+    }
+    else {
+      newOffsets[nbTiles + numTile] = offsets[nbTiles + numTile];
+    }
   }
-  newOffsets[nbTiles + numTile] = buffer.byteLength;
   // on ecrase la dalle avec la mise à jour
-  const newDalle = fs.openSync(urlDalle, 'w');
+  const newDalle = fs.openSync(urlDalleOut, 'w');
   // ecriture du header
   fs.writeSync(newDalle, bufferDalle, 0, 2048);
   // ecriture des offets
   fs.writeSync(newDalle, newOffsets, 0, newOffsets.byteLength);
-  // ecriture des premieres tuiles si necessaire
-  if (numTile > 0) {
-    fs.writeSync(newDalle,
-      bufferDalle,
-      2048 + offsets.byteLength,
-      offsets[numTile - 1] + offsets[nbTiles + numTile - 1]);
-  }
-  // ecriture de la nouvelle tuile
-  fs.writeSync(newDalle, buffer, 0, buffer.byteLength);
-  // ecriture des dernières tuiles si necessaire
-  if ((numTile + 1) < nbTiles) {
-    fs.writeSync(newDalle,
-      bufferDalle,
-      offsets[numTile + 1],
-      bufferDalle.byteLength - offsets[numTile + 1]);
+  // ecriture tuile par tuile
+  for(let numTile = 0; numTile < nbTiles; numTile += 1) {
+    const newTile = tiles[numTile];
+    if (newTile){
+      // une tuile à patcher
+      fs.writeSync(newDalle, newTile, 0, newTile.byteLength, newOffsets[numTile]);
+    }
+    else {
+      // une tuile non modifée
+      fs.writeSync(newDalle, bufferDalle, offsets[numTile], offsets[nbTiles + numTile], newOffsets[numTile]);
+    }
   }
   // on ferme le fichier de la dalle
   fs.closeSync(newDalle);
@@ -417,13 +446,16 @@ function tiffInfo(url) {
 function extractAllTiles(urlIn, urlOut, ext) {
   debug('extractAllTiles ', urlIn, urlOut);
   const createHeader = (ext != 'png');
+  debug(createHeader);
+  debug(ext);
   fs.open(urlIn, 'r', (err, dalle) => {
     if (err) throw err;
     const header = getHeader(dalle);
+    debug(header.ifds[0][259]);
     for (let i = 0; i < header.ifds[0][324].values.length; i += 1) {
-      // create d'un fichier Tiff pour la tuile
+      // create d'un fichier pour la tuile
       fs.writeFile(`${urlOut}_${i}.${ext}`, 
-        getTile(dalle, i, createHeader),
+        getTile(dalle, i, !createHeader),
         (err) => {
           if (err) throw err;
         });
@@ -451,11 +483,19 @@ function getNumTile(X, Y, slabSize) {
 }
 
 // tiffInfo('testJPG.tif');
-// extractAllTiles('testPNG.tif', 'outPNG', true);
+// extractAllTiles('testPNG.tif', 'outPNG', 'png');
 // extractAllTiles('testLZW.tif', 'outLZW', false);
 // extractAllTiles('testJPG.tif', 'outJPG', 'tif');
 
+// extractAllTiles('cacheV2/21/00/01/VN/7O_graph_1.tif', 'verif', 'png');
+// extractAllTiles('cacheV2/21/00/01/VN/7O_graph_orig.tif', 'orig', 'png');
+
+// extractAllTiles('cacheV2/21/00/01/VN/8O_graph.tif', 'out_', 'png');
+// extractAllTiles('cacheV2/21/00/01/VN/8O_graph_1.tif', 'out_1', 'png');
+// extractAllTiles('cacheV2/21/00/01/VN/8O_graph_orig.tif', 'out_orig', 'png');
+
 exports.getTile = getTile;
-exports.setTile = setTile;
+exports.getTiles = getTiles;
+exports.setTiles = setTiles;
 exports.getUrl = getUrl;
 exports.getNumTile = getNumTile;
