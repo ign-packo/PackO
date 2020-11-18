@@ -376,16 +376,25 @@ def main():
     print(" Calcul")
     nb_tiles = len(args_create_ortho_and_graph)
     print(" ", nb_tiles, "tuiles à traiter")
+    print("   ", end='', flush=True)
 
     counter = 0
     nb_steps = 20
+    nb_underscores = nb_steps
+    if (nb_tiles < nb_steps):
+        nb_underscores = nb_tiles
+    
+    for i in range(nb_underscores):
+        print("_", end='', flush=True)
+    print("")
+
     for i in range(nb_tiles):
         args_create_ortho_and_graph[i]['advancement'] = 0
         if ( math.floor(i%(nb_tiles / nb_steps )) == 0 ):
             counter = counter + 1
             args_create_ortho_and_graph[i]['advancement'] = counter * nb_steps
     
-    print('|', end='', flush=True)
+    print('  |', end='', flush=True)
     POOL = multiprocessing.Pool(cpu_dispo-1)
     POOL.map(create_ortho_and_graph_1arg, args_create_ortho_and_graph)
 
