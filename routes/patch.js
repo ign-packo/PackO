@@ -227,7 +227,14 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         || !fs.existsSync(patch.urlOrtho)
         || !fs.existsSync(patch.urlOpi)) {
         debug('Out of bounds');
-        res.status(204).send(JSON.stringify([]));
+        res.status(404).send(JSON.stringify({
+          status: 'File(s) missing',
+          errors: [{
+            localisation: patch.tile,
+            value: `${geoJson.features[0].properties.cliche}.png ou graph.png ou ortho.png`,
+            msg: 'File(s) missing',
+          }],
+        }));
         return;
       }
       patch.urlGraphOutput = path.join(patch.tileDir, `graph_${newPatchId}.png`);
