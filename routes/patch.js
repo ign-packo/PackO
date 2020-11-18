@@ -279,7 +279,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     req.app.unactivePatchs.features = [];
     debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
     fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
-    res.status(200).send(JSON.stringify([]));
+    res.status(200).send(JSON.stringify(tilesModified));
   }).catch((err) => {
     debug(err);
     res.status(400).send(err);
