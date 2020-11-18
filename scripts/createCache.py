@@ -1,3 +1,5 @@
+# coding: utf-8
+
 """This script create or update a cache from a list of OPI"""
 import os
 import math
@@ -196,7 +198,7 @@ def create_ortho_and_graph_1arg(arguments):
     advancement = arguments['advancement']
 
     if advancement != 0:
-        print("  ",advancement,"% terminé")
+        print("█", end='', flush=True)
 
     tile_x = tile['x']
     tile_y = tile['y']
@@ -376,18 +378,21 @@ def main():
     print(" ", nb_tiles, "tuiles à traiter")
 
     counter = 0
+    nb_steps = 20
     for i in range(nb_tiles):
         args_create_ortho_and_graph[i]['advancement'] = 0
-        if ( math.floor(i%(nb_tiles * 0.1)) == 0 ):
+        if ( math.floor(i%(nb_tiles / nb_steps )) == 0 ):
             counter = counter + 1
-            args_create_ortho_and_graph[i]['advancement'] = counter * 10
-
+            args_create_ortho_and_graph[i]['advancement'] = counter * nb_steps
+    
+    print('|', end='', flush=True)
     POOL = multiprocessing.Pool(cpu_dispo-1)
     POOL.map(create_ortho_and_graph_1arg, args_create_ortho_and_graph)
 
     POOL.close()
     POOL.join()
 
+    print('|')
     print('=> DONE')
 
     #Finitions
