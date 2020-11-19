@@ -148,14 +148,18 @@ def get_tilebox(input_filename, overviews):
     if "LowerCorner" not in overviews['dataSet']['boundingBox']:
         overviews['dataSet']['boundingBox'] = tile_limits
     else:
-        if tile_limits['LowerCorner'][0] < overviews['dataSet']['boundingBox']['LowerCorner'][0]:
-            overviews['dataSet']['boundingBox']['LowerCorner'][0] = tile_limits['LowerCorner'][0]
-        if tile_limits['LowerCorner'][1] < overviews['dataSet']['boundingBox']['LowerCorner'][1]:
-            overviews['dataSet']['boundingBox']['LowerCorner'][1] = tile_limits['LowerCorner'][1]
-        if tile_limits['UpperCorner'][0] > overviews['dataSet']['boundingBox']['UpperCorner'][0]:
-            overviews['dataSet']['boundingBox']['UpperCorner'][0] = tile_limits['UpperCorner'][0]
-        if tile_limits['UpperCorner'][1] > overviews['dataSet']['boundingBox']['UpperCorner'][1]:
-            overviews['dataSet']['boundingBox']['UpperCorner'][1] = tile_limits['UpperCorner'][1]
+        overviews['dataSet']['boundingBox']['LowerCorner'][0]\
+            = min(tile_limits['LowerCorner'][0],
+                  overviews['dataSet']['boundingBox']['LowerCorner'][0])
+        overviews['dataSet']['boundingBox']['LowerCorner'][1]\
+            = min(tile_limits['LowerCorner'][1],
+                  overviews['dataSet']['boundingBox']['LowerCorner'][1])
+        overviews['dataSet']['boundingBox']['UpperCorner'][0]\
+            = max(tile_limits['LowerCorner'][0],
+                  overviews['dataSet']['boundingBox']['UpperCorner'][0])
+        overviews['dataSet']['boundingBox']['UpperCorner'][1]\
+            = max(tile_limits['LowerCorner'][1],
+                  overviews['dataSet']['boundingBox']['UpperCorner'][1])
 
     for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
@@ -189,15 +193,18 @@ def get_tilebox(input_filename, overviews):
                 'MaxTileRow': max_tile_row
             }
         else:
-            if min_tile_col < overviews['dataSet']['limits'][str(tile_z)]['MinTileCol']:
-                overviews['dataSet']['limits'][str(tile_z)]['MinTileCol'] = min_tile_col
-            if min_tile_row < overviews['dataSet']['limits'][str(tile_z)]['MinTileRow']:
-                overviews['dataSet']['limits'][str(tile_z)]['MinTileRow'] = min_tile_row
-            if max_tile_col > overviews['dataSet']['limits'][str(tile_z)]['MaxTileCol']:
-                overviews['dataSet']['limits'][str(tile_z)]['MaxTileCol'] = max_tile_col
-            if max_tile_row > overviews['dataSet']['limits'][str(tile_z)]['MaxTileRow']:
-                overviews['dataSet']['limits'][str(tile_z)]['MaxTileRow'] = max_tile_row
-
+            overviews['dataSet']['limits'][str(tile_z)]['MinTileCol']\
+                = min(min_tile_col,
+                      overviews['dataSet']['limits'][str(tile_z)]['MinTileCol'])
+            overviews['dataSet']['limits'][str(tile_z)]['MinTileRow']\
+                = min(min_tile_row,
+                      overviews['dataSet']['limits'][str(tile_z)]['MinTileRow'])
+            overviews['dataSet']['limits'][str(tile_z)]['MaxTileCol']\
+                = max(max_tile_col,
+                      overviews['dataSet']['limits'][str(tile_z)]['MaxTileCol'])
+            overviews['dataSet']['limits'][str(tile_z)]['MaxTileRow']\
+                = max(max_tile_row,
+                      overviews['dataSet']['limits'][str(tile_z)]['MaxTileRow'])
     return tilebox
 
 
