@@ -266,6 +266,12 @@ def main():
         # creation dossier cache
         os.mkdir(args.cache)
 
+    if os.path.exists(args.cache + '/cache_mtd.json'):
+        with open(args.cache + '/cache_mtd.json', 'r') as inputfile:
+            mtd = json.load(inputfile)
+    else:
+        mtd = {}
+
     if not os.path.exists(args.cache + '/overviews.json'):
         # creation fichier overviews.json a partir d'un fichier ressource
         shutil.copy2(args.overviews, args.cache + '/overviews.json')
@@ -290,12 +296,6 @@ def main():
     list_filename = glob.glob(args.input)
     if verbose > 0:
         print(len(list_filename), "fichier(s) a traiter")
-
-    try:
-        with open(args.cache + '/cache_mtd.json', 'r') as inputfile:
-            mtd = json.load(inputfile)
-    except ValueError:
-        mtd = {}
 
     opi_already_calculated = []
 
