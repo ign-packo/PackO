@@ -34,13 +34,13 @@ nb_bands = 3
 PNG_DRIVER = gdal.GetDriverByName('png')
 
 
-def cut_opi_1tile(filename, tile_dir, image_name, origin, tileSize, tile, out_raster_srs, nb_bands):
+def cut_opi_1tile(filename, tile_dir, image_name, origin, tile_size, tile, out_raster_srs, nb_bands):
     """Cut and reseample a specified image at a given level"""
     if verbose > 0:
         print("~~~cut_opi_1tile")
 
     input_image = gdal.Open(filename)
-    target_ds = gdal.GetDriverByName('MEM').Create('', tileSize['width'], tileSize['height'], nb_bands, gdal.GDT_Byte)
+    target_ds = gdal.GetDriverByName('MEM').Create('', tile_size['width'], tile_size['height'], nb_bands, gdal.GDT_Byte)
     target_ds.SetGeoTransform((origin['x'], tile['resolution'], 0, origin['y'], 0, -tile['resolution']))
     target_ds.SetProjection(out_raster_srs)
     target_ds.FlushCache()
