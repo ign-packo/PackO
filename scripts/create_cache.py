@@ -6,19 +6,42 @@ import math
 from pathlib import Path
 import glob
 from random import randrange
-import numpy as np
-import gdal
 import argparse
 import multiprocessing
+import numpy as np
+import gdal
 cpu_dispo = multiprocessing.cpu_count()
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-c", "--cache", help="cache directory (default: cache)", type=str, default="cache")
-parser.add_argument("-o", "--overviews", help="params for the mosaic (default: ressources/LAMB93_5cm.json)", type=str, default="ressources/LAMB93_5cm.json")
-parser.add_argument("-t", "--table", help="graph table (default: graphe_pcrs56_zone_test)", type=str, default="graphe_pcrs56_zone_test")
-parser.add_argument("-i", "--input", required=True, help="input OPI pattern")
-parser.add_argument("-a", "--api", help="API Url (default: http://localhost:8081/wmts)", type=str, default="http://localhost:8081/wmts")
-parser.add_argument("-v", "--verbose", help="verbose (default: 0)", type=int, default=0)
+parser.add_argument("-c",
+                    "--cache",
+                    help="cache directory (default: cache)",
+                    type=str,
+                    default="cache")
+parser.add_argument("-o",
+                    "--overviews",
+                    help="params for the mosaic (default: ressources/LAMB93_5cm.json)",
+                    type=str,
+                    default="ressources/LAMB93_5cm.json")
+parser.add_argument("-t",
+                    "--table",
+                    help="graph table (default: graphe_pcrs56_zone_test)",
+                    type=str,
+                    default="graphe_pcrs56_zone_test")
+parser.add_argument("-i",
+                    "--input",
+                    required=True,
+                    help="input OPI pattern")
+parser.add_argument("-a",
+                    "--api",
+                    help="API Url (default: http://localhost:8081/wmts)",
+                    type=str,
+                    default="http://localhost:8081/wmts")
+parser.add_argument("-v",
+                    "--verbose",
+                    help="verbose (default: 0)",
+                    type=int,
+                    default=0)
 args = parser.parse_args()
 verbose = args.verbose
 if verbose > 0:
@@ -30,18 +53,34 @@ database = os.getenv('PGDATABASE', default='pcrs')
 password = os.getenv('PGPASSWORD', default='postgres')  # En dur, pas top...
 port = os.getenv('PGPORT', default='5432')
 
-nb_bands = 3
+NB_BANDS = 3
 PNG_DRIVER = gdal.GetDriverByName('png')
 
 
-def cut_opi_1tile(filename, tile_dir, image_name, origin, tile_size, tile, out_raster_srs, nb_bands):
+def cut_opi_1tile(filename,
+                  tile_dir,
+                  image_name,
+                  origin,
+                  tile_size,
+                  tile,
+                  out_raster_srs,
+                  nb_bands):
     """Cut and reseample a specified image at a given level"""
     if verbose > 0:
         print("~~~cut_opi_1tile")
 
     input_image = gdal.Open(filename)
-    target_ds = gdal.GetDriverByName('MEM').Create('', tile_size['width'], tile_size['height'], nb_bands, gdal.GDT_Byte)
-    target_ds.SetGeoTransform((origin['x'], tile['resolution'], 0, origin['y'], 0, -tile['resolution']))
+    target_ds = gdal.GetDriverByName('MEM').Create('',
+                                                   tile_size['width'],
+                                                   tile_size['height'],
+                                                   nb_bands,
+                                                   gdal.GDT_Byte)
+    target_ds.SetGeoTransform((origin['x'],
+                               tile['resolution'],
+                               0,
+                               origin['y'],
+                               0,
+                               -tile['resolution']))
     target_ds.SetProjection(out_raster_srs)
     target_ds.FlushCache()
     opi = target_ds
@@ -50,20 +89,24 @@ def cut_opi_1tile(filename, tile_dir, image_name, origin, tile_size, tile, out_r
     gdal.Warp(opi, input_image)
 
     # on export en png (todo: gerer le niveau de Q)
+    # pylint: disable=unused-variable
     dst_ds = PNG_DRIVER.CreateCopy(tile_dir + "/" + image_name + ".png", opi)
     opi = None
     dst_ds = None  # noqa: F841
-
-    return
+    # pylint: enable=unused-variable
 
 
 def create_blank_tile(overviews, tile, nb_bands, out_srs):
     """Return a blank georef image for a tile."""
-    origin_x = overviews['crs']['boundingBox']['xmin'] + tile['x'] * tile['resolution'] * overviews['tileSize']['width']
-    origin_y = overviews['crs']['boundingBox']['ymax'] - tile['y'] * tile['resolution'] * overviews['tileSize']['height']
+    origin_x = overviews['crs']['boundingBox']['xmin']\
+        + tile['x'] * tile['resolution'] * overviews['tileSize']['width']
+    origin_y = overviews['crs']['boundingBox']['ymax']\
+        - tile['y'] * tile['resolution'] * overviews['tileSize']['height']
     target_ds = gdal.GetDriverByName('MEM').Create('',
-                                                   overviews['tileSize']['width'], overviews['tileSize']['height'],
-                                                   nb_bands, gdal.GDT_Byte)
+                                                   overviews['tileSize']['width'],
+                                                   overviews['tileSize']['height'],
+                                                   nb_bands,
+                                                   gdal.GDT_Byte)
     target_ds.SetGeoTransform((origin_x, tile['resolution'], 0,
                                origin_y, 0, -tile['resolution']))
     target_ds.SetProjection(out_srs)
@@ -102,7 +145,7 @@ def get_tilebox(input_filename, overviews):
 
     tile_limits = get_tile_limits(input_filename)
 
-    if not("LowerCorner" in overviews['dataSet']['boundingBox']):
+    if "LowerCorner" not in overviews['dataSet']['boundingBox']:
         overviews['dataSet']['boundingBox'] = tile_limits
     else:
         if tile_limits['LowerCorner'][0] < overviews['dataSet']['boundingBox']['LowerCorner'][0]:
@@ -117,10 +160,18 @@ def get_tilebox(input_filename, overviews):
     for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
-        min_tile_col = math.floor(round((tile_limits['LowerCorner'][0] - overviews['crs']['boundingBox']['xmin']) / (resolution * overviews['tileSize']['width']), 8))
-        min_tile_row = math.floor(round((overviews['crs']['boundingBox']['ymax'] - tile_limits['UpperCorner'][1]) / (resolution * overviews['tileSize']['height']), 8))
-        max_tile_col = math.ceil(round((tile_limits['UpperCorner'][0] - overviews['crs']['boundingBox']['xmin']) / (resolution * overviews['tileSize']['width']), 8)) - 1
-        max_tile_row = math.ceil(round((overviews['crs']['boundingBox']['ymax'] - tile_limits['LowerCorner'][1]) / (resolution * overviews['tileSize']['height']), 8)) - 1
+        min_tile_col = math.floor(round((tile_limits['LowerCorner'][0]
+                                         - overviews['crs']['boundingBox']['xmin'])
+                                        / (resolution * overviews['tileSize']['width']), 8))
+        min_tile_row = math.floor(round((overviews['crs']['boundingBox']['ymax']
+                                         - tile_limits['UpperCorner'][1])
+                                        / (resolution * overviews['tileSize']['height']), 8))
+        max_tile_col = math.ceil(round((tile_limits['UpperCorner'][0]
+                                        - overviews['crs']['boundingBox']['xmin'])
+                                       / (resolution * overviews['tileSize']['width']), 8)) - 1
+        max_tile_row = math.ceil(round((overviews['crs']['boundingBox']['ymax']
+                                        - tile_limits['LowerCorner'][1])
+                                       / (resolution * overviews['tileSize']['height']), 8)) - 1
 
         tilebox_z = {
             'MinTileCol': min_tile_col,
@@ -130,7 +181,7 @@ def get_tilebox(input_filename, overviews):
         }
         tilebox[str(tile_z)] = tilebox_z
 
-        if not(str(tile_z) in overviews['dataSet']['limits']):
+        if str(tile_z) not in overviews['dataSet']['limits']:
             overviews['dataSet']['limits'][str(tile_z)] = {
                 'MinTileCol': min_tile_col,
                 'MinTileRow': min_tile_row,
@@ -169,11 +220,15 @@ def cut_image_1arg(arguments):
 
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
-        for tile_x in range(tilebox[str(tile_z)]['MinTileCol'], tilebox[str(tile_z)]['MaxTileCol'] + 1):
-            for tile_y in range(tilebox[str(tile_z)]['MinTileRow'], tilebox[str(tile_z)]['MaxTileRow'] + 1):
+        for tile_x in range(tilebox[str(tile_z)]['MinTileCol'],
+                            tilebox[str(tile_z)]['MaxTileCol'] + 1):
+            for tile_y in range(tilebox[str(tile_z)]['MinTileRow'],
+                                tilebox[str(tile_z)]['MaxTileRow'] + 1):
                 origin = {
-                    'x': overviews['crs']['boundingBox']['xmin'] + tile_x * resolution * overviews['tileSize']['width'],
-                    'y': overviews['crs']['boundingBox']['ymax'] - tile_y * resolution * overviews['tileSize']['height']
+                    'x': overviews['crs']['boundingBox']['xmin']
+                         + tile_x * resolution * overviews['tileSize']['width'],  # noqa: E131
+                    'y': overviews['crs']['boundingBox']['ymax']
+                         - tile_y * resolution * overviews['tileSize']['height']  # noqa: E131
                 }
 
                 tile_dir = args.cache + '/' + str(tile_z) + '/' + str(tile_y) + '/' + str(tile_x)
@@ -182,7 +237,14 @@ def cut_image_1arg(arguments):
                 # si necessaire on cree le dossier de la tuile
                 Path(tile_dir).mkdir(parents=True, exist_ok=True)
 
-                cut_opi_1tile(filename, tile_dir, stem, origin, overviews['tileSize'], tile, out_srs, nb_bands)
+                cut_opi_1tile(filename,
+                              tile_dir,
+                              stem,
+                              origin,
+                              overviews['tileSize'],
+                              tile,
+                              out_srs,
+                              nb_bands)
 
 
 def create_ortho_and_graph_1arg(arguments):
@@ -206,8 +268,18 @@ def create_ortho_and_graph_1arg(arguments):
     resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
     # on cree le graphe et l'ortho
-    ortho = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_srs)
-    graph = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_srs)
+    ortho = create_blank_tile(overviews,
+                              {'x': tile_x,
+                               'y': tile_y,
+                               'resolution': resolution},
+                              3,
+                              out_srs)
+    graph = create_blank_tile(overviews,
+                              {'x': tile_x,
+                               'y': tile_y,
+                               'resolution': resolution},
+                              3,
+                              out_srs)
 
     tile_dir = args.cache + '/' + str(tile_z) + '/' + str(tile_y) + '/' + str(tile_x)
     list_filename = glob.glob(tile_dir + '/*.png')
@@ -219,11 +291,19 @@ def create_ortho_and_graph_1arg(arguments):
         color = overviews["list_OPI"][stem]
 
         # on cree une image mono canal pour la tuile
-        mask = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_srs)
+        mask = create_blank_tile(overviews,
+                                 {'x': tile_x,
+                                  'y': tile_y,
+                                  'resolution': resolution},
+                                 3,
+                                 out_srs)
 
         # on rasterise la partie du graphe qui concerne ce cliche
         db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
-        gdal.Rasterize(mask, db_graph, SQLStatement='select geom from ' + args.table + ' where cliche = \'' + stem + '\' ')
+        gdal.Rasterize(mask,
+                       db_graph,
+                       SQLStatement='select geom from '
+                       + args.table + ' where cliche = \'' + stem + '\' ')
         img_mask = mask.GetRasterBand(1).ReadAsArray()
         # si le mask est vide, on a termine
         val_max = np.amax(img_mask)
@@ -246,18 +326,22 @@ def create_ortho_and_graph_1arg(arguments):
                 graph.GetRasterBand(i + 1).WriteArray(graph_i)
 
     if not is_empty:
+        # pylint: disable=unused-variable
         dst_ortho = PNG_DRIVER.CreateCopy(tile_dir + "/ortho.png", ortho)
         dst_graph = PNG_DRIVER.CreateCopy(tile_dir + "/graph.png", graph)
         dst_ortho = None  # noqa: F841
         dst_graph = None  # noqa: F841
+        # pylint: enable=unused-variable
     ortho = None
     graph = None
 
 
 def main():
     """Create or Update the cache for list of input OPI."""
+    # pylint: disable=import-outside-toplevel
     import shutil
     import json
+    # pylint: enable=import-outside-toplevel
 
     if os.path.isdir(args.input):
         args.input = args.input + '\\*.tif'
@@ -279,10 +363,10 @@ def main():
     with open(args.cache + '/overviews.json') as json_overviews:
         overviews_init = json.load(json_overviews)
         overviews_dict = overviews_init
-    if not ("list_OPI" in overviews_dict):
+    if "list_OPI" not in overviews_dict:
         overviews_dict["list_OPI"] = {}
 
-    if not("dataSet" in overviews_dict):
+    if "dataSet" not in overviews_dict:
         overviews_dict['dataSet'] = {}
         overviews_dict['dataSet']['boundingBox'] = {}
         overviews_dict['dataSet']['limits'] = {}
@@ -291,7 +375,9 @@ def main():
     out_raster_srs.ImportFromEPSG(overviews_init['crs']['code'])
     out_srs = out_raster_srs.ExportToWkt()
 
-    conn_string = "PG:host=" + host + " dbname=" + database + " user=" + user + " password=" + password
+    conn_string = "PG:host="\
+        + host + " dbname=" + database\
+        + " user=" + user + " password=" + password
 
     list_filename = glob.glob(args.input)
     if verbose > 0:
@@ -305,13 +391,15 @@ def main():
     print(" Préparation")
     for filename in list_filename:
         opi = Path(filename).stem
-        if (opi in overviews_dict['list_OPI'].keys()):
+        if opi in overviews_dict['list_OPI'].keys():
             # OPI déja traitée
             opi_already_calculated.append(opi)
         else:
             print('  image :', filename)
             color = [randrange(255), randrange(255), randrange(255)]
-            while (color[0] in mtd) and (color[1] in mtd[color[0]]) and (color[2] in mtd[color[0]][color[1]]):
+            while (color[0] in mtd)\
+                    and (color[1] in mtd[color[0]])\
+                    and (color[2] in mtd[color[0]][color[1]]):
                 color = [randrange(255), randrange(255), randrange(255)]
             if color[0] not in mtd:
                 mtd[color[0]] = {}
@@ -325,7 +413,7 @@ def main():
                 'outSrs': out_srs,
                 'overviews': overviews_init,
                 'tileBox': tilebox_image,
-                'nbBands': nb_bands
+                'nbBands': NB_BANDS
             }
 
             args_cut_image.append(argument_zyx)
@@ -335,11 +423,11 @@ def main():
 
     print(" Découpage")
 
-    POOL = multiprocessing.Pool(cpu_dispo - 1)
-    POOL.map(cut_image_1arg, args_cut_image)
+    pool = multiprocessing.Pool(cpu_dispo - 1)
+    pool.map(cut_image_1arg, args_cut_image)
 
-    POOL.close()
-    POOL.join()
+    pool.close()
+    pool.join()
 
     print('=> DONE')
 
@@ -382,16 +470,16 @@ def main():
 
     for i in range(nb_tiles):
         args_create_ortho_and_graph[i]['advancement'] = 0
-        if (math.floor(i % (nb_tiles / nb_steps)) == 0):
+        if math.floor(i % (nb_tiles / nb_steps)) == 0:
             counter = counter + 1
             args_create_ortho_and_graph[i]['advancement'] = counter * nb_steps
 
     print('   |', end='', flush=True)
-    POOL = multiprocessing.Pool(cpu_dispo - 1)
-    POOL.map(create_ortho_and_graph_1arg, args_create_ortho_and_graph)
+    pool = multiprocessing.Pool(cpu_dispo - 1)
+    pool.map(create_ortho_and_graph_1arg, args_create_ortho_and_graph)
 
-    POOL.close()
-    POOL.join()
+    pool.close()
+    pool.join()
     print("|")
     print('=> DONE')
 
@@ -402,7 +490,10 @@ def main():
     with open(args.cache + '/overviews.json', 'w') as outfile:
         json.dump(overviews_dict, outfile)
 
-    print("\n", len(list_filename) - len(opi_already_calculated), "/", len(list_filename), "OPI(s) ajoutée(s)")
+    print("\n",
+          len(list_filename) - len(opi_already_calculated),
+          "/",
+          len(list_filename), "OPI(s) ajoutée(s)")
     if len(opi_already_calculated) > 0:
         print(opi_already_calculated, "déjà traitées : OPI non recalculée(s)")
 
