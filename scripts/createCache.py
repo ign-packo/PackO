@@ -1,27 +1,41 @@
 """This script create or update a cache from a list of OPI"""
 import os
 import math
-import xml.etree.ElementTree as ET
 from pathlib import Path
 import glob
-import json
 from random import randrange
+import argparse
 import numpy as np
 import gdal
-import argparse
-from collections import defaultdict
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-c", "--cache", help="cache directory (default: cache)", type=str, default="cache")
-parser.add_argument("-o", "--overviews", help="params for the mosaic (default: ressources/LAMB93_5cm.json)", type=str, default="ressources/LAMB93_5cm.json")
-parser.add_argument("-t", "--table", help="graph table (default: graphe_pcrs56_zone_test)", type=str, default="graphe_pcrs56_zone_test")
-parser.add_argument("-i", "--input", required=True, help="input OPI pattern")
-parser.add_argument("-a", "--api", help="API Url (default: http://localhost:8081/wmts)", type=str, default="http://localhost:8081/wmts")
-parser.add_argument("-v", "--verbose", help="verbose (default: 0)", type=int, default=0)
+parser.add_argument("-c", "--cache",
+                    help="cache directory (default: cache)",
+                    type=str,
+                    default="cache")
+parser.add_argument("-o", "--overviews",
+                    help="params for the mosaic \
+                    (default: ressources/LAMB93_5cm.json)",
+                    type=str, default="ressources/LAMB93_5cm.json")
+parser.add_argument("-t", "--table",
+                    help="graph table (default: graphe_pcrs56_zone_test)",
+                    type=str,
+                    default="graphe_pcrs56_zone_test")
+parser.add_argument("-i", "--input",
+                    required=True,
+                    help="input OPI pattern")
+parser.add_argument("-a", "--api",
+                    help="API Url (default: http://localhost:8081/wmts)",
+                    type=str,
+                    default="http://localhost:8081/wmts")
+parser.add_argument("-v", "--verbose",
+                    help="verbose (default: 0)",
+                    type=int,
+                    default=0)
 args = parser.parse_args()
 verbose = args.verbose
 if verbose > 0:
-    print("Arguments: ",args)
+    print("Arguments: ", args)
 
 user = os.getenv('PGUSER', default='postgres')
 host = os.getenv('PGHOST', default='localhost')
@@ -31,20 +45,28 @@ port = os.getenv('PGPORT', default='5432')
 
 PNG_DRIVER = gdal.GetDriverByName('png')
 
+
 def create_blank_tile(overviews, tile, nb_canaux, out_raster_srs):
     """Return a blank georef image for a tile."""
-    origin_x = overviews['crs']['boundingBox']['xmin'] + tile['x'] * tile['resolution'] * overviews['tileSize']['width']
-    origin_y = overviews['crs']['boundingBox']['ymax'] - tile['y'] * tile['resolution'] * overviews['tileSize']['height']
+    origin_x = overviews['crs']['boundingBox']['xmin']\
+        + tile['x'] * tile['resolution'] * overviews['tileSize']['width']
+    origin_y = overviews['crs']['boundingBox']['ymax']\
+        - tile['y'] * tile['resolution'] * overviews['tileSize']['height']
     target_ds = gdal.GetDriverByName('MEM').Create('',
-                                                   overviews['tileSize']['width'], overviews['tileSize']['height'],
-                                                   nb_canaux, gdal.GDT_Byte)
+                                                   overviews['tileSize']
+                                                   ['width'],
+                                                   overviews['tileSize']
+                                                   ['height'],
+                                                   nb_canaux,
+                                                   gdal.GDT_Byte)
     target_ds.SetGeoTransform((origin_x, tile['resolution'], 0,
                                origin_y, 0, -tile['resolution']))
     target_ds.SetProjection(out_raster_srs.ExportToWkt())
     target_ds.FlushCache()
     return target_ds
 
-def get_tile_limits( filename):
+
+def get_tile_limits(filename):
     """Return tms limits for a georef image at a given level"""
     if verbose > 0:
         print("~~~get_tile_limits:", end='')
@@ -58,12 +80,13 @@ def get_tile_limits( filename):
     lr_y = ul_y + src_image.RasterYSize*y_dist
 
     tile_limits = {}
-    tile_limits['LowerCorner'] = [ ul_x, lr_y ]
-    tile_limits['UpperCorner'] = [ lr_x, ul_y ]
+    tile_limits['LowerCorner'] = [ul_x, lr_y]
+    tile_limits['UpperCorner'] = [lr_x, ul_y]
 
     if verbose > 0:
         print(" DONE")
     return tile_limits
+
 
 def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
     """Update the cache for an input OPI."""
@@ -71,81 +94,132 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
         print("~~~process_image")
     input_image = gdal.Open(input_filename)
     stem = Path(input_filename).stem
-    if not("dataSet" in overviews):
+    if "dataSet" not in overviews:
         overviews['dataSet'] = {}
         overviews['dataSet']['boundingBox'] = {}
         overviews['dataSet']['limits'] = {}
 
     tile_limits = get_tile_limits(input_filename)
 
-    if not("LowerCorner" in overviews['dataSet']['boundingBox']):
+    if "LowerCorner" not in overviews['dataSet']['boundingBox']:
         overviews['dataSet']['boundingBox'] = tile_limits
     else:
-        if tile_limits['LowerCorner'][0] < overviews['dataSet']['boundingBox']['LowerCorner'][0]:
-            overviews['dataSet']['boundingBox']['LowerCorner'][0] = tile_limits['LowerCorner'][0]
-        if tile_limits['LowerCorner'][1] < overviews['dataSet']['boundingBox']['LowerCorner'][1]:
-            overviews['dataSet']['boundingBox']['LowerCorner'][1] = tile_limits['LowerCorner'][1]
-        if tile_limits['UpperCorner'][0] > overviews['dataSet']['boundingBox']['UpperCorner'][0]:
-            overviews['dataSet']['boundingBox']['UpperCorner'][0] = tile_limits['UpperCorner'][0]
-        if tile_limits['UpperCorner'][1] > overviews['dataSet']['boundingBox']['UpperCorner'][1]:
-            overviews['dataSet']['boundingBox']['UpperCorner'][1] = tile_limits['UpperCorner'][1]
+        if tile_limits['LowerCorner'][0]\
+           < overviews['dataSet']['boundingBox']['LowerCorner'][0]:
+            overviews['dataSet']['boundingBox']['LowerCorner'][0]\
+                = tile_limits['LowerCorner'][0]
+        if tile_limits['LowerCorner'][1]\
+           < overviews['dataSet']['boundingBox']['LowerCorner'][1]:
+            overviews['dataSet']['boundingBox']['LowerCorner'][1]\
+                = tile_limits['LowerCorner'][1]
+        if tile_limits['UpperCorner'][0]\
+           > overviews['dataSet']['boundingBox']['UpperCorner'][0]:
+            overviews['dataSet']['boundingBox']['UpperCorner'][0]\
+                = tile_limits['UpperCorner'][0]
+        if tile_limits['UpperCorner'][1]\
+           > overviews['dataSet']['boundingBox']['UpperCorner'][1]:
+            overviews['dataSet']['boundingBox']['UpperCorner'][1]\
+                = tile_limits['UpperCorner'][1]
 
     # for z in tiles:
-    for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
+    for tile_z in range(overviews['level']['min'],
+                        overviews['level']['max'] + 1):
         print('Niveau de zoom : ', tile_z)
 
-        resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
+        resolution = overviews['resolution']\
+            * 2 ** (overviews['level']['max'] - tile_z)
 
-        MinTileCol = \
-            math.floor(round((tile_limits['LowerCorner'][0] - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8))
-        MinTileRow = \
-            math.floor(round((overviews['crs']['boundingBox']['ymax']-tile_limits['UpperCorner'][1])/(resolution*overviews['tileSize']['height']),8))
-        MaxTileCol = \
-            math.ceil(round((tile_limits['UpperCorner'][0] - overviews['crs']['boundingBox']['xmin'])/(resolution*overviews['tileSize']['width']),8)) - 1
-        MaxTileRow = \
-            math.ceil(round((overviews['crs']['boundingBox']['ymax']-tile_limits['LowerCorner'][1])/(resolution*overviews['tileSize']['height']),8)) - 1
+        min_tile_col = \
+            math.floor(
+                round((tile_limits['LowerCorner'][0]
+                       - overviews['crs']['boundingBox']['xmin']) /
+                      (resolution*overviews['tileSize']['width']), 8))
+        min_tile_row = \
+            math.floor(
+                round((overviews['crs']['boundingBox']['ymax']
+                       - tile_limits['UpperCorner'][1]) /
+                      (resolution*overviews['tileSize']['height']), 8))
+        max_tile_col = \
+            math.ceil(
+                round((tile_limits['UpperCorner'][0]
+                       - overviews['crs']['boundingBox']['xmin']) /
+                      (resolution*overviews['tileSize']['width']), 8)) - 1
+        max_tile_row = \
+            math.ceil(
+                round((overviews['crs']['boundingBox']['ymax']
+                       - tile_limits['LowerCorner'][1]) /
+                      (resolution*overviews['tileSize']['height']), 8)) - 1
 
-        if not( str(tile_z) in overviews['dataSet']['limits'] ):
+        if not str(tile_z) in overviews['dataSet']['limits']:
             overviews['dataSet']['limits'][str(tile_z)] = {
-                'MinTileCol': MinTileCol,
-                'MinTileRow': MinTileRow,
-                'MaxTileCol': MaxTileCol,
-                'MaxTileRow': MaxTileRow,
+                'MinTileCol': min_tile_col,
+                'MinTileRow': min_tile_row,
+                'MaxTileCol': max_tile_col,
+                'MaxTileRow': max_tile_row,
             }
-
         else:
-            if MinTileCol < overviews['dataSet']['limits'][str(tile_z)]['MinTileCol']:
-                overviews['dataSet']['limits'][str(tile_z)]['MinTileCol'] = MinTileCol
-            if MinTileRow < overviews['dataSet']['limits'][str(tile_z)]['MinTileRow']:
-                overviews['dataSet']['limits'][str(tile_z)]['MinTileRow'] = MinTileRow
-            if MaxTileCol > overviews['dataSet']['limits'][str(tile_z)]['MaxTileCol']:
-                overviews['dataSet']['limits'][str(tile_z)]['MaxTileCol'] = MaxTileCol
-            if MaxTileRow > overviews['dataSet']['limits'][str(tile_z)]['MaxTileRow']:
-                overviews['dataSet']['limits'][str(tile_z)]['MaxTileRow'] = MaxTileRow
+            if min_tile_col\
+               < overviews['dataSet']['limits'][str(tile_z)]['MinTileCol']:
+                overviews['dataSet']['limits'][str(tile_z)]['MinTileCol'] = min_tile_col
+            if min_tile_row\
+               < overviews['dataSet']['limits'][str(tile_z)]['MinTileRow']:
+                overviews['dataSet']['limits'][str(tile_z)]['MinTileRow'] = min_tile_row
+            if max_tile_col\
+               > overviews['dataSet']['limits'][str(tile_z)]['MaxTileCol']:
+                overviews['dataSet']['limits'][str(tile_z)]['MaxTileCol'] = max_tile_col
+            if max_tile_row\
+               > overviews['dataSet']['limits'][str(tile_z)]['MaxTileRow']:
+                overviews['dataSet']['limits'][str(tile_z)]['MaxTileRow'] = max_tile_row
 
-        for tile_x in range(MinTileCol, MaxTileCol + 1):    
-            for tile_y in range(MinTileRow, MaxTileRow + 1):
+        for tile_x in range(min_tile_col, max_tile_col + 1):
+            for tile_y in range(min_tile_row, max_tile_row + 1):
                 # on cree une image 3 canaux pour la tuile
-                opi = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
+                opi = create_blank_tile(overviews,
+                                        {'x': tile_x,
+                                         'y': tile_y,
+                                         'resolution': resolution},
+                                        3,
+                                        out_raster_srs)
                 # on reech l'OPI dans cette image
                 gdal.Warp(opi, input_image)
                 # si necessaire on cree le dossier de la tuile
-                tile_dir = args.cache+'/'+str(tile_z)+'/'+str(tile_y)+'/'+str(tile_x)
+                tile_dir = args.cache\
+                    + '/' + str(tile_z)\
+                    + '/' + str(tile_y)\
+                    + '/' + str(tile_x)
                 Path(tile_dir).mkdir(parents=True, exist_ok=True)
                 # on export en jpeg (todo: gerer le niveau de Q)
                 PNG_DRIVER.CreateCopy(tile_dir+"/"+stem+".png", opi)
                 # on cree une image mono canal pour la tuile
-                mask = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
+                mask = create_blank_tile(overviews,
+                                         {'x': tile_x,
+                                          'y': tile_y,
+                                          'resolution': resolution},
+                                         3,
+                                         out_raster_srs)
                 # on rasterise la partie du graphe qui concerne ce cliche
-                gdal.Rasterize(mask, db_graph,
-                               SQLStatement='select geom from ' + args.table + ' where cliche = \''+stem+'\' ')
+                gdal.Rasterize(mask,
+                               db_graph,
+                               SQLStatement='select geom from ' +
+                               args.table + ' where cliche = \'' +
+                               stem + '\' ')
                 img_mask = mask.GetRasterBand(1).ReadAsArray()
                 # si le mask est vide, on a termine
                 val_max = np.amax(img_mask)
                 if val_max > 0:
                     # on cree le graphe et l'ortho
-                    ortho = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
-                    graph = create_blank_tile(overviews, {'x': tile_x, 'y': tile_y, 'resolution': resolution}, 3, out_raster_srs)
+                    ortho = create_blank_tile(overviews,
+                                              {'x': tile_x,
+                                               'y': tile_y,
+                                               'resolution': resolution},
+                                              3,
+                                              out_raster_srs)
+                    graph = create_blank_tile(overviews,
+                                              {'x': tile_x,
+                                               'y': tile_y,
+                                               'resolution': resolution},
+                                              3,
+                                              out_raster_srs)
                     if Path(tile_dir+"/ortho.png").is_file():
                         existing_ortho = gdal.Open(tile_dir+"/ortho.png")
                         existing_graph = gdal.Open(tile_dir+"/graph.png")
@@ -155,27 +229,30 @@ def process_image(overviews, db_graph, input_filename, color, out_raster_srs):
                     for i in range(3):
                         opi_i = opi.GetRasterBand(i+1).ReadAsArray()
                         if existing_ortho:
-                            ortho_i = existing_ortho.GetRasterBand(i+1).ReadAsArray()
+                            ortho_i = existing_ortho.GetRasterBand(i + 1).ReadAsArray()
                         else:
-                            ortho_i = ortho.GetRasterBand(i+1).ReadAsArray()
+                            ortho_i = ortho.GetRasterBand(i + 1).ReadAsArray()
                         opi_i[(img_mask == 0)] = 0
                         ortho_i[(img_mask != 0)] = 0
-                        ortho.GetRasterBand(i+1).WriteArray(np.add(opi_i, ortho_i))
+                        ortho.GetRasterBand(i + 1).WriteArray(np.add(opi_i, ortho_i))
                         if existing_graph:
-                            graph_i = existing_graph.GetRasterBand(i+1).ReadAsArray()
+                            graph_i = existing_graph.GetRasterBand(i + 1).ReadAsArray()
                         else:
-                            graph_i = graph.GetRasterBand(i+1).ReadAsArray()
+                            graph_i = graph.GetRasterBand(i + 1).ReadAsArray()
                         graph_i[(img_mask != 0)] = color[i]
                         graph.GetRasterBand(i+1).WriteArray(graph_i)
                     existing_ortho = None
                     existing_graph = None
                     PNG_DRIVER.CreateCopy(tile_dir+"/ortho.png", ortho)
                     PNG_DRIVER.CreateCopy(tile_dir+"/graph.png", graph)
-         
+
+
 def main():
     """Create or Update the cache for list of input OPI."""
+    # pylint: disable=import-outside-toplevel
     import shutil
     import json
+    # pylint: enable=import-outside-toplevel
 
     if not os.path.isdir(args.cache):
         # creation dossier cache
@@ -187,7 +264,7 @@ def main():
 
     with open(args.cache+'/overviews.json') as json_overviews:
         overviews_dict = json.load(json_overviews)
-    if not ("list_OPI" in overviews_dict):
+    if "list_OPI" not in overviews_dict:
         overviews_dict["list_OPI"] = []
 
     out_raster_srs = gdal.osr.SpatialReference()
@@ -203,20 +280,22 @@ def main():
     try:
         with open(args.cache+'/cache_mtd.json', 'r') as inputfile:
             mtd = json.load(inputfile)
-    except:
+    except IOError:
         mtd = {}
 
-    cliche_dejaTraites = []
+    cliches_deja_traites = []
     for filename in list_filename:
         cliche = Path(filename).stem
-     
-        if (cliche in overviews_dict['list_OPI']):
+
+        if cliche in overviews_dict['list_OPI']:
             # OPI déja traitée
-            cliche_dejaTraites.append(cliche)
+            cliches_deja_traites.append(cliche)
         else:
             print('nouvelle image: ', filename)
             color = [randrange(255), randrange(255), randrange(255)]
-            while (color[0] in mtd) and (color[1] in mtd[color[0]]) and (color[2] in mtd[color[0]][color[1]]):
+            while (color[0] in mtd) and\
+                  (color[1] in mtd[color[0]]) and\
+                  (color[2] in mtd[color[0]][color[1]]):
                 color = [randrange(255), randrange(255), randrange(255)]
             if color[0] not in mtd:
                 mtd[color[0]] = {}
@@ -233,9 +312,14 @@ def main():
     with open(args.cache+'/overviews.json', 'w') as outfile:
         json.dump(overviews_dict, outfile)
 
-    print("\n", len(list_filename) - len(cliche_dejaTraites),"/",len(list_filename),"OPI(s) ajoutée(s)")
-    if len(cliche_dejaTraites) > 0:
-        print(cliche_dejaTraites, "déjà traitées : OPI non recalculée(s)")
+    print("\n",
+          len(list_filename) - len(cliches_deja_traites),
+          "/",
+          len(list_filename),
+          "OPI(s) ajoutée(s)")
+    if len(cliches_deja_traites) > 0:
+        print(cliches_deja_traites, "déjà traitées : OPI non recalculée(s)")
+
 
 if __name__ == "__main__":
     main()

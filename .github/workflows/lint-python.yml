@@ -25,4 +25,4 @@ jobs:
       continue-on-error: true
     - name: Analysing the code with flake8
       run: |
-        flake8 scripts/createCache.py
+        flake8  --max-line-length 100 scripts/createCache.py
