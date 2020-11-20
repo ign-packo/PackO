@@ -7,9 +7,11 @@ from pathlib import Path
 import glob
 from random import randrange
 import argparse
+import json
 import multiprocessing
-import numpy as np
 import gdal
+import numpy as np
+
 cpu_dispo = multiprocessing.cpu_count()
 
 parser = argparse.ArgumentParser()
@@ -37,6 +39,10 @@ parser.add_argument("-v", "--verbose",
                     type=int,
                     default=0)
 args = parser.parse_args()
+
+if os.path.isdir(args.input):
+    args.input = args.input + '\\*.tif'
+
 verbose = args.verbose
 if verbose > 0:
     print("Arguments: ", args)
@@ -51,46 +57,38 @@ NB_BANDS = 3
 PNG_DRIVER = gdal.GetDriverByName('png')
 
 
-def cut_opi_1tile(filename,
-                  tile_dir,
-                  image_name,
-                  origin,
-                  tile_size,
-                  resolution,
-                  out_raster_srs,
-                  nb_bands):
+def cut_opi_1tile(opi, dst_dir, tile, spatial_ref, nb_bands):
     """Cut and reseample a specified image at a given level"""
     if verbose > 0:
         print("~~~cut_opi_1tile")
 
-    input_image = gdal.Open(filename)
+    input_image = gdal.Open(opi['path'])
     target_ds = gdal.GetDriverByName('MEM').Create('',
-                                                   tile_size['width'],
-                                                   tile_size['height'],
+                                                   tile['size']['width'],
+                                                   tile['size']['height'],
                                                    nb_bands,
                                                    gdal.GDT_Byte)
-    target_ds.SetGeoTransform((origin['x'],
-                               resolution,
+    target_ds.SetGeoTransform((tile['origin']['x'],
+                               tile['resolution'],
                                0,
-                               origin['y'],
+                               tile['origin']['y'],
                                0,
-                               -resolution))
-    target_ds.SetProjection(out_raster_srs)
+                               -tile['resolution']))
+    target_ds.SetProjection(spatial_ref)
     target_ds.FlushCache()
-    opi = target_ds
 
     # on reech l'OPI dans cette image
-    gdal.Warp(opi, input_image)
+    gdal.Warp(target_ds, input_image)
 
     # on export en png (todo: gerer le niveau de Q)
     # pylint: disable=unused-variable
-    dst_ds = PNG_DRIVER.CreateCopy(tile_dir + "/" + image_name + ".png", opi)
-    opi = None
+    dst_ds = PNG_DRIVER.CreateCopy(dst_dir + "/" + opi['name'] + ".png", target_ds)
+    target_ds = None
     dst_ds = None  # noqa: F841
     # pylint: enable=unused-variable
 
 
-def create_blank_tile(overviews, tile, nb_bands, out_srs):
+def create_blank_tile(overviews, tile, nb_bands, spatial_ref):
     """Return a blank georef image for a tile."""
     origin_x = overviews['crs']['boundingBox']['xmin']\
         + tile['x'] * tile['resolution'] * overviews['tileSize']['width']
@@ -103,7 +101,7 @@ def create_blank_tile(overviews, tile, nb_bands, out_srs):
                                                    gdal.GDT_Byte)
     target_ds.SetGeoTransform((origin_x, tile['resolution'], 0,
                                origin_y, 0, -tile['resolution']))
-    target_ds.SetProjection(out_srs)
+    target_ds.SetProjection(spatial_ref)
     target_ds.FlushCache()
     return target_ds
 
@@ -202,105 +200,94 @@ def get_tilebox(input_filename, overviews):
     return tilebox
 
 
-def cut_image_1arg(arguments):
+def cut_image_1arg(arg):
     """Cut a given image in all corresponding tiles for all level"""
     if verbose > 0:
         print("~~~cut_image_1arg")
 
-    filename = arguments['filename']
-    out_srs = arguments['outSrs']
-    overviews = arguments['overviews']
-    tilebox = arguments['tileBox']
-    nb_bands = arguments['nbBands']
-
-    stem = Path(filename).stem
+    overviews = arg['overviews']
+    tilebox = arg['tileBox']
 
     # for z in tiles:
-    for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
-        print('  (', stem, ') level :', tile_z)
+    for level in range(overviews['level']['min'], overviews['level']['max'] + 1):
+        print('  (', arg['opi']['name'], ') level : ', level, sep="")
 
-        resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
+        resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
 
-        for tile_x in range(tilebox[str(tile_z)]['MinTileCol'],
-                            tilebox[str(tile_z)]['MaxTileCol'] + 1):
-            for tile_y in range(tilebox[str(tile_z)]['MinTileRow'],
-                                tilebox[str(tile_z)]['MaxTileRow'] + 1):
-                origin = {
-                    'x': overviews['crs']['boundingBox']['xmin']
-                         + tile_x * resolution * overviews['tileSize']['width'],  # noqa: E131
-                    'y': overviews['crs']['boundingBox']['ymax']
-                         - tile_y * resolution * overviews['tileSize']['height']  # noqa: E131
+        for tile_x in range(tilebox[str(level)]['MinTileCol'],
+                            tilebox[str(level)]['MaxTileCol'] + 1):
+            for tile_y in range(tilebox[str(level)]['MinTileRow'],
+                                tilebox[str(level)]['MaxTileRow'] + 1):
+                tile_param = {
+                    'origin': {
+                        'x': overviews['crs']['boundingBox']['xmin']
+                             + tile_x * resolution * overviews['tileSize']['width'],  # noqa: E131
+                        'y': overviews['crs']['boundingBox']['ymax']
+                             - tile_y * resolution * overviews['tileSize']['height']  # noqa: E131
+                    },
+                    'size': overviews['tileSize'],
+                    'resolution': resolution
                 }
 
-                tile_dir = args.cache + '/' + str(tile_z) + '/' + str(tile_y) + '/' + str(tile_x)
-                tile = {'x': tile_x, 'y': tile_y, 'resolution': resolution}
-
+                tile_dst_dir = args.cache + '/' + str(level) + '/' + str(tile_y) + '/' + str(tile_x)
                 # si necessaire on cree le dossier de la tuile
-                Path(tile_dir).mkdir(parents=True, exist_ok=True)
+                Path(tile_dst_dir).mkdir(parents=True, exist_ok=True)
 
-                cut_opi_1tile(filename,
-                              tile_dir,
-                              stem,
-                              origin,
-                              overviews['tileSize'],
-                              tile,
-                              out_srs,
-                              nb_bands)
+                cut_opi_1tile(arg['opi'],
+                              tile_dst_dir,
+                              tile_param,
+                              arg['spatialRef'],
+                              arg['nbBands'])
 
 
-def create_ortho_and_graph_1arg(arguments):
+def update_graph_and_ortho(filename, gdal_img, color, nb_bands):
+    """application du masque"""
+    opi = gdal.Open(filename)
+    for i in range(nb_bands):
+        opi_i = opi.GetRasterBand(i + 1).ReadAsArray()
+        opi_i[(gdal_img['mask'] == 0)] = 0
+
+        ortho_i = gdal_img['ortho'].GetRasterBand(i + 1).ReadAsArray()
+
+        ortho_i[(gdal_img['mask'] != 0)] = 0
+        gdal_img['ortho'].GetRasterBand(i + 1).WriteArray(np.add(opi_i, ortho_i))
+
+        graph_i = gdal_img['graph'].GetRasterBand(i + 1).ReadAsArray()
+
+        graph_i[(gdal_img['mask'] != 0)] = color[i]
+        gdal_img['graph'].GetRasterBand(i + 1).WriteArray(graph_i)
+
+
+def create_ortho_and_graph_1arg(arg):
     """Creation of the ortho and the graph images on a specified tile"""
     if verbose > 0:
         print("~~~create_ortho_and_graph_1arg")
 
-    tile = arguments['tile']
-    overviews = arguments['overviews']
-    conn_string = arguments['conn_string']
-    out_srs = arguments['out_srs']
-    advancement = arguments['advancement']
+    overviews = arg['overviews']
 
-    if advancement != 0:
+    if arg['advancement'] != 0:
         print("█", end='', flush=True)
 
-    tile_x = tile['x']
-    tile_y = tile['y']
-    tile_z = tile['z']
-
-    resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
-
     # on cree le graphe et l'ortho
-    ortho = create_blank_tile(overviews,
-                              {'x': tile_x,
-                               'y': tile_y,
-                               'resolution': resolution},
-                              3,
-                              out_srs)
-    graph = create_blank_tile(overviews,
-                              {'x': tile_x,
-                               'y': tile_y,
-                               'resolution': resolution},
-                              3,
-                              out_srs)
+    img_ortho = create_blank_tile(overviews, arg['tile'], 3, arg['spatialRef'])
+    img_graph = create_blank_tile(overviews, arg['tile'], 3, arg['spatialRef'])
 
-    tile_dir = args.cache + '/' + str(tile_z) + '/' + str(tile_y) + '/' + str(tile_x)
-    list_filename = glob.glob(tile_dir + '/*.png')
+    tile_dir = args.cache + \
+        '/' + str(arg['tile']['level']) + \
+        '/' + str(arg['tile']['y']) + \
+        '/' + str(arg['tile']['x'])
 
     is_empty = True
 
-    for filename in list_filename:
+    for filename in glob.glob(tile_dir + '/*.png'):
         stem = Path(filename).stem
         color = overviews["list_OPI"][stem]
 
         # on cree une image mono canal pour la tuile
-        mask = create_blank_tile(overviews,
-                                 {'x': tile_x,
-                                  'y': tile_y,
-                                  'resolution': resolution},
-                                 3,
-                                 out_srs)
+        mask = create_blank_tile(overviews, arg['tile'], 3, arg['spatialRef'])
 
         # on rasterise la partie du graphe qui concerne ce cliche
-        db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
+        db_graph = gdal.OpenEx(arg['conn_string'], gdal.OF_VECTOR)
         gdal.Rasterize(mask,
                        db_graph,
                        SQLStatement='select geom from '
@@ -310,160 +297,41 @@ def create_ortho_and_graph_1arg(arguments):
         val_max = np.amax(img_mask)
         if val_max > 0:
             is_empty = False
-
-            opi = gdal.Open(filename)
-            for i in range(3):
-                opi_i = opi.GetRasterBand(i + 1).ReadAsArray()
-                opi_i[(img_mask == 0)] = 0
-
-                ortho_i = ortho.GetRasterBand(i + 1).ReadAsArray()
-
-                ortho_i[(img_mask != 0)] = 0
-                ortho.GetRasterBand(i + 1).WriteArray(np.add(opi_i, ortho_i))
-
-                graph_i = graph.GetRasterBand(i + 1).ReadAsArray()
-
-                graph_i[(img_mask != 0)] = color[i]
-                graph.GetRasterBand(i + 1).WriteArray(graph_i)
+            update_graph_and_ortho(filename,
+                                   {'ortho': img_ortho, 'graph': img_graph, 'mask': img_mask},
+                                   color,
+                                   arg['nbBands'])
 
     if not is_empty:
         # pylint: disable=unused-variable
-        dst_ortho = PNG_DRIVER.CreateCopy(tile_dir + "/ortho.png", ortho)
-        dst_graph = PNG_DRIVER.CreateCopy(tile_dir + "/graph.png", graph)
+        dst_ortho = PNG_DRIVER.CreateCopy(tile_dir + "/ortho.png", img_ortho)
+        dst_graph = PNG_DRIVER.CreateCopy(tile_dir + "/graph.png", img_graph)
         dst_ortho = None  # noqa: F841
         dst_graph = None  # noqa: F841
         # pylint: enable=unused-variable
-    ortho = None
-    graph = None
+    img_ortho = None
+    img_graph = None
 
 
-def main():
-    """Create or Update the cache for list of input OPI."""
-    # pylint: disable=import-outside-toplevel
-    import shutil
-    import json
-    # pylint: enable=import-outside-toplevel
+def new_color(image, mtd):
+    """Choix d'une couleur non encore utilisée pour une image donnée"""
 
-    if os.path.isdir(args.input):
-        args.input = args.input + '\\*.tif'
+    color = [randrange(255), randrange(255), randrange(255)]
+    while (color[0] in mtd)\
+            and (color[1] in mtd[color[0]])\
+            and (color[2] in mtd[color[0]][color[1]]):
+        color = [randrange(255), randrange(255), randrange(255)]
+    if color[0] not in mtd:
+        mtd[color[0]] = {}
+    if color[1] not in mtd[color[0]]:
+        mtd[color[0]][color[1]] = {}
 
-    if not os.path.isdir(args.cache):
-        # creation dossier cache
-        os.mkdir(args.cache)
+    mtd[color[0]][color[1]][color[2]] = image
+    return color
 
-    if os.path.exists(args.cache + '/cache_mtd.json'):
-        with open(args.cache + '/cache_mtd.json', 'r') as inputfile:
-            mtd = json.load(inputfile)
-    else:
-        mtd = {}
 
-    if not os.path.exists(args.cache + '/overviews.json'):
-        # creation fichier overviews.json a partir d'un fichier ressource
-        shutil.copy2(args.overviews, args.cache + '/overviews.json')
-
-    with open(args.cache + '/overviews.json') as json_overviews:
-        overviews_init = json.load(json_overviews)
-        overviews_dict = overviews_init
-    if "list_OPI" not in overviews_dict:
-        overviews_dict["list_OPI"] = {}
-
-    if "dataSet" not in overviews_dict:
-        overviews_dict['dataSet'] = {}
-        overviews_dict['dataSet']['boundingBox'] = {}
-        overviews_dict['dataSet']['limits'] = {}
-
-    out_raster_srs = gdal.osr.SpatialReference()
-    out_raster_srs.ImportFromEPSG(overviews_init['crs']['code'])
-    out_srs = out_raster_srs.ExportToWkt()
-
-    conn_string = "PG:host="\
-        + host + " dbname=" + database\
-        + " user=" + user + " password=" + password
-
-    list_filename = glob.glob(args.input)
-    if verbose > 0:
-        print(len(list_filename), "fichier(s) a traiter")
-
-    opi_already_calculated = []
-
-    args_cut_image = []
-    # Decoupage des images et calcul de l'emprise globale
-    print("Découpe des images :")
-    print(" Préparation")
-    for filename in list_filename:
-        opi = Path(filename).stem
-        if opi in overviews_dict['list_OPI'].keys():
-            # OPI déja traitée
-            opi_already_calculated.append(opi)
-        else:
-            print('  image :', filename)
-            color = [randrange(255), randrange(255), randrange(255)]
-            while (color[0] in mtd)\
-                    and (color[1] in mtd[color[0]])\
-                    and (color[2] in mtd[color[0]][color[1]]):
-                color = [randrange(255), randrange(255), randrange(255)]
-            if color[0] not in mtd:
-                mtd[color[0]] = {}
-            if color[1] not in mtd[color[0]]:
-                mtd[color[0]][color[1]] = {}
-            mtd[color[0]][color[1]][color[2]] = opi
-
-            tilebox_image = get_tilebox(filename, overviews_init)
-            argument_zyx = {
-                'filename': filename,
-                'outSrs': out_srs,
-                'overviews': overviews_init,
-                'tileBox': tilebox_image,
-                'nbBands': NB_BANDS
-            }
-
-            args_cut_image.append(argument_zyx)
-
-            # on ajout l'OPI traitée a la liste (avec sa couleur)
-            overviews_dict["list_OPI"][opi] = color
-
-    print(" Découpage")
-
-    pool = multiprocessing.Pool(cpu_dispo - 1)
-    pool.map(cut_image_1arg, args_cut_image)
-
-    pool.close()
-    pool.join()
-
-    print('=> DONE')
-
-    print("Génération du graph et de l'ortho (par tuile) :")
-    db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
-    if db_graph is None:
-        raise ValueError("Connection to database failed")
-
-    args_create_ortho_and_graph = []
-
-    print(" Préparation")
-
-    # Calcul des ortho et graph
-    for level in overviews_dict["dataSet"]["limits"]:
-        print("  level :", level)
-
-        level_limits = overviews_dict["dataSet"]["limits"][level]
-
-        for tile_x in range(level_limits["MinTileCol"], level_limits["MaxTileCol"] + 1):
-            for tile_y in range(level_limits["MinTileRow"], level_limits["MaxTileRow"] + 1):
-
-                argument_zyx = {
-                    'tile': {'x': tile_x, 'y': tile_y, 'z': int(level)},
-                    'overviews': overviews_dict,
-                    'conn_string': conn_string,
-                    'out_srs': out_srs
-                }
-                args_create_ortho_and_graph.append(argument_zyx)
-
-    print(" Calcul")
-    nb_tiles = len(args_create_ortho_and_graph)
-    print(" ", nb_tiles, "tuiles à traiter")
-
-    counter = 0
-    nb_steps = 50
+def progress_bar(nb_steps, nb_tiles, args_create_ortho_and_graph):
+    """préparation pour l'écriture de la barre d'avancement"""
     if nb_tiles < nb_steps:
         nb_steps = nb_tiles
 
@@ -472,9 +340,78 @@ def main():
     for i in range(nb_tiles):
         args_create_ortho_and_graph[i]['advancement'] = 0
         if math.floor(i % (nb_tiles / nb_steps)) == 0:
-            counter = counter + 1
-            args_create_ortho_and_graph[i]['advancement'] = counter * nb_steps
+            args_create_ortho_and_graph[i]['advancement'] = 1
 
+
+def tiling(list_filename, overviews, spatial_ref_wkt):
+    """tuilage d'une liste d'image suivant le fichier overviews renseigné"""
+    print(" Préparation")
+    mtd = {}
+    opi_already_calculated = []
+    args_cut_image = []
+    for filename in list_filename:
+        opi = Path(filename).stem
+        if opi in overviews['list_OPI'].keys():
+            # OPI déja traitée
+            opi_already_calculated.append(opi)
+        else:
+            print('  image :', filename)
+
+            args_cut_image.append({
+                'opi': {
+                    'path': filename,
+                    'name': opi
+                },
+                'spatialRef': spatial_ref_wkt,
+                'overviews': overviews,
+                'tileBox': get_tilebox(filename, overviews),
+                'nbBands': NB_BANDS
+            })
+
+            # on ajout l'OPI traitée a la liste (avec sa couleur)
+            overviews["list_OPI"][opi] = new_color(opi, mtd)
+
+    print(" Découpage")
+
+    pool = multiprocessing.Pool(cpu_dispo - 1)
+    pool.map(cut_image_1arg, args_cut_image)
+
+    pool.close()
+    pool.join()
+    with open(args.cache + '/cache_mtd.json', 'w') as outfile:
+        json.dump(mtd, outfile)
+
+    return opi_already_calculated
+
+
+def ortho_and_graph(overviews, conn_string, spatial_ref_wkt):
+    """Parcours de l'ensemble des tuiles pour calculer l'ortho correspondante"""
+    print(" Préparation")
+
+    # Calcul des ortho et graph
+    args_create_ortho_and_graph = []
+    for level in overviews["dataSet"]["limits"]:
+        print("  level :", level)
+
+        level_limits = overviews["dataSet"]["limits"][level]
+        resol = overviews['resolution'] * 2 ** (overviews['level']['max'] - int(level))
+
+        for tile_x in range(level_limits["MinTileCol"], level_limits["MaxTileCol"] + 1):
+            for tile_y in range(level_limits["MinTileRow"], level_limits["MaxTileRow"] + 1):
+
+                args_create_ortho_and_graph.append({
+                    'tile': {'x': tile_x, 'y': tile_y, 'level': int(level), 'resolution': resol},
+                    'overviews': overviews,
+                    'conn_string': conn_string,
+                    'spatialRef': spatial_ref_wkt,
+                    'nbBands': NB_BANDS
+                })
+
+    print(" Calcul")
+    nb_tiles = len(args_create_ortho_and_graph)
+    print(" ", nb_tiles, "tuiles à traiter")
+
+    progress_bar(50, nb_tiles, args_create_ortho_and_graph)
     print('   |', end='', flush=True)
     pool = multiprocessing.Pool(cpu_dispo - 1)
     pool.map(create_ortho_and_graph_1arg, args_create_ortho_and_graph)
@@ -482,11 +419,53 @@ def main():
     pool.close()
     pool.join()
     print("|")
+
+
+def main():
+    """Create or Update the cache for list of input OPI."""
+
+    if os.path.isdir(args.cache):
+        raise ValueError("Cache already existing")
+
+    with open(args.overviews) as json_overviews:
+        overviews_dict = json.load(json_overviews)
+
+    # overviews_dict = overviews_init
+    overviews_dict["list_OPI"] = {}
+    overviews_dict['dataSet'] = {}
+    overviews_dict['dataSet']['boundingBox'] = {}
+    overviews_dict['dataSet']['limits'] = {}
+
+    spatial_ref = gdal.osr.SpatialReference()
+    spatial_ref.ImportFromEPSG(overviews_dict['crs']['code'])
+    spatial_ref_wkt = spatial_ref.ExportToWkt()
+
+    conn_string = "PG:host="\
+        + host + " dbname=" + database\
+        + " user=" + user + " password=" + password
+
+    list_filename = glob.glob(args.input)
+
+    # Decoupage des images et calcul de l'emprise globale
+    print("Découpe des images :")
+    print("", len(list_filename), "image(s) à traiter")
+
+    opi_already_calculated = tiling(list_filename, overviews_dict, spatial_ref_wkt)
+
+    print('=> DONE')
+
+    print("Génération du graph et de l'ortho (par tuile) :")
+    db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
+    if db_graph is None:
+        raise ValueError("Connection to database failed")
+
+    ortho_and_graph(overviews_dict, conn_string, spatial_ref_wkt)
+
     print('=> DONE')
 
     # Finitions
-    with open(args.cache + '/cache_mtd.json', 'w') as outfile:
-        json.dump(mtd, outfile)
+    # with open(args.cache + '/cache_mtd.json', 'w') as outfile:
+    #     json.dump(mtd, outfile)
 
     with open(args.cache + '/overviews.json', 'w') as outfile:
         json.dump(overviews_dict, outfile)
