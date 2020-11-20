@@ -13,32 +13,26 @@ import gdal
 cpu_dispo = multiprocessing.cpu_count()
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-c",
-                    "--cache",
+parser.add_argument("-c", "--cache",
                     help="cache directory (default: cache)",
                     type=str,
                     default="cache")
-parser.add_argument("-o",
-                    "--overviews",
+parser.add_argument("-o", "--overviews",
                     help="params for the mosaic (default: ressources/LAMB93_5cm.json)",
                     type=str,
                     default="ressources/LAMB93_5cm.json")
-parser.add_argument("-t",
-                    "--table",
+parser.add_argument("-t", "--table",
                     help="graph table (default: graphe_pcrs56_zone_test)",
                     type=str,
                     default="graphe_pcrs56_zone_test")
-parser.add_argument("-i",
-                    "--input",
+parser.add_argument("-i", "--input",
                     required=True,
                     help="input OPI pattern")
-parser.add_argument("-a",
-                    "--api",
+parser.add_argument("-a", "--api",
                     help="API Url (default: http://localhost:8081/wmts)",
                     type=str,
                     default="http://localhost:8081/wmts")
-parser.add_argument("-v",
-                    "--verbose",
+parser.add_argument("-v", "--verbose",
                     help="verbose (default: 0)",
                     type=int,
                     default=0)
@@ -62,7 +56,7 @@ def cut_opi_1tile(filename,
                   image_name,
                   origin,
                   tile_size,
-                  tile,
+                  resolution,
                   out_raster_srs,
                   nb_bands):
     """Cut and reseample a specified image at a given level"""
@@ -76,11 +70,11 @@ def cut_opi_1tile(filename,
                                                    nb_bands,
                                                    gdal.GDT_Byte)
     target_ds.SetGeoTransform((origin['x'],
-                               tile['resolution'],
+                               resolution,
                                0,
                                origin['y'],
                                0,
-                               -tile['resolution']))
+                               -resolution))
     target_ds.SetProjection(out_raster_srs)
     target_ds.FlushCache()
     opi = target_ds
@@ -164,17 +158,17 @@ def get_tilebox(input_filename, overviews):
     for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
-        min_tile_col = math.floor(round((tile_limits['LowerCorner'][0]
-                                         - overviews['crs']['boundingBox']['xmin'])
+        min_tile_col = math.floor(round((tile_limits['LowerCorner'][0] -
+                                         overviews['crs']['boundingBox']['xmin'])
                                         / (resolution * overviews['tileSize']['width']), 8))
-        min_tile_row = math.floor(round((overviews['crs']['boundingBox']['ymax']
-                                         - tile_limits['UpperCorner'][1])
+        min_tile_row = math.floor(round((overviews['crs']['boundingBox']['ymax'] -
+                                         tile_limits['UpperCorner'][1])
                                         / (resolution * overviews['tileSize']['height']), 8))
-        max_tile_col = math.ceil(round((tile_limits['UpperCorner'][0]
-                                        - overviews['crs']['boundingBox']['xmin'])
+        max_tile_col = math.ceil(round((tile_limits['UpperCorner'][0] -
+                                        overviews['crs']['boundingBox']['xmin'])
                                        / (resolution * overviews['tileSize']['width']), 8)) - 1
-        max_tile_row = math.ceil(round((overviews['crs']['boundingBox']['ymax']
-                                        - tile_limits['LowerCorner'][1])
+        max_tile_row = math.ceil(round((overviews['crs']['boundingBox']['ymax'] -
+                                        tile_limits['LowerCorner'][1])
                                        / (resolution * overviews['tileSize']['height']), 8)) - 1
 
         tilebox_z = {
