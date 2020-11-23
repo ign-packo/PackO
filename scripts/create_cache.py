@@ -40,9 +40,6 @@ parser.add_argument("-v", "--verbose",
                     default=0)
 args = parser.parse_args()
 
-if os.path.isdir(args.input):
-    args.input = args.input + '\\*.tif'
-
 verbose = args.verbose
 if verbose > 0:
     print("Arguments: ", args)
@@ -424,9 +421,6 @@ def ortho_and_graph(overviews, conn_string, spatial_ref_wkt):
 def main():
     """Create or Update the cache for list of input OPI."""
 
-    if os.path.isdir(args.cache):
-        raise ValueError("Cache already existing")
-
     with open(args.overviews) as json_overviews:
         overviews_dict = json.load(json_overviews)
 
@@ -457,7 +451,7 @@ def main():
     print("Génération du graph et de l'ortho (par tuile) :")
     db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
     if db_graph is None:
-        raise ValueError("Connection to database failed")
+        raise SystemExit("Connection to database failed")
 
     ortho_and_graph(overviews_dict, conn_string, spatial_ref_wkt)
 
@@ -479,4 +473,9 @@ def main():
 
 
 if __name__ == "__main__":
+    if os.path.isdir(args.input):
+        raise SystemExit("create_cache.py: error: invalid pattern: " + args.input)
+
+    if os.path.isdir(args.cache):
+        raise SystemExit("Cache (" + args.cache + ") already in use")
     main()
