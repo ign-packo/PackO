@@ -485,7 +485,7 @@ if __name__ == "__main__":
 
     if os.path.isdir(args.cache):
         raise SystemExit("Cache (" + args.cache + ") already in use")
-    
+
     if verbose > 0:
         print("Arguments: ", args)
 
