@@ -15,6 +15,9 @@ import numpy as np
 cpu_dispo = multiprocessing.cpu_count()
 
 parser = argparse.ArgumentParser()
+parser.add_argument("-i", "--input",
+                    required=True,
+                    help="input OPI pattern")
 parser.add_argument("-c", "--cache",
                     help="cache directory (default: cache)",
                     type=str,
@@ -27,13 +30,15 @@ parser.add_argument("-t", "--table",
                     help="graph table (default: graphe_pcrs56_zone_test)",
                     type=str,
                     default="graphe_pcrs56_zone_test")
-parser.add_argument("-i", "--input",
-                    required=True,
-                    help="input OPI pattern")
 parser.add_argument("-a", "--api",
                     help="API Url (default: http://localhost:8081/wmts)",
                     type=str,
                     default="http://localhost:8081/wmts")
+parser.add_argument("-l", "--level",
+                    help="level range for the calculation (default: values from ressources file)"
+                    " (ex: 15 19)",
+                    type=int,
+                    nargs='+')
 parser.add_argument("-v", "--verbose",
                     help="verbose (default: 0)",
                     type=int,
@@ -41,8 +46,6 @@ parser.add_argument("-v", "--verbose",
 args = parser.parse_args()
 
 verbose = args.verbose
-if verbose > 0:
-    print("Arguments: ", args)
 
 user = os.getenv('PGUSER', default='postgres')
 host = os.getenv('PGHOST', default='localhost')
@@ -150,7 +153,7 @@ def get_tilebox(input_filename, overviews):
             = max(tile_limits['LowerCorner'][1],
                   overviews['dataSet']['boundingBox']['UpperCorner'][1])
 
-    for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
+    for tile_z in range(overviews['level']['computed'][0], overviews['level']['computed'][1] + 1):
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
         min_tile_col = math.floor(round((tile_limits['LowerCorner'][0] -
@@ -206,7 +209,7 @@ def cut_image_1arg(arg):
     tilebox = arg['tileBox']
 
     # for z in tiles:
-    for level in range(overviews['level']['min'], overviews['level']['max'] + 1):
+    for level in range(overviews['level']['computed'][0], overviews['level']['computed'][1] + 1):
         print('  (', arg['opi']['name'], ') level : ', level, sep="")
 
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
@@ -440,6 +443,12 @@ def main():
 
     list_filename = glob.glob(args.input)
 
+    level_min = overviews_dict['level']['min'] if args.level is None else args.level[0]
+    level_max = overviews_dict['level']['max'] if args.level is None \
+        else level_min if len(args.level) == 1 else args.level[1]
+
+    overviews_dict['level']['computed'] = [level_min, level_max]
+
     # Decoupage des images et calcul de l'emprise globale
     print("Découpe des images :")
     print("", len(list_filename), "image(s) à traiter")
@@ -458,8 +467,6 @@ def main():
     print('=> DONE')
 
     # Finitions
-    # with open(args.cache + '/cache_mtd.json', 'w') as outfile:
-    #     json.dump(mtd, outfile)
 
     with open(args.cache + '/overviews.json', 'w') as outfile:
         json.dump(overviews_dict, outfile)
@@ -478,4 +485,8 @@ if __name__ == "__main__":
 
     if os.path.isdir(args.cache):
         raise SystemExit("Cache (" + args.cache + ") already in use")
+    
+    if verbose > 0:
+        print("Arguments: ", args)
+
     main()
