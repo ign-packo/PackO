@@ -1,6 +1,6 @@
 # coding: utf-8
 
-"""This script create or update a cache from a list of OPI"""
+"""This script create a cache from a list of OPI"""
 import os
 import math
 from pathlib import Path
@@ -15,6 +15,9 @@ import numpy as np
 cpu_dispo = multiprocessing.cpu_count()
 
 parser = argparse.ArgumentParser()
+parser.add_argument("-i", "--input",
+                    required=True,
+                    help="input OPI pattern")
 parser.add_argument("-c", "--cache",
                     help="cache directory (default: cache)",
                     type=str,
@@ -27,13 +30,6 @@ parser.add_argument("-t", "--table",
                     help="graph table (default: graphe_pcrs56_zone_test)",
                     type=str,
                     default="graphe_pcrs56_zone_test")
-parser.add_argument("-i", "--input",
-                    required=True,
-                    help="input OPI pattern")
-parser.add_argument("-a", "--api",
-                    help="API Url (default: http://localhost:8081/wmts)",
-                    type=str,
-                    default="http://localhost:8081/wmts")
 parser.add_argument("-v", "--verbose",
                     help="verbose (default: 0)",
                     type=int,
@@ -419,7 +415,7 @@ def ortho_and_graph(overviews, conn_string, spatial_ref_wkt):
 
 
 def main():
-    """Create or Update the cache for list of input OPI."""
+    """Create a cache from a list of input OPI."""
 
     with open(args.overviews) as json_overviews:
         overviews_dict = json.load(json_overviews)
@@ -478,4 +474,5 @@ if __name__ == "__main__":
 
     if os.path.isdir(args.cache):
         raise SystemExit("Cache (" + args.cache + ") already in use")
+
     main()
