@@ -257,7 +257,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     // Tout c'est bien passé
     debug('tout c est bien passé on peut mettre a jour les liens symboliques');
     patches.forEach((patch) => {
-      const urlHistory = path.join(patch.tileDir, 'history');
+      const urlHistory = path.join(patch.tileDir, 'history.packo');
       if (fs.lstatSync(patch.urlGraph).nlink > 1) {
         const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
         debug('history : ', history);
@@ -328,11 +328,9 @@ router.put('/patch/undo', [], (req, res) => {
   tiles.forEach((tile) => {
     const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
     // on récupère l'historique de cette tuile
-    const urlHistory = path.join(tileDir, 'history');
+    const urlHistory = path.join(tileDir, 'history.packo');
     const history = fs.readFileSync(`${urlHistory}`).toString().split(';');
-    debug(history);
     // on vérifie que le lastPatchId est bien le dernier sur cette tuile
-    debug(history[history.length - 1], lastPatchId);
     if (`${history[history.length - 1]}` !== `${lastPatchId}`) {
       debug('erreur d\'historique');
       res.status(404).send(`erreur d'historique sur la tuile ${tileDir}`);
@@ -403,7 +401,7 @@ router.put('/patch/redo', [], (req, res) => {
   tiles.forEach((tile) => {
     const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
     // on met a jour l'historique
-    const urlHistory = path.join(tileDir, 'history');
+    const urlHistory = path.join(tileDir, 'history.packo');
     const history = `${fs.readFileSync(`${urlHistory}`)};${patchIdRedo}`;
     fs.writeFileSync(`${urlHistory}`, history);
     // on verifie si la tuile a été effectivement modifiée par ce patch
@@ -454,7 +452,7 @@ router.put('/patchs/clear', [], (req, res) => {
       const arrayLink = fs.readdirSync(tileDir).filter((filename) => (filename.startsWith('graph_') || filename.startsWith('ortho_')) && !filename.endsWith('orig.png'));
 
       // remise à zéro de l'historique de la tuile
-      const urlHistory = path.join(tileDir, 'history');
+      const urlHistory = path.join(tileDir, 'history.packo');
       fs.writeFileSync(`${urlHistory}`, 'orig');
 
       // suppression des images intermediaires
