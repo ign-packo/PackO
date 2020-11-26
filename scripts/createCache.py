@@ -304,9 +304,9 @@ def create_ortho_and_graph_1arg(arg):
     img_ortho = create_blank_slab(overviews, arg['slab'], 3, arg['spatialRef'])
     img_graph = create_blank_slab(overviews, arg['slab'], 3, arg['spatialRef'])
 
-    slab_path = args.cache + '/' + get_slab_path(arg['slab']['x'], 
-                                                 arg['slab']['y'], 
-                                                 arg['slab']['level'], 
+    slab_path = args.cache + '/' + get_slab_path(arg['slab']['x'],
+                                                 arg['slab']['y'],
+                                                 arg['slab']['level'],
                                                  overviews['pathDepth'])
 
     is_empty = True
@@ -428,10 +428,11 @@ def ortho_and_graph(overviews, conn_string, spatial_ref_wkt):
         level_limits = overviews["dataSet"]["limits"][level]
         resol = overviews['resolution'] * 2 ** (overviews['level']['max'] - int(level))
 
-        for slab_x in range(int(level_limits["MinTileCol"] / overviews['slabSize']['width']), 
+        for slab_x in range(int(level_limits["MinTileCol"] / overviews['slabSize']['width']),
                             int(level_limits["MaxTileCol"] / overviews['slabSize']['width']) + 1):
             for slab_y in range(int(level_limits["MinTileRow"] / overviews['slabSize']['height']),
-                                int(level_limits["MaxTileRow"] / overviews['slabSize']['height'])+ 1):
+                                int(level_limits["MaxTileRow"] / overviews['slabSize']['height'])
+                                + 1):
 
                 args_create_ortho_and_graph.append({
                     'slab': {'x': slab_x, 'y': slab_y, 'level': int(level), 'resolution': resol},
