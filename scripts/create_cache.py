@@ -1,6 +1,6 @@
 # coding: utf-8
 
-"""This script create or update a cache from a list of OPI"""
+"""This script create a cache from a list of OPI"""
 import os
 import math
 from pathlib import Path
@@ -15,6 +15,9 @@ import numpy as np
 cpu_dispo = multiprocessing.cpu_count()
 
 parser = argparse.ArgumentParser()
+parser.add_argument("-i", "--input",
+                    required=True,
+                    help="input OPI pattern")
 parser.add_argument("-c", "--cache",
                     help="cache directory (default: cache)",
                     type=str,
@@ -27,13 +30,11 @@ parser.add_argument("-t", "--table",
                     help="graph table (default: graphe_pcrs56_zone_test)",
                     type=str,
                     default="graphe_pcrs56_zone_test")
-parser.add_argument("-i", "--input",
-                    required=True,
-                    help="input OPI pattern")
-parser.add_argument("-a", "--api",
-                    help="API Url (default: http://localhost:8081/wmts)",
-                    type=str,
-                    default="http://localhost:8081/wmts")
+parser.add_argument("-l", "--level",
+                    help="level range for the calculation (default: values from ressources file)"
+                    " (e.g., 15 19)",
+                    type=int,
+                    nargs='+')
 parser.add_argument("-v", "--verbose",
                     help="verbose (default: 0)",
                     type=int,
@@ -41,8 +42,6 @@ parser.add_argument("-v", "--verbose",
 args = parser.parse_args()
 
 verbose = args.verbose
-if verbose > 0:
-    print("Arguments: ", args)
 
 user = os.getenv('PGUSER', default='postgres')
 host = os.getenv('PGHOST', default='localhost')
@@ -150,7 +149,7 @@ def get_tilebox(input_filename, overviews):
             = max(tile_limits['LowerCorner'][1],
                   overviews['dataSet']['boundingBox']['UpperCorner'][1])
 
-    for tile_z in range(overviews['level']['min'], overviews['level']['max'] + 1):
+    for tile_z in range(overviews['level']['computed'][0], overviews['level']['computed'][1] + 1):
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
         min_tile_col = math.floor(round((tile_limits['LowerCorner'][0] -
@@ -206,7 +205,7 @@ def cut_image_1arg(arg):
     tilebox = arg['tileBox']
 
     # for z in tiles:
-    for level in range(overviews['level']['min'], overviews['level']['max'] + 1):
+    for level in range(overviews['level']['computed'][0], overviews['level']['computed'][1] + 1):
         print('  (', arg['opi']['name'], ') level : ', level, sep="")
 
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
@@ -419,7 +418,7 @@ def ortho_and_graph(overviews, conn_string, spatial_ref_wkt):
 
 
 def main():
-    """Create or Update the cache for list of input OPI."""
+    """Create a cache from a list of input OPI."""
 
     with open(args.overviews) as json_overviews:
         overviews_dict = json.load(json_overviews)
@@ -440,11 +439,23 @@ def main():
 
     list_filename = glob.glob(args.input)
 
+    if args.level[0] < overviews_dict['level']['min'] \
+            or args.level[1] > overviews_dict['level']['max']:
+        raise SystemExit("create_cache.py: error: argument -l/--level: "
+                         + str(args.level) +
+                         ": out of default level range")
+
+    level_min = overviews_dict['level']['min'] if args.level is None else args.level[0]
+    level_max = overviews_dict['level']['max'] if args.level is None \
+        else level_min if len(args.level) == 1 else args.level[1]
+
+    overviews_dict['level']['computed'] = [level_min, level_max]
+
     # Decoupage des images et calcul de l'emprise globale
     print("Découpe des images :")
     print("", len(list_filename), "image(s) à traiter")
 
-    opi_already_calculated = tiling(list_filename, overviews_dict, spatial_ref_wkt)
+    opi_duplicate = tiling(list_filename, overviews_dict, spatial_ref_wkt)
 
     print('=> DONE')
 
@@ -458,18 +469,18 @@ def main():
     print('=> DONE')
 
     # Finitions
-    # with open(args.cache + '/cache_mtd.json', 'w') as outfile:
-    #     json.dump(mtd, outfile)
 
     with open(args.cache + '/overviews.json', 'w') as outfile:
         json.dump(overviews_dict, outfile)
 
     print("\n",
-          len(list_filename) - len(opi_already_calculated),
+          len(list_filename) - len(opi_duplicate),
           "/",
           len(list_filename), "OPI(s) ajoutée(s)")
-    if len(opi_already_calculated) > 0:
-        print(opi_already_calculated, "déjà traitées : OPI non recalculée(s)")
+    if len(opi_duplicate) > 0:
+        print("présence de doublons :")
+        for opi_name in opi_duplicate:
+            print(opi_name)
 
 
 if __name__ == "__main__":
@@ -478,4 +489,17 @@ if __name__ == "__main__":
 
     if os.path.isdir(args.cache):
         raise SystemExit("Cache (" + args.cache + ") already in use")
+
+    if args.level:
+        if len(args.level) > 2:
+            raise SystemExit("create_cache.py: error: argument -l/--level:"
+                             " one or two arguments expected.")
+        if len(args.level) == 2 and args.level[0] > args.level[1]:
+            lvl_max = args.level[0]
+            args.level[0] = args.level[1]
+            args.level[1] = lvl_max
+
+    if verbose > 0:
+        print("Arguments: ", args)
+
     main()
