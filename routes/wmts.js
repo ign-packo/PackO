@@ -97,8 +97,8 @@ router.get('/wmts', [
     const tileMatrixLimit = [];
 
     const resLevelMax = overviews.resolution;
-    const levelMin = overviews.level.min;
-    const levelMax = overviews.level.max;
+    const levelMin = overviews.dataSet.level.min;
+    const levelMax = overviews.dataSet.level.max;
 
     for (let level = levelMin; level < levelMax + 1; level += 1) {
       const resolution = resLevelMax * 2 ** (levelMax - level);
@@ -132,6 +132,8 @@ router.get('/wmts', [
       });
     }
 
+    const listOpi = Object.keys(overviews.list_OPI);
+
     const extra = {
       ortho: {
         key: 'InfoFormat',
@@ -147,8 +149,8 @@ router.get('/wmts', [
           'ows:Identifier': 'Name',
           'ows:title': 'opi name',
           'ows:abstract': "nom de l'opi",
-          Default: overviews.list_OPI[0],
-          Value: overviews.list_OPI,
+          Default: listOpi[0],
+          Value: listOpi,
         },
       },
     };
@@ -273,7 +275,7 @@ router.get('/wmts', [
     if (LAYER === 'opi') {
       layerName = Name;
       if (!layerName) {
-        [layerName] = overviews.list_OPI;
+        [layerName] = Object.keys(overviews.list_OPI);
       }
     }
     const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${layerName}.png`);
