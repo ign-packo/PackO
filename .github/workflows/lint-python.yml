@@ -19,8 +19,8 @@ jobs:
         pip install pylint flake8
     - name: Analysing the code with pylint
       run: |
-        pylint scripts/create_cache.py
+        pylint scripts/update_cache.py scripts/create_cache.py scripts/cache.py scripts/cache_def.py
       continue-on-error: true
     - name: Analysing the code with flake8
       run: |
-        flake8  --max-line-length 100 scripts/create_cache.py
+        flake8  --max-line-length 100 scripts/update_cache.py scripts/create_cache.py scripts/cache.py scripts/cache_def.py
