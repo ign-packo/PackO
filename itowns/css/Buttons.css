@@ -1,0 +1,95 @@
+/**
+* S'applique aux boutons en haut de la vue 3D
+*/
+.top-buttons {
+    position: absolute;
+    right: 25px;
+    top: 12px;
+    z-index: 10;
+    transition: all ease-out .3s;
+}
+
+.top-buttons > button {
+    margin-bottom: 10px;
+}
+
+/**
+* S'applique aux boutons en bas de la vue 3D
+*/
+.down-buttons {
+    bottom: 12px;
+    right: 25px;
+    transition: all ease-out .3s;
+    position: absolute;
+    z-index: 10;
+}
+
+.down-buttons > button {
+    margin-top: 10px;
+}
+
+/**
+* Pour tous les contrôles de la vue 3D
+*/
+.itowns-control {
+    -webkit-appearance: button;
+    text-transform: none;
+    cursor: pointer;
+    display: block;
+    height: 30px;
+    line-height: 0px;
+    border-radius: 15px;
+    border: none;
+    text-align: center;
+    overflow: hidden;
+    width: 30px;
+    font-size: 1.5em;
+    background-color: #FFF;
+    color: #505050;
+    box-shadow: 0 0 5px #000;
+    background-size: 30px 150px;
+    outline: none;
+}
+
+.zoom-button {
+    background-image: url("https://www.geoportail.gouv.fr/assets/portail-visu/img/map-buttons.svg");
+}
+
+.zoom-button:active {
+    background-color: #CCC;
+    background-image: url("https://www.geoportail.gouv.fr/assets/portail-visu/img/map-buttons.svg");
+}
+#zoomInBtn {
+    background-position: center 0;
+}
+#zoomOutBtn {
+    background-position: center -30px;
+}
+#recenterBtn {
+    background-position: center -120px;
+}
+
+.full-screen {
+    position: fixed;
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    background-color: #FFF;
+    z-index: 9;
+}
+
+#help-content {
+    position: absolute;
+    top: 12px;
+    right: 65px;
+    transition: all ease-out .1s;
+    z-index: 10;
+    background-color: #FFF;
+    border-radius: 5px;
+    padding: 10px;
+    line-height: 0.01;
+    box-shadow: 0 0 5px #000;
+    background-size: 30px 150px;
+    visibility: hidden;
+}
