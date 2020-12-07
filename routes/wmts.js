@@ -9,6 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const xml2js = require('xml2js');
 const proj4 = require('proj4');
+const rok4 = require('../rok4.js');
 
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
@@ -278,7 +279,7 @@ router.get('/wmts', [
         [layerName] = Object.keys(overviews.list_OPI);
       }
     }
-    const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${layerName}.png`);
+    const url = `${path.join(global.dir_cache, rok4.getTileUrl(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth))}_${layerName}.png`;
     Jimp.read(url, (err, image) => {
       new Promise((success, failure) => {
         if (err) {
@@ -301,7 +302,8 @@ router.get('/wmts', [
   } else if (REQUEST === 'GetFeatureInfo') {
     debug('~~~GetFeatureInfo');
     debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-    const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, 'graph.png');
+    // const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, 'graph.png');
+    const url = `${path.join(global.dir_cache, rok4.getTileUrl(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth))}_graph.png`;
 
     if (!fs.existsSync(url)) {
       const erreur = new Error();
