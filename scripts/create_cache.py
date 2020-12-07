@@ -1,6 +1,6 @@
 # coding: utf-8
 
-"""This script create a cache from a list of OPI"""
+"""This script creates a cache from a list of OPI"""
 import os
 import math
 from pathlib import Path
@@ -31,7 +31,7 @@ parser.add_argument("-t", "--table",
                     type=str,
                     default="graphe_pcrs56_zone_test")
 parser.add_argument("-l", "--level",
-                    help="level range for the calculation (default: values from ressources file)"
+                    help="level range for the pyramid (default: values from ressources file)"
                     " (e.g., 15 19)",
                     type=int,
                     nargs='+')
@@ -54,7 +54,7 @@ PNG_DRIVER = gdal.GetDriverByName('png')
 
 
 def cut_opi_1tile(opi, dst_dir, tile, spatial_ref, nb_bands):
-    """Cut and reseample a specified image at a given level"""
+    """Cut and resample a specified image at a given level"""
     if verbose > 0:
         print("~~~cut_opi_1tile")
 
@@ -76,7 +76,7 @@ def cut_opi_1tile(opi, dst_dir, tile, spatial_ref, nb_bands):
     # on reech l'OPI dans cette image
     gdal.Warp(target_ds, input_image)
 
-    # on export en png (todo: gerer le niveau de Q)
+    # on exporte en png (todo: gerer le niveau de Q)
     # pylint: disable=unused-variable
     dst_ds = PNG_DRIVER.CreateCopy(dst_dir + "/" + opi['name'] + ".png", target_ds)
     target_ds = None
@@ -85,7 +85,7 @@ def cut_opi_1tile(opi, dst_dir, tile, spatial_ref, nb_bands):
 
 
 def create_blank_tile(overviews, tile, nb_bands, spatial_ref):
-    """Return a blank georef image for a tile."""
+    """Return a blank georef image for a tile"""
     origin_x = overviews['crs']['boundingBox']['xmin']\
         + tile['x'] * tile['resolution'] * overviews['tileSize']['width']
     origin_y = overviews['crs']['boundingBox']['ymax']\
@@ -125,7 +125,7 @@ def get_tile_limits(filename):
 
 
 def get_tilebox(input_filename, overviews):
-    """Get the Min/MaxTileRow/Col for a specified image at all level"""
+    """Get the Min/MaxTileRow/Col for a specified image at all levels"""
     if verbose > 0:
         print("~~~get_tilebox")
 
@@ -197,7 +197,7 @@ def get_tilebox(input_filename, overviews):
 
 
 def cut_image_1arg(arg):
-    """Cut a given image in all corresponding tiles for all level"""
+    """Cut a given image in all corresponding tiles for all levels"""
     if verbose > 0:
         print("~~~cut_image_1arg")
 
@@ -237,7 +237,7 @@ def cut_image_1arg(arg):
 
 
 def update_graph_and_ortho(filename, gdal_img, color, nb_bands):
-    """application du masque"""
+    """Apply mask"""
     opi = gdal.Open(filename)
     for i in range(nb_bands):
         opi_i = opi.GetRasterBand(i + 1).ReadAsArray()
@@ -255,7 +255,7 @@ def update_graph_and_ortho(filename, gdal_img, color, nb_bands):
 
 
 def create_ortho_and_graph_1arg(arg):
-    """Creation of the ortho and the graph images on a specified tile"""
+    """Create ortho and graph on a specified tile"""
     if verbose > 0:
         print("~~~create_ortho_and_graph_1arg")
 
@@ -289,7 +289,7 @@ def create_ortho_and_graph_1arg(arg):
                        SQLStatement='select geom from '
                        + args.table + ' where cliche = \'' + stem + '\' ')
         img_mask = mask.GetRasterBand(1).ReadAsArray()
-        # si le mask est vide, on a termine
+        # si mask est vide, on a fini
         val_max = np.amax(img_mask)
         if val_max > 0:
             is_empty = False
@@ -310,7 +310,7 @@ def create_ortho_and_graph_1arg(arg):
 
 
 def new_color(image, mtd):
-    """Choix d'une couleur non encore utilisée pour une image donnée"""
+    """Choose a new color for an image"""
 
     color = [randrange(255), randrange(255), randrange(255)]
     while (color[0] in mtd)\
@@ -327,7 +327,7 @@ def new_color(image, mtd):
 
 
 def progress_bar(nb_steps, nb_tiles, args_create_ortho_and_graph):
-    """préparation pour l'écriture de la barre d'avancement"""
+    """Prepare progress bar display"""
     if nb_tiles < nb_steps:
         nb_steps = nb_tiles
 
@@ -340,7 +340,7 @@ def progress_bar(nb_steps, nb_tiles, args_create_ortho_and_graph):
 
 
 def tiling(list_filename, overviews, spatial_ref_wkt):
-    """tuilage d'une liste d'image suivant le fichier overviews renseigné"""
+    """Tiling images according to overviews file"""
     print(" Préparation")
     mtd = {}
     opi_already_calculated = []
@@ -348,7 +348,7 @@ def tiling(list_filename, overviews, spatial_ref_wkt):
     for filename in list_filename:
         opi = Path(filename).stem
         if opi in overviews['list_OPI'].keys():
-            # OPI déja traitée
+            # OPI déjà traitée
             opi_already_calculated.append(opi)
         else:
             print('  image :', filename)
@@ -364,7 +364,7 @@ def tiling(list_filename, overviews, spatial_ref_wkt):
                 'nbBands': NB_BANDS
             })
 
-            # on ajout l'OPI traitée a la liste (avec sa couleur)
+            # on ajoute l'OPI traitée à la liste (avec sa couleur)
             overviews["list_OPI"][opi] = new_color(opi, mtd)
 
     print(" Découpage")
@@ -381,7 +381,7 @@ def tiling(list_filename, overviews, spatial_ref_wkt):
 
 
 def ortho_and_graph(overviews, conn_string, spatial_ref_wkt):
-    """Parcours de l'ensemble des tuiles pour calculer l'ortho correspondante"""
+    """Computation of ortho and graph"""
     print(" Préparation")
 
     # Calcul des ortho et graph
@@ -418,7 +418,7 @@ def ortho_and_graph(overviews, conn_string, spatial_ref_wkt):
 
 
 def main():
-    """Create a cache from a list of input OPI."""
+    """Create a cache from a list of input OPI"""
 
     with open(args.overviews) as json_overviews:
         overviews_dict = json.load(json_overviews)
@@ -443,7 +443,8 @@ def main():
             or args.level[1] > overviews_dict['level']['max']:
         raise SystemExit("create_cache.py: error: argument -l/--level: "
                          + str(args.level) +
-                         ": out of default level range")
+                         ": out of default pyramid level range ([%d, %d])"
+                         % (overviews_dict['level']['min'], overviews_dict['level']['max']))
 
     level_min = overviews_dict['level']['min'] if args.level is None else args.level[0]
     level_max = overviews_dict['level']['max'] if args.level is None \
