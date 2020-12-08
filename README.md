@@ -1,7 +1,14 @@
 # PackO
-api pour controle et retouche du mosaiquage
+developpement pour le controle et la retouche du mosaiquage.
 
-## Pour installer et lancer le service
+3 modules :
+- une API
+- un client web
+- un code python pour la création et mise à jour du cache
+
+## API
+
+### Pour installer et lancer le service
 
 La commande classique avec NodeJs:
 ```shell
@@ -20,7 +27,7 @@ npx supervisor serveur.js
 
 La doc de l'API est publié directement par le service ici : http://localhost:8081/doc
 
-## Principe de fonctionnement
+### Principe de fonctionnement
 
 Ce service propose: 
 
@@ -29,7 +36,7 @@ Ce service propose:
 - une commande permettant de modifier le graphe en donnant: un geojson + une référence de cliché
 
 
-## Notes
+### Notes
 
 Import du shp de graphe:
 ```bash
@@ -38,3 +45,35 @@ psql -d pcrs -c 'create extension postgis'
 shp2pgsql /Volumes/PAOT\ 21/ZoneTestPCRS/Graphe/Graphe_PCRS56_ZONE_TEST.shp | psql -d pcrs
 psql -d pcrs -c "SELECT UpdateGeometrySRID('graphe_pcrs56_zone_test','geom',2154)"
 ```
+
+## Client web
+
+### Installation et lancement
+
+dans le dossier ./itowns
+```shell
+npm install
+```
+
+En phase de développement on lance le service avec :
+
+```shell
+npm start
+```
+qui permettra un redémarrage du serveur automatique à chaque modification de fichier
+
+En production il faut exécuter :
+```shell
+npm run build
+```
+avant de lancer le serveur en utilisant :
+```shell
+python3 -m http.server
+```
+
+### Principe de fonctionnement
+
+Fournir à travers un navigateur web :
+- une consultation des données ortho
+- des outils de retouche du graph de mosaiquage
+
