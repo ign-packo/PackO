@@ -2,10 +2,8 @@ const debug = require('debug')('patch');
 const router = require('express').Router();
 const fs = require('fs');
 const path = require('path');
-const jimp = require('jimp');
 const { body, matchedData } = require('express-validator');
 const GJV = require('geojson-validation');
-const PImage = require('pureimage');
 const validator = require('../paramValidation/validator');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
@@ -101,8 +99,14 @@ router.get('/patchs', [], (req, res) => {
 });
 
 // Preparation des masques
-function createPatch(tile, geoJson, overviews) {
-  debug('createPacth : ', tile);
+function createPatch(tile, geoJson, overviews, dirCache) {
+  /* eslint-disable global-require */
+  const PImage = require('pureimage');
+  const debugProcess = require('debug')('patch');
+  const fsProcess = require('fs');
+  const pathProcess = require('path');
+  /* eslint-enable global-require */
+  debugProcess('createPatch : ', tile);
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
   const Rmax = overviews.resolution;
@@ -146,15 +150,26 @@ function createPatch(tile, geoJson, overviews) {
       empty = false;
     }
   }
-  debug(empty);
   if (empty) {
-    debug('masque vide, on passe a la suite : ', tile);
+    debugProcess('masque vide, on passe a la suite : ', tile);
     return null;
   }
-  return { tile, mask, color: geoJson.features[0].properties.color };
+  const patch = { tile, mask, color: geoJson.features[0].properties.color };
+  patch.tileDir = pathProcess.join(dirCache, patch.tile.z, patch.tile.y, patch.tile.x);
+  patch.urlGraph = pathProcess.join(patch.tileDir, 'graph.png');
+  patch.urlOrtho = pathProcess.join(patch.tileDir, 'ortho.png');
+  patch.urlOpi = pathProcess.join(patch.tileDir, `${geoJson.features[0].properties.cliche}.png`);
+  const checkGraph = fsProcess.promises.access(patch.urlGraph, fsProcess.constants.F_OK);
+  const checkOrtho = fsProcess.promises.access(patch.urlOrtho, fsProcess.constants.F_OK);
+  const checkOpi = fsProcess.promises.access(patch.urlOpi, fsProcess.constants.F_OK);
+  return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => patch);
 }
 
 function processPatch(patch) {
+  /* eslint-disable global-require */
+  const jimp = require('jimp');
+  const debugProcess = require('debug')('patch');
+  /* eslint-enable global-require */
   // On patch le graph
   const mask = patch.mask.data;
   /* eslint-disable no-param-reassign */
@@ -169,7 +184,7 @@ function processPatch(patch) {
     }
     return graph.writeAsync(patch.urlGraphOutput);
   }).then(() => {
-    debug('graph done');
+    debugProcess('graph done');
   });
 
   // On patch l ortho
@@ -189,7 +204,7 @@ function processPatch(patch) {
     }
     return images[0].writeAsync(patch.urlOrthoOutput);
   }).then(() => {
-    debug('ortho done');
+    debugProcess('ortho done');
   });
   return Promise.all([graphPromise, orthoPromise]);
 }
@@ -212,90 +227,106 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   newPatchId += 1;
 
   const tiles = getTiles(geoJson.features, overviews);
-  const patches = [];
-  for (let numTile = 0; numTile < tiles.length; numTile += 1) {
-    const patch = createPatch(tiles[numTile], geoJson, overviews);
-    debug('patch : ', patch);
-    if (patch !== null) {
-      // on vérifie si la dalle est valide avant de continuer
-      patch.tileDir = path.join(global.dir_cache, patch.tile.z, patch.tile.y, patch.tile.x);
-      patch.urlGraph = path.join(patch.tileDir, 'graph.png');
-      patch.urlOrtho = path.join(patch.tileDir, 'ortho.png');
-      patch.urlOpi = path.join(patch.tileDir, `${geoJson.features[0].properties.cliche}.png`);
+  const promisesCreatePatch = [];
+  if (tiles.length > global.minJobForWorkers) {
+    debug('create patch avec workers');
+    tiles.forEach((tile) => {
+      promisesCreatePatch.push(req.app.workerpool.exec(
+        createPatch, [tile, geoJson, overviews, global.dir_cache],
+      ));
+    });
+  } else {
+    debug('create patch sans workers');
+    tiles.forEach((tile) => {
+      promisesCreatePatch.push(createPatch(tile, geoJson, overviews, global.dir_cache));
+    });
+  }
+  Promise.all(promisesCreatePatch).then((patches) => {
+    const promises = [];
+    const tilesModified = [];
 
-      if (!fs.existsSync(patch.urlGraph)
-        || !fs.existsSync(patch.urlOrtho)
-        || !fs.existsSync(patch.urlOpi)) {
-        debug('Out of bounds');
-        res.status(404).send(JSON.stringify({
-          status: 'File(s) missing',
-          errors: [{
-            localisation: patch.tile,
-            value: `${geoJson.features[0].properties.cliche}.png ou graph.png ou ortho.png`,
-            msg: 'File(s) missing',
-          }],
-        }));
+    if (patches.length > global.minJobForWorkers) {
+      debug('process patch avec workers');
+    } else {
+      debug('process patch sans workers');
+    }
+
+    patches.forEach((patch) => {
+      if (patch === null) {
         return;
       }
       patch.urlGraphOutput = path.join(patch.tileDir, `graph_${newPatchId}.png`);
       patch.urlOrthoOutput = path.join(patch.tileDir, `ortho_${newPatchId}.png`);
-      patches.push(patch);
-    }
-  }
-  debug('patches : ', patches);
-  // on traite les pacthes en asynchrone
-  const promises = [];
-  const tilesModified = [];
-  patches.forEach((patch) => {
-    tilesModified.push(patch.tile);
-    promises.push(processPatch(patch).catch((err) => {
-      debug(err);
-      throw err;
-    }));
-  });
-  Promise.all(promises).then(() => {
-    // Tout c'est bien passé
-    debug('tout c est bien passé on peut mettre a jour les liens symboliques');
-    patches.forEach((patch) => {
-      const urlHistory = path.join(patch.tileDir, 'history.packo');
-      if (fs.lstatSync(patch.urlGraph).nlink > 1) {
-        const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
-        debug('history : ', history);
-        fs.writeFileSync(`${urlHistory}`, history);
-        fs.unlinkSync(patch.urlGraph);
-        fs.unlinkSync(patch.urlOrtho);
+      tilesModified.push(patch.tile);
+      if (patches.length > global.minJobForWorkers) {
+        promises.push(req.app.workerpool.exec(
+          processPatch, [patch],
+        ).catch((err) => {
+          debug(err);
+          throw err;
+        }));
       } else {
-        const history = `orig;${newPatchId}`;
-        fs.writeFileSync(`${urlHistory}`, history);
-        const urlGraphOrig = path.join(patch.tileDir, 'graph_orig.png');
-        const urlOrthoOrig = path.join(patch.tileDir, 'ortho_orig.png');
-        fs.renameSync(patch.urlGraph, urlGraphOrig);
-        fs.renameSync(patch.urlOrtho, urlOrthoOrig);
+        promises.push(processPatch(patch).catch((err) => {
+          debug(err);
+          throw err;
+        }));
       }
-      fs.linkSync(patch.urlGraphOutput, patch.urlGraph);
-      fs.linkSync(patch.urlOrthoOutput, patch.urlOrtho);
     });
-    // on note le patch Id
-    geoJson.features.forEach((feature) => {
-      feature.properties.patchId = newPatchId;
-      feature.properties.tiles = tilesModified;
+    debug('Nombre de patchs à appliquer : ', promises.length);
+    Promise.all(promises).then(() => {
+      // Tout c'est bien passé
+      debug('tout c est bien passé on peut mettre a jour les liens symboliques');
+      patches.forEach((patch) => {
+        if (patch === null) {
+          return;
+        }
+        const urlHistory = path.join(patch.tileDir, 'history.packo');
+        if (fs.lstatSync(patch.urlGraph).nlink > 1) {
+          const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
+          debug('history : ', history);
+          fs.writeFileSync(`${urlHistory}`, history);
+          fs.unlinkSync(patch.urlGraph);
+          fs.unlinkSync(patch.urlOrtho);
+        } else {
+          const history = `orig;${newPatchId}`;
+          fs.writeFileSync(`${urlHistory}`, history);
+          const urlGraphOrig = path.join(patch.tileDir, 'graph_orig.png');
+          const urlOrthoOrig = path.join(patch.tileDir, 'ortho_orig.png');
+          fs.renameSync(patch.urlGraph, urlGraphOrig);
+          fs.renameSync(patch.urlOrtho, urlOrthoOrig);
+        }
+        fs.linkSync(patch.urlGraphOutput, patch.urlGraph);
+        fs.linkSync(patch.urlOrthoOutput, patch.urlOrtho);
+      });
+      // on note le patch Id
+      geoJson.features.forEach((feature) => {
+        feature.properties.patchId = newPatchId;
+        feature.properties.tiles = tilesModified;
+      });
+      // on ajoute ce patch à l'historique
+      debug('New patch, Id:', newPatchId);
+      req.app.activePatchs.features = req.app.activePatchs.features.concat(geoJson.features);
+      debug('features in activePatchs:', req.app.activePatchs.features.length);
+
+      // on sauve l'historique (au cas ou l'API devrait etre relancee)
+      fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
+
+      // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
+      req.app.unactivePatchs.features = [];
+      debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
+      fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
+      res.status(200).send(JSON.stringify(tilesModified));
+    }).catch((err) => {
+      debug(err);
+      res.status(400).send(err);
     });
-    // on ajoute ce patch à l'historique
-    debug('New patch, Id:', newPatchId);
-    req.app.activePatchs.features = req.app.activePatchs.features.concat(geoJson.features);
-    debug('features in activePatchs:', req.app.activePatchs.features.length);
-
-    // on sauve l'historique (au cas ou l'API devrait etre relancee)
-    fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
-
-    // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
-    req.app.unactivePatchs.features = [];
-    debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
-    fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
-    res.status(200).send(JSON.stringify(tilesModified));
-  }).catch((err) => {
-    debug(err);
-    res.status(400).send(err);
+  }).catch((error) => {
+    debug('on a reçu une erreur : ', error);
+    req.app.workerpool.terminate(true);
+    res.status(404).send(JSON.stringify({
+      status: 'File(s) missing',
+      errors: [error],
+    }));
   });
 });
 
