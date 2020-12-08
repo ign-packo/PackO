@@ -442,12 +442,14 @@ def main():
 
     list_filename = glob.glob(args.input)
 
-    if args.level[0] < overviews_dict['level']['min'] \
-            or args.level[1] > overviews_dict['level']['max']:
-        raise SystemExit("create_cache.py: error: argument -l/--level: "
-                         + str(args.level) +
-                         ": out of default pyramid level range ([%d, %d])"
-                         % (overviews_dict['level']['min'], overviews_dict['level']['max']))
+    if args.level:
+        if args.level[0] < overviews_dict['level']['min'] \
+                or (len(args.level) == 1 and args.level[0] > overviews_dict['level']['max']) \
+                or (len(args.level) > 1 and args.level[1] > overviews_dict['level']['max']):
+            raise SystemExit("create_cache.py: error: argument -l/--level: "
+                             + str(args.level) +
+                             ": out of default overview level range: "
+                             + str(overviews_dict['level']))
 
     level_min = overviews_dict['level']['min'] if args.level is None else args.level[0]
     level_max = overviews_dict['level']['max'] if args.level is None \
