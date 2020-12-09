@@ -27,30 +27,23 @@ router.get('/graph', [
   const { x } = params;
   const { y } = params;
 
-  debug(x, y);
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
   const Rmax = overviews.resolution;
+  const datasetMaxLvl = overviews.dataSet.level.max;
 
-  /*
-  let fullRes;
-  req.app.tileSet.forEach((level) => {
-    if ((!fullRes) || (fullRes.resolution > level.resolution)) {
-      fullRes = level;
-    }
-  });
-  Rmax = fullRes.resolution
-  */
+  const resol = Rmax * 2 ** (overviews.level.max - datasetMaxLvl);
 
   // il faut trouver la tuile
-  const Px = (x - xOrigin) / Rmax;
-  const Py = (yOrigin - y) / Rmax;
+  const Px = (x - xOrigin) / resol;
+  const Py = (yOrigin - y) / resol;
   const Tx = Math.floor(Px / overviews.tileSize.width);
   const Ty = Math.floor(Py / overviews.tileSize.height);
   const I = Math.floor(Px - Tx * overviews.tileSize.width);
   const J = Math.floor(Py - Ty * overviews.tileSize.height);
 
-  const url = path.join(global.dir_cache, '21', `${Ty}`, `${Tx}`, 'graph.png');
+  const url = path.join(global.dir_cache, `${datasetMaxLvl}`, `${Ty}`, `${Tx}`, 'graph.png');
+  debug(url);
   if (!fs.existsSync(url)) {
     res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
   } else {
@@ -67,7 +60,6 @@ router.get('/graph', [
         res.status(500).send(erreur);
       } else {
         const index = image.getPixelIndex(I, J);
-        debug('index: ', index);
         debug(image.bitmap.data[index], image.bitmap.data[index + 1], image.bitmap.data[index + 2]);
         const out = {
           color: [

@@ -70,8 +70,8 @@ function getTiles(features, overviews) {
 
   const tiles = [];
 
-  const lvlMin = overviews.level.min;
-  const lvlMax = overviews.level.max;
+  const lvlMin = overviews.dataSet.level.min;
+  const lvlMax = overviews.dataSet.level.max;
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
   const Rmax = overviews.resolution;

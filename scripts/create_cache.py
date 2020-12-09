@@ -149,7 +149,8 @@ def get_tilebox(input_filename, overviews):
             = max(tile_limits['LowerCorner'][1],
                   overviews['dataSet']['boundingBox']['UpperCorner'][1])
 
-    for tile_z in range(overviews['level']['computed'][0], overviews['level']['computed'][1] + 1):
+    for tile_z in range(overviews['dataSet']['level']['min'],
+                        overviews['dataSet']['level']['max'] + 1):
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
         min_tile_col = math.floor(round((tile_limits['LowerCorner'][0] -
@@ -205,7 +206,8 @@ def cut_image_1arg(arg):
     tilebox = arg['tileBox']
 
     # for z in tiles:
-    for level in range(overviews['level']['computed'][0], overviews['level']['computed'][1] + 1):
+    for level in range(overviews['dataSet']['level']['min'],
+                       overviews['dataSet']['level']['max'] + 1):
         print('  (', arg['opi']['name'], ') level : ', level, sep="")
 
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
@@ -428,6 +430,7 @@ def main():
     overviews_dict['dataSet'] = {}
     overviews_dict['dataSet']['boundingBox'] = {}
     overviews_dict['dataSet']['limits'] = {}
+    overviews_dict['dataSet']['level'] = {}
 
     spatial_ref = gdal.osr.SpatialReference()
     spatial_ref.ImportFromEPSG(overviews_dict['crs']['code'])
@@ -439,18 +442,23 @@ def main():
 
     list_filename = glob.glob(args.input)
 
-    if args.level[0] < overviews_dict['level']['min'] \
-            or args.level[1] > overviews_dict['level']['max']:
-        raise SystemExit("create_cache.py: error: argument -l/--level: "
-                         + str(args.level) +
-                         ": out of default pyramid level range ([%d, %d])"
-                         % (overviews_dict['level']['min'], overviews_dict['level']['max']))
+    if args.level:
+        if args.level[0] < overviews_dict['level']['min'] \
+                or (len(args.level) == 1 and args.level[0] > overviews_dict['level']['max']) \
+                or (len(args.level) > 1 and args.level[1] > overviews_dict['level']['max']):
+            raise SystemExit("create_cache.py: error: argument -l/--level: "
+                             + str(args.level) +
+                             ": out of default overview level range: "
+                             + str(overviews_dict['level']))
 
     level_min = overviews_dict['level']['min'] if args.level is None else args.level[0]
     level_max = overviews_dict['level']['max'] if args.level is None \
         else level_min if len(args.level) == 1 else args.level[1]
 
-    overviews_dict['level']['computed'] = [level_min, level_max]
+    overviews_dict['dataSet']['level'] = {
+        'min': level_min,
+        'max': level_max
+    }
 
     # Decoupage des images et calcul de l'emprise globale
     print("Découpe des images :")
