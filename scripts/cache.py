@@ -101,6 +101,7 @@ def prep_dict(args, update):
         overviews_dict['dataSet'] = {}
         overviews_dict['dataSet']['boundingBox'] = {}
         overviews_dict['dataSet']['limits'] = {}
+        overviews_dict['dataSet']['level'] = {}
 
         if args.level:
             if args.level[0] < overviews_dict['level']['min'] \
@@ -115,7 +116,10 @@ def prep_dict(args, update):
         level_max = overviews_dict['level']['max'] if args.level is None \
             else level_min if len(args.level) == 1 else args.level[1]
 
-        overviews_dict['level']['computed'] = [level_min, level_max]
+        overviews_dict['dataSet']['level'] = {
+            'min': level_min,
+            'max': level_max
+        }
 
         color_dict = {}
 

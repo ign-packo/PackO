@@ -51,7 +51,8 @@ def get_tilebox(input_filename, overviews, tile_change):
             = max(tile_limits['LowerCorner'][1],
                   overviews['dataSet']['boundingBox']['UpperCorner'][1])
 
-    for tile_z in range(overviews['level']['computed'][0], overviews['level']['computed'][1] + 1):
+    for tile_z in range(overviews['dataSet']['level']['min'],
+                        overviews['dataSet']['level']['max'] + 1):
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - tile_z)
 
         min_tile_col = math.floor(round((tile_limits['LowerCorner'][0] -
@@ -189,7 +190,8 @@ def cut_image_1arg(arg):
     overviews = arg['overviews']
     tilebox = arg['tileBox']
 
-    for level in range(overviews['level']['computed'][0], overviews['level']['computed'][1] + 1):
+    for level in range(overviews['dataSet']['level']['min'],
+                       overviews['dataSet']['level']['max'] + 1):
         print('  (', arg['opi']['name'], ') level : ', level, sep="")
 
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
