@@ -154,6 +154,7 @@ class Saisie {
       if (this.currentStatus === status.POLYGON) {
         if (this.currentPolygon && (this.nbVertices > 2)) {
           this.currentStatus = status.ENDING;
+          this.message = 'Cliquer pour valider la saisie';
 
           const vertices = this.currentPolygon.geometry.attributes.position;
           vertices.copyAt(this.nbVertices, vertices, 0);
@@ -162,9 +163,23 @@ class Saisie {
           this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
           this.currentPolygon.geometry.computeBoundingSphere();
           this.view.notifyChange(this.currentPolygon);
-          this.message = 'Cliquer pour valider la saisie';
-        }else{
+        } else {
           this.message = 'Pas assez de points';
+        }
+      }
+    } else if (e.key === 'Backspace') {
+      if (this.currentStatus === status.POLYGON) {
+        if (this.currentPolygon && (this.nbVertices > 1)) {
+          const vertices = this.currentPolygon.geometry.attributes.position;
+          vertices.copyAt(this.nbVertices - 1, vertices, this.nbVertices);
+          vertices.copyAt(this.nbVertices, vertices, 0);
+          vertices.needsUpdate = true;
+
+          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
+          this.currentPolygon.geometry.computeBoundingSphere();
+          this.view.notifyChange(this.currentPolygon);
+
+          this.nbVertices -= 1;
         }
       }
     }
@@ -175,7 +190,7 @@ class Saisie {
     console.log(e.key, ' up');
     if (e.key === 'Shift') {
       if (this.currentStatus === status.ENDING || this.currentStatus === status.POLYGON) {
-        this.message = 'Maj pour terminer'
+        this.message = 'Maj pour terminer';
         if (this.currentPolygon && (this.nbVertices > 0)) {
           // on remet le dernier sommet sur la position de la souris
 
