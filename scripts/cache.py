@@ -138,8 +138,10 @@ def generate(update):
 
     list_filename = glob.glob(args.input)
 
-    print(len(list_filename), "image(s) à traiter")
+    if (len(list_filename) == 0):
+        raise SystemExit("WARNING: Empty input folder: nothing to add in cache")
 
+    print(len(list_filename), "image(s) à traiter")
     # Decoupage des images et calcul de l'emprise globale
     print("Découpe des images :")
     print(" Préparation")
