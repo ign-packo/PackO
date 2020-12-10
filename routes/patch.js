@@ -69,7 +69,7 @@ function getTiles(features, overviews) {
       }
     });
   });
-  debug('BBox:', 'Done');
+  debug('~BBox:', 'Done');
 
   const tiles = [];
 
@@ -122,7 +122,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 
   const tiles = getTiles(geoJson.features, overviews);
   const promisesCreatePatch = [];
-  debug('create patch avec workers');
+  debug('~create patch avec workers');
   tiles.forEach((tile) => {
     promisesCreatePatch.push(pool.exec(
       'createPatch', [tile, geoJson, overviews, global.dir_cache, __dirname],
@@ -132,7 +132,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     const promises = [];
     const tilesModified = [];
 
-    debug('process patch avec workers');
+    debug('~process patch avec workers');
 
     patches.forEach((patch) => {
       if (patch === null) {
@@ -150,10 +150,10 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         throw err;
       }));
     });
-    debug('Nombre de patchs à appliquer : ', promises.length);
+    debug('', promises.length, 'patchs à appliquer.');
     Promise.all(promises).then(() => {
       // Tout c'est bien passé
-      debug('tout c est bien passé on peut mettre a jour les liens symboliques');
+      debug("=> tout c'est bien passé on peut mettre à jour les liens symboliques");
       patches.forEach((patch) => {
         if (patch === null) {
           return;
@@ -161,7 +161,8 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         const urlHistory = path.join(global.dir_cache, 'opi', `${patch.tileRoot}_history.packo`);
         if (fs.lstatSync(patch.urlGraph).nlink > 1) {
           const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
-          debug('history : ', history);
+          debug(patch.urlGraph);
+          debug(' historique :', history);
           fs.writeFileSync(`${urlHistory}`, history);
           fs.unlinkSync(patch.urlGraph);
           fs.unlinkSync(patch.urlOrtho);
@@ -184,7 +185,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         /* eslint-enable no-param-reassign */
       });
       // on ajoute ce patch à l'historique
-      debug('New patch, Id:', newPatchId);
+      debug('=> Patch', newPatchId, 'ajouté');
       req.app.activePatchs.features = req.app.activePatchs.features.concat(geoJson.features);
       debug('features in activePatchs:', req.app.activePatchs.features.length);
 
@@ -213,7 +214,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 router.put('/patch/undo', [], (req, res) => {
   debug('~~~PUT patch/undo');
   if (req.app.activePatchs.features.length === 0) {
-    debug('nothing to undo');
+    debug('rien à annuler');
     res.status(201).send('nothing to undo');
     return;
   }
@@ -222,7 +223,7 @@ router.put('/patch/undo', [], (req, res) => {
   // de req.app.activePatchs.features avec patchId == lastPatchId
   const lastPatchId = req.app.activePatchs.features[req.app.activePatchs.features.length - 1]
     .properties.patchId;
-  debug('lastPatchId:', lastPatchId);
+  debug(`Patch '${lastPatchId}' à annuler.`);
   const features = [];
   let index = req.app.activePatchs.features.length - 1;
   const tiles = new Set();
@@ -244,8 +245,8 @@ router.put('/patch/undo', [], (req, res) => {
     const history = fs.readFileSync(`${urlHistory}`).toString().split(';');
     // on vérifie que le lastPatchId est bien le dernier sur cette tuile
     if (`${history[history.length - 1]}` !== `${lastPatchId}`) {
-      debug('erreur d\'historique');
-      res.status(404).send(`erreur d'historique sur la tuile ${urlHistory}`);
+      debug("erreur d'historique");
+      res.status(404).send(`erreur d'historique sur la tuile ${tileRoot}`);
       return;
     }
     // on récupère la version à restaurer
@@ -257,7 +258,8 @@ router.put('/patch/undo', [], (req, res) => {
       if (i < (history.length - 2)) newHistory += ';';
     }
     fs.writeFileSync(`${urlHistory}`, newHistory);
-    debug('  version selectionnée pour la tuile :', idSelected);
+    debug(` tuile ${tile.z}/${tile.y}/${tile.x} : version ${idSelected} selectionnée`);
+    // debug(' version selectionnée pour la tuile :', idSelected);
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = path.join(global.dir_cache, 'graph', `${tileRoot}.png`);
     const urlOrtho = path.join(global.dir_cache, 'ortho', `${tileRoot}.png`);
@@ -278,9 +280,9 @@ router.put('/patch/undo', [], (req, res) => {
   req.app.unactivePatchs.features = req.app.unactivePatchs.features.concat(features);
   fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
 
+  debug('fin du undo');
   debug('features in activePatchs:', req.app.activePatchs.features.length);
   debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
-  debug('fin du undo');
   res.status(200).send(`undo: patch ${lastPatchId} canceled`);
 });
 
@@ -347,7 +349,7 @@ router.put('/patchs/clear', [], (req, res) => {
   debug('~~~PUT patchs/clear');
   // pour chaque patch de req.app.activePatchs.features
   if (req.app.activePatchs.features.length === 0) {
-    debug('nothing');
+    debug(' nothing to clear');
     res.status(201).send('nothing to clear');
     return;
   }
@@ -357,7 +359,7 @@ router.put('/patchs/clear', [], (req, res) => {
   features.forEach((feature) => {
     // trouver la liste des tuiles concernées par ces patchs
     const { tiles } = feature.properties;
-    debug(tiles.size, 'tuiles impactées');
+    debug('', tiles.length, 'tuiles impactées');
     // pour chaque tuile, on retablit la version orig
     tiles.forEach((tile) => {
       const tileRoot = rok4.getTileRoot(tile.x, tile.y, tile.z, overviews.pathDepth);
@@ -400,8 +402,8 @@ router.put('/patchs/clear', [], (req, res) => {
   req.app.unactivePatchs.features = [];
   fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
   fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
-  debug('features in activePatchs:', req.app.activePatchs.features.length);
-  debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
+  debug(' features in activePatchs:', req.app.activePatchs.features.length);
+  debug(' features in unactivePatchs:', req.app.unactivePatchs.features.length);
   debug('fin du clear');
   res.status(200).send('clear: all patches deleted');
 });
