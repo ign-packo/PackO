@@ -26,4 +26,5 @@ jobs:
 
     - name: Analysing the code with flake8
       run: |
-        flake8  --max-line-length 100 scripts/update_cache.py scripts/create_cache.py scripts/cache.py scripts/cache_def.py
+         flake8  --max-line-length 100 scripts/update_cache.py scripts/create_cache.py scripts/cache.py scripts/cache_def.py
+
