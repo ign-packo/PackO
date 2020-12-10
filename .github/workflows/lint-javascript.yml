@@ -30,4 +30,3 @@ jobs:
       run: |
         cd itowns
         npm run lint
-
