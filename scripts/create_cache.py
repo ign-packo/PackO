@@ -1,5 +1,5 @@
 # coding: utf-8
-"""This script create a cache with a list of OPI"""
+"""This script creates a cache with a list of OPI"""
 import cache
 
 if __name__ == "__main__":

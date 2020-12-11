@@ -30,7 +30,7 @@ def get_tile_limits(filename):
 
 
 def get_tilebox(input_filename, overviews, tile_change):
-    """Get the Min/MaxTileRow/Col for a specified image at all level"""
+    """Get the Min/MaxTileRow/Col for a specified image at all levels"""
 
     tilebox = {}
     tile_limits = get_tile_limits(input_filename)
@@ -108,7 +108,7 @@ def get_tilebox(input_filename, overviews, tile_change):
 
 
 def new_color(image, color_dict):
-    """Choix d'une couleur non encore utilisée pour une image donnée"""
+    """Choose a new color for an image"""
 
     color = [randrange(255), randrange(255), randrange(255)]
     while (color[0] in color_dict)\
@@ -125,7 +125,7 @@ def new_color(image, color_dict):
 
 
 def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option):
-    """tuilage d'une liste d'image suivant le fichier overviews renseigné"""
+    """Preparation for tiling images according to overviews file"""
     opi_already_calculated = []
     args_cut_image = []
 
@@ -134,7 +134,7 @@ def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option):
     for filename in list_filename:
         opi = Path(filename).stem
         if opi in overviews['list_OPI'].keys():
-            # OPI déja traitée
+            # OPI déjà traitée
             opi_already_calculated.append(opi)
         else:
             print('  image :', filename)
@@ -150,14 +150,14 @@ def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option):
                 'gdalOption': gdal_option
             })
 
-            # on ajout l'OPI traitée a la liste (avec sa couleur)
+            # on ajoute l'OPI traitée à la liste (avec sa couleur)
             overviews["list_OPI"][opi] = new_color(opi, color_dict)
 
     return args_cut_image, opi_already_calculated, change
 
 
 def cut_opi_1tile(opi, dst_dir, tile, gdal_option):
-    """Cut and reseample a specified image at a given level"""
+    """Cut and resample a specified image at a given level"""
 
     input_image = gdal.Open(opi['path'])
     target_ds = gdal.GetDriverByName('MEM').Create('',
@@ -177,7 +177,7 @@ def cut_opi_1tile(opi, dst_dir, tile, gdal_option):
     # on reech l'OPI dans cette image
     gdal.Warp(target_ds, input_image)
 
-    # on export en png (todo: gerer le niveau de Q)
+    # on exporte en png (todo: gerer le niveau de Q)
     # pylint: disable=unused-variable
     dst_ds = PNG_DRIVER.CreateCopy(dst_dir + "/" + opi['name'] + ".png", target_ds)
     target_ds = None
@@ -186,7 +186,7 @@ def cut_opi_1tile(opi, dst_dir, tile, gdal_option):
 
 
 def cut_image_1arg(arg):
-    """Cut a given image in all corresponding tiles for all level"""
+    """Cut a given image in all corresponding tiles for all levels"""
     overviews = arg['overviews']
     tilebox = arg['tileBox']
 
@@ -222,7 +222,7 @@ def cut_image_1arg(arg):
 
 
 def progress_bar(nb_steps, nb_tiles, args_create_ortho_and_graph):
-    """préparation pour l'écriture de la barre d'avancement"""
+    """Prepare progress bar display"""
     if nb_tiles < nb_steps:
         nb_steps = nb_tiles
 
@@ -235,7 +235,7 @@ def progress_bar(nb_steps, nb_tiles, args_create_ortho_and_graph):
 
 
 def prep_ortho_and_graph(dir_cache, overviews, db_option,  gdal_option, change):
-    """Parcours de l'ensemble des tuiles impactées pour calculer l'ortho et le graph"""
+    """Preparation for computation of ortho and graph"""
     print(" Préparation")
 
     # Calcul des ortho et graph
@@ -274,7 +274,7 @@ def prep_ortho_and_graph(dir_cache, overviews, db_option,  gdal_option, change):
 
 
 def create_blank_tile(overviews, tile, nb_bands, spatial_ref):
-    """Return a blank georef image for a tile."""
+    """Return a blank georef image for a tile"""
     origin_x = overviews['crs']['boundingBox']['xmin']\
         + tile['x'] * tile['resolution'] * overviews['tileSize']['width']
     origin_y = overviews['crs']['boundingBox']['ymax']\
@@ -292,7 +292,7 @@ def create_blank_tile(overviews, tile, nb_bands, spatial_ref):
 
 
 def update_graph_and_ortho(filename, gdal_img, color, nb_bands):
-    """application du masque"""
+    """Apply mask"""
     opi = gdal.Open(filename)
     for i in range(nb_bands):
         opi_i = opi.GetRasterBand(i + 1).ReadAsArray()
@@ -310,7 +310,7 @@ def update_graph_and_ortho(filename, gdal_img, color, nb_bands):
 
 
 def create_ortho_and_graph_1arg(arg):
-    """Creation of the ortho and the graph images on a specified tile"""
+    """Create ortho and graph on a specified tile"""
 
     overviews = arg['overviews']
 
@@ -345,7 +345,7 @@ def create_ortho_and_graph_1arg(arg):
                            SQLStatement='select geom from '
                            + arg['dbOption']['table'] + ' where cliche = \'' + stem + '\' ')
             img_mask = mask.GetRasterBand(1).ReadAsArray()
-            # si le mask est vide, on a termine
+            # si mask est vide, on ne fait rien
             val_max = np.amax(img_mask)
             if val_max > 0:
                 is_empty = False

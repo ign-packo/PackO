@@ -42,7 +42,7 @@ def read_args(update):
                             type=str,
                             default="ressources/LAMB93_5cm.json")
         parser.add_argument("-l", "--level",
-                            help="level range for the calculation"
+                            help="level range for the overviews"
                             " (default: values from ressources file)"
                             " (e.g., 15 19)",
                             type=int,
@@ -109,7 +109,7 @@ def prep_dict(args, update):
                     or (len(args.level) > 1 and args.level[1] > overviews_dict['level']['max']):
                 raise SystemExit("create_cache.py: error: argument -l/--level: "
                                  + str(args.level) +
-                                 ": out of default level range: "
+                                 ": out of default overviews level range: "
                                  + str(overviews_dict['level']))
 
         level_min = overviews_dict['level']['min'] if args.level is None else args.level[0]
@@ -127,7 +127,7 @@ def prep_dict(args, update):
 
 
 def generate(update):
-    """Create a cache from a list of input OPI."""
+    """Create a cache from a list of input OPI"""
 
     args = read_args(update)
     overviews_dict, color_dict = prep_dict(args, update)
