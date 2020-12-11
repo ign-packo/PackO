@@ -45,7 +45,7 @@ router.get('/graph', [
   const J = Math.floor(Py - Ty * overviews.tileSize.height);
 
   //const url = path.join(global.dir_cache, `${lvlMax}`, `${Ty}`, `${Tx}`, 'graph.png');
-  const url = `${path.join(global.dir_cache, 'graph', rok4.getTileUrl(Tx, Ty, lvlMax, overviews.pathDepth))}`;
+  const url = `${path.join(global.dir_cache, 'graph', rok4.getTileRoot(Tx, Ty, lvlMax, overviews.pathDepth))}.png`;
   debug(url);
   // _graph.png`;
   if (!fs.existsSync(url)) {
