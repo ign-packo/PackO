@@ -19,9 +19,6 @@ conn_string = "PG:host="\
     + host + " dbname=" + database\
     + " user=" + user + " password=" + password
 
-if gdal.OpenEx(conn_string, gdal.OF_VECTOR) is None:
-    raise SystemExit("Connection to database failed")
-
 NB_BANDS = 3
 
 
@@ -59,6 +56,9 @@ def read_args(update):
 
     verbose = args.verbose
 
+    if verbose > 0:
+        print("Arguments: ", args)
+
     if os.path.isdir(args.input):
         raise SystemExit("create_cache.py: error: invalid pattern: " + args.input)
 
@@ -78,8 +78,12 @@ def read_args(update):
         if not os.path.isdir(args.cache):
             raise SystemExit("Cache (" + args.cache + ") doesn't exist")
 
-    if verbose > 0:
-        print("Arguments: ", args)
+    if args.table == "cache_test":
+        global conn_string
+        conn_string = "../data_cache_test/base_graphe.gpkg"
+
+    if gdal.OpenEx(conn_string, gdal.OF_VECTOR) is None:
+        raise SystemExit("Connection to database failed")
 
     return args
 
