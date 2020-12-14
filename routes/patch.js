@@ -71,7 +71,6 @@ function getTiles(features, overviews) {
 
   const lvlMin = overviews.dataSet.level.min;
   const lvlMax = overviews.dataSet.level.max;
-  const lvlMaxPyramid = overviews.level.max;
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
   // const Rmax = overviews.resolution;
@@ -106,7 +105,7 @@ function createPatch(tile, geoJson, overviews, dirCache) {
   const PImage = require('pureimage');
   const debugProcess = require('debug')('patch');
   const fsProcess = require('fs');
-  const pathProcess = require('path');
+  // const pathProcess = require('path');
   /* eslint-enable global-require */
   debugProcess('createPatch : ', tile);
   const xOrigin = overviews.crs.boundingBox.xmin;
@@ -161,9 +160,9 @@ function createPatch(tile, geoJson, overviews, dirCache) {
     patch.tile.y,
     patch.tile.z,
     overviews.pathDepth);
-  patch.urlGraph = `${path.join(dir_cache, 'graph', patch.tileRoot)}.png`;
-  patch.urlOrtho = `${path.join(dir_cache, 'ortho', patch.tileRoot)}.png`;
-  patch.urlOpi = `${path.join(dir_cache, 'opi', patch.tileRoot)}_${geoJson.features[0].properties.cliche}.png`;
+  patch.urlGraph = `${path.join(dirCache, 'graph', patch.tileRoot)}.png`;
+  patch.urlOrtho = `${path.join(dirCache, 'ortho', patch.tileRoot)}.png`;
+  patch.urlOpi = `${path.join(dirCache, 'opi', patch.tileRoot)}_${geoJson.features[0].properties.cliche}.png`;
   const checkGraph = fsProcess.promises.access(patch.urlGraph, fsProcess.constants.F_OK);
   const checkOrtho = fsProcess.promises.access(patch.urlOrtho, fsProcess.constants.F_OK);
   const checkOpi = fsProcess.promises.access(patch.urlOpi, fsProcess.constants.F_OK);
@@ -260,8 +259,8 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
       if (patch === null) {
         return;
       }
-      patch.urlGraphOutput = `${path.join(dir_cache, 'graph', patch.tileRoot)}_${newPatchId}.png`;
-      patch.urlOrthoOutput = `${path.join(dir_cache, 'ortho', patch.tileRoot)}_${newPatchId}.png`;
+      patch.urlGraphOutput = `${path.join(global.dir_cache, 'graph', patch.tileRoot)}_${newPatchId}.png`;
+      patch.urlOrthoOutput = `${path.join(global.dir_cache, 'ortho', patch.tileRoot)}_${newPatchId}.png`;
       tilesModified.push(patch.tile);
       if (patches.length > global.minJobForWorkers) {
         promises.push(req.app.workerpool.exec(
@@ -285,7 +284,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         if (patch === null) {
           return;
         }
-        const urlHistory = `${path.join(dir_cache, 'opi', patch.tileRoot)}_history.packo`;
+        const urlHistory = `${path.join(global.dir_cache, 'opi', patch.tileRoot)}_history.packo`;
         if (fs.lstatSync(patch.urlGraph).nlink > 1) {
           const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
           debug('history : ', history);
@@ -295,8 +294,8 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         } else {
           const history = `orig;${newPatchId}`;
           fs.writeFileSync(`${urlHistory}`, history);
-          const urlGraphOrig = `${path.join(dir_cache, 'graph', patch.tileRoot)}_orig.png`;
-          const urlOrthoOrig = `${path.join(dir_cache, 'ortho', patch.tileRoot)}_orig.png`;
+          const urlGraphOrig = `${path.join(global.dir_cache, 'graph', patch.tileRoot)}_orig.png`;
+          const urlOrthoOrig = `${path.join(global.dir_cache, 'ortho', patch.tileRoot)}_orig.png`;
           fs.renameSync(patch.urlGraph, urlGraphOrig);
           fs.renameSync(patch.urlOrtho, urlOrthoOrig);
         }
@@ -492,15 +491,15 @@ router.put('/patchs/clear', [], (req, res) => {
       const graphDir = path.join(global.dir_cache, 'graph', path.dirname(tileRoot));
       const orthoDir = path.join(global.dir_cache, 'ortho', path.dirname(tileRoot));
 
-      const arrayLinkGraph = fs.readdirSync(graphDir).filter((filename) => (!filename.endsWith('orig.png')));
+      const arrayLinkGraph = fs.readdirSync(graphDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.png')));
       // suppression des images intermediaires
       arrayLinkGraph.forEach((file) => fs.unlinkSync(
-        path.join(path.dirname(graphDir), file),
+        path.join(graphDir, file),
       ));
-      const arrayLinkOrtho = fs.readdirSync(orthoDir).filter((filename) => (!filename.endsWith('orig.png')));
+      const arrayLinkOrtho = fs.readdirSync(orthoDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.png')));
       // suppression des images intermediaires
       arrayLinkOrtho.forEach((file) => fs.unlinkSync(
-        path.join(path.dirname(orthoDir), file),
+        path.join(orthoDir, file),
       ));
 
       // remise à zéro de l'historique de la tuile
