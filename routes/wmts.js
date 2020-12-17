@@ -96,12 +96,12 @@ router.get('/wmts', [
     const tileMatrix = [];
     const tileMatrixLimit = [];
 
-    const resLevelMax = overviews.resolution;
+    // const resLevelMax = overviews.resolution;
     const levelMin = overviews.dataSet.level.min;
     const levelMax = overviews.dataSet.level.max;
 
     for (let level = levelMin; level < levelMax + 1; level += 1) {
-      const resolution = resLevelMax * 2 ** (levelMax - level);
+      const resolution = overviews.resolution * 2 ** (overviews.level.max - level);
       const scaleDenominator = resolution / 0.00028;
 
       tileMatrixLimit.push({

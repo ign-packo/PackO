@@ -74,14 +74,14 @@ function getTiles(features, overviews) {
   const lvlMax = overviews.dataSet.level.max;
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
-  const Rmax = overviews.resolution;
+  // const Rmax = overviews.resolution;
   const tileWidth = overviews.tileSize.width;
   const tileHeight = overviews.tileSize.height;
 
   // tileSet.forEach((level) => {
   // Array.from({ length: lvlMax - lvlMin + 1 }, (_, i) => i + lvlMin).forEach((level) => {
   for (let level = lvlMin; level <= lvlMax; level += 1) {
-    const resolution = Rmax * 2 ** (lvlMax - level);
+    const resolution = overviews.resolution * 2 ** (overviews.level.max - level);
     const x0 = Math.floor((BBox.xmin - xOrigin) / (resolution * tileWidth));
     const x1 = Math.ceil((BBox.xmax - xOrigin) / (resolution * tileWidth));
     const y0 = Math.floor((yOrigin - BBox.ymax) / (resolution * tileHeight));
@@ -105,8 +105,8 @@ function createPatch(tile, geoJson, overviews) {
   debug('createPacth : ', tile);
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
-  const Rmax = overviews.resolution;
-  const lvlMax = overviews.level.max;
+  // const Rmax = overviews.resolution;
+  // const lvlMax = overviews.level.max;
   const tileWidth = overviews.tileSize.width;
   const tileHeight = overviews.tileSize.height;
 
@@ -121,7 +121,7 @@ function createPatch(tile, geoJson, overviews) {
     ctx.beginPath();
     let first = true;
     /* eslint-disable no-restricted-syntax */
-    const resolution = Rmax * 2 ** (lvlMax - tile.z);
+    const resolution = overviews.resolution * 2 ** (overviews.level.max - tile.z);
     for (const point of feature.geometry.coordinates[0]) {
       const i = Math.round((point[0] - xOrigin - tile.x * tileWidth * resolution)
             / resolution);
