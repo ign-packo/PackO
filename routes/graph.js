@@ -29,10 +29,10 @@ router.get('/graph', [
 
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
-  const Rmax = overviews.resolution;
-  const datasetMaxLvl = overviews.dataSet.level.max;
+  // const Rmax = overviews.resolution;
+  const lvlMax = overviews.dataSet.level.max;
 
-  const resol = Rmax * 2 ** (overviews.level.max - datasetMaxLvl);
+  const resol = overviews.resolution * 2 ** (overviews.level.max - lvlMax);
 
   // il faut trouver la tuile
   const Px = (x - xOrigin) / resol;
@@ -42,7 +42,7 @@ router.get('/graph', [
   const I = Math.floor(Px - Tx * overviews.tileSize.width);
   const J = Math.floor(Py - Ty * overviews.tileSize.height);
 
-  const url = path.join(global.dir_cache, `${datasetMaxLvl}`, `${Ty}`, `${Tx}`, 'graph.png');
+  const url = path.join(global.dir_cache, `${lvlMax}`, `${Ty}`, `${Tx}`, 'graph.png');
   debug(url);
   if (!fs.existsSync(url)) {
     res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
