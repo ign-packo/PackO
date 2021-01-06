@@ -1,5 +1,5 @@
 {
-  "name": "ign-api-mosaique",
+  "name": "ign-packo",
   "version": "0.1.0",
   "description": "api pour controle et retouche du mosaiquage",
   "main": "serveur.js",
@@ -10,14 +10,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gmaillet/ign-api-mosaique.git"
+    "url": "git+https://github.com/ign-packo/PackO.git"
   },
   "author": "IGN",
   "license": "UNLICENSED",
   "bugs": {
-    "url": "https://github.com/gmaillet/ign-api-mosaique/issues"
+    "url": "https://github.com/ign-packo/PackO/issues"
   },
-  "homepage": "https://github.com/gmaillet/ign-api-mosaique#readme",
+  "homepage": "https://github.com/ign-packo/PackO#readme",
   "dependencies": {
     "body-parser": "^1.19.0",
     "c8": "^7.3.5",
