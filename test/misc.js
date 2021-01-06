@@ -7,6 +7,7 @@ const server = require('..');
 
 describe('Miscellanous', () => {
   after((done) => {
+    server.workerpool.terminate();
     server.close();
     done();
   });
