@@ -1,14 +1,28 @@
 {
   "name": "client",
   "version": "1.0.0",
-  "description": "",
+  "description": "client iTowns for PackO",
   "main": "index.js",
   "scripts": {
+    "build": "cross-env NODE_ENV=production webpack",
+    "start": "cross-env NODE_ENV=development webpack serve --host 0.0.0.0",
+    "lint": "eslint .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "itowns": "^2.23.0"
+    "itowns": "^2.28.1",
+    "proj4": "^2.6.2",
+    "three": "^0.122.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.2",
+    "eslint": "^7.14.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-plugin-import": "^2.22.1",
+    "webpack": "^5.8.0",
+    "webpack-cli": "^4.2.0",
+    "webpack-dev-server": "^3.11.0"
   }
 }

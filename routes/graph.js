@@ -22,6 +22,7 @@ router.get('/graph', [
     .withMessage(createErrMsg.invalidParameter('y')),
 ], validateParams,
 (req, res) => {
+  debug('~~~GetGraph');
   const { overviews } = req.app;
   const params = matchedData(req);
   const { x } = params;

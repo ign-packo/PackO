@@ -7,16 +7,16 @@ on:
     branches: [ master ]
 
 jobs:
-
-  build:
-
+  API:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
-    - name: install
+
+    - name: API install
       run: npm install
-    - name: test
+
+    - name: API test
       env:
         DEBUG:
       run: |

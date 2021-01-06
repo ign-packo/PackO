@@ -354,7 +354,7 @@ router.put('/patch/undo', [], (req, res) => {
     }
     index -= 1;
   }
-  debug(tiles.length, 'tuiles impactées');
+  debug(tiles.size, 'tuiles impactées');
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
   tiles.forEach((tile) => {
     const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
@@ -376,7 +376,7 @@ router.put('/patch/undo', [], (req, res) => {
       if (i < (history.length - 2)) newHistory += ';';
     }
     fs.writeFileSync(`${urlHistory}`, newHistory);
-    debug('version selectionnée pour la tuile :', idSelected);
+    debug('  version selectionnée pour la tuile :', idSelected);
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'graph.png');
     const urlOrtho = path.join(global.dir_cache, tile.z, tile.y, tile.x, 'ortho.png');
@@ -427,7 +427,7 @@ router.put('/patch/redo', [], (req, res) => {
     }
     index -= 1;
   }
-  debug(tiles.length, 'tuiles impactées');
+  debug(tiles.size, 'tuiles impactées');
   // pour chaque tuile, modifier les liens symboliques
   tiles.forEach((tile) => {
     const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
@@ -474,7 +474,7 @@ router.put('/patchs/clear', [], (req, res) => {
   features.forEach((feature) => {
     // trouver la liste des tuiles concernées par ces patchs
     const { tiles } = feature.properties;
-    debug(tiles.length, 'tuiles impactées');
+    debug(tiles.size, 'tuiles impactées');
     // pour chaque tuile, on retablit la version orig
     tiles.forEach((tile) => {
       const tileDir = path.join(global.dir_cache, tile.z, tile.y, tile.x);
