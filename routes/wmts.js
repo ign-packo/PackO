@@ -333,6 +333,7 @@ router.get('/wmts', [
           res.status(500).send(erreur.msg);
         // res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
         } else {
+          let resCode = 200;
           const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
           debugFeatureInfo('index: ', index);
           const out = {
@@ -347,6 +348,7 @@ router.get('/wmts', [
             out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
           } else {
             out.cliche = 'missing';
+            resCode = 201;
           }
 
           const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
@@ -365,7 +367,7 @@ router.get('/wmts', [
                                + `</${LAYER}>`
                              + '</featureMember>'
                            + '</ReguralGriddedElevations>';
-          res.status(200).send(testResponse);
+          res.status(resCode).send(testResponse);
         }
       });
     }
