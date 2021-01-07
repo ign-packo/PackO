@@ -215,7 +215,7 @@ describe('Wmts', () => {
           INFOFORMAT: 'application/gml+xml; version=3.1',
           TILEMATRIXSET: 'LAMB93_5cm',
           TILEMATRIX: 21,
-          TILEROW: 34395,
+          TILEROW: 34402,
           TILECOL: 18027,
           I: 139,
           J: 102,
@@ -240,14 +240,14 @@ describe('Wmts', () => {
           INFOFORMAT: 'application/gml+xml; version=3.1',
           TILEMATRIXSET: 'LAMB93_5cm',
           TILEMATRIX: 21,
-          TILEROW: 34395,
+          TILEROW: 34402,
           TILECOL: 18027,
-          I: 30,
-          J: 185,
+          I: 44,
+          J: 215,
         })
         .end((err, res) => {
           should.not.exist(err);
-          res.should.have.status(200);
+          res.should.have.status(201);
           res.type.should.be.a('string').equal('text/html');
           done();
         });

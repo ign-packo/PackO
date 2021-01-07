@@ -35,8 +35,8 @@ describe('Patch', () => {
             features: [
               {
                 type: 'Feature',
-                properties: { color: [99, 167, 133], cliche: '19FD5606Ax00020_16371' },
-                geometry: { type: 'Polygon', coordinates: [[[230748, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230748, 6759736]]] },
+                properties: { color: [58, 149, 47], cliche: '19FD5606Ax00020_16371' },
+                geometry: { type: 'Polygon', coordinates: [[[230748, 6759646], [230752, 6759646], [230752, 6759644], [230748, 6759644], [230748, 6759646]]] },
               }],
           })
           .end((err, res) => {
@@ -58,7 +58,7 @@ describe('Patch', () => {
             features: [
               {
                 type: 'Feature',
-                properties: { color: [99, 167, 133], cliche: '19FD5606Ax00020_16371' },
+                properties: { color: [58, 149, 47], cliche: '19FD5606Ax00020_16371' },
                 geometry: { type: 'Polygon', coordinates: [[[230760, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230760, 6759736]]] },
               }],
           })
