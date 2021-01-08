@@ -20,7 +20,7 @@
         "width": 256,
         "height": 256
     },
-	"pathDepth": 3,
+	"pathDepth": 2,
     "dataSet": {
         "boundingBox": {
             "LowerCorner": [

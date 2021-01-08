@@ -159,10 +159,10 @@ def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option):
 
 def get_tile_path(tile_x, tile_y, path_depth):
     """Calcul du chemin en base 36 avec la bonne profondeur"""
-    str_x = base_repr(tile_x, 36).zfill(path_depth)
-    str_y = base_repr(tile_y, 36).zfill(path_depth)
+    str_x = base_repr(tile_x, 36).zfill(path_depth+1)
+    str_y = base_repr(tile_y, 36).zfill(path_depth+1)
     tile_path = ''
-    for i in range(path_depth):
+    for i in range(path_depth+1):
         tile_path += '/' + str_x[i] + str_y[i]
     return tile_path
 
