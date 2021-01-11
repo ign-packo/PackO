@@ -3,13 +3,12 @@
 import * as itowns from 'itowns';
 import * as THREE from 'three';
 
-const vector = new THREE.Vector3();
-
 const status = {
   RAS: 0,
-  EN_COURS: 1,
-  MOVE_POINT: 2,
+  SELECT: 1,
+  POLYGON: 2,
   ENDING: 3,
+  WAITING: 4,
 };
 
 class Saisie {
@@ -20,19 +19,19 @@ class Saisie {
 
     this.validClicheSelected = false;
     this.currentStatus = status.RAS;
-    this.currentMeasure = null;
-    this.currentIndex = -1;
+    this.currentPolygon = null;
+    this.nbVertices = 0;
     this.lastPos = null;
+    this.mousePosition = null;
   }
 
   refreshView(layers) {
     // Pour le moment on force le rechargement complet des couches
     layers.forEach((id) => {
-      // menuGlobe.removeLayersGUI([this.layer[id].colorLayer.id]);
       this.view.removeLayer(this.layer[id].colorLayer.id);
       this.layer[id].config.opacity = this.layer[id].colorLayer.opacity;
       this.layer[id].colorLayer = new itowns.ColorLayer(this.layer[id].name, this.layer[id].config);
-      this.view.addLayer(this.layer[id].colorLayer);// .then(menuGlobe.addLayerGUI.bind(menuGlobe));
+      this.view.addLayer(this.layer[id].colorLayer);
     });
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Ortho', 0);
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Opi', 1);
@@ -50,45 +49,36 @@ class Saisie {
   }
 
   mousemove(e) {
-    const pos = this.pickPoint(e);
-    this.lastPos = pos;
-    if (pos) {
-      // console.log('position :', pos);
-      this.coord = `${pos.x.toFixed(2)} ${pos.y.toFixed(2)}`;
-      if (this.currentMeasure == null) return;
-      if (this.currentStatus === status.MOVE_POINT) {
-        const positions = this.currentMeasure.geometry.attributes.position.array;
-        // Si c'est le premier point, on fixe la position
-        if (this.currentIndex === 0) {
-          this.currentMeasure.position.x = Math.floor(pos.x);
-          this.currentMeasure.position.y = Math.floor(pos.y);
-          this.currentMeasure.position.z = Math.floor(pos.z);
-          this.currentMeasure.updateMatrixWorld();
-        }
-        positions[3 * this.currentIndex] = pos.x - this.currentMeasure.position.x;
-        positions[3 * this.currentIndex + 1] = pos.y - this.currentMeasure.position.y;
-        positions[3 * this.currentIndex + 2] = pos.z - this.currentMeasure.position.z;
-        this.currentMeasure.geometry.attributes.position.needsUpdate = true;
-        this.currentMeasure.geometry.computeBoundingSphere();
-        this.view.notifyChange(this.currentMeasure);
+    this.mousePosition = this.pickPoint(e);
+    if (this.mousePosition) {
+      this.coord = `${this.mousePosition.x.toFixed(2)},${this.mousePosition.y.toFixed(2)}`;
+      if (this.currentPolygon == null) return;
+
+      if (this.currentStatus === status.POLYGON && this.nbVertices > 0) {
+        const vertices = this.currentPolygon.geometry.attributes.position;
+        const newPoint = new THREE.Vector3();
+        newPoint.subVectors(this.mousePosition, this.currentPolygon.position);
+        vertices.set(newPoint.toArray(), 3 * this.nbVertices);
+        vertices.copyAt(this.nbVertices + 1, vertices, 0);
+        vertices.needsUpdate = true;
+
+        this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 2);
+        this.currentPolygon.geometry.computeBoundingSphere();
+        this.view.notifyChange(this.currentPolygon);
       }
     }
   }
 
   update() {
-    if (!this.currentMeasure) {
+    console.log('update');
+    if (!this.currentPolygon) {
       console.log('pas de polygone');
       return;
     }
-    if (this.currentIndex < 2) {
-      this.message = 'Pas assez de points';
-      return;
-    }
-    console.log('update');
     this.currentStatus = status.RAS;
     this.message = '';
     document.getElementById('viewerDiv').style.cursor = 'auto';
-    const positions = this.currentMeasure.geometry.attributes.position.array;
+    const positions = this.currentPolygon.geometry.attributes.position.array;
     const geojson = {
       type: 'FeatureCollection',
       name: 'annotation',
@@ -105,16 +95,18 @@ class Saisie {
         },
       ],
     };
-    for (let i = 0; i <= (this.currentIndex + 1); i += 1) {
+    for (let i = 0; i <= this.nbVertices; i += 1) {
       geojson.features[0].geometry.coordinates[0].push(
-        [positions[3 * i]
-        + this.currentMeasure.position.x, positions[3 * i + 1]
-        + this.currentMeasure.position.y],
+        [
+          positions[3 * i] + this.currentPolygon.position.x,
+          positions[3 * i + 1] + this.currentPolygon.position.y,
+        ],
       );
     }
+
     const dataStr = JSON.stringify(geojson);
-    this.view.scene.remove(this.currentMeasure);
-    this.currentStatus = status.EN_COURS;
+    this.view.scene.remove(this.currentPolygon);
+    this.currentStatus = status.WAITING;
     document.getElementById('viewerDiv').style.cursor = 'wait';
     this.message = 'calcul en cours';
     // On post le geojson sur l'API
@@ -127,7 +119,7 @@ class Saisie {
         },
         body: dataStr,
       }).then((res) => {
-      this.cancelCurrentMeasure();
+      this.cancelcurrentPolygon();
       if (res.status === 200) {
         this.refreshView(['ortho', 'graph']);
       } else {
@@ -136,11 +128,11 @@ class Saisie {
     });
   }
 
-  cancelCurrentMeasure() {
-    if (this.currentMeasure) {
+  cancelcurrentPolygon() {
+    if (this.currentPolygon) {
       // on annule la saisie en cours
-      this.view.scene.remove(this.currentMeasure);
-      this.currentMeasure = null;
+      this.view.scene.remove(this.currentPolygon);
+      this.currentPolygon = null;
       this.view.notifyChange();
     }
     document.getElementById('viewerDiv').style.cursor = 'auto';
@@ -150,80 +142,85 @@ class Saisie {
     Object.keys(this.controllers).forEach((key) => {
       if (key !== 'cliche') this.controllers[key].__li.style.backgroundColor = '';
     });
-
-    // for (const key in Object.keys(this.controllers)) {
-    //   if (key !== 'cliche') this.controllers[key].__li.style.backgroundColor = '';
-    // }
   }
 
   keydown(e) {
-    if (this.currentStatus === status.EN_COURS) return;
-    console.log(e.key);
+    if (this.currentStatus === status.WAITING) return;
+    console.log(e.key, ' down');
     if (e.key === 'Escape') {
       document.getElementById('viewerDiv').style.cursor = 'auto';
-      this.cancelCurrentMeasure();
+      this.cancelcurrentPolygon();
     } else if (e.key === 'Shift') {
-      if (this.currentStatus === status.MOVE_POINT) {
-        if (this.currentMeasure && (this.currentIndex > 1)) {
+      if (this.currentStatus === status.POLYGON) {
+        if (this.currentPolygon && (this.nbVertices > 2)) {
           this.currentStatus = status.ENDING;
-          // on supprime le dernier point du polygone
-          const positions = this.currentMeasure.geometry.attributes.position.array;
-          this.currentIndex -= 1;
-          [positions[3 * (this.currentIndex + 1)],
-            positions[3 * (this.currentIndex + 1) + 1],
-            positions[3 * (this.currentIndex + 1) + 2]] = [positions[0],
-            positions[1],
-            positions[2]];
-          this.currentMeasure.geometry.setDrawRange(0, this.currentIndex + 2);
-          this.currentMeasure.geometry.attributes.position.needsUpdate = true;
-          this.currentMeasure.geometry.computeBoundingSphere();
-          this.view.notifyChange(this.currentMeasure);
+          this.message = 'Cliquer pour valider la saisie';
+
+          const vertices = this.currentPolygon.geometry.attributes.position;
+          vertices.copyAt(this.nbVertices, vertices, 0);
+          vertices.needsUpdate = true;
+
+          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
+          this.currentPolygon.geometry.computeBoundingSphere();
+          this.view.notifyChange(this.currentPolygon);
+        } else {
+          this.message = 'Pas assez de points';
+        }
+      }
+    } else if (e.key === 'Backspace') {
+      if (this.currentStatus === status.POLYGON) {
+        if (this.currentPolygon && (this.nbVertices > 1)) {
+          const vertices = this.currentPolygon.geometry.attributes.position;
+          vertices.copyAt(this.nbVertices - 1, vertices, this.nbVertices);
+          vertices.copyAt(this.nbVertices, vertices, 0);
+          vertices.needsUpdate = true;
+
+          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
+          this.currentPolygon.geometry.computeBoundingSphere();
+          this.view.notifyChange(this.currentPolygon);
+
+          this.nbVertices -= 1;
         }
       }
     }
   }
 
   keyup(e) {
-    if (this.currentStatus === status.EN_COURS) return;
-    console.log(e.key);
+    if (this.currentStatus === status.WAITING) return;
+    console.log(e.key, ' up');
     if (e.key === 'Shift') {
-      if (this.currentStatus === status.ENDING) {
-        if (this.currentMeasure && (this.currentIndex > 0)) {
-          // on ferme le polygone sur le point en cours
-          // const positions = this.currentMeasure.geometry.attributes.position.array;
-          const positions = this.currentMeasure.geometry.attributes.position;
+      if (this.currentStatus === status.ENDING || this.currentStatus === status.POLYGON) {
+        this.message = 'Maj pour terminer';
+        if (this.currentPolygon && (this.nbVertices > 0)) {
+          // on remet le dernier sommet sur la position de la souris
 
-          this.currentIndex += 1;
-          vector.subVectors(this.lastPos, this.currentMeasure.position);
-          positions.set(vector.toArray(), 3 * this.currentIndex);
-          positions.copyAt(3 * (this.currentIndex + 1), positions, 0);
+          const vertices = this.currentPolygon.geometry.attributes.position;
+          const newPoint = new THREE.Vector3();
+          newPoint.subVectors(this.mousePosition, this.currentPolygon.position);
+          vertices.set(newPoint.toArray(), 3 * this.nbVertices);
+          vertices.needsUpdate = true;
 
-          // positions[3 * this.currentIndex] = this.lastPos.x - this.currentMeasure.position.x;
-          // positions[3 * this.currentIndex + 1] = this.lastPos.y - this.currentMeasure.position.y;
-          // positions[3 * this.currentIndex + 2] = this.lastPos.z - this.currentMeasure.position.z;
-          // positions[3 * (this.currentIndex + 1)] = positions[0];
-          // positions[3 * (this.currentIndex + 1) + 1] = positions[1];
-          // positions[3 * (this.currentIndex + 1) + 2] = positions[2];
-          this.currentMeasure.geometry.setDrawRange(0, this.currentIndex + 2);
-          positions.needsUpdate = true;
-          this.currentMeasure.geometry.computeBoundingSphere();
-          this.view.notifyChange(this.currentMeasure);
+          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 2);
+          this.currentPolygon.geometry.computeBoundingSphere();
+          this.view.notifyChange(this.currentPolygon);
         }
-        this.currentStatus = status.MOVE_POINT;
+        this.currentStatus = status.POLYGON;
       }
     }
   }
 
   click(e) {
-    if (this.currentStatus === status.EN_COURS) return;
-    console.log('Click: ', this.pickPoint(e), this.currentStatus);
+    if (this.currentStatus === status.WAITING) return;
+    const mousePosition = this.pickPoint(e);
+    console.log('Click: ', mousePosition.x, mousePosition.y);
+    console.log('currentStatus: ', this.currentStatus);
     this.message = '';
-    if (this.currentStatus === status.MOVE_POINT) {
-      if (this.currentMeasure == null) {
+
+    switch (this.currentStatus) {
+      case status.SELECT: {
         console.log('get OPI');
         // on selectionne le cliche
         const pos = this.pickPoint(e);
-        const that = this;
         document.getElementById('viewerDiv').style.cursor = 'auto';
         fetch(`${this.apiUrl}/graph?x=${pos.x}&y=${pos.y}`,
           {
@@ -235,15 +232,15 @@ class Saisie {
           }).then((res) => {
           res.json().then((json) => {
             this.cliche = json.cliche;
-            this.cancelCurrentMeasure();
+            this.cancelcurrentPolygon();
             if (res.status === 200) {
-              that.json = json;
-              that.color = json.color;
-              that.controllers.cliche.__li.style.backgroundColor = `rgb(${that.color[0]},${that.color[1]},${that.color[2]})`;
+              this.json = json;
+              this.color = json.color;
+              this.controllers.cliche.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
               // On modifie la couche OPI
               this.layer.opi.config.source.url = this.layer.opi.config.source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
               this.refreshView(['opi']);
-              that.validClicheSelected = true;
+              this.validClicheSelected = true;
             }
             if (res.status === 201) {
               console.log('out of bounds');
@@ -254,63 +251,54 @@ class Saisie {
             }
           });
         });
-      } else {
-        this.message = 'Maj pour terminer';
-        // sinon, on ajoute un point au polygone
-        this.currentIndex += 1;
-        const positions = this.currentMeasure.geometry.attributes.position.array;
-        // positions[3 * this.currentIndex] = positions[3 * (this.currentIndex - 1)];
-        // positions[3 * this.currentIndex + 1] = positions[3 * (this.currentIndex - 1) + 1];
-        // positions[3 * this.currentIndex + 2] = positions[3 * (this.currentIndex - 1) + 2];
-
-        // positions[3 * (this.currentIndex + 1)] = positions[0];
-        // positions[3 * (this.currentIndex + 1) + 1] = positions[1];
-        // positions[3 * (this.currentIndex + 1) + 2] = positions[2];
-
-        [
-          positions[3 * this.currentIndex],
-          positions[3 * this.currentIndex + 1],
-          positions[3 * this.currentIndex + 2],
-          positions[3 * (this.currentIndex + 1)],
-          positions[3 * (this.currentIndex + 1) + 1],
-          positions[3 * (this.currentIndex + 1) + 2],
-        ] = [
-          positions[3 * (this.currentIndex - 1)],
-          positions[3 * (this.currentIndex - 1) + 1],
-          positions[3 * (this.currentIndex - 1) + 2],
-          positions[0],
-          positions[1],
-          positions[2],
-        ];
-
-        this.currentMeasure.geometry.setDrawRange(0, this.currentIndex + 2);
-        this.currentMeasure.geometry.attributes.position.needsUpdate = true;
-        this.currentMeasure.geometry.computeBoundingSphere();
-        this.view.notifyChange(this.currentMeasure);
+        break;
       }
-    } else if (this.currentStatus === status.ENDING) {
+      case status.POLYGON: {
+        // Cas ou l'on est en train de saisir un polygon : on ajoute un point
+        this.message = 'Maj pour terminer';
+
+        // Si c'est le premier point, on defini une position de reference (pb de précision)
+        if (this.nbVertices === 0) {
+          this.currentPolygon.position.x = Math.floor(mousePosition.x);
+          this.currentPolygon.position.y = Math.floor(mousePosition.y);
+          this.currentPolygon.position.z = Math.floor(mousePosition.z);
+          this.currentPolygon.updateMatrixWorld();
+
+          // on ajoute ce premier point dans vertices
+          const vertices = this.currentPolygon.geometry.attributes.position;
+          const newPoint = new THREE.Vector3();
+          newPoint.subVectors(mousePosition, this.currentPolygon.position);
+          vertices.set(newPoint.toArray(), 3 * this.nbVertices);
+          vertices.needsUpdate = true;
+        }
+        this.nbVertices += 1;
+        break;
+      }
+      case status.ENDING:
       // on termine la ployline ou polygon
-      this.update();
+        this.update();
+        break;
+      default:
     }
   }
 
   select() {
-    if (this.currentStatus === status.EN_COURS) return;
-    this.cancelCurrentMeasure();
+    if (this.currentStatus === status.WAITING) return;
+    this.cancelcurrentPolygon();
     this.controllers.select.__li.style.backgroundColor = '#FF000055';
     document.getElementById('viewerDiv').style.cursor = 'crosshair';
     console.log('"select": En attente de sélection');
-    this.currentStatus = status.MOVE_POINT;
+    this.currentStatus = status.SELECT;
     this.message = 'choisir un cliche';
   }
 
   polygon() {
-    if (this.currentStatus === status.EN_COURS) return;
+    if (this.currentStatus === status.WAITING) return;
     if (!this.validClicheSelected) {
       this.message = (this.currentStatus === status.MOVE_POINT) ? 'choisir un cliche valide' : 'cliche non valide';
       return;
     }
-    if (this.currentMeasure) {
+    if (this.currentPolygon) {
       this.message = 'saisie déjà en cours';
       // saisie deja en cours
       return;
@@ -319,11 +307,10 @@ class Saisie {
     this.controllers.polygon.__li.style.backgroundColor = '#FF000055';
     document.getElementById('viewerDiv').style.cursor = 'crosshair';
     console.log("saisie d'un polygon");
-    this.message = "saisie d'un polygone";
+    this.message = "saisie d'un polygon";
     const MAX_POINTS = 500;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
-    console.log(geometry);
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setDrawRange(0, 1);
     const material = new THREE.LineBasicMaterial({
@@ -331,30 +318,29 @@ class Saisie {
       depthTest: false,
       depthWrite: false,
     });
-    this.currentMeasure = new THREE.Line(geometry, material);
+    this.currentPolygon = new THREE.Line(geometry, material);
     // Pour eviter que l'object disparaisse dans certains cas
-    this.currentMeasure.renderOrder = 1;
-    console.log(this.currentMeasure);
-    this.currentMeasure.maxMarkers = -1;
-    this.view.scene.add(this.currentMeasure);
-    this.view.notifyChange(this.currentMeasure);
-    this.currentStatus = status.MOVE_POINT;
-    this.currentIndex = 0;
+    this.currentPolygon.renderOrder = 1;
+    this.currentPolygon.maxMarkers = -1;
+    this.view.scene.add(this.currentPolygon);
+    this.view.notifyChange(this.currentPolygon);
+    this.currentStatus = status.POLYGON;
+    this.nbVertices = 0;
   }
 
   undo() {
-    if (this.currentStatus === status.EN_COURS) return;
-    this.cancelCurrentMeasure();
+    if (this.currentStatus === status.WAITING) return;
+    this.cancelcurrentPolygon();
     this.message = '';
     console.log('undo');
-    this.currentStatus = status.EN_COURS;
+    this.currentStatus = status.WAITING;
     document.getElementById('viewerDiv').style.cursor = 'wait';
     this.message = 'calcul en cours';
     fetch(`${this.apiUrl}/patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
-      this.cancelCurrentMeasure();
+      this.cancelcurrentPolygon();
       if (res.status === 200) {
         this.refreshView(['ortho', 'graph']);
       }
@@ -365,18 +351,18 @@ class Saisie {
   }
 
   redo() {
-    if (this.currentStatus === status.EN_COURS) return;
-    this.cancelCurrentMeasure();
+    if (this.currentStatus === status.WAITING) return;
+    this.cancelcurrentPolygon();
     this.message = '';
     console.log('redo');
-    this.currentStatus = status.EN_COURS;
+    this.currentStatus = status.WAITING;
     document.getElementById('viewerDiv').style.cursor = 'wait';
     this.message = 'calcul en cours';
     fetch(`${this.apiUrl}/patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
-      this.cancelCurrentMeasure();
+      this.cancelcurrentPolygon();
       if (res.status === 200) {
         this.refreshView(['ortho', 'graph']);
       }
@@ -387,11 +373,11 @@ class Saisie {
   }
 
   clear() {
-    if (this.currentStatus === status.EN_COURS) return;
+    if (this.currentStatus === status.WAITING) return;
     const ok = window.confirm('Voulez-vous effacer toutes les modifications?');
     if (!ok) return;
     console.log('clear');
-    this.currentStatus = status.EN_COURS;
+    this.currentStatus = status.WAITING;
     document.getElementById('viewerDiv').style.cursor = 'wait';
     this.message = 'calcul en cours';
 
@@ -399,7 +385,7 @@ class Saisie {
       {
         method: 'PUT',
       }).then((res) => {
-      this.cancelCurrentMeasure();
+      this.cancelcurrentPolygon();
       if (res.status === 200) {
         this.refreshView(['ortho', 'graph']);
       }
