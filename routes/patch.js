@@ -100,12 +100,15 @@ router.get('/patchs', [], (req, res) => {
 });
 
 // Preparation des masques
-function createPatch(tile, geoJson, overviews, dirCache) {
+function createPatch(tile, geoJson, overviews, dirCache, dirname) {
   /* eslint-disable global-require */
   const PImage = require('pureimage');
   const debugProcess = require('debug')('patch');
   const fsProcess = require('fs');
-  // const pathProcess = require('path');
+  /* eslint-disable import/no-dynamic-require */
+  const rok4Process = require(`${dirname}/../rok4.js`);
+  /* eslint-enable import/no-dynamic-require */
+  const pathProcess = require('path');
   /* eslint-enable global-require */
   debugProcess('createPatch : ', tile);
   const xOrigin = overviews.crs.boundingBox.xmin;
@@ -156,13 +159,13 @@ function createPatch(tile, geoJson, overviews, dirCache) {
     return null;
   }
   const patch = { tile, mask, color: geoJson.features[0].properties.color };
-  patch.tileRoot = rok4.getTileRoot(patch.tile.x,
+  patch.tileRoot = rok4Process.getTileRoot(patch.tile.x,
     patch.tile.y,
     patch.tile.z,
     overviews.pathDepth);
-  patch.urlGraph = path.join(dirCache, 'graph', `${patch.tileRoot}.png`);
-  patch.urlOrtho = path.join(dirCache, 'ortho', `${patch.tileRoot}.png`);
-  patch.urlOpi = path.join(dirCache, 'opi', `${patch.tileRoot}_${geoJson.features[0].properties.cliche}.png`);
+  patch.urlGraph = pathProcess.join(dirCache, 'graph', `${patch.tileRoot}.png`);
+  patch.urlOrtho = pathProcess.join(dirCache, 'ortho', `${patch.tileRoot}.png`);
+  patch.urlOpi = pathProcess.join(dirCache, 'opi', `${patch.tileRoot}_${geoJson.features[0].properties.cliche}.png`);
   const checkGraph = fsProcess.promises.access(patch.urlGraph, fsProcess.constants.F_OK);
   const checkOrtho = fsProcess.promises.access(patch.urlOrtho, fsProcess.constants.F_OK);
   const checkOpi = fsProcess.promises.access(patch.urlOpi, fsProcess.constants.F_OK);
@@ -236,13 +239,13 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     debug('create patch avec workers');
     tiles.forEach((tile) => {
       promisesCreatePatch.push(req.app.workerpool.exec(
-        createPatch, [tile, geoJson, overviews, global.dir_cache],
+        createPatch, [tile, geoJson, overviews, global.dir_cache, __dirname],
       ));
     });
   } else {
     debug('create patch sans workers');
     tiles.forEach((tile) => {
-      promisesCreatePatch.push(createPatch(tile, geoJson, overviews, global.dir_cache));
+      promisesCreatePatch.push(createPatch(tile, geoJson, overviews, global.dir_cache, __dirname));
     });
   }
   Promise.all(promisesCreatePatch).then((patches) => {
