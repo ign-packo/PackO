@@ -78,9 +78,9 @@ def read_args(update):
         if not os.path.isdir(args.cache):
             raise SystemExit("Cache (" + args.cache + ") doesn't exist")
 
-    if args.table == "cache_test":
+    if args.table == "regress":
         global conn_string
-        conn_string = "../data_cache_test/base_graphe.gpkg"
+        conn_string = "regress/data/base_graphe.gpkg"
 
     if gdal.OpenEx(conn_string, gdal.OF_VECTOR) is None:
         raise SystemExit("Connection to database failed")
