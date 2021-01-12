@@ -9,6 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const xml2js = require('xml2js');
 const proj4 = require('proj4');
+const rok4 = require('../rok4.js');
 
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
@@ -266,19 +267,23 @@ router.get('/wmts', [
     debug('~~~GetTile');
     debugGetTile(LAYER, TILEMATRIX, TILEROW, TILECOL);
     let mime = null;
-    let layerName = LAYER;
+    const layerName = LAYER;
     if ((!FORMAT) || (FORMAT === 'image/png')) {
       mime = Jimp.MIME_PNG; // "image/png"
     } else if (FORMAT === 'image/jpeg') {
       mime = Jimp.MIME_JPEG; // "image/jpeg"
     }
+    const tileRoot = rok4.getTileRoot(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth);
+    let url = path.join(global.dir_cache, layerName, tileRoot);
     if (LAYER === 'opi') {
-      layerName = Name;
-      if (!layerName) {
-        [layerName] = Object.keys(overviews.list_OPI);
+      if (!Name) {
+        url += `_${overviews.list_OPI[0]}`;
+      } else {
+        url += `_${Name}`;
       }
     }
-    const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, `${layerName}.png`);
+    url += '.png';
+    debug(url);
     Jimp.read(url, (err, image) => {
       new Promise((success, failure) => {
         if (err) {
@@ -301,7 +306,8 @@ router.get('/wmts', [
   } else if (REQUEST === 'GetFeatureInfo') {
     debug('~~~GetFeatureInfo');
     debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-    const url = path.join(global.dir_cache, TILEMATRIX, TILEROW, TILECOL, 'graph.png');
+    const tileRoot = rok4.getTileRoot(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth);
+    const url = `${path.join(global.dir_cache, 'graph', tileRoot)}.png`;
 
     if (!fs.existsSync(url)) {
       const erreur = new Error();

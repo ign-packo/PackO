@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { matchedData, query } = require('express-validator');
 const jimp = require('jimp');
+const rok4 = require('../rok4.js');
 
 // const GJV = require('geojson-validation');
 const validateParams = require('../paramValidation/validateParams');
@@ -43,8 +44,9 @@ router.get('/graph', [
   const I = Math.floor(Px - Tx * overviews.tileSize.width);
   const J = Math.floor(Py - Ty * overviews.tileSize.height);
 
-  const url = path.join(global.dir_cache, `${lvlMax}`, `${Ty}`, `${Tx}`, 'graph.png');
+  const url = path.join(global.dir_cache, 'graph', `${rok4.getTileRoot(Tx, Ty, lvlMax, overviews.pathDepth)}.png`);
   debug(url);
+  // _graph.png`;
   if (!fs.existsSync(url)) {
     res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
   } else {

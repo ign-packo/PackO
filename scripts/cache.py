@@ -138,7 +138,7 @@ def generate(update):
 
     list_filename = glob.glob(args.input)
 
-    if (len(list_filename) == 0):
+    if len(list_filename) == 0:
         raise SystemExit("WARNING: Empty input folder: nothing to add in cache")
 
     print(len(list_filename), "image(s) à traiter")
@@ -151,8 +151,8 @@ def generate(update):
                                                               overviews_dict,
                                                               color_dict,
                                                               {
-                                                                 'nbBands': NB_BANDS,
-                                                                 'spatialRef': spatial_ref_wkt
+                                                                  'nbBands': NB_BANDS,
+                                                                  'spatialRef': spatial_ref_wkt
                                                               })
 
     print(" Découpage")

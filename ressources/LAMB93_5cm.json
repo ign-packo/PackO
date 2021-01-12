@@ -19,5 +19,6 @@
 	"tileSize": {
 		"width": 256,
 		"height": 256
-	}
+	},
+	"pathDepth": 4
 }

@@ -7,6 +7,7 @@ import math
 import glob
 import gdal
 import numpy as np
+from numpy import base_repr
 
 PNG_DRIVER = gdal.GetDriverByName('png')
 
@@ -156,7 +157,17 @@ def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option):
     return args_cut_image, opi_already_calculated, change
 
 
-def cut_opi_1tile(opi, dst_dir, tile, gdal_option):
+def get_tile_path(tile_x, tile_y, path_depth):
+    """Calcul du chemin en base 36 avec la bonne profondeur"""
+    str_x = base_repr(tile_x, 36).zfill(path_depth+1)
+    str_y = base_repr(tile_y, 36).zfill(path_depth+1)
+    tile_path = ''
+    for i in range(path_depth+1):
+        tile_path += '/' + str_x[i] + str_y[i]
+    return tile_path
+
+
+def cut_opi_1tile(opi, dst_root, tile, gdal_option):
     """Cut and resample a specified image at a given level"""
 
     input_image = gdal.Open(opi['path'])
@@ -179,7 +190,7 @@ def cut_opi_1tile(opi, dst_dir, tile, gdal_option):
 
     # on exporte en png (todo: gerer le niveau de Q)
     # pylint: disable=unused-variable
-    dst_ds = PNG_DRIVER.CreateCopy(dst_dir + "/" + opi['name'] + ".png", target_ds)
+    dst_ds = PNG_DRIVER.CreateCopy(dst_root + "_" + opi['name'] + ".png", target_ds)
     target_ds = None
     dst_ds = None  # noqa: F841
     # pylint: enable=unused-variable
@@ -211,12 +222,14 @@ def cut_image_1arg(arg):
                     'resolution': resolution
                 }
 
-                tile_dir = arg['cache'] + '/' + str(level) + '/' + str(tile_y) + '/' + str(tile_x)
+                tile_root = arg['cache'] + '/opi/' + str(level) + '/'\
+                    + get_tile_path(tile_x, tile_y, overviews['pathDepth'])
+                # tile_dir = arg['cache'] + '/' + str(level) + '/' + str(tile_y) + '/' + str(tile_x)
                 # si necessaire on cree le dossier de la tuile
-                Path(tile_dir).mkdir(parents=True, exist_ok=True)
+                Path(tile_root[:-2]).mkdir(parents=True, exist_ok=True)
 
                 cut_opi_1tile(arg['opi'],
-                              tile_dir,
+                              tile_root,
                               tile_param,
                               arg['gdalOption'])
 
@@ -234,7 +247,7 @@ def progress_bar(nb_steps, nb_tiles, args_create_ortho_and_graph):
             args_create_ortho_and_graph[i]['advancement'] = 1
 
 
-def prep_ortho_and_graph(dir_cache, overviews, db_option,  gdal_option, change):
+def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change):
     """Preparation for computation of ortho and graph"""
     print(" Préparation")
 
@@ -323,15 +336,20 @@ def create_ortho_and_graph_1arg(arg):
     img_graph = create_blank_tile(overviews, arg['tile'],
                                   arg['gdalOption']['nbBands'], arg['gdalOption']['spatialRef'])
 
-    tile_dir = arg['cache'] + \
-        '/' + str(arg['tile']['level']) + \
-        '/' + str(arg['tile']['y']) + \
-        '/' + str(arg['tile']['x'])
+    tile_path = get_tile_path(arg['tile']['x'], arg['tile']['y'], overviews['pathDepth'])
+    tile_opi_root = arg['cache'] + '/opi/' + str(arg['tile']['level']) + '/' + tile_path
+    tile_ortho = arg['cache'] + '/ortho/' + str(arg['tile']['level']) + '/' + tile_path + '.png'
+    tile_graph = arg['cache'] + '/graph/' + str(arg['tile']['level']) + '/' + tile_path + '.png'
+
+    # tile_dir = arg['cache'] + \
+    #     '/' + str(arg['tile']['level']) + \
+    #     '/' + str(arg['tile']['y']) + \
+    #     '/' + str(arg['tile']['x'])
 
     is_empty = True
 
-    for filename in glob.glob(tile_dir + '/*.png'):
-        stem = Path(filename).stem
+    for filename in glob.glob(tile_opi_root + '*.png'):
+        stem = Path(filename).stem[3:]
         if stem in overviews["list_OPI"]:
             color = overviews["list_OPI"][stem]
 
@@ -355,9 +373,12 @@ def create_ortho_and_graph_1arg(arg):
                                        arg['gdalOption']['nbBands'])
 
     if not is_empty:
+        # si necessaire on cree les dossiers de tuile pour le graph et l'ortho
+        Path(tile_graph).parent.mkdir(parents=True, exist_ok=True)
+        Path(tile_ortho).parent.mkdir(parents=True, exist_ok=True)
         # pylint: disable=unused-variable
-        dst_ortho = PNG_DRIVER.CreateCopy(tile_dir + "/ortho.png", img_ortho)
-        dst_graph = PNG_DRIVER.CreateCopy(tile_dir + "/graph.png", img_graph)
+        dst_ortho = PNG_DRIVER.CreateCopy(tile_ortho, img_ortho)
+        dst_graph = PNG_DRIVER.CreateCopy(tile_graph, img_graph)
         dst_ortho = None  # noqa: F841
         dst_graph = None  # noqa: F841
         # pylint: enable=unused-variable
