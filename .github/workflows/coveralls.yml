@@ -35,9 +35,11 @@ jobs:
 
     - name: Runing the code
       run: |
-        cd scripts
-        python create_cache.py -i "../data_cache_test/*.tif" -o ../ressources/LAMB93_5cm.json -c ../cache_test_0 -t cache_test
-        python update_cache.py -i "../data_cache_test/*.tiff" -c ../cache_test_0 -t cache_test
+        python scripts/create_cache.py -i "regress/data/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress -t regress
+
+    - name: update cache
+      run: |
+        python scripts/update_cache.py -i "regress/data/update/*.tif" -c cache_regress -t regress
 
     - name: install
       run: npm install
