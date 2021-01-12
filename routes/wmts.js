@@ -3,12 +3,13 @@ const debugFeatureInfo = require('debug')('wmts:GetFeatureInfo');
 const debugGetTile = require('debug')('wmts:GetTile');
 const router = require('express').Router();
 const { matchedData, query } = require('express-validator');
-const Jimp = require('jimp');
 const path = require('path');
 
+const Jimp = require('jimp');
 const fs = require('fs');
 const xml2js = require('xml2js');
 const proj4 = require('proj4');
+const rok4IO = require('bindings')('rok4IO');
 const rok4 = require('../rok4.js');
 
 const validateParams = require('../paramValidation/validateParams');
@@ -82,7 +83,7 @@ router.get('/wmts', [
   //  const { VERSION } = params;
   const { LAYER, Name } = params;
   // const STYLE = params.STYLE;
-  const { FORMAT } = params;
+  // const { FORMAT } = params;
   // const TILEMATRIXSET = params.TILEMATRIXSET;
   const { TILEMATRIX } = params;
   const { TILEROW } = params;
@@ -266,48 +267,60 @@ router.get('/wmts', [
   } else if (REQUEST === 'GetTile') {
     debug('~~~GetTile');
     debugGetTile(LAYER, TILEMATRIX, TILEROW, TILECOL);
-    let mime = null;
     const layerName = LAYER;
-    if ((!FORMAT) || (FORMAT === 'image/png')) {
-      mime = Jimp.MIME_PNG; // "image/png"
-    } else if (FORMAT === 'image/jpeg') {
-      mime = Jimp.MIME_JPEG; // "image/jpeg"
-    }
-    const tileRoot = rok4.getTileRoot(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth);
-    let url = path.join(global.dir_cache, layerName, tileRoot);
+    // Plus de transtypage pour le moment
+    // let mime = null;
+    // if ((!FORMAT) || (FORMAT === 'image/png')) {
+    //   mime = Jimp.MIME_PNG; // "image/png"
+    // } else if (FORMAT === 'image/jpeg') {
+    //   mime = Jimp.MIME_JPEG; // "image/jpeg"
+    // }
+    const tileRoot = rok4.getTileRoot(TILECOL,
+      TILEROW,
+      TILEMATRIX,
+      overviews.pathDepth,
+      overviews.slabSize);
+    let url = path.join(global.dir_cache, layerName, tileRoot.url);
     if (LAYER === 'opi') {
       if (!Name) {
-        url += `_${overviews.list_OPI[0]}`;
+        url += `_${Object.keys(overviews.list_OPI)[0]}`;
       } else {
         url += `_${Name}`;
       }
     }
-    url += '.png';
-    debug(url);
-    Jimp.read(url, (err, image) => {
-      new Promise((success, failure) => {
-        if (err) {
-          /* eslint-disable no-new */
-          new Jimp(256, 256, 0x000000ff, (errJimp, img) => {
-            if (errJimp) {
-              failure(err);
-            }
-            success(img);
-          });
-        } else {
-          success(image);
-        }
-      }).then((img) => {
-        img.getBuffer(mime, (err2, buffer) => { res.send(buffer); });
+    url += '.tif';
+    debug('URL : ', url);
+    // chargement de la tuile tileRoot.numTile dans le fichier url
+    if (!fs.existsSync(url)) {
+      debug('tuile non valide : ', url);
+      /* eslint-disable no-new */
+      new Jimp(256, 256, 0x000000ff, (errJimp, img) => {
+        img.getBufferAsync('image/png').then((buffer) => {
+          res.send(buffer);
+        });
       });
-    });
-
+      /* eslint-enable no-new */
+    } else {
+      debug('tuile valide : ', url);
+      const slab = new rok4IO.ImageROK4();
+      slab.load(url).then(() => {
+        slab.getEncodedTile(tileRoot.numTile).then((tile) => {
+          debug(tile);
+          res.send(tile);
+        });
+      });
+    }
     // GetFeatureInfo
   } else if (REQUEST === 'GetFeatureInfo') {
     debug('~~~GetFeatureInfo');
     debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-    const tileRoot = rok4.getTileRoot(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth);
-    const url = `${path.join(global.dir_cache, 'graph', tileRoot)}.png`;
+    const tileRoot = rok4.getTileRoot(TILECOL,
+      TILEROW,
+      TILEMATRIX,
+      overviews.pathDepth,
+      overviews.slabSize);
+    const url = `${path.join(global.dir_cache, 'graph', tileRoot.url)}.tif`;
+    // chargement de la tuile tileRoot.numTile dans le fichier url
 
     if (!fs.existsSync(url)) {
       const erreur = new Error();
@@ -320,37 +333,44 @@ router.get('/wmts', [
       };
       res.status(400).send(erreur.msg);
     } else {
-      Jimp.read(url, (err, image) => {
-        if (err) {
-          const erreur = new Error();
-          erreur.msg = {
-            status: err,
-            errors: [{
-              localisation: 'Jimp.read()',
-              msg: err,
-            }],
-          };
-          res.status(500).send(erreur.msg);
-        // res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
-        } else {
-          let resCode = 200;
-          const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
+      // Jimp.read(url, (err, image) => {
+      //   if (err) {
+      //     const erreur = new Error();
+      //     erreur.msg = {
+      //       status: err,
+      //       errors: [{
+      //         localisation: 'Jimp.read()',
+      //         msg: err,
+      //       }],
+      //     };
+      //     res.status(500).send(erreur.msg);
+      //   // res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
+      //   } else {
+      //     let resCode = 200;
+      //     const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
+      const slab = new rok4IO.ImageROK4();
+      slab.load(url).then(() => {
+        slab.GetTile(tileRoot.numTile).then((image) => {
+          const imageInfo = slab.info();
+          const index = parseInt(J, 10) * imageInfo[3] * imageInfo[2]
+            + parseInt(I, 10) * imageInfo[2];
           debugFeatureInfo('index: ', index);
           const out = {
-            color: [image.bitmap.data[index],
-              image.bitmap.data[index + 1],
-              image.bitmap.data[index + 2]],
+            color: [
+              image[index],
+              image[index + 1],
+              image[index + 2]],
           };
           debugFeatureInfo(out);
+          let resCode = 200;
           if ((out.color[0] in req.app.cache_mtd)
-          && (out.color[1] in req.app.cache_mtd[out.color[0]])
-          && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
+              && (out.color[1] in req.app.cache_mtd[out.color[0]])
+              && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
             out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
           } else {
             out.cliche = 'missing';
             resCode = 201;
           }
-
           const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
                            + '<ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"'
                                                     + ' xmlns:gml="http://www.opengis.net/gml"'
@@ -368,7 +388,7 @@ router.get('/wmts', [
                              + '</featureMember>'
                            + '</ReguralGriddedElevations>';
           res.status(resCode).send(testResponse);
-        }
+        });
       });
     }
   }

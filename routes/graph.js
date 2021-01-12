@@ -4,7 +4,8 @@ const router = require('express').Router();
 const fs = require('fs');
 const path = require('path');
 const { matchedData, query } = require('express-validator');
-const jimp = require('jimp');
+// const jimp = require('jimp');
+const rok4IO = require('bindings')('rok4IO');
 const rok4 = require('../rok4.js');
 
 // const GJV = require('geojson-validation');
@@ -44,31 +45,30 @@ router.get('/graph', [
   const I = Math.floor(Px - Tx * overviews.tileSize.width);
   const J = Math.floor(Py - Ty * overviews.tileSize.height);
 
-  const url = path.join(global.dir_cache, 'graph', `${rok4.getTileRoot(Tx, Ty, lvlMax, overviews.pathDepth)}.png`);
+  const tileRoot = rok4.getTileRoot(Tx,
+    Ty,
+    lvlMax,
+    overviews.pathDepth,
+    overviews.slabSize);
+
+  const url = path.join(global.dir_cache, 'graph', `${tileRoot.url}.tif`);
   debug(url);
-  // _graph.png`;
   if (!fs.existsSync(url)) {
     res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
   } else {
-    jimp.read(url, (err, image) => {
-      if (err) {
-        const erreur = new Error();
-        erreur.msg = {
-          status: err,
-          errors: [{
-            localisation: 'Jimp.read()',
-            msg: err,
-          }],
-        };
-        res.status(500).send(erreur);
-      } else {
-        const index = image.getPixelIndex(I, J);
-        debug(image.bitmap.data[index], image.bitmap.data[index + 1], image.bitmap.data[index + 2]);
+    const slab = new rok4IO.ImageROK4();
+    slab.load(url).then(() => {
+      slab.getTile(tileRoot.numTile).then((image) => {
+        const imageInfo = slab.info();
+        const index = J * imageInfo[3] * imageInfo[2] + I * imageInfo[2];
+        debug(image[index],
+          image[index + 1],
+          image[index + 2]);
         const out = {
           color: [
-            image.bitmap.data[index],
-            image.bitmap.data[index + 1],
-            image.bitmap.data[index + 2]],
+            image[index],
+            image[index + 1],
+            image[index + 2]],
         };
         debug(req.app.cache_mtd);
         if ((out.color[0] in req.app.cache_mtd)
@@ -80,7 +80,7 @@ router.get('/graph', [
         }
         debug(JSON.stringify(out));
         res.status(200).send(JSON.stringify(out));
-      }
+      });
     });
   }
 });

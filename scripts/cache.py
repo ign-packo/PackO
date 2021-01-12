@@ -5,7 +5,7 @@ import argparse
 import json
 import glob
 import multiprocessing
-import gdal
+from osgeo import gdal
 
 import cache_def as cache
 
