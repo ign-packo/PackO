@@ -20,5 +20,9 @@
 		"width": 256,
 		"height": 256
 	},
-	"pathDepth": 4
+	"pathDepth": 4,
+	"slabSize": {
+		"width": 16,
+		"height": 16
+	}
 }
