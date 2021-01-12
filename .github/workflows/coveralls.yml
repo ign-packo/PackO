@@ -33,13 +33,13 @@ jobs:
         pip install numpy
         pip install --global-option=build_ext --global-option="-I/usr/include/gdal" GDAL==`gdal-config --version`
 
-    - name: Runing the code
+    - name: create cache
       run: |
-        python scripts/create_cache.py -i "regress/data/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress -t regress
+        python scripts/create_cache.py -i "regress/data/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress -g "regress/data/base_graphe.gpkg" -t regress
 
     - name: update cache
       run: |
-        python scripts/update_cache.py -i "regress/data/update/*.tif" -c cache_regress -t regress
+        python scripts/update_cache.py -i "regress/data/update/*.tif" -c cache_regress -g "regress/data/base_graphe.gpkg" -t regress
 
     - name: install
       run: npm install
