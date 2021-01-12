@@ -39,7 +39,7 @@ jobs:
 
     - name: update cache
       run: |
-        python scripts/update_cache.py -i "regress/data/*.tiff" -c cache_regress -t regress
+        python scripts/update_cache.py -i "regress/data/update/*.tif" -c cache_regress -t regress
 
     - name: install
       run: npm install
