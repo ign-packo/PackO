@@ -44,6 +44,10 @@ def read_args(update):
                             " (e.g., 15 19)",
                             type=int,
                             nargs='+')
+    parser.add_argument("-b", "--base",
+                        help="database path (default: os.getenv('PGDATABASE') or pcrs)",
+                        type=str,
+                        default="")
     parser.add_argument("-t", "--table",
                         help="graph table (default: graphe_pcrs56_zone_test)",
                         type=str,
@@ -76,14 +80,21 @@ def read_args(update):
                 args.level[1] = lvl_max
     else:
         if not os.path.isdir(args.cache):
-            raise SystemExit("Cache (" + args.cache + ") doesn't exist")
+            raise SystemExit("Cache '" + args.cache + "' doesn't exist.")
 
-    if args.table == "cache_test":
-        global conn_string
-        conn_string = "../data_cache_test/base_graphe.gpkg"
+    if not args.base == "":
+        if os.path.isfile(args.base):
+            global conn_string
+            conn_string = args.base
+        else:
+            raise SystemExit("Base '" + args.base + "' doesn't exist.")
 
-    if gdal.OpenEx(conn_string, gdal.OF_VECTOR) is None:
+    db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
+    if db_graph is None:
         raise SystemExit("Connection to database failed")
+
+    if db_graph.ExecuteSQL("select * from " + args.table) is None:
+        raise SystemExit
 
     return args
 
