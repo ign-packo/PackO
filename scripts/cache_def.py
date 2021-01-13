@@ -279,11 +279,6 @@ def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change):
                         'gdalOption':  gdal_option
                     })
 
-    print(" Calcul")
-    nb_tiles = len(args_create_ortho_and_graph)
-    print(" ", nb_tiles, "tuiles à traiter")
-    progress_bar(50, nb_tiles, args_create_ortho_and_graph)
-
     return args_create_ortho_and_graph
 
 

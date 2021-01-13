@@ -174,11 +174,16 @@ def generate(update):
     print(" Découpage")
 
     cpu_dispo = multiprocessing.cpu_count()
-    pool = multiprocessing.Pool(cpu_dispo - 1)
-    pool.map(cache.cut_image_1arg, args_cut_image)
 
-    pool.close()
-    pool.join()
+    if (cpu_dispo > 2):
+        pool = multiprocessing.Pool(cpu_dispo - 1)
+        pool.map(cache.cut_image_1arg, args_cut_image)
+
+        pool.close()
+        pool.join()
+    else:
+        for arg in args_cut_image:
+            cache.cut_image_1arg(arg)
 
     with open(args.cache + '/cache_mtd.json', 'w') as outfile:
         json.dump(color_dict, outfile)
@@ -199,12 +204,22 @@ def generate(update):
                                                              },
                                                              change)
 
+    print(" Calcul")
+    nb_tiles = len(args_create_ortho_and_graph)
+    print(" ", nb_tiles, "tuiles à traiter")
+    cache.progress_bar(50, nb_tiles, args_create_ortho_and_graph)
     print('   |', end='', flush=True)
-    pool = multiprocessing.Pool(cpu_dispo - 1)
-    pool.map(cache.create_ortho_and_graph_1arg, args_create_ortho_and_graph)
 
-    pool.close()
-    pool.join()
+    if (cpu_dispo > 2):
+        pool = multiprocessing.Pool(cpu_dispo - 1)
+        pool.map(cache.create_ortho_and_graph_1arg, args_create_ortho_and_graph)
+
+        pool.close()
+        pool.join()
+    else:
+        for arg in args_create_ortho_and_graph:
+            cache.create_ortho_and_graph_1arg(arg)
+
     print("|")
 
     print('=> DONE')
