@@ -199,11 +199,11 @@ def generate(update):
                                                              change)
 
     print('   |', end='', flush=True)
-    pool = multiprocessing.Pool(cpu_dispo - 1)
-    pool.map(cache.create_ortho_and_graph_1arg, args_create_ortho_and_graph)
+    pool2 = multiprocessing.Pool(cpu_dispo - 1)
+    pool2.map(cache.create_ortho_and_graph_1arg, args_create_ortho_and_graph)
 
-    pool.close()
-    pool.join()
+    pool2.close()
+    pool2.join()
     print("|")
 
     print('=> DONE')
