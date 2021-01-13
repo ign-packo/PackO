@@ -162,6 +162,8 @@ def generate(update):
     print(" Découpage")
 
     cpu_dispo = multiprocessing.cpu_count()
+    if args.table == "regress":
+        cpu_dispo = 2
     pool = multiprocessing.Pool(cpu_dispo - 1)
     pool.map(cache.cut_image_1arg, args_cut_image)
 
