@@ -380,7 +380,7 @@ class Saisie {
 
   clear() {
     if (this.currentStatus === status.WAITING) return;
-    const ok = window.confirm('Voulez-vous effacer toutes les modifications?');
+    const ok = window.confirm('Voulez-vous effacer toutes les modifications ?');
     if (!ok) return;
     console.log('clear');
     this.currentStatus = status.WAITING;
@@ -388,6 +388,29 @@ class Saisie {
     this.message = 'calcul en cours';
 
     fetch(`${this.apiUrl}/patchs/clear?`,
+      {
+        method: 'PUT',
+      }).then((res) => {
+      this.cancelcurrentPolygon();
+      if (res.status === 200) {
+        this.refreshView(['ortho', 'graph']);
+      }
+      res.text().then((msg) => {
+        this.message = msg;
+      });
+    });
+  }
+
+  save() {
+    if (this.currentStatus === status.WAITING) return;
+    const ok = window.confirm('Voulez-vous sauvegarder toutes les modifications ?');
+    if (!ok) return;
+    console.log('save');
+    this.currentStatus = status.WAITING;
+    document.getElementById('viewerDiv').style.cursor = 'wait';
+    this.message = 'calcul en cours';
+
+    fetch(`${this.apiUrl}/patchs/save?`,
       {
         method: 'PUT',
       }).then((res) => {

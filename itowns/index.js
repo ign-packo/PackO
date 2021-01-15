@@ -148,6 +148,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   saisie.controllers.undo = menuGlobe.gui.add(saisie, 'undo');
   saisie.controllers.redo = menuGlobe.gui.add(saisie, 'redo');
   if (process.env.NODE_ENV === 'development') saisie.controllers.clear = menuGlobe.gui.add(saisie, 'clear');
+  if (process.env.NODE_ENV === 'development') saisie.controllers.save = menuGlobe.gui.add(saisie, 'save');
   saisie.controllers.message = menuGlobe.gui.add(saisie, 'message');
   saisie.controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
 
