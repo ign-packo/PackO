@@ -15,9 +15,18 @@ console.log('serverAPI:', serverAPI, 'portAPI:', portAPI);
 
 const apiUrl = `http://${serverAPI}:${portAPI}`;
 
-itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
-  document.getElementById('spAPIVersion_val').innerText = obj.version_git;
-})
+function fetcher(url) {
+  return itowns.Fetcher.json(url);
+}
+
+function parser(geojson, option) {
+  return itowns.GeoJsonParser.parse(geojson, option);
+}
+
+itowns.Fetcher.json(`${apiUrl}/version`)
+  .then((obj) => {
+    document.getElementById('spAPIVersion_val').innerText = obj.version_git;
+  })
   .catch(() => {
     document.getElementById('spAPIVersion_val').innerText = 'unknown';
   });
@@ -41,275 +50,317 @@ itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
     divScaleWidget.style.width = `${pix}px`;
 } */
 
-// `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
-const viewerDiv = document.getElementById('viewerDiv');
-
-itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
-  const overviews = json;
-
-  // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
-  const crs = `${overviews.crs.type}:${overviews.crs.code}`;
-  if (crs !== 'EPSG:4326' && overviews.crs.proj4Definition) {
-    itowns.CRS.defs(crs, overviews.crs.proj4Definition);
-  } else {
-    throw new Error('EPSG proj4.defs not defined in overviews.json');
+// check if string is in "x,y" format with x and y positive floats
+// return "null" if incorrect string format, otherwise [x, y] array
+function checkCoordString(coordStr) {
+  const rgxFloat = '\\s*([0-9]+[.]?[0-9]*)\\s*';
+  const rgxCoord = new RegExp(`^${rgxFloat},${rgxFloat}$`);
+  const rgxCatch = rgxCoord.exec(coordStr);
+  if (rgxCatch) {
+    return [parseFloat(rgxCatch[1]), parseFloat(rgxCatch[2])];
   }
+  return null;
+}
 
-  // limite du crs
-  const xOrigin = overviews.crs.boundingBox.xmin;
-  const yOrigin = overviews.crs.boundingBox.ymax;
+async function main() {
+  try {
+    const overviews = await fetcher(`${apiUrl}/json/overviews`);
 
-  // limite du dataSet
-  const xmin = overviews.dataSet.boundingBox.LowerCorner[0];
-  const xmax = overviews.dataSet.boundingBox.UpperCorner[0];
-  const ymin = overviews.dataSet.boundingBox.LowerCorner[1];
-  const ymax = overviews.dataSet.boundingBox.UpperCorner[1];
+    // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
+    const crs = `${overviews.crs.type}:${overviews.crs.code}`;
+    if (crs !== 'EPSG:4326' && overviews.crs.proj4Definition) {
+      itowns.CRS.defs(crs, overviews.crs.proj4Definition);
+    } else {
+      throw new Error('EPSG proj4.defs not defined in overviews.json');
+    }
 
-  // Define geographic extent of level 0 : CRS, min/max X, min/max Y
-  const resolutionLv0 = overviews.resolution * 2 ** overviews.level.max;
-  const extent = new itowns.Extent(
-    crs,
-    xOrigin, xOrigin + (overviews.tileSize.width * resolutionLv0),
-    yOrigin - (overviews.tileSize.height * resolutionLv0), yOrigin,
-  );
+    // limite du crs
+    const xOrigin = overviews.crs.boundingBox.xmin;
+    const yOrigin = overviews.crs.boundingBox.ymax;
 
-  const placement = new itowns.Extent(
-    crs,
-    xmin, xmax,
-    ymin, ymax,
-  );
+    // limite du dataSet
+    const xmin = overviews.dataSet.boundingBox.LowerCorner[0];
+    const xmax = overviews.dataSet.boundingBox.UpperCorner[0];
+    const ymin = overviews.dataSet.boundingBox.LowerCorner[1];
+    const ymax = overviews.dataSet.boundingBox.UpperCorner[1];
 
-  // Instanciate PlanarView*
-  const view = new itowns.PlanarView(viewerDiv, extent, {
-    camera: {
-      type: itowns.CAMERA_TYPE.ORTHOGRAPHIC,
-    },
-    placement,
-    maxSubdivisionLevel: 30,
-    disableSkirt: true,
-    controls: {
-      // maxAltitude: 80000000,
-      // enableRotation: false,
-      enableSmartTravel: false,
-    },
-  });
-  setupLoadingScreen(viewerDiv, view);
+    // Define geographic extent of level 0 : CRS, min/max X, min/max Y
+    const resolutionLv0 = overviews.resolution * 2 ** overviews.level.max;
+    const extent = new itowns.Extent(
+      crs,
+      xOrigin, xOrigin + (overviews.tileSize.width * resolutionLv0),
+      yOrigin - (overviews.tileSize.height * resolutionLv0), yOrigin,
+    );
 
-  view.isDebugMode = true;
-  const menuGlobe = new GuiTools('menuDiv', view);
-  menuGlobe.gui.width = 300;
+    const placement = new itowns.Extent(
+      crs,
+      xmin, xmax,
+      ymin, ymax,
+    );
 
-  const opacity = {
-    ortho: 1,
-    graph: 0.2,
-    opi: 0.5,
-  };
+    // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
+    const viewerDiv = document.getElementById('viewerDiv');
 
-  const layer = {};
-  ['ortho', 'graph', 'opi'].forEach((id) => {
-    layer[id] = {
-      name: id.charAt(0).toUpperCase() + id.slice(1),
-      config: {
-        source: {
-          url: `${apiUrl}/wmts`,
-          crs,
-          format: 'image/png',
-          name: id,
-          tileMatrixSet: overviews.identifier,
-          tileMatrixSetLimits: overviews.dataSet.limits,
+    // Instanciate PlanarView*
+    const view = new itowns.PlanarView(viewerDiv, extent, {
+      camera: {
+        type: itowns.CAMERA_TYPE.ORTHOGRAPHIC,
+      },
+      placement,
+      maxSubdivisionLevel: 30,
+      disableSkirt: true,
+      controls: {
+        enableSmartTravel: false,
+      },
+    });
+    setupLoadingScreen(viewerDiv, view);
+
+    view.isDebugMode = true;
+    const menuGlobe = new GuiTools('menuDiv', view);
+    menuGlobe.gui.width = 300;
+
+    const opacity = {
+      ortho: 1,
+      graph: 0.2,
+      opi: 0.5,
+      retouches: 0.75,
+    };
+
+    const layer = {};
+    ['ortho', 'graph', 'opi'].forEach((id) => {
+      layer[id] = {
+        name: id.charAt(0).toUpperCase() + id.slice(1),
+        config: {
+          source: {
+            url: `${apiUrl}/wmts`,
+            crs,
+            format: 'image/png',
+            name: id,
+            tileMatrixSet: overviews.identifier,
+            tileMatrixSetLimits: overviews.dataSet.limits,
+          },
+          opacity: opacity[id],
         },
-        opacity: opacity[id],
+      };
+      layer[id].config.source = new itowns.WMTSSource(layer[id].config.source);
+      layer[id].config.source.extentInsideLimit = function extentInsideLimit() {
+        return true;
+      };
+
+      layer[id].colorLayer = new itowns.ColorLayer(layer[id].name, layer[id].config);
+      if (id === 'opi') layer[id].colorLayer.visible = false;
+      view.addLayer(layer[id].colorLayer);// .then(menuGlobe.addLayerGUI.bind(menuGlobe));
+    });
+    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+    // Et ouvrir l'onglet "Color Layers" par defaut ?
+
+    // Couche Retouches
+    layer.retouches = {
+      name: 'Retouches',
+      config: {
+        transparent: true,
+        opacity: 0.62,
+      },
+      optionsGeoJsonParser: {
+        in: {
+          crs: 'EPSG:2154',
+        },
+        out: {
+          crs: view.tileLayer.extent.crs,
+          buildExtent: true,
+          mergeFeatures: true,
+          withNormal: false,
+          withAltitude: false,
+        },
       },
     };
-    layer[id].config.source = new itowns.WMTSSource(layer[id].config.source);
-    layer[id].config.source.extentInsideLimit = function extentInsideLimit() {
-      return true;
-    };
 
-    layer[id].colorLayer = new itowns.ColorLayer(layer[id].name, layer[id].config);
-    if (id === 'opi') layer[id].colorLayer.visible = false;
-    view.addLayer(layer[id].colorLayer);// .then(menuGlobe.addLayerGUI.bind(menuGlobe));
-  });
-  itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-  itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
-  itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
-  // Et ouvrir l'onglet "Color Layers" par defaut ?
+    const json = await fetcher(`${apiUrl}/json/activePatchs`);
 
-  // Request redraw
-  view.notifyChange();
+    const features = await parser(JSON.stringify(json), layer.retouches.optionsGeoJsonParser);
 
-  const saisie = new Saisie(view, layer, apiUrl);
-  saisie.cliche = 'unknown';
-  saisie.message = '';
-  saisie.coord = `${((xmax + xmin) * 0.5).toFixed(2)},${((ymax + ymin) * 0.5).toFixed(2)}`;
-  saisie.color = [0, 0, 0];
-  saisie.controllers = {};
-  saisie.controllers.select = menuGlobe.gui.add(saisie, 'select');
-  saisie.controllers.cliche = menuGlobe.gui.add(saisie, 'cliche');
-  saisie.controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
-  saisie.controllers.coord = menuGlobe.gui.add(saisie, 'coord');
-  saisie.controllers.coord.listen();// .domElement.parentElement.style.pointerEvents = 'none';
-  saisie.controllers.polygon = menuGlobe.gui.add(saisie, 'polygon');
-  saisie.controllers.undo = menuGlobe.gui.add(saisie, 'undo');
-  saisie.controllers.redo = menuGlobe.gui.add(saisie, 'redo');
-  if (process.env.NODE_ENV === 'development') saisie.controllers.clear = menuGlobe.gui.add(saisie, 'clear');
-  if (process.env.NODE_ENV === 'development') saisie.controllers.save = menuGlobe.gui.add(saisie, 'save');
-  saisie.controllers.message = menuGlobe.gui.add(saisie, 'message');
-  saisie.controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
+    layer.retouches.config.source = new itowns.FileSource({ features });
+    layer.retouches.config.style = new itowns.Style({
+      fill: {
+        color: 'orange',
+        opacity: 0.5,
+      },
+      stroke: {
+        color: 'IndianRed',
+      },
+    });
 
-  viewerDiv.focus();
-  view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
+    layer.retouches.colorLayer = new itowns.ColorLayer(
+      layer.retouches.name,
+      layer.retouches.config,
+    );
+    view.addLayer(layer.retouches.colorLayer);
+    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Retouches', 3);
+
+    // Request redraw
+    console.log('redraw');
+    view.notifyChange();
+
+    const saisie = new Saisie(view, layer, apiUrl);
+    saisie.cliche = 'unknown';
+    saisie.message = '';
+    saisie.coord = `${((xmax + xmin) * 0.5).toFixed(2)} ${((ymax + ymin) * 0.5).toFixed(2)}`;
+    saisie.color = [0, 0, 0];
+    saisie.controllers = {};
+    saisie.controllers.select = menuGlobe.gui.add(saisie, 'select');
+    saisie.controllers.cliche = menuGlobe.gui.add(saisie, 'cliche');
+    saisie.controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
+    saisie.controllers.coord = menuGlobe.gui.add(saisie, 'coord');
+    saisie.controllers.coord.listen();// .domElement.parentElement.style.pointerEvents = 'none';
+    saisie.controllers.polygon = menuGlobe.gui.add(saisie, 'polygon');
+    saisie.controllers.undo = menuGlobe.gui.add(saisie, 'undo');
+    saisie.controllers.redo = menuGlobe.gui.add(saisie, 'redo');
+    if (process.env.NODE_ENV === 'development') saisie.controllers.clear = menuGlobe.gui.add(saisie, 'clear');
+    if (process.env.NODE_ENV === 'development') saisie.controllers.save = menuGlobe.gui.add(saisie, 'save');
+    saisie.controllers.message = menuGlobe.gui.add(saisie, 'message');
+    saisie.controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
+
+    viewerDiv.focus();
+    view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
     // eslint-disable-next-line no-console
-    console.info('View initialized');
+      console.info('View initialized');
     // updateScaleWidget();
-  });
-  viewerDiv.addEventListener('mousewheel', (ev) => {
-    ev.preventDefault();
+    });
+    viewerDiv.addEventListener('mousewheel', (ev) => {
+      ev.preventDefault();
     // updateScaleWidget();
-  });
-  viewerDiv.addEventListener('mousemove', (ev) => {
-    ev.preventDefault();
-    saisie.mousemove(ev);
-    return false;
-  }, false);
-  viewerDiv.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    saisie.click(ev);
-    return false;
-  }, false);
-  viewerDiv.addEventListener('auxclick', (ev) => {
-    console.log(ev.cancelable);
-    ev.preventDefault();
-    console.log('auxclick:', ev.button);
-    if (ev.button === 1) {
-      console.log('middle button clicked');
-    }
-    if (ev.button === 2) {
-      console.log('right button clicked');
-    }
-    return false;
-  }, false);
+    });
+    viewerDiv.addEventListener('mousemove', (ev) => {
+      ev.preventDefault();
+      saisie.mousemove(ev);
+      return false;
+    }, false);
+    viewerDiv.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      saisie.click(ev);
+      return false;
+    }, false);
+    viewerDiv.addEventListener('auxclick', (ev) => {
+      ev.preventDefault();
+      console.log('auxclick:', ev.button);
+      if (ev.button === 1) {
+        console.log('middle button clicked');
+      }
+      if (ev.button === 2) {
+        console.log('right button clicked');
+      }
+      return false;
+    }, false);
 
-  // check if string is in "x,y" format with x and y positive floats
-  // return "null" if incorrect string format, otherwise [x, y] array
-  function checkCoordString(coordStr) {
-    const rgxFloat = '\\s*([0-9]+[.]?[0-9]*)\\s*';
-    const rgxCoord = new RegExp(`^${rgxFloat},${rgxFloat}$`);
-    const rgxCatch = rgxCoord.exec(coordStr);
-    if (rgxCatch) {
-      return [parseFloat(rgxCatch[1]), parseFloat(rgxCatch[2])];
-    }
-    return null;
-  }
+    saisie.controllers.coord.onChange(() => {
+      if (!checkCoordString(saisie.coord)) {
+        saisie.message = 'Coordonnees non valides';
+      } else {
+        saisie.message = '';
+      }
+      return false;
+    });
 
-  saisie.controllers.coord.onChange(() => {
-    if (!checkCoordString(saisie.coord)) {
-      saisie.message = 'Coordonnees non valides';
-    } else {
+    saisie.controllers.coord.onFinishChange(() => {
+      const coords = checkCoordString(saisie.coord);
+      if (coords) {
+        itowns.CameraUtils.transformCameraToLookAtTarget(
+          view,
+          view.camera.camera3D,
+          {
+            coord: new itowns.Coordinates(crs, coords[0], coords[1]),
+            heading: 0,
+          },
+        );
+      }
       saisie.message = '';
-    }
-    return false;
-  });
+      return false;
+    });
 
-  saisie.controllers.coord.onFinishChange(() => {
-    const coords = checkCoordString(saisie.coord);
-    if (coords) {
+    window.addEventListener('keydown', (ev) => {
+      saisie.keydown(ev);
+      return false;
+    });
+    window.addEventListener('keyup', (ev) => {
+      saisie.keyup(ev);
+      return false;
+    });
+
+    document.getElementById('recenterBtn').addEventListener('click', () => {
+    // bug itowns...
+    // itowns.CameraUtils.animateCameraToLookAtTarget( ... )
       itowns.CameraUtils.transformCameraToLookAtTarget(
         view,
         view.camera.camera3D,
         {
-          coord: new itowns.Coordinates(crs, coords[0], coords[1]),
+          coord: new itowns.Coordinates(crs, (xmax + xmin) * 0.5, (ymax + ymin) * 0.5),
           heading: 0,
         },
       );
-    }
-    saisie.message = '';
-    return false;
-  });
+      return false;
+    }, false);
+    document.getElementById('zoomInBtn').addEventListener('click', () => {
+      console.log('Zoom-In');
+      view.camera.camera3D.zoom *= 2;
+      view.camera.camera3D.updateProjectionMatrix();
+      view.notifyChange(view.camera.camera3D);
+      console.log(view.camera.camera3D.zoom);
+      return false;
+    });
+    document.getElementById('zoomOutBtn').addEventListener('click', () => {
+      console.log('Zoom-Out');
+      view.camera.camera3D.zoom *= 0.5;
+      view.camera.camera3D.updateProjectionMatrix();
+      view.notifyChange(view.camera.camera3D);
+      console.log(view.camera.camera3D.zoom);
+      return false;
+    });
 
-  window.addEventListener('keydown', (ev) => {
-    saisie.keydown(ev);
-    return false;
-  });
-  window.addEventListener('keyup', (ev) => {
-    saisie.keyup(ev);
-    return false;
-  });
+    const helpContent = document.getElementById('help-content');
+    helpContent.style.visibility = 'hidden';
+    document.getElementById('help').addEventListener('click', () => {
+      helpContent.style.visibility = (helpContent.style.visibility === 'hidden') ? 'visible' : 'hidden';
+    });
 
-  document.getElementById('recenterBtn').addEventListener('click', () => {
-    // bug itowns...
-    // itowns.CameraUtils.animateCameraToLookAtTarget( ... )
-    itowns.CameraUtils.transformCameraToLookAtTarget(
-      view,
-      view.camera.camera3D,
-      {
-        coord: new itowns.Coordinates(crs, (xmax + xmin) * 0.5, (ymax + ymin) * 0.5),
-        heading: 0,
-      },
-    );
-    return false;
-  }, false);
-  document.getElementById('zoomInBtn').addEventListener('click', () => {
-    console.log('Zoom-In');
-    view.camera.camera3D.zoom *= 2;
-    view.camera.camera3D.updateProjectionMatrix();
-    view.notifyChange(view.camera.camera3D);
-    console.log(view.camera.camera3D.zoom);
-    return false;
-  });
-  document.getElementById('zoomOutBtn').addEventListener('click', () => {
-    console.log('Zoom-Out');
-    view.camera.camera3D.zoom *= 0.5;
-    view.camera.camera3D.updateProjectionMatrix();
-    view.notifyChange(view.camera.camera3D);
-    console.log(view.camera.camera3D.zoom);
-    return false;
-  });
-
-  const helpContent = document.getElementById('help-content');
-  helpContent.style.visibility = 'hidden';
-  document.getElementById('help').addEventListener('click', () => {
-    helpContent.style.visibility = (helpContent.style.visibility === 'hidden') ? 'visible' : 'hidden';
-  });
-
-  // Patch du PlanarControls pour gérer correctement les changements de curseur
-  // todo: faire une PR pour iTowns
-  view.controls.updateMouseCursorType = function updateMouseCursorType() {
+    // Patch du PlanarControls pour gérer correctement les changements de curseur
+    // todo: faire une PR pour iTowns
+    view.controls.updateMouseCursorType = function updateMouseCursorType() {
     // control state
-    const STATE = {
-      NONE: -1,
-      DRAG: 0,
-      PAN: 1,
-      ROTATE: 2,
-      TRAVEL: 3,
+      const STATE = {
+        NONE: -1,
+        DRAG: 0,
+        PAN: 1,
+        ROTATE: 2,
+        TRAVEL: 3,
+      };
+      switch (this.state) {
+        case STATE.NONE:
+          this.view.domElement.style.cursor = this.defaultCursor;
+          // this.view.domElement.style.cursor = 'auto';
+          break;
+        case STATE.DRAG:
+          if (this.view.domElement.style.cursor !== 'wait') this.defaultCursor = this.view.domElement.style.cursor;
+          this.view.domElement.style.cursor = 'move';
+          break;
+        case STATE.PAN:
+          if (this.view.domElement.style.cursor !== 'wait') this.defaultCursor = this.view.domElement.style.cursor;
+          this.view.domElement.style.cursor = 'cell';
+          break;
+        case STATE.TRAVEL:
+          if (this.view.domElement.style.cursor !== 'wait') this.defaultCursor = this.view.domElement.style.cursor;
+          this.view.domElement.style.cursor = 'wait';
+          break;
+        case STATE.ROTATE:
+          if (this.view.domElement.style.cursor !== 'wait') this.defaultCursor = this.view.domElement.style.cursor;
+          this.view.domElement.style.cursor = 'move';
+          break;
+        default:
+          break;
+      }
     };
-    switch (this.state) {
-      case STATE.NONE:
-        this.view.domElement.style.cursor = this.defaultCursor;
-        // this.view.domElement.style.cursor = 'auto';
-        break;
-      case STATE.DRAG:
-        if (this.view.domElement.style.cursor !== 'wait') this.defaultCursor = this.view.domElement.style.cursor;
-        this.view.domElement.style.cursor = 'move';
-        break;
-      case STATE.PAN:
-        if (this.view.domElement.style.cursor !== 'wait') this.defaultCursor = this.view.domElement.style.cursor;
-        this.view.domElement.style.cursor = 'cell';
-        break;
-      case STATE.TRAVEL:
-        if (this.view.domElement.style.cursor !== 'wait') this.defaultCursor = this.view.domElement.style.cursor;
-        this.view.domElement.style.cursor = 'wait';
-        break;
-      case STATE.ROTATE:
-        if (this.view.domElement.style.cursor !== 'wait') this.defaultCursor = this.view.domElement.style.cursor;
-        this.view.domElement.style.cursor = 'move';
-        break;
-      default:
-        break;
-    }
-  };
-})
-  .catch((err) => {
+  } catch (err) {
     console.log(`${err.name}: ${err.message}`);
     if (`${err.name}: ${err.message}` === 'TypeError: Failed to fetch') {
       const newApiUrl = window.prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl);
@@ -318,4 +369,6 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     } else {
       window.alert(err);
     }
-  });
+  }
+}
+main();
