@@ -130,6 +130,7 @@ describe('Patch', () => {
         });
     });
   });
+
   describe('PUT /patchs/clear', () => {
     it("should return a warning (code 401): 'unauthorized'", (done) => {
       chai.request(server)
@@ -197,6 +198,89 @@ describe('Patch', () => {
           should.not.exist(err);
           res.should.have.status(201);
           res.text.should.equal('nothing to clear');
+          done();
+        });
+    });
+  });
+
+  describe('PUT /patchs/save', () => {
+    it("should return a warning (code 401): 'unauthorized'", (done) => {
+      chai.request(server)
+        .put('/patchs/save')
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(401);
+          res.text.should.equal('unauthorized');
+          done();
+        });
+    });
+    it("should return 'save: all active patches saved'", (done) => {
+      // first add a patch
+      chai.request(server)
+        .post('/patch')
+        .send({
+          type: 'FeatureCollection',
+          crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
+          features: [
+            {
+              type: 'Feature',
+              properties: { color: [58, 149, 47], cliche: '19FD5606Ax00020_16371' },
+              geometry: { type: 'Polygon', coordinates: [[[230748, 6759646], [230752, 6759646], [230752, 6759644], [230748, 6759644], [230748, 6759646]]] },
+            }],
+        })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          const resJson = JSON.parse(res.text);
+          resJson.should.be.a('array');
+
+          // and a second patch
+          chai.request(server)
+            .post('/patch')
+            .send({
+              type: 'FeatureCollection',
+              crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
+              features: [
+                {
+                  type: 'Feature',
+                  properties: { color: [58, 149, 47], cliche: '19FD5606Ax00020_16371' },
+                  geometry: { type: 'Polygon', coordinates: [[[230748, 6759646], [230752, 6759646], [230752, 6759644], [230748, 6759644], [230748, 6759646]]] },
+                }],
+            })
+            .end((err1, res1) => {
+              should.not.exist(err1);
+              res1.should.have.status(200);
+              const res1Json = JSON.parse(res1.text);
+              res1Json.should.be.a('array');
+
+              // then undo it
+              chai.request(server)
+                .put('/patch/undo')
+                .end((err2, res2) => {
+                  should.not.exist(err2);
+                  res2.should.have.status(200);
+                  res2.text.should.equal('undo: patch 2 canceled');
+
+                  // then save
+                  chai.request(server)
+                    .put('/patchs/save?test=true')
+                    .end((err3, res3) => {
+                      should.not.exist(err3);
+                      res3.should.have.status(200);
+                      res3.text.should.equal('save: all active patches saved');
+                      done();
+                    });
+                });
+            });
+        });
+    });
+    it("should return a warning (code 201): 'nothing to save'", (done) => {
+      chai.request(server)
+        .put('/patchs/save?test=true')
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(201);
+          res.text.should.equal('nothing to save');
           done();
         });
     });
