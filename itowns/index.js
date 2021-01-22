@@ -136,14 +136,14 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   const saisie = new Saisie(view, layer, apiUrl);
   saisie.cliche = 'unknown';
   saisie.message = '';
-  saisie.coord = `${((xmax + xmin) * 0.5).toFixed(2)} ${((ymax + ymin) * 0.5).toFixed(2)}`;
+  saisie.coord = `${((xmax + xmin) * 0.5).toFixed(2)},${((ymax + ymin) * 0.5).toFixed(2)}`;
   saisie.color = [0, 0, 0];
   saisie.controllers = {};
   saisie.controllers.select = menuGlobe.gui.add(saisie, 'select');
   saisie.controllers.cliche = menuGlobe.gui.add(saisie, 'cliche');
   saisie.controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
   saisie.controllers.coord = menuGlobe.gui.add(saisie, 'coord');
-  saisie.controllers.coord.listen().domElement.parentElement.style.pointerEvents = 'none';
+  saisie.controllers.coord.listen();// .domElement.parentElement.style.pointerEvents = 'none';
   saisie.controllers.polygon = menuGlobe.gui.add(saisie, 'polygon');
   saisie.controllers.undo = menuGlobe.gui.add(saisie, 'undo');
   saisie.controllers.redo = menuGlobe.gui.add(saisie, 'redo');
@@ -185,6 +185,25 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   }, false);
 
   window.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      const newCoor = saisie.coord.split(',');
+      if (newCoor.length !== 2
+          || Number.isNaN(parseFloat(newCoor[0]))
+          || Number.isNaN(parseFloat(newCoor[1]))) {
+        saisie.message = 'Coordonnees non valides';
+        return false;
+      }
+
+      itowns.CameraUtils.transformCameraToLookAtTarget(
+        view,
+        view.camera.camera3D,
+        {
+          coord: new itowns.Coordinates(crs, parseFloat(newCoor[0]), parseFloat(newCoor[1])),
+          heading: 0,
+        },
+      );
+      return false;
+    }
     saisie.keydown(ev);
     return false;
   });
