@@ -55,7 +55,7 @@ try {
   app.overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
 
   try {
-    app.activePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/activePatchs.json`));
+    app.activePatchs = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'activePatchs.json')));
   } catch (err) {
     app.activePatchs = {
       type: 'FeatureCollection',
@@ -68,11 +68,11 @@ try {
       },
       features: [],
     };
-    fs.writeFileSync(`${global.dir_cache}/activePatchs.json`, JSON.stringify(app.activePatchs));
+    fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(app.activePatchs, null, 4));
   }
 
   try {
-    app.unactivePatchs = JSON.parse(fs.readFileSync(`${global.dir_cache}/unactivePatchs.json`));
+    app.unactivePatchs = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'unactivePatchs.json')));
   } catch (err) {
     app.unactivePatchs = {
       type: 'FeatureCollection',
@@ -85,7 +85,7 @@ try {
       },
       features: [],
     };
-    fs.writeFileSync(`${global.dir_cache}/unactivePatchs.json`, JSON.stringify(app.unactivePatchs));
+    fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(app.unactivePatchs, null, 4));
   }
 
   app.use(cors());
