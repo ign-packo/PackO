@@ -173,11 +173,11 @@ def generate(update):
     print(" Découpage")
 
     cpu_dispo = multiprocessing.cpu_count()
-    pool = multiprocessing.Pool(cpu_dispo - 1)
-    pool.map(cache.cut_image_1arg, args_cut_image)
+    pool_cut = multiprocessing.Pool(cpu_dispo - 1)
+    pool_cut.map(cache.cut_image_1arg, args_cut_image)
 
-    pool.close()
-    pool.join()
+    pool_cut.close()
+    pool_cut.join()
 
     with open(args.cache + '/cache_mtd.json', 'w') as outfile:
         json.dump(color_dict, outfile)
@@ -199,11 +199,11 @@ def generate(update):
                                                              change)
 
     print('   |', end='', flush=True)
-    pool2 = multiprocessing.Pool(cpu_dispo - 1)
-    pool2.map(cache.create_ortho_and_graph_1arg, args_create_ortho_and_graph)
+    pool_ortho = multiprocessing.Pool(cpu_dispo - 1)
+    pool_ortho.map(cache.create_ortho_and_graph_1arg, args_create_ortho_and_graph)
 
-    pool2.close()
-    pool2.join()
+    pool_ortho.close()
+    pool_ortho.join()
     print("|")
 
     print('=> DONE')
