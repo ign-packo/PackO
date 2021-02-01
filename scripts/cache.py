@@ -44,8 +44,8 @@ def read_args(update):
                             " (e.g., 15 19)",
                             type=int,
                             nargs='+')
-    parser.add_argument("-b", "--base",
-                        help="database path (default: os.getenv('PGDATABASE') or pcrs)",
+    parser.add_argument("-g", "--geopackage",
+                        help="base GeoPackage (default: "")",
                         type=str,
                         default="")
     parser.add_argument("-t", "--table",
@@ -82,12 +82,12 @@ def read_args(update):
         if not os.path.isdir(args.cache):
             raise SystemExit("Cache '" + args.cache + "' doesn't exist.")
 
-    if not args.base == "":
-        if os.path.isfile(args.base):
+    if not args.geopackage == "":
+        if os.path.isfile(args.geopackage):
             global conn_string
-            conn_string = args.base
+            conn_string = args.geopackage
         else:
-            raise SystemExit("Base '" + args.base + "' doesn't exist.")
+            raise SystemExit("Base '" + args.geopackage + "' doesn't exist.")
 
     db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
     if db_graph is None:
