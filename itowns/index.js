@@ -184,16 +184,21 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     return false;
   }, false);
 
-  window.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') {
-      const newCoor = saisie.coord.split(',');
-      if (newCoor.length !== 2
-          || Number.isNaN(parseFloat(newCoor[0]))
-          || Number.isNaN(parseFloat(newCoor[1]))) {
-        saisie.message = 'Coordonnees non valides';
-        return false;
-      }
+  saisie.controllers.coord.onChange(() => {
+    const newCoor = saisie.coord.split(',');
+    if (newCoor.length !== 2
+        || Number.isNaN(parseFloat(newCoor[0]))
+        || Number.isNaN(parseFloat(newCoor[1]))) {
+      saisie.message = 'Coordonnees non valides';
+    } else {
+      saisie.message = '';
+    }
+    return false;
+  });
 
+  saisie.controllers.coord.onFinishChange(() => {
+    const newCoor = saisie.coord.split(',');
+    if (saisie.message === '') {
       itowns.CameraUtils.transformCameraToLookAtTarget(
         view,
         view.camera.camera3D,
@@ -202,8 +207,12 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
           heading: 0,
         },
       );
-      return false;
     }
+    saisie.message = '';
+    return false;
+  });
+
+  window.addEventListener('keydown', (ev) => {
     saisie.keydown(ev);
     return false;
   });
