@@ -657,7 +657,7 @@ router.put('/patchs/save', [], (req, res) => {
   debug('features in activePatchs:', req.app.activePatchs.features.length);
   debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
   debug('fin du save');
-  res.status(200).send('save: all actives patches saved');
+  res.status(200).send('save: all active patches saved');
 });
 
 module.exports = router;

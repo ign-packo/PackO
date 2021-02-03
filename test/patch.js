@@ -185,7 +185,7 @@ describe('Patch', () => {
   });
 
   describe('PUT /patchs/save', () => {
-    it("should return 'save: all actives patches saved'", (done) => {
+    it("should return 'save: all active patches saved'", (done) => {
       // first add a patch
       chai.request(server)
         .post('/patch')
@@ -238,7 +238,7 @@ describe('Patch', () => {
                     .end((err3, res3) => {
                       should.not.exist(err3);
                       res3.should.have.status(200);
-                      res3.text.should.equal('save: all actives patches saved');
+                      res3.text.should.equal('save: all active patches saved');
                       done();
                     });
                 });
