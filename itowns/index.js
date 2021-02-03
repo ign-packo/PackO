@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 /* global setupLoadingScreen, GuiTools */
 import * as itowns from 'itowns';
-import Saisie from './Saisie';
+import Saisie, { fetcher, parser } from './Saisie';
 
 // Global itowns pour GuiTools -> peut être améliorer
 global.itowns = itowns;
@@ -15,13 +15,13 @@ console.log('serverAPI:', serverAPI, 'portAPI:', portAPI);
 
 const apiUrl = `http://${serverAPI}:${portAPI}`;
 
-function fetcher(url) {
-  return itowns.Fetcher.json(url);
-}
+// export function fetcher(url) {
+//   return itowns.Fetcher.json(url);
+// }
 
-function parser(geojson, option) {
-  return itowns.GeoJsonParser.parse(geojson, option);
-}
+// function parser(geojson, option) {
+//   return itowns.GeoJsonParser.parse(geojson, option);
+// }
 
 itowns.Fetcher.json(`${apiUrl}/version`)
   .then((obj) => {
@@ -123,7 +123,7 @@ async function main() {
       ortho: 1,
       graph: 0.2,
       opi: 0.5,
-      retouches: 0.75,
+      patches: 0.75,
     };
 
     const layer = {};
@@ -156,12 +156,12 @@ async function main() {
     itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
     // Et ouvrir l'onglet "Color Layers" par defaut ?
 
-    // Couche Retouches
-    layer.retouches = {
-      name: 'Retouches',
+    // Couche Patches
+    layer.patches = {
+      name: 'Patches',
       config: {
         transparent: true,
-        opacity: 0.62,
+        opacity: opacity.patches,
       },
       optionsGeoJsonParser: {
         in: {
@@ -179,25 +179,22 @@ async function main() {
 
     const json = await fetcher(`${apiUrl}/json/activePatchs`);
 
-    const features = await parser(JSON.stringify(json), layer.retouches.optionsGeoJsonParser);
+    const features = await parser(JSON.stringify(json), layer.patches.optionsGeoJsonParser);
 
-    layer.retouches.config.source = new itowns.FileSource({ features });
-    layer.retouches.config.style = new itowns.Style({
-      fill: {
-        color: 'orange',
-        opacity: 0.5,
-      },
+    layer.patches.config.source = new itowns.FileSource({ features });
+    layer.patches.config.style = new itowns.Style({
       stroke: {
-        color: 'IndianRed',
+        color: 'Red',
+        width: 2,
       },
     });
 
-    layer.retouches.colorLayer = new itowns.ColorLayer(
-      layer.retouches.name,
-      layer.retouches.config,
+    layer.patches.colorLayer = new itowns.ColorLayer(
+      layer.patches.name,
+      layer.patches.config,
     );
-    view.addLayer(layer.retouches.colorLayer);
-    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Retouches', 3);
+    view.addLayer(layer.patches.colorLayer);
+    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Patches', 3);
 
     // Request redraw
     console.log('redraw');
