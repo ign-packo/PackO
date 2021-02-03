@@ -284,7 +284,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     if (`${err.name}: ${err.message}` === 'TypeError: Failed to fetch') {
       const newApiUrl = window.prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl);
       const apiUrlSplit = newApiUrl.split('/')[2].split(':');
-      window.location.assign(`${window.location.origin}?serverapi=${apiUrlSplit[0]}&portapi=${apiUrlSplit[1]}`);
+      window.location.assign(`${window.location.href.split('?')[0]}?serverapi=${apiUrlSplit[0]}&portapi=${apiUrlSplit[1]}`);
     } else {
       window.alert(err);
     }
