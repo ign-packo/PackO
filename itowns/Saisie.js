@@ -11,11 +11,11 @@ const status = {
   WAITING: 4,
 };
 
-function fetcher(url) {
+export function fetcher(url) {
   return itowns.Fetcher.json(url);
 }
 
-function parser(geojson, option) {
+export function parser(geojson, option) {
   return itowns.GeoJsonParser.parse(geojson, option);
 }
 
@@ -36,11 +36,11 @@ class Saisie {
   async refreshView(layers) {
     // Pour le moment on force le rechargement complet des couches
 
-    let redrawRetouches = false;
+    let redrawPolygons = false;
 
     layers.forEach((id) => {
       this.view.removeLayer(this.layer[id].colorLayer.id);
-      if (id !== 'retouches') {
+      if (id !== 'polygons') {
         this.layer[id].config.opacity = this.layer[id].colorLayer.opacity;
         this.layer[id].colorLayer = new itowns.ColorLayer(
           this.layer[id].name,
@@ -48,26 +48,26 @@ class Saisie {
         );
         this.view.addLayer(this.layer[id].colorLayer);
       } else {
-        redrawRetouches = true;
+        redrawPolygons = true;
       }
     });
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Ortho', 0);
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Opi', 1);
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Graph', 2);
 
-    if (redrawRetouches) {
-      this.layer.retouches.config.opacity = this.layer.retouches.colorLayer.opacity;
+    if (redrawPolygons) {
+      this.layer.polygons.config.opacity = this.layer.polygons.colorLayer.opacity;
 
       const json = await fetcher(`${this.apiUrl}/json/activePatchs`);
       const features = await parser(JSON.stringify(json),
-        this.layer.retouches.optionsGeoJsonParser);
-      this.layer.retouches.config.source = new itowns.FileSource({ features });
-      this.layer.retouches.colorLayer = new itowns.ColorLayer(
-        this.layer.retouches.name,
-        this.layer.retouches.config,
+        this.layer.polygons.optionsGeoJsonParser);
+      this.layer.polygons.config.source = new itowns.FileSource({ features });
+      this.layer.polygons.colorLayer = new itowns.ColorLayer(
+        this.layer.polygons.name,
+        this.layer.polygons.config,
       );
-      this.view.addLayer(this.layer.retouches.colorLayer);
-      itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Retouches', 3);
+      this.view.addLayer(this.layer.polygons.colorLayer);
+      itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Polygons', 3);
     }
 
     this.view.notifyChange();
@@ -155,7 +155,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'retouches']);
+        this.refreshView(['ortho', 'graph', 'polygons']);
       } else {
         this.message = "polygon: out of OPI's bounds";
       }
@@ -376,7 +376,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'retouches']);
+        this.refreshView(['ortho', 'graph', 'polygons']);
       }
       res.text().then((msg) => {
         this.message = msg;
@@ -398,7 +398,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'retouches']);
+        this.refreshView(['ortho', 'graph', 'polygons']);
       }
       res.text().then((msg) => {
         this.message = msg;
@@ -421,7 +421,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'retouches']);
+        this.refreshView(['ortho', 'graph', 'polygons']);
       }
       res.text().then((msg) => {
         this.message = msg;
@@ -444,7 +444,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'retouches']);
+        this.refreshView(['ortho', 'graph', 'polygons']);
       }
       res.text().then((msg) => {
         this.message = msg;
