@@ -184,11 +184,20 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     return false;
   }, false);
 
+  // check if string is in "x,y" format with x and y positive floats
+  // return "null" if incorrect string format, otherwise [x, y] array
+  function checkCoordString(coordStr) {
+    const rgxFloat = '\\s*([0-9]+[.]?[0-9]*)\\s*';
+    const rgxCoord = new RegExp(`^${rgxFloat},${rgxFloat}$`);
+    const rgxCatch = rgxCoord.exec(coordStr);
+    if (rgxCatch) {
+      return [parseFloat(rgxCatch[1]), parseFloat(rgxCatch[2])];
+    }
+    return null;
+  }
+
   saisie.controllers.coord.onChange(() => {
-    const newCoor = saisie.coord.split(',');
-    if (newCoor.length !== 2
-        || Number.isNaN(parseFloat(newCoor[0]))
-        || Number.isNaN(parseFloat(newCoor[1]))) {
+    if (!checkCoordString(saisie.coord)) {
       saisie.message = 'Coordonnees non valides';
     } else {
       saisie.message = '';
@@ -197,13 +206,13 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   });
 
   saisie.controllers.coord.onFinishChange(() => {
-    const newCoor = saisie.coord.split(',');
-    if (saisie.message === '') {
+    const coords = checkCoordString(saisie.coord);
+    if (coords) {
       itowns.CameraUtils.transformCameraToLookAtTarget(
         view,
         view.camera.camera3D,
         {
-          coord: new itowns.Coordinates(crs, parseFloat(newCoor[0]), parseFloat(newCoor[1])),
+          coord: new itowns.Coordinates(crs, coords[0], coords[1]),
           heading: 0,
         },
       );
