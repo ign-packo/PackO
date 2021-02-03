@@ -26,11 +26,17 @@ const { argv } = require('yargs')
     alias: 's',
     describe: "API server (default: 'localhost')",
   })
+  .option('dev', {
+    alias: 'd',
+    describe: 'Pour activer le mode développeur',
+  })
   .help()
   .alias('help', 'h');
 
 const app = express();
 
+global.mode_dev = !!argv.dev;
+debug.log('mode développeur : ', global.mode_dev);
 global.dir_cache = argv.cache ? argv.cache : 'cache';
 debug.log(`using cache directory: ${global.dir_cache}`);
 
@@ -118,6 +124,8 @@ try {
   app.use('/', file);
   app.use('/', patch);
   app.use('/', misc);
+
+  app.use('/itowns', express.static('itowns'));
 
   module.exports = app.listen(PORT, () => {
     debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);

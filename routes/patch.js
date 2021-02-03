@@ -472,6 +472,11 @@ router.put('/patch/redo', [], (req, res) => {
 
 router.put('/patchs/clear', [], (req, res) => {
   debug('~~~PUT patchs/clear');
+  if (!global.mode_dev) {
+    debug('unauthorized');
+    res.status(201).send('unauthorized');
+    return;
+  }
   // pour chaque patch de req.app.activePatchs.features
   if (req.app.activePatchs.features.length === 0) {
     debug('nothing');

@@ -66,10 +66,7 @@ En production il faut exécuter :
 ```shell
 npm run build
 ```
-avant de lancer le serveur en utilisant :
-```shell
-python3 -m http.server
-```
+Le serveur est automatiquement pris en charge par nodejs: http://localhost:8081/itowns
 
 ### Principe de fonctionnement
 
