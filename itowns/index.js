@@ -146,7 +146,7 @@ async function main() {
       name: 'Polygons',
       config: {
         transparent: true,
-        opacity: 0.62,
+        opacity: opacity.polygons,
       },
       optionsGeoJsonParser: {
         in: {
@@ -168,10 +168,6 @@ async function main() {
 
     layer.polygons.config.source = new itowns.FileSource({ features });
     layer.polygons.config.style = new itowns.Style({
-      fill: {
-        color: 'orange',
-        opacity: 0.5,
-      },
       stroke: {
         color: 'IndianRed',
       },
