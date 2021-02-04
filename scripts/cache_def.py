@@ -224,7 +224,7 @@ def cut_image_1arg(arg):
 
                 tile_root = arg['cache'] + '/opi/' + str(level) + '/'\
                     + get_tile_path(tile_x, tile_y, overviews['pathDepth'])
-                # tile_dir = arg['cache'] + '/' + str(level) + '/' + str(tile_y) + '/' + str(tile_x)
+
                 # si necessaire on cree le dossier de la tuile
                 Path(tile_root[:-2]).mkdir(parents=True, exist_ok=True)
 
@@ -341,12 +341,6 @@ def create_ortho_and_graph_1arg(arg):
     tile_opi_root = arg['cache'] + '/opi/' + str(arg['tile']['level']) + '/' + tile_path
     tile_ortho = arg['cache'] + '/ortho/' + str(arg['tile']['level']) + '/' + tile_path + '.png'
     tile_graph = arg['cache'] + '/graph/' + str(arg['tile']['level']) + '/' + tile_path + '.png'
-
-    # tile_dir = arg['cache'] + \
-    #     '/' + str(arg['tile']['level']) + \
-    #     '/' + str(arg['tile']['y']) + \
-    #     '/' + str(arg['tile']['x'])
-
     is_empty = True
 
     for filename in glob.glob(tile_opi_root + '*.png'):
@@ -355,14 +349,14 @@ def create_ortho_and_graph_1arg(arg):
             color = overviews["list_OPI"][stem]
 
             # on cree une image mono canal pour la tuile
-            mask = create_blank_tile(overviews, arg['tile'], 3, arg['gdalOption']['spatialRef'])
+            mask = create_blank_tile(overviews, arg['tile'], 1, arg['gdalOption']['spatialRef'])
 
             # on rasterise la partie du graphe qui concerne ce cliche
             db_graph = gdal.OpenEx(arg['dbOption']['connString'], gdal.OF_VECTOR)
             gdal.Rasterize(mask,
                            db_graph,
                            SQLStatement='select geom from '
-                           + arg['dbOption']['table'] + ' where cliche = \'' + stem + '\' ')
+                           + arg['dbOption']['table'] + ' where cliche = \'' + stem + '\'')
             img_mask = mask.GetRasterBand(1).ReadAsArray()
             # si mask est vide, on ne fait rien
             val_max = np.amax(img_mask)
