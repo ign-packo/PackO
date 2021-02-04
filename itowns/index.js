@@ -136,14 +136,14 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   const saisie = new Saisie(view, layer, apiUrl);
   saisie.cliche = 'unknown';
   saisie.message = '';
-  saisie.coord = `${((xmax + xmin) * 0.5).toFixed(2)} ${((ymax + ymin) * 0.5).toFixed(2)}`;
+  saisie.coord = `${((xmax + xmin) * 0.5).toFixed(2)},${((ymax + ymin) * 0.5).toFixed(2)}`;
   saisie.color = [0, 0, 0];
   saisie.controllers = {};
   saisie.controllers.select = menuGlobe.gui.add(saisie, 'select');
   saisie.controllers.cliche = menuGlobe.gui.add(saisie, 'cliche');
   saisie.controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
   saisie.controllers.coord = menuGlobe.gui.add(saisie, 'coord');
-  saisie.controllers.coord.listen().domElement.parentElement.style.pointerEvents = 'none';
+  saisie.controllers.coord.listen();// .domElement.parentElement.style.pointerEvents = 'none';
   saisie.controllers.polygon = menuGlobe.gui.add(saisie, 'polygon');
   saisie.controllers.undo = menuGlobe.gui.add(saisie, 'undo');
   saisie.controllers.redo = menuGlobe.gui.add(saisie, 'redo');
@@ -183,6 +183,43 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     }
     return false;
   }, false);
+
+  // check if string is in "x,y" format with x and y positive floats
+  // return "null" if incorrect string format, otherwise [x, y] array
+  function checkCoordString(coordStr) {
+    const rgxFloat = '\\s*([0-9]+[.]?[0-9]*)\\s*';
+    const rgxCoord = new RegExp(`^${rgxFloat},${rgxFloat}$`);
+    const rgxCatch = rgxCoord.exec(coordStr);
+    if (rgxCatch) {
+      return [parseFloat(rgxCatch[1]), parseFloat(rgxCatch[2])];
+    }
+    return null;
+  }
+
+  saisie.controllers.coord.onChange(() => {
+    if (!checkCoordString(saisie.coord)) {
+      saisie.message = 'Coordonnees non valides';
+    } else {
+      saisie.message = '';
+    }
+    return false;
+  });
+
+  saisie.controllers.coord.onFinishChange(() => {
+    const coords = checkCoordString(saisie.coord);
+    if (coords) {
+      itowns.CameraUtils.transformCameraToLookAtTarget(
+        view,
+        view.camera.camera3D,
+        {
+          coord: new itowns.Coordinates(crs, coords[0], coords[1]),
+          heading: 0,
+        },
+      );
+    }
+    saisie.message = '';
+    return false;
+  });
 
   window.addEventListener('keydown', (ev) => {
     saisie.keydown(ev);
