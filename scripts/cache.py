@@ -93,8 +93,9 @@ def read_args(update):
     if db_graph is None:
         raise SystemExit("Connection to database failed")
 
+    # Test pour savoir si le nom de la table est correct
     if db_graph.ExecuteSQL("select * from " + args.table) is None:
-        raise SystemExit
+        raise SystemExit("table " + args.table + " doesn't exist")
 
     return args
 
