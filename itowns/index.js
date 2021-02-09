@@ -71,10 +71,17 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     yOrigin - (overviews.tileSize.height * resolutionLv0), yOrigin,
   );
 
+  const dezoomInitial = 4;
+  const resolInit = overviews.resolution * 2 ** dezoomInitial;
+  const xcenter = (xmin + xmax) * 0.5;
+  const ycenter = (ymin + ymax) * 0.5;
+
+  viewerDiv.height = viewerDiv.clientHeight;
+  viewerDiv.width = viewerDiv.clientWidth;
   const placement = new itowns.Extent(
     crs,
-    xmin, xmax,
-    ymin, ymax,
+    xcenter - viewerDiv.width * resolInit * 0.5, xcenter + viewerDiv.width * resolInit * 0.5,
+    ycenter - viewerDiv.height * resolInit * 0.5, ycenter + viewerDiv.height * resolInit * 0.5,
   );
 
   // Instanciate PlanarView*
@@ -86,11 +93,11 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     maxSubdivisionLevel: 30,
     disableSkirt: true,
     controls: {
-      // maxAltitude: 80000000,
-      // enableRotation: false,
       enableSmartTravel: false,
+      zoomFactor: 2,
     },
   });
+
   setupLoadingScreen(viewerDiv, view);
 
   view.isDebugMode = true;
@@ -139,7 +146,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   const saisie = new Saisie(view, layer, apiUrl);
   saisie.cliche = 'unknown';
   saisie.message = '';
-  saisie.coord = `${((xmax + xmin) * 0.5).toFixed(2)},${((ymax + ymin) * 0.5).toFixed(2)}`;
+  saisie.coord = `${xcenter.toFixed(2)},${ycenter.toFixed(2)}`;
   saisie.color = [0, 0, 0];
   saisie.controllers = {};
   saisie.controllers.select = menuGlobe.gui.add(saisie, 'select');
@@ -240,7 +247,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
       view,
       view.camera.camera3D,
       {
-        coord: new itowns.Coordinates(crs, (xmax + xmin) * 0.5, (ymax + ymin) * 0.5),
+        coord: new itowns.Coordinates(crs, xcenter, ycenter),
         heading: 0,
       },
     );
