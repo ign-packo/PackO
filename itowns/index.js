@@ -22,24 +22,22 @@ itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
     document.getElementById('spAPIVersion_val').innerText = 'unknown';
   });
 
-/*         function updateScaleWidget() {
-    var pix = 200;
-    const point1 = new itowns.THREE.Vector3();
-    const point2 = new itowns.THREE.Vector3();
-    const mousePosition = new itowns.THREE.Vector2();
-    mousePosition.set(0, 0);
-    view.getPickingPositionFromDepth(mousePosition, point1);
-    mousePosition.set(pix, 0);
-    view.getPickingPositionFromDepth(mousePosition, point2);
-    var value = point1.distanceTo(point2);
-    var unit = 'm';
-    if (value >= 1000) {
-        value /= 1000;
-        unit = 'km';
-    }
-    divScaleWidget.innerHTML = `${value.toFixed(2)} ${unit}`;
-    divScaleWidget.style.width = `${pix}px`;
-} */
+const divScaleWidget = document.getElementById('divScaleWidget');
+const scalePxlSize = 200;
+function updateScaleWidget(view) {
+  let value = view.getPixelsToMeters(scalePxlSize);
+  let unit = 'm';
+  if (value >= 1000) {
+    value /= 1000;
+    unit = 'km';
+  }
+  if (value <= 1) {
+    value *= 100;
+    unit = 'cm';
+  }
+  divScaleWidget.innerHTML = `${value.toFixed(2)} ${unit}`;
+  divScaleWidget.style.width = `${scalePxlSize}px`;
+}
 
 // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
 const viewerDiv = document.getElementById('viewerDiv');
@@ -160,12 +158,17 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
     // eslint-disable-next-line no-console
     console.info('View initialized');
-    // updateScaleWidget();
+    updateScaleWidget(view);
   });
-  viewerDiv.addEventListener('mousewheel', (ev) => {
-    ev.preventDefault();
-    // updateScaleWidget();
+  view.addEventListener(itowns.PLANAR_CONTROL_EVENT.MOVED, () => {
+    // eslint-disable-next-line no-console
+    console.info('View moved');
+    updateScaleWidget(view);
   });
+  // viewerDiv.addEventListener('mousewheel', (ev) => {
+  //   ev.preventDefault();
+  //   updateScaleWidget(view);
+  // });
   viewerDiv.addEventListener('mousemove', (ev) => {
     ev.preventDefault();
     saisie.mousemove(ev);
@@ -249,6 +252,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     view.camera.camera3D.updateProjectionMatrix();
     view.notifyChange(view.camera.camera3D);
     console.log(view.camera.camera3D.zoom);
+    updateScaleWidget(view);
     return false;
   });
   document.getElementById('zoomOutBtn').addEventListener('click', () => {
@@ -257,6 +261,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     view.camera.camera3D.updateProjectionMatrix();
     view.notifyChange(view.camera.camera3D);
     console.log(view.camera.camera3D.zoom);
+    updateScaleWidget(view);
     return false;
   });
 
