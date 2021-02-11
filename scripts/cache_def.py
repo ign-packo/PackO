@@ -167,10 +167,9 @@ def get_tile_path(tile_x, tile_y, path_depth):
     return tile_path
 
 
-def cut_opi_1tile(opi, dst_root, tile, gdal_option):
+def cut_opi_1tile(opi, opi_name, dst_root, tile, gdal_option):
     """Cut and resample a specified image at a given level"""
 
-    input_image = gdal.Open(opi['path'])
     target_ds = gdal.GetDriverByName('MEM').Create('',
                                                    tile['size']['width'],
                                                    tile['size']['height'],
@@ -186,11 +185,11 @@ def cut_opi_1tile(opi, dst_root, tile, gdal_option):
     target_ds.FlushCache()
 
     # on reech l'OPI dans cette image
-    gdal.Warp(target_ds, input_image)
+    gdal.Warp(target_ds, opi)
 
     # on exporte en png (todo: gerer le niveau de Q)
     # pylint: disable=unused-variable
-    dst_ds = PNG_DRIVER.CreateCopy(dst_root + "_" + opi['name'] + ".png", target_ds)
+    dst_ds = PNG_DRIVER.CreateCopy(dst_root + "_" + opi_name + ".png", target_ds)
     target_ds = None
     dst_ds = None  # noqa: F841
     # pylint: enable=unused-variable
@@ -200,6 +199,7 @@ def cut_image_1arg(arg):
     """Cut a given image in all corresponding tiles for all levels"""
     overviews = arg['overviews']
     tilebox = arg['tileBox']
+    input_image = gdal.Open(arg['opi']['path'])
 
     for level in range(overviews['dataSet']['level']['min'],
                        overviews['dataSet']['level']['max'] + 1):
@@ -228,7 +228,8 @@ def cut_image_1arg(arg):
                 # si necessaire on cree le dossier de la tuile
                 Path(tile_root[:-2]).mkdir(parents=True, exist_ok=True)
 
-                cut_opi_1tile(arg['opi'],
+                cut_opi_1tile(input_image,
+                              arg['opi']['name'],
                               tile_root,
                               tile_param,
                               arg['gdalOption'])
