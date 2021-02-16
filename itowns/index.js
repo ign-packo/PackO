@@ -22,23 +22,6 @@ itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
     document.getElementById('spAPIVersion_val').innerText = 'unknown';
   });
 
-const divScaleWidget = document.getElementById('divScaleWidget');
-const scalePxlSize = 200;
-function updateScaleWidget(view) {
-  let value = view.getPixelsToMeters(scalePxlSize);
-  let unit = 'm';
-  if (value >= 1000) {
-    value /= 1000;
-    unit = 'km';
-  }
-  if (value <= 1) {
-    value *= 100;
-    unit = 'cm';
-  }
-  divScaleWidget.innerHTML = `${value.toFixed(2)} ${unit}`;
-  divScaleWidget.style.width = `${scalePxlSize}px`;
-}
-
 // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
 const viewerDiv = document.getElementById('viewerDiv');
 
@@ -162,37 +145,23 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   saisie.controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
 
   viewerDiv.focus();
-  view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
-    // eslint-disable-next-line no-console
-    console.info('View initialized');
-    updateScaleWidget(view);
-  });
-  view.addEventListener(itowns.PLANAR_CONTROL_EVENT.MOVED, () => {
-    // eslint-disable-next-line no-console
-    console.info('View moved');
-    updateScaleWidget(view);
-  });
-  // viewerDiv.addEventListener('mousewheel', (ev) => {
-  //   ev.preventDefault();
-  //   updateScaleWidget(view);
-  // });
-  viewerDiv.addEventListener('mousemove', (ev) => {
-    ev.preventDefault();
-    saisie.mousemove(ev);
-    return false;
-  }, false);
-  viewerDiv.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    saisie.click(ev);
-    return false;
-  }, false);
-  viewerDiv.addEventListener('mousedown', (ev) => {
-    if (ev.button === 1) {
-      console.log('middle button clicked');
-      view.controls.initiateDrag();
-      view.controls.updateMouseCursorType();
+
+  // fonction permettant d'afficher la valeur de l'echelle et du niveau de dezoom
+  function updateScaleWidget() {
+    let distance = view.getPixelsToMeters(200);
+    let unit = 'm';
+    const dezoom = Math.fround(distance / (200 * overviews.resolution));
+    if (distance >= 1000) {
+      distance /= 1000;
+      unit = 'km';
     }
-  });
+    if (distance <= 1) {
+      distance *= 100;
+      unit = 'cm';
+    }
+    document.getElementById('spanZoomWidget').innerHTML = dezoom <= 1 ? `zoom: ${1 / dezoom}` : `zoom: 1/${dezoom}`;
+    document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
+  }
 
   // check if string is in "x,y" format with x and y positive floats
   // return "null" if incorrect string format, otherwise [x, y] array
@@ -205,6 +174,25 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     }
     return null;
   }
+
+  view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
+    // eslint-disable-next-line no-console
+    console.info('View initialized');
+    updateScaleWidget();
+  });
+  view.addEventListener(itowns.PLANAR_CONTROL_EVENT.MOVED, () => {
+    // eslint-disable-next-line no-console
+    console.info('View moved');
+    if (view.controls.state === -1) {
+      updateScaleWidget();
+    }
+  });
+
+  viewerDiv.addEventListener('mousemove', (ev) => {
+    ev.preventDefault();
+    saisie.mousemove(ev);
+    return false;
+  }, false);
 
   saisie.controllers.coord.onChange(() => {
     if (!checkCoordString(saisie.coord)) {
@@ -259,7 +247,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     view.camera.camera3D.updateProjectionMatrix();
     view.notifyChange(view.camera.camera3D);
     console.log(view.camera.camera3D.zoom);
-    updateScaleWidget(view);
+    updateScaleWidget();
     return false;
   });
   document.getElementById('zoomOutBtn').addEventListener('click', () => {
@@ -268,7 +256,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     view.camera.camera3D.updateProjectionMatrix();
     view.notifyChange(view.camera.camera3D);
     console.log(view.camera.camera3D.zoom);
-    updateScaleWidget(view);
+    updateScaleWidget();
     return false;
   });
 
