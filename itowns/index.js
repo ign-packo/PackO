@@ -176,18 +176,13 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     saisie.click(ev);
     return false;
   }, false);
-  viewerDiv.addEventListener('auxclick', (ev) => {
-    console.log(ev.cancelable);
-    ev.preventDefault();
-    console.log('auxclick:', ev.button);
+  viewerDiv.addEventListener('mousedown', (ev) => {
     if (ev.button === 1) {
       console.log('middle button clicked');
+      view.controls.initiateDrag();
+      view.controls.updateMouseCursorType();
     }
-    if (ev.button === 2) {
-      console.log('right button clicked');
-    }
-    return false;
-  }, false);
+  });
 
   // check if string is in "x,y" format with x and y positive floats
   // return "null" if incorrect string format, otherwise [x, y] array
