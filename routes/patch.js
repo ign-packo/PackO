@@ -4,10 +4,14 @@ const fs = require('fs');
 const path = require('path');
 const { body, matchedData } = require('express-validator');
 const GJV = require('geojson-validation');
+const workerpool = require('workerpool');
 const validator = require('../paramValidation/validator');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 const rok4 = require('../rok4.js');
+
+// create a worker pool using an external worker script
+const pool = workerpool.pool(`${__dirname}/worker.js`);
 
 const geoJsonAPatcher = [
   body('geoJSON')
@@ -99,123 +103,6 @@ router.get('/patchs', [], (req, res) => {
   res.status(200).send(JSON.stringify(req.app.activePatchs));
 });
 
-// Preparation des masques
-function createPatch(tile, geoJson, overviews, dirCache, dirname) {
-  /* eslint-disable global-require */
-  const PImage = require('pureimage');
-  const debugProcess = require('debug')('patch');
-  const fsProcess = require('fs');
-  /* eslint-disable import/no-dynamic-require */
-  const rok4Process = require(`${dirname}/../rok4.js`);
-  /* eslint-enable import/no-dynamic-require */
-  const pathProcess = require('path');
-  /* eslint-enable global-require */
-  debugProcess('createPatch : ', tile);
-  const xOrigin = overviews.crs.boundingBox.xmin;
-  const yOrigin = overviews.crs.boundingBox.ymax;
-  // const Rmax = overviews.resolution;
-  // const lvlMax = overviews.level.max;
-  const tileWidth = overviews.tileSize.width;
-  const tileHeight = overviews.tileSize.height;
-
-  // Il y a parfois un bug sur le dessin du premier pixel
-  // on cree donc un masque une ligne de plus
-  const mask = PImage.make(tileWidth, tileHeight + 1);
-
-  const ctx = mask.getContext('2d');
-  geoJson.features.forEach((feature) => {
-    // debug(feature.properties.color);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    let first = true;
-    /* eslint-disable no-restricted-syntax */
-    const resolution = overviews.resolution * 2 ** (overviews.level.max - tile.z);
-    for (const point of feature.geometry.coordinates[0]) {
-      const i = Math.round((point[0] - xOrigin - tile.x * tileWidth * resolution)
-            / resolution);
-      const j = Math.round((yOrigin - point[1] - tile.y * tileHeight * resolution)
-            / resolution) + 1;
-      if (first) {
-        first = false;
-        ctx.moveTo(i, j);
-      } else {
-        ctx.lineTo(i, j);
-      }
-    }
-    ctx.closePath();
-    ctx.fill();
-  });
-
-  // On verifie si le masque est vide
-  let empty = true;
-  for (let idx = 0; (idx < 256 * 256 * 4) && empty; idx += 4) {
-    // le shift de 1024 = la ligne de marge en plus sur le masque
-    if (mask.data[1024 + idx + 3]) {
-      empty = false;
-    }
-  }
-  if (empty) {
-    debugProcess('masque vide, on passe a la suite : ', tile);
-    return null;
-  }
-  const patch = { tile, mask, color: geoJson.features[0].properties.color };
-  patch.tileRoot = rok4Process.getTileRoot(patch.tile.x,
-    patch.tile.y,
-    patch.tile.z,
-    overviews.pathDepth);
-  patch.urlGraph = pathProcess.join(dirCache, 'graph', `${patch.tileRoot}.png`);
-  patch.urlOrtho = pathProcess.join(dirCache, 'ortho', `${patch.tileRoot}.png`);
-  patch.urlOpi = pathProcess.join(dirCache, 'opi', `${patch.tileRoot}_${geoJson.features[0].properties.cliche}.png`);
-  const checkGraph = fsProcess.promises.access(patch.urlGraph, fsProcess.constants.F_OK);
-  const checkOrtho = fsProcess.promises.access(patch.urlOrtho, fsProcess.constants.F_OK);
-  const checkOpi = fsProcess.promises.access(patch.urlOpi, fsProcess.constants.F_OK);
-  return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => patch);
-}
-
-function processPatch(patch) {
-  /* eslint-disable global-require */
-  const jimp = require('jimp');
-  const debugProcess = require('debug')('patch');
-  /* eslint-enable global-require */
-  // On patch le graph
-  const mask = patch.mask.data;
-  /* eslint-disable no-param-reassign */
-  const graphPromise = jimp.read(patch.urlGraph).then((graph) => {
-    const { bitmap } = graph;
-    for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
-      if (mask[1024 + idx + 3]) {
-        [bitmap.data[idx],
-          bitmap.data[idx + 1],
-          bitmap.data[idx + 2]] = patch.color;
-      }
-    }
-    return graph.writeAsync(patch.urlGraphOutput);
-  }).then(() => {
-    debugProcess('graph done');
-  });
-
-  // On patch l ortho
-  /* eslint-disable no-param-reassign */
-  const orthoPromise = Promise.all([
-    jimp.read(patch.urlOrtho),
-    jimp.read(patch.urlOpi),
-  ]).then((images) => {
-    const ortho = images[0].bitmap.data;
-    const opi = images[1].bitmap.data;
-    for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
-      if (mask[1024 + idx + 3]) {
-        ortho[idx] = opi[idx];
-        ortho[idx + 1] = opi[idx + 1];
-        ortho[idx + 2] = opi[idx + 2];
-      }
-    }
-    return images[0].writeAsync(patch.urlOrthoOutput);
-  }).then(() => {
-    debugProcess('ortho done');
-  });
-  return Promise.all([graphPromise, orthoPromise]);
-}
-
 router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   ...geoJsonAPatcher,
 ], validateParams, (req, res) => {
@@ -235,49 +122,33 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 
   const tiles = getTiles(geoJson.features, overviews);
   const promisesCreatePatch = [];
-  if (tiles.length > global.minJobForWorkers) {
-    debug('create patch avec workers');
-    tiles.forEach((tile) => {
-      promisesCreatePatch.push(req.app.workerpool.exec(
-        createPatch, [tile, geoJson, overviews, global.dir_cache, __dirname],
-      ));
-    });
-  } else {
-    debug('create patch sans workers');
-    tiles.forEach((tile) => {
-      promisesCreatePatch.push(createPatch(tile, geoJson, overviews, global.dir_cache, __dirname));
-    });
-  }
+  debug('create patch avec workers');
+  tiles.forEach((tile) => {
+    promisesCreatePatch.push(pool.exec(
+      'createPatch', [tile, geoJson, overviews, global.dir_cache, __dirname],
+    ));
+  });
   Promise.all(promisesCreatePatch).then((patches) => {
     const promises = [];
     const tilesModified = [];
 
-    if (patches.length > global.minJobForWorkers) {
-      debug('process patch avec workers');
-    } else {
-      debug('process patch sans workers');
-    }
+    debug('process patch avec workers');
 
     patches.forEach((patch) => {
       if (patch === null) {
         return;
       }
+      /* eslint-disable no-param-reassign */
       patch.urlGraphOutput = path.join(global.dir_cache, 'graph', `${patch.tileRoot}_${newPatchId}.png`);
       patch.urlOrthoOutput = path.join(global.dir_cache, 'ortho', `${patch.tileRoot}_${newPatchId}.png`);
+      /* eslint-enable no-param-reassign */
       tilesModified.push(patch.tile);
-      if (patches.length > global.minJobForWorkers) {
-        promises.push(req.app.workerpool.exec(
-          processPatch, [patch],
-        ).catch((err) => {
-          debug(err);
-          throw err;
-        }));
-      } else {
-        promises.push(processPatch(patch).catch((err) => {
-          debug(err);
-          throw err;
-        }));
-      }
+      promises.push(pool.exec(
+        'processPatch', [patch],
+      ).catch((err) => {
+        debug(err);
+        throw err;
+      }));
     });
     debug('Nombre de patchs à appliquer : ', promises.length);
     Promise.all(promises).then(() => {
@@ -307,8 +178,10 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
       });
       // on note le patch Id
       geoJson.features.forEach((feature) => {
+        /* eslint-disable no-param-reassign */
         feature.properties.patchId = newPatchId;
         feature.properties.tiles = tilesModified;
+        /* eslint-enable no-param-reassign */
       });
       // on ajoute ce patch à l'historique
       debug('New patch, Id:', newPatchId);
@@ -329,7 +202,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
     });
   }).catch((error) => {
     debug('on a reçu une erreur : ', error);
-    req.app.workerpool.terminate(true);
+    pool.terminate(true);
     res.status(404).send(JSON.stringify({
       status: 'File(s) missing',
       errors: [error],
@@ -534,3 +407,4 @@ router.put('/patchs/clear', [], (req, res) => {
 });
 
 module.exports = router;
+module.exports.workerpool = pool;

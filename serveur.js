@@ -10,7 +10,6 @@ const debugServer = require('debug')('serveur');
 const debug = require('debug');
 const path = require('path');
 const nocache = require('nocache');
-const workerpool = require('workerpool');
 
 const { argv } = require('yargs')
   .version(false)
@@ -107,11 +106,6 @@ try {
   app.use('/doc', swaggerUi.serve, swaggerUi.setup(global.swaggerDocument, options));
   global.swaggerDocument.info.version = '???';
   global.swaggerDocument.servers[0].url = app.urlApi;
-  global.minJobForWorkers = 20;
-
-  // Creation d'un pool de workers pour traiter les calculs lourds (patchs)
-  // par defaut, autant de workers que de coeurs sur la machine
-  app.workerpool = workerpool.pool();
 
   app.use('/', wmts);
   app.use('/', graph);
@@ -122,7 +116,7 @@ try {
   module.exports = app.listen(PORT, () => {
     debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);
   });
-  module.exports.workerpool = app.workerpool;
+  module.exports.workerpool = patch.workerpool;
 } catch (err) {
   debug.log(err);
 }
