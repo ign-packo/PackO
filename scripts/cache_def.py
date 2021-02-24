@@ -336,7 +336,7 @@ def create_ortho_and_graph_1arg(arg):
     tile_opi_root = arg['cache'] + '/opi/' + str(arg['tile']['level']) + '/' + tile_path
     tile_ortho = arg['cache'] + '/ortho/' + str(arg['tile']['level']) + '/' + tile_path + '.png'
     tile_graph = arg['cache'] + '/graph/' + str(arg['tile']['level']) + '/' + tile_path + '.png'
-    is_empty = True
+    is_empty = False
 
     for filename in glob.glob(tile_opi_root + '*.png'):
         stem = Path(filename).stem[3:]
