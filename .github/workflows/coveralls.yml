@@ -13,7 +13,35 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: API install
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: apt update
+      run: |
+        sudo apt update
+    - name: Install gdal
+      run: |
+        sudo apt install python3-gdal
+    - name: Install libgdal
+      run: |
+        sudo apt-get install libgdal-dev
+
+    - name: pip install
+      run: |
+        python -m pip install --upgrade pip
+        pip install numpy
+        pip install --global-option=build_ext --global-option="-I/usr/include/gdal" GDAL==`gdal-config --version`
+
+    - name: create cache
+      run: |
+        python scripts/create_cache.py -i "regress/data/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress -g "regress/data/base_graphe.gpkg" -t regress
+
+    - name: update cache
+      run: |
+        python scripts/update_cache.py -i "regress/data/update/*.tif" -c cache_regress -g "regress/data/base_graphe.gpkg" -t regress
+
+    - name: install
       run: npm install
 
     - name: API test

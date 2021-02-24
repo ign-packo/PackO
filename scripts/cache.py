@@ -19,9 +19,6 @@ conn_string = "PG:host="\
     + host + " dbname=" + database\
     + " user=" + user + " password=" + password
 
-if gdal.OpenEx(conn_string, gdal.OF_VECTOR) is None:
-    raise SystemExit("Connection to database failed")
-
 NB_BANDS = 3
 
 
@@ -47,6 +44,10 @@ def read_args(update):
                             " (e.g., 15 19)",
                             type=int,
                             nargs='+')
+    parser.add_argument("-g", "--geopackage",
+                        help="base GeoPackage (default: "")",
+                        type=str,
+                        default="")
     parser.add_argument("-t", "--table",
                         help="graph table (default: graphe_pcrs56_zone_test)",
                         type=str,
@@ -58,6 +59,9 @@ def read_args(update):
     args = parser.parse_args()
 
     verbose = args.verbose
+
+    if verbose > 0:
+        print("Arguments: ", args)
 
     if os.path.isdir(args.input):
         raise SystemExit("create_cache.py: error: invalid pattern: " + args.input)
@@ -76,10 +80,22 @@ def read_args(update):
                 args.level[1] = lvl_max
     else:
         if not os.path.isdir(args.cache):
-            raise SystemExit("Cache (" + args.cache + ") doesn't exist")
+            raise SystemExit("Cache '" + args.cache + "' doesn't exist.")
 
-    if verbose > 0:
-        print("Arguments: ", args)
+    if not args.geopackage == "":
+        if os.path.isfile(args.geopackage):
+            global conn_string
+            conn_string = args.geopackage
+        else:
+            raise SystemExit("Base '" + args.geopackage + "' doesn't exist.")
+
+    db_graph = gdal.OpenEx(conn_string, gdal.OF_VECTOR)
+    if db_graph is None:
+        raise SystemExit("Connection to database failed")
+
+    # Test pour savoir si le nom de la table est correct
+    if db_graph.ExecuteSQL("select * from " + args.table) is None:
+        raise SystemExit("table " + args.table + " doesn't exist")
 
     return args
 
@@ -158,11 +174,16 @@ def generate(update):
     print(" Découpage")
 
     cpu_dispo = multiprocessing.cpu_count()
-    pool = multiprocessing.Pool(cpu_dispo - 1)
-    pool.map(cache.cut_image_1arg, args_cut_image)
 
-    pool.close()
-    pool.join()
+    if (cpu_dispo > 2):
+        pool = multiprocessing.Pool(cpu_dispo - 1)
+        pool.map(cache.cut_image_1arg, args_cut_image)
+
+        pool.close()
+        pool.join()
+    else:
+        for arg in args_cut_image:
+            cache.cut_image_1arg(arg)
 
     with open(args.cache + '/cache_mtd.json', 'w') as outfile:
         json.dump(color_dict, outfile)
@@ -183,12 +204,22 @@ def generate(update):
                                                              },
                                                              change)
 
+    print(" Calcul")
+    nb_tiles = len(args_create_ortho_and_graph)
+    print(" ", nb_tiles, "tuiles à traiter")
+    cache.progress_bar(50, nb_tiles, args_create_ortho_and_graph)
     print('   |', end='', flush=True)
-    pool = multiprocessing.Pool(cpu_dispo - 1)
-    pool.map(cache.create_ortho_and_graph_1arg, args_create_ortho_and_graph)
 
-    pool.close()
-    pool.join()
+    if (cpu_dispo > 2):
+        pool = multiprocessing.Pool(cpu_dispo - 1)
+        pool.map(cache.create_ortho_and_graph_1arg, args_create_ortho_and_graph)
+
+        pool.close()
+        pool.join()
+    else:
+        for arg in args_create_ortho_and_graph:
+            cache.create_ortho_and_graph_1arg(arg)
+
     print("|")
 
     print('=> DONE')
