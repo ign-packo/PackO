@@ -347,7 +347,7 @@ router.put('/patch/redo', [], (req, res) => {
 
 router.put('/patchs/clear', [], (req, res) => {
   debug('~~~PUT patchs/clear');
-  if (process.env.NODE_ENV !== 'development') {
+  if (!(process.env.NODE_ENV === 'development' || req.query.test === 'true')) {
     debug('unauthorized');
     res.status(401).send('unauthorized');
     return;

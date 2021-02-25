@@ -131,33 +131,33 @@ describe('Patch', () => {
     });
   });
   describe('PUT /patchs/clear', () => {
-    // it("should return 'clear: all patches deleted'", (done) => {
-    //   chai.request(server)
-    //     .put('/patchs/clear')
-    //     .end((err, res) => {
-    //       should.not.exist(err);
-    //       res.should.have.status(200);
-    //       res.text.should.equal('clear: all patches deleted');
-    //       done();
-    //     });
-    // });
-    // it("should return a warning (code 201): 'nothing to clear'", (done) => {
-    //   chai.request(server)
-    //     .put('/patchs/clear')
-    //     .end((err, res) => {
-    //       should.not.exist(err);
-    //       res.should.have.status(201);
-    //       res.text.should.equal('nothing to clear');
-    //       done();
-    //     });
-    // });
-    it("should return a warning (code 201): 'unauthorized'", (done) => {
+    it("should return a warning (code 401): 'unauthorized'", (done) => {
       chai.request(server)
         .put('/patchs/clear')
         .end((err, res) => {
           should.not.exist(err);
-          res.should.have.status(201);
+          res.should.have.status(401);
           res.text.should.equal('unauthorized');
+          done();
+        });
+    });
+    it("should return 'clear: all patches deleted'", (done) => {
+      chai.request(server)
+        .put('/patchs/clear?test=true')
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          res.text.should.equal('clear: all patches deleted');
+          done();
+        });
+    });
+    it("should return a warning (code 201): 'nothing to clear'", (done) => {
+      chai.request(server)
+        .put('/patchs/clear?test=true')
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(201);
+          res.text.should.equal('nothing to clear');
           done();
         });
     });
