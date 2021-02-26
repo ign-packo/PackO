@@ -15,17 +15,31 @@ La commande classique avec NodeJs:
 npm install
 ```
 
-Ensuite on peut lancer l'API
+Préparer le client web:
+- en mode production
 ```shell
-node serveur.js
+npm run build
+```
+- en mode développement (avec le menu "clear")
+```shell
+npm run build-dev
+``` 
+
+Ensuite on peut lancer l'API, la doc et l'interface web
+- en mode production
+```shell
+npm start -- -c mon_cache
+```
+- en mode développement (qui autorise la route "clear")
+```shell
+npm start-dev -- -c mon_cache 
 ```
 
-Ou, si on développe et que l'on veut que le service se relance automatiquement à chaque modification du code:
-```shell
-npx supervisor serveur.js
-```
+L'interface web est alors accesible à l'adresse : http://[serveur]:[port]/itowns
 
-La doc de l'API est publié directement par le service ici : http://localhost:8081/doc
+par defaut serveur= localhost et port = 8081
+
+La doc de l'API est publiée directement par le service et est disponible à l'adresse : http://[serveur]:[port]/doc
 
 ### Principe de fonctionnement
 
@@ -46,7 +60,7 @@ shp2pgsql /Volumes/PAOT\ 21/ZoneTestPCRS/Graphe/Graphe_PCRS56_ZONE_TEST.shp | ps
 psql -d pcrs -c "SELECT UpdateGeometrySRID('graphe_pcrs56_zone_test','geom',2154)"
 ```
 
-## Client web
+## Client web (uniquement si on souhaite le lancer séparément)
 
 ### Installation et lancement
 
@@ -65,10 +79,6 @@ qui permettra un redémarrage du serveur automatique à chaque modification de f
 En production il faut exécuter :
 ```shell
 npm run build
-```
-avant de lancer le serveur en utilisant :
-```shell
-python3 -m http.server
 ```
 
 ### Principe de fonctionnement
