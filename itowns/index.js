@@ -270,43 +270,6 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   document.getElementById('help').addEventListener('click', () => {
     helpContent.style.visibility = (helpContent.style.visibility === 'hidden') ? 'visible' : 'hidden';
   });
-
-  // Patch du PlanarControls pour gérer correctement les changements de curseur
-  // todo: faire une PR pour iTowns
-  view.controls.updateMouseCursorType = function updateMouseCursorType() {
-    // control state
-    const STATE = {
-      NONE: -1,
-      DRAG: 0,
-      PAN: 1,
-      ROTATE: 2,
-      TRAVEL: 3,
-    };
-    switch (this.state) {
-      case STATE.NONE:
-        this.view.domElement.style.cursor = this.defaultCursor;
-        // this.view.domElement.style.cursor = 'auto';
-        break;
-      case STATE.DRAG:
-        if (this.view.domElement.style.cursor !== 'wait') this.defaultCursor = this.view.domElement.style.cursor;
-        this.view.domElement.style.cursor = 'move';
-        break;
-      case STATE.PAN:
-        if (this.view.domElement.style.cursor !== 'wait') this.defaultCursor = this.view.domElement.style.cursor;
-        this.view.domElement.style.cursor = 'cell';
-        break;
-      case STATE.TRAVEL:
-        if (this.view.domElement.style.cursor !== 'wait') this.defaultCursor = this.view.domElement.style.cursor;
-        this.view.domElement.style.cursor = 'wait';
-        break;
-      case STATE.ROTATE:
-        if (this.view.domElement.style.cursor !== 'wait') this.defaultCursor = this.view.domElement.style.cursor;
-        this.view.domElement.style.cursor = 'move';
-        break;
-      default:
-        break;
-    }
-  };
 })
   .catch((err) => {
     console.log(`${err.name}: ${err.message}`);
