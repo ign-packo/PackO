@@ -30,6 +30,7 @@ const { argv } = require('yargs')
 
 const app = express();
 
+debug.log(`API in '${process.env.NODE_ENV}' mode`);
 global.dir_cache = argv.cache ? argv.cache : 'cache';
 debug.log(`using cache directory: ${global.dir_cache}`);
 
@@ -112,6 +113,8 @@ try {
   app.use('/', file);
   app.use('/', patch);
   app.use('/', misc);
+
+  app.use('/itowns', express.static('itowns'));
 
   module.exports = app.listen(PORT, () => {
     debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);

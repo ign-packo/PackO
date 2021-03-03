@@ -347,6 +347,11 @@ router.put('/patch/redo', [], (req, res) => {
 
 router.put('/patchs/clear', [], (req, res) => {
   debug('~~~PUT patchs/clear');
+  if (process.env.NODE_ENV !== 'development') {
+    debug('unauthorized');
+    res.status(401).send('unauthorized');
+    return;
+  }
   // pour chaque patch de req.app.activePatchs.features
   if (req.app.activePatchs.features.length === 0) {
     debug(' nothing to clear');
