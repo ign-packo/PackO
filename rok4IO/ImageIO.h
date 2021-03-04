@@ -357,3 +357,8 @@ class ImageROK4{
 		unsigned int * _sizes;
 };
 
+void Jpeg2Rok(const char*nomJpeg, const char*nomRok, int tileWidth, int tileHeight);
+void Png2Rok(const char *nomPng, const char*nomRok, int tileWidth, int tileHeight);
+void Rok2Jpeg(const char*nomRok, const char*nomJpeg);
+void Rok2Png(const char*nomRok, const char*nomPng);
+
