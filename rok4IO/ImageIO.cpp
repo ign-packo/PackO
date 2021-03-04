@@ -70,12 +70,10 @@ void writeImageJPG(char* &jpg_buffer, unsigned long &jpg_size , unsigned char* c
 	jpeg_start_compress(&cinfo, TRUE);
 	unsigned char *buffer_array[1];
 	size_t row_stride = nXSize * nBands;
-	std::cout << "debut de la compression "<<nXSize<<" "<<nYSize<<" "<<nBands<<" "<<quality<<std::endl;
 	while (cinfo.next_scanline < cinfo.image_height) {
 		buffer_array[0] = raw_buffer + (cinfo.next_scanline) * row_stride;
 		jpeg_write_scanlines(&cinfo, buffer_array, 1);
 	}
-	std::cout << "fin de la compression"<<std::endl;
 	jpeg_finish_compress(&cinfo);
 	jpeg_destroy_compress(&cinfo);
 	jpg_buffer= new char[jpg_size];
@@ -508,7 +506,7 @@ void ImageROK4::Create(	std::string const &nomImg,
 					unsigned int deb = out.tellp();
 					char *out_buffer=NULL;
 					unsigned long out_size=0;
-					if (jpg) {	
+					if (jpg) {
 						writeImageJPG(out_buffer, out_size, tileBuffer, NC, NL, nBands);
 					}
 					else { // png
@@ -537,36 +535,29 @@ void ImageROK4::Create(	std::string const &nomImg,
 void Jpeg2Rok(const char*nomJpeg, const char*nomRok, int tileWidth, int tileHeight){
 	char *file_buffer;
 	unsigned long file_size;
-	unsigned char *raw_buffer;
+	unsigned char *raw_buffer = NULL;
 	size_t nXSize, nYSize, nBands;
-	std::cout << "Lecture de : "<<nomJpeg<<std::endl;
 	std::ifstream file(nomJpeg, std::ios::binary);
 	file.seekg(0, std::ios::end);
 	file_size = file.tellg();
-	std::cout << "file size : "<<file_size<<std::endl;
 	file_buffer = new char[file_size];
 	file.seekg(0, std::ios::beg);
 	file.read(file_buffer, file_size);
-	std::cout << "export"<<std::endl;
 	readImageJPG(file_buffer, file_size , raw_buffer, nXSize, nYSize, nBands);
 	std::string nomOut(nomRok);
 	ImageROK4::Create(nomOut, raw_buffer, nXSize, nYSize, nBands, true, true,
 					tileWidth, tileHeight);
-	std::cout << "fin"<<std::endl;
 	delete[] file_buffer;
 	delete[] raw_buffer;
 }
 
 void Rok2Jpeg(const char*nomRok, const char*nomJpeg){
-	std::cout << "Lecture de : "<<nomRok<<std::endl;
 	std::string nom(nomRok);
 	ImageROK4 rok4(nom);
-	std::cout << "Image : "<<rok4.nXSize()<<" x "<<rok4.nYSize()<<" x "<<rok4.nBands()<<std::endl;
 	unsigned char* raw_buffer = rok4.getImage(true);
 	char *file_buffer;
 	unsigned long file_size;
 	writeImageJPG(file_buffer, file_size , raw_buffer, rok4.nXSize(), rok4.nYSize(), rok4.nBands());
-	std::cout << "file_size : "<<file_size<<std::endl;
 	std::ofstream file(nomJpeg, std::ios::binary);
 	file.write(file_buffer, file_size);
 	delete[] file_buffer;
@@ -577,22 +568,18 @@ void Rok2Jpeg(const char*nomRok, const char*nomJpeg){
 void Png2Rok(const char *nomPng, const char*nomRok, int tileWidth, int tileHeight){
 	char *file_buffer;
 	unsigned long file_size;
-	unsigned char *raw_buffer;
+	unsigned char *raw_buffer = NULL;
 	size_t nXSize, nYSize, nBands;
-	std::cout << "Lecture de : "<<nomPng<<std::endl;
 	std::ifstream file(nomPng, std::ios::binary);
 	file.seekg(0, std::ios::end);
 	file_size = file.tellg();
-	std::cout << "file size : "<<file_size<<std::endl;
 	file_buffer = new char[file_size];
 	file.seekg(0, std::ios::beg);
 	file.read(file_buffer, file_size);
-	std::cout << "export"<<std::endl;
 	readImagePNG(file_buffer, file_size , raw_buffer, nXSize, nYSize, nBands);
 	std::string nomOut(nomRok);
 	ImageROK4::Create(nomOut, raw_buffer, nXSize, nYSize, nBands, false, true,
 					tileWidth, tileHeight);
-	std::cout << "fin"<<std::endl;
 	delete[] file_buffer;
 	delete[] raw_buffer;
 }
