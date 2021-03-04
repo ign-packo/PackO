@@ -8,6 +8,8 @@ from distutils.core import setup, Extension
 
 
 rok4IO_module = Extension('_rok4io',
+                            include_dirs=['../libjpeg', '../libpng'],
+                            libraries=['z'],
                            sources=['rok4IO_wrap.cxx', 'ImageIO.cpp',
                             '../libjpeg/cdjpeg.c',
                             # '../libjpeg/cjpeg.c',
