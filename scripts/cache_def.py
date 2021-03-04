@@ -335,12 +335,12 @@ def encodageROK4(dir_cache, tileWidt, tileHeight):
     for f in L:
         print('convert : ', f)
         rok4io.Jpeg2Rok(f, f.replace('.jpg', '.tif'), tileWidt, tileHeight)
-        os.remove(f)
+        # os.remove(f)
     L = glob.glob(dir_cache + "/**/*.png", recursive=True)
     for f in L:
         print('convert : ', f)
         rok4io.Png2Rok(f, f.replace('.png', '.tif'), tileWidt, tileHeight)
-        os.remove(f)
+        # os.remove(f)
 
 
 def create_blank_slab(overviews, slab, nb_bands, spatial_ref):
