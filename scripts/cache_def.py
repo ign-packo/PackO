@@ -331,12 +331,12 @@ def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change):
 
 def encodageROK4(dir_cache, tileWidt, tileHeight):
     print(dir_cache)
-    L=glob.glob(dir_cache+"/**/*.jpg", recursive=True)
+    L = glob.glob(dir_cache + "/**/*.jpg", recursive=True)
     for f in L:
         print('convert : ', f)
         rok4io.Jpeg2Rok(f, f.replace('.jpg', '.tif'), tileWidt, tileHeight)
         os.remove(f)
-    L=glob.glob(dir_cache+"/**/*.png", recursive=True)
+    L = glob.glob(dir_cache + "/**/*.png", recursive=True)
     for f in L:
         print('convert : ', f)
         rok4io.Png2Rok(f, f.replace('.png', '.tif'), tileWidt, tileHeight)
