@@ -14,7 +14,7 @@
   "dependencies": {
     "itowns": "^2.30.0",
     "proj4": "^2.7.0",
-    "three": "^0.124.0"
+    "three": "^0.125.0"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
