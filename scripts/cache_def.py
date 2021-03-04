@@ -1,7 +1,7 @@
 # coding: utf-8
 """This script contains all functions for the creation and update of a cache"""
 
-import os
+# import os
 from pathlib import Path
 from random import randrange
 import math
