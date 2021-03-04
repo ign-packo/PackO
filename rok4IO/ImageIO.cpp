@@ -579,15 +579,20 @@ void Png2Rok(const char *nomPng, const char*nomRok, int tileWidth, int tileHeigh
 	unsigned long file_size;
 	unsigned char *raw_buffer;
 	size_t nXSize, nYSize, nBands;
+	std::cout << "Lecture de : "<<nomPng<<std::endl;
 	std::ifstream file(nomPng, std::ios::binary);
+	file.seekg(0, std::ios::end);
 	file_size = file.tellg();
+	std::cout << "file size : "<<file_size<<std::endl;
 	file_buffer = new char[file_size];
 	file.seekg(0, std::ios::beg);
 	file.read(file_buffer, file_size);
+	std::cout << "export"<<std::endl;
 	readImagePNG(file_buffer, file_size , raw_buffer, nXSize, nYSize, nBands);
 	std::string nomOut(nomRok);
 	ImageROK4::Create(nomOut, raw_buffer, nXSize, nYSize, nBands, false, true,
 					tileWidth, tileHeight);
+	std::cout << "fin"<<std::endl;
 	delete[] file_buffer;
 	delete[] raw_buffer;
 }
