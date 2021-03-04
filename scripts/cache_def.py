@@ -1,6 +1,7 @@
 # coding: utf-8
 """This script contains all functions for the creation and update of a cache"""
 
+import os
 from pathlib import Path
 from random import randrange
 import math
@@ -8,6 +9,7 @@ import glob
 from osgeo import gdal
 import numpy as np
 from numpy import base_repr
+import rok4io
 
 PNG_DRIVER = gdal.GetDriverByName('png')
 JPG_DRIVER = gdal.GetDriverByName('Jpeg')
@@ -325,6 +327,20 @@ def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change):
                     })
 
     return args_create_ortho_and_graph
+
+
+def encodageROK4(dir_cache, tileWidt, tileHeight):
+    print(dir_cache)
+    L=glob.glob(dir_cache+"/**/*.jpg", recursive=True)
+    for f in L:
+        print('convert : ', f)
+        rok4io.Jpeg2Rok(f, f.replace('.jpg', '.tif'), tileWidt, tileHeight)
+        os.remove(f)
+    L=glob.glob(dir_cache+"/**/*.png", recursive=True)
+    for f in L:
+        print('convert : ', f)
+        rok4io.Png2Rok(f, f.replace('.png', '.tif'), tileWidt, tileHeight)
+        os.remove(f)
 
 
 def create_blank_slab(overviews, slab, nb_bands, spatial_ref):

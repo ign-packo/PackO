@@ -224,6 +224,9 @@ def generate(update):
 
     print('=> DONE')
 
+    print("Encodage ROK4 (par tuile) :")
+    cache.encodageROK4(args.cache, overviews_dict['tileSize']['width'], overviews_dict['tileSize']['height'])
+
     # Finitions
     with open(args.cache + '/overviews.json', 'w') as outfile:
         json.dump(overviews_dict, outfile)
