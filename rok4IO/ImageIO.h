@@ -5,14 +5,14 @@
 #include <fstream>
 
 // Gestion du JPG sans GDAL (les buffers sont en entrelaces)
-void readImageJPG(char* jpg_buffer, unsigned long jpg_size , unsigned char* &raw_buffer, size_t &nXSize, size_t &nYSize, size_t &nBands);
+void readImageJPG(char* jpg_buffer, size_t jpg_size , unsigned char* &raw_buffer, size_t &nXSize, size_t &nYSize, size_t &nBands);
 
-void writeImageJPG(char* &jpg_buffer, unsigned long &jpg_size , unsigned char* const &raw_buffer, size_t const &nXSize, size_t const &nYSize, size_t const &nBands, int quality=95);
+void writeImageJPG(char* &jpg_buffer, size_t &jpg_size , unsigned char* const &raw_buffer, size_t const &nXSize, size_t const &nYSize, size_t const &nBands, int quality=95);
 
 // Gestion du PNG sans GDAL (les buffers sont en entrelaces)
-void readImagePNG(char* png_buffer, unsigned long png_size , unsigned char * &raw_buffer, size_t &nXSize, size_t &nYSize, size_t &nBands);
+void readImagePNG(char* png_buffer, size_t png_size , unsigned char * &raw_buffer, size_t &nXSize, size_t &nYSize, size_t &nBands);
 
-void writeImagePNG(char* &png_buffer, unsigned long &png_size, unsigned char * const &raw_buffer, size_t nXSize, size_t nYSize, size_t nBands);
+void writeImagePNG(char* &png_buffer, size_t &png_size, unsigned char * const &raw_buffer, size_t nXSize, size_t nYSize, size_t nBands);
 
 class Tag{
 	public:

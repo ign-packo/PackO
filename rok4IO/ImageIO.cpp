@@ -12,7 +12,7 @@
 
 #include "ImageIO.h"
 // Debut de la partie JPG classique
-void readImageJPG(char* jpg_buffer, unsigned long jpg_size , unsigned char* &raw_buffer, size_t &nXSize, size_t &nYSize, size_t &nBands){
+void readImageJPG(char* jpg_buffer, size_t jpg_size , unsigned char* &raw_buffer, size_t &nXSize, size_t &nYSize, size_t &nBands){
 	// Variables for the decompressor itself
 	struct jpeg_decompress_struct cinfo;
 	struct jpeg_error_mgr jerr;
@@ -52,7 +52,7 @@ void readImageJPG(char* jpg_buffer, unsigned long jpg_size , unsigned char* &raw
 	jpeg_destroy_decompress(&cinfo);
 }
 
-void writeImageJPG(char* &jpg_buffer, unsigned long &jpg_size , unsigned char* const &raw_buffer, size_t const &nXSize, size_t const &nYSize, size_t const &nBands, int quality){
+void writeImageJPG(char* &jpg_buffer, size_t &jpg_size , unsigned char* const &raw_buffer, size_t const &nXSize, size_t const &nYSize, size_t const &nBands, int quality){
 	// Variables for the decompressor itself
 	struct jpeg_compress_struct cinfo;
 	struct jpeg_error_mgr jerr;
@@ -109,7 +109,7 @@ void WriteDataToMem(png_structp png_ptr, png_bytep inBytes, png_size_t byteCount
 void FlushOutput(png_structp png_ptr){
 }
 
-void readImagePNG(char* png_buffer, unsigned long png_size , unsigned char * &raw_buffer, size_t &nXSize, size_t &nYSize, size_t &nBands){
+void readImagePNG(char* png_buffer, size_t png_size , unsigned char * &raw_buffer, size_t &nXSize, size_t &nYSize, size_t &nBands){
   char header[8];
   memcpy(header, png_buffer, 8);
 //   inputStream.read(header, 8);
@@ -143,7 +143,7 @@ void readImagePNG(char* png_buffer, unsigned long png_size , unsigned char * &ra
   delete[] row_pointers;
 }
 
-void writeImagePNG(char* &png_buffer, unsigned long &png_size, unsigned char * const &raw_buffer, size_t nXSize, size_t nYSize, size_t nBands){
+void writeImagePNG(char* &png_buffer, size_t &png_size, unsigned char * const &raw_buffer, size_t nXSize, size_t nYSize, size_t nBands){
 		unsigned char ** row_pointers = new unsigned char* [nYSize];
   		for (size_t y=0; y<nYSize; y++)
 			row_pointers[y] = raw_buffer + y * nXSize*nBands;
@@ -239,7 +239,7 @@ void ImageROK4::encodeHeader(std::ostream & out, std::vector<Tag> const &tags) {
 
 ImageROK4::ImageROK4(std::string const &nom):_url(nom){
 			// Lecture de l'entete Tiff
-			_in.open(_url, std::ios::in | std::ios::binary);
+			_in.open(_url.c_str(), std::ios::in | std::ios::binary);
 			unsigned char C1, C2;
 			_in >> C1 >> C2;
 			_le = (C1 == 'I') && (C2 == 'I');
@@ -395,7 +395,7 @@ void ImageROK4::setTiles(std::string const &nomImg, std::map<int, unsigned char*
 				std::cout << "ERREUR : Impossible de mettre a jour en place"<<std::endl;
 				return;
 			}
-			std::ofstream out(nomImg, std::ios::out | std::ios::binary);
+			std::ofstream out(nomImg.c_str(), std::ios::out | std::ios::binary);
 			// Recopie de l'entete
 			char header[2048];
 			_in.seekg(std::ios::beg);
@@ -440,7 +440,7 @@ void ImageROK4::Create(	std::string const &nomImg,
 							size_t nXSize, size_t nYSize, size_t nBands, 
 							bool jpg, bool interleaved,
 							size_t tileWidth, size_t tileHeight) {
-			std::ofstream out(nomImg, std::ios::out | std::ios::binary);
+			std::ofstream out(nomImg.c_str(), std::ios::out | std::ios::binary);
 			size_t nbTilesX = nXSize / tileWidth;
 			size_t nbTilesY = nYSize / tileHeight;
 			size_t nbTiles = nbTilesX * nbTilesY;
