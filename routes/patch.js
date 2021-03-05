@@ -9,8 +9,8 @@ const validator = require('../paramValidation/validator');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 const rok4 = require('../rok4.js');
-// const { getPackedSettings } = require('http2');
-// const { debugPort } = require('process');
+// const createPatch = require('../routes/createPatch.js');
+// const processPatch = require('../routes/processPatch.js');
 
 // create a worker pool using an external worker script
 const pool = workerpool.pool(`${__dirname}/worker.js`);
@@ -131,6 +131,11 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
       'createPatch', [slab, geoJson, overviews, global.dir_cache, __dirname],
     ));
   });
+  // debug('~create patch avec workers');
+  // slabs.forEach((slab) => {
+  //   promisesCreatePatch.push(createPatch.createPatch(
+  //     slab, geoJson, overviews, global.dir_cache, __dirname));
+  // });
   Promise.all(promisesCreatePatch).then((patches) => {
     const promises = [];
     const slabsModified = [];
@@ -151,6 +156,10 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         debug(err);
         throw err;
       }));
+      // promises.push(processPatch.processPatch(patch).catch((err) => {
+      //   debug(err);
+      //   throw err;
+      // }));
     });
     debug('', promises.length, 'patchs à appliquer.');
     Promise.all(promises).then(() => {
