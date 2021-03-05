@@ -5,8 +5,8 @@
   "main": "serveur.js",
   "scripts": {
     "lint": "eslint .",
-    "test": "c8 -r text mocha regress --cache cache_test",
-    "test-coveralls": "c8 -r lcov --report-dir=coverage mocha regress --cache cache_regress"
+    "test": "c8 -r text mocha regress --cache cache_test --timeout 10000",
+    "test-coveralls": "c8 -r lcov --report-dir=coverage mocha regress --cache cache_regress --timeout 10000"
   },
   "repository": {
     "type": "git",

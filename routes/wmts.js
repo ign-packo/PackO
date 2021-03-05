@@ -333,24 +333,9 @@ router.get('/wmts', [
       };
       res.status(400).send(erreur.msg);
     } else {
-      // Jimp.read(url, (err, image) => {
-      //   if (err) {
-      //     const erreur = new Error();
-      //     erreur.msg = {
-      //       status: err,
-      //       errors: [{
-      //         localisation: 'Jimp.read()',
-      //         msg: err,
-      //       }],
-      //     };
-      //     res.status(500).send(erreur.msg);
-      //   // res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
-      //   } else {
-      //     let resCode = 200;
-      //     const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
       const slab = new rok4IO.ImageROK4();
       slab.load(url).then(() => {
-        slab.GetTile(tileRoot.numTile).then((image) => {
+        slab.getTile(tileRoot.numTile).then((image) => {
           const imageInfo = slab.info();
           const index = parseInt(J, 10) * imageInfo[3] * imageInfo[2]
             + parseInt(I, 10) * imageInfo[2];
