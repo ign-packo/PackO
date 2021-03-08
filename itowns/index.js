@@ -6,6 +6,8 @@ import Saisie from './Saisie';
 // Global itowns pour GuiTools -> peut être améliorer
 global.itowns = itowns;
 
+console.log(`Client in '${process.env.NODE_ENV}' mode.`);
+
 const urlParams = new URLSearchParams(window.location.search);
 const serverAPI = urlParams.get('serverapi') ? urlParams.get('serverapi') : 'localhost';
 const portAPI = urlParams.get('portapi') ? urlParams.get('portapi') : 8081;
@@ -150,7 +152,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   saisie.controllers.polygon = menuGlobe.gui.add(saisie, 'polygon');
   saisie.controllers.undo = menuGlobe.gui.add(saisie, 'undo');
   saisie.controllers.redo = menuGlobe.gui.add(saisie, 'redo');
-  saisie.controllers.clear = menuGlobe.gui.add(saisie, 'clear');
+  if (process.env.NODE_ENV === 'development') saisie.controllers.clear = menuGlobe.gui.add(saisie, 'clear');
   saisie.controllers.message = menuGlobe.gui.add(saisie, 'message');
   saisie.controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
 
@@ -311,7 +313,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     if (`${err.name}: ${err.message}` === 'TypeError: Failed to fetch') {
       const newApiUrl = window.prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl);
       const apiUrlSplit = newApiUrl.split('/')[2].split(':');
-      window.location.assign(`${window.location.origin}?serverapi=${apiUrlSplit[0]}&portapi=${apiUrlSplit[1]}`);
+      window.location.assign(`${window.location.href.split('?')[0]}?serverapi=${apiUrlSplit[0]}&portapi=${apiUrlSplit[1]}`);
     } else {
       window.alert(err);
     }

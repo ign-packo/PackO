@@ -6,7 +6,11 @@
   "scripts": {
     "lint": "eslint .",
     "test": "c8 -r text mocha regress --cache cache_test",
-    "test-coveralls": "c8 -r lcov --report-dir=coverage mocha regress --cache cache_regress"
+    "test-coveralls": "c8 -r lcov --report-dir=coverage mocha regress --cache cache_regress",
+    "build-dev": "cd itowns && npm install && npm run build-dev",
+    "start-dev": "cross-env NODE_ENV=development node serveur.js",
+    "build": "cd itowns && npm install && npm run build",
+    "start": "cross-env NODE_ENV=production node serveur.js"
   },
   "repository": {
     "type": "git",
@@ -26,6 +30,7 @@
     "chai-http": "^4.3.0",
     "chai-json-schema": "^1.5.1",
     "cors": "^2.8.5",
+    "cross-env": "^7.0.3",
     "debug": "^4.3.1",
     "express": "^4.17.1",
     "express-validator": "^6.9.2",
