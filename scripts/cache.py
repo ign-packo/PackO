@@ -7,6 +7,8 @@ import glob
 import multiprocessing
 import gdal
 
+import time
+
 import cache_def as cache
 
 user = os.getenv('PGUSER', default='postgres')
@@ -58,10 +60,8 @@ def read_args(update):
                         default=0)
     args = parser.parse_args()
 
-    verbose = args.verbose
-
-    if verbose > 0:
-        print("Arguments: ", args)
+    if args.verbose > 1:
+        print("\nArguments: ", args)
 
     if os.path.isdir(args.input):
         raise SystemExit("create_cache.py: error: invalid pattern: " + args.input)
@@ -157,7 +157,9 @@ def generate(update):
     if len(list_filename) == 0:
         raise SystemExit("WARNING: Empty input folder: nothing to add in cache")
 
-    print(len(list_filename), "image(s) à traiter")
+    tps0 = time.perf_counter()
+    print("\n", len(list_filename), "image(s) à traiter")
+
     # Decoupage des images et calcul de l'emprise globale
     print("Découpe des images :")
     print(" Préparation")
@@ -169,7 +171,8 @@ def generate(update):
                                                               {
                                                                   'nbBands': NB_BANDS,
                                                                   'spatialRef': spatial_ref_wkt
-                                                              })
+                                                              },
+                                                              args.verbose)
 
     print(" Découpage")
 
@@ -188,7 +191,11 @@ def generate(update):
     with open(args.cache + '/cache_mtd.json', 'w') as outfile:
         json.dump(color_dict, outfile)
 
-    print('=> DONE')
+    tps1 = time.perf_counter()
+    if args.verbose > 0:
+        print('=> DONE in', tps1 - tps0)
+    else:
+        print('=> DONE')
 
     print("Génération du graph et de l'ortho (par tuile) :")
 
@@ -204,8 +211,13 @@ def generate(update):
                                                              },
                                                              change)
 
+    tps2 = time.perf_counter()
+    if args.verbose > 0:
+        print("    in ", tps2 - tps1, sep="")
+
     print(" Calcul")
     nb_tiles = len(args_create_ortho_and_graph)
+    tps3 = time.perf_counter()
     print(" ", nb_tiles, "tuiles à traiter")
     cache.progress_bar(50, nb_tiles, args_create_ortho_and_graph)
     print('   |', end='', flush=True)
@@ -221,17 +233,27 @@ def generate(update):
             cache.create_ortho_and_graph_1arg(arg)
 
     print("|")
-
+    tps4 = time.perf_counter()
+    if args.verbose > 0:
+        print("    in ", tps4 - tps3, sep="")
     print('=> DONE')
 
     # Finitions
     with open(args.cache + '/overviews.json', 'w') as outfile:
         json.dump(overviews_dict, outfile)
 
+    tpsf = time.perf_counter()
+
     print("\n",
           len(list_filename) - len(opi_duplicate),
           "/",
-          len(list_filename), "OPI(s) ajoutée(s)")
+          len(list_filename), "OPI(s) ajoutée(s)", end='')
+
+    if args.verbose > 0:
+        print(" in", tpsf - tps0)
+    else:
+        print()
+
     if len(opi_duplicate) > 0:
         print("présence de doublons :")
         for opi_name in opi_duplicate:
