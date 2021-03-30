@@ -79,12 +79,12 @@ function createPatch(tile, geoJson, overviews, dirCache) {
 
 function processPatch(patch) {
   // On patch le graph
-  const mask = patch.mask.data;
+  const { mask } = patch;
   /* eslint-disable no-param-reassign */
   const graphPromise = jimp.read(patch.urlGraph).then((graph) => {
     const { bitmap } = graph;
-    for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
-      if (mask[1024 + idx + 3]) {
+    for (let idx = 0; idx < bitmap.width * bitmap.height * 4; idx += 4) {
+      if (mask.data[mask.width * 4 + idx + 3]) {
         [bitmap.data[idx],
           bitmap.data[idx + 1],
           bitmap.data[idx + 2]] = patch.color;
@@ -101,13 +101,13 @@ function processPatch(patch) {
     jimp.read(patch.urlOrtho),
     jimp.read(patch.urlOpi),
   ]).then((images) => {
-    const ortho = images[0].bitmap.data;
-    const opi = images[1].bitmap.data;
-    for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
-      if (mask[1024 + idx + 3]) {
-        ortho[idx] = opi[idx];
-        ortho[idx + 1] = opi[idx + 1];
-        ortho[idx + 2] = opi[idx + 2];
+    const ortho = images[0].bitmap;
+    const opi = images[1].bitmap;
+    for (let idx = 0; idx < ortho.width * ortho.height * 4; idx += 4) {
+      if (mask.data[mask.width * 4 + idx + 3]) {
+        ortho.data[idx] = opi.data[idx];
+        ortho.data[idx + 1] = opi.data[idx + 1];
+        ortho.data[idx + 2] = opi.data[idx + 2];
       }
     }
     return images[0].writeAsync(patch.urlOrthoOutput);
