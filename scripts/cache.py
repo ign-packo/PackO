@@ -191,6 +191,9 @@ def generate(update):
     with open(args.cache + '/cache_mtd.json', 'w') as outfile:
         json.dump(color_dict, outfile)
 
+    with open(args.cache + '/overviews.json', 'w') as outfile:
+        json.dump(overviews_dict, outfile)
+
     tps1 = time.perf_counter()
     if args.verbose > 0:
         print('=> DONE in', tps1 - tps0)
@@ -237,10 +240,6 @@ def generate(update):
     if args.verbose > 0:
         print("    in ", tps4 - tps3, sep="")
     print('=> DONE')
-
-    # Finitions
-    with open(args.cache + '/overviews.json', 'w') as outfile:
-        json.dump(overviews_dict, outfile)
 
     tpsf = time.perf_counter()
 
