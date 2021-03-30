@@ -144,7 +144,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
       /* eslint-enable no-param-reassign */
       tilesModified.push(patch.tile);
       promises.push(pool.exec(
-        'processPatch', [patch],
+        'processPatch', [patch, overviews.tileSize],
       ).catch((err) => {
         debug(err);
         throw err;

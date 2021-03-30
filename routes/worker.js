@@ -77,14 +77,15 @@ function createPatch(tile, geoJson, overviews, dirCache) {
   return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => patch);
 }
 
-function processPatch(patch) {
+function processPatch(patch, tileSize) {
   // On patch le graph
   const mask = patch.mask.data;
   /* eslint-disable no-param-reassign */
   const graphPromise = jimp.read(patch.urlGraph).then((graph) => {
     const { bitmap } = graph;
-    for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
-      if (mask[1024 + idx + 3]) {
+    for (let idx = 0; idx < tileSize.width * tileSize.height * 4; idx += 4) {
+      if (mask[tileSize.height * 4 + idx + 3]) {
+        // What if tiles aren't squared ??
         [bitmap.data[idx],
           bitmap.data[idx + 1],
           bitmap.data[idx + 2]] = patch.color;
@@ -103,8 +104,8 @@ function processPatch(patch) {
   ]).then((images) => {
     const ortho = images[0].bitmap.data;
     const opi = images[1].bitmap.data;
-    for (let idx = 0; idx < 256 * 256 * 4; idx += 4) {
-      if (mask[1024 + idx + 3]) {
+    for (let idx = 0; idx < tileSize.width * tileSize.height * 4; idx += 4) {
+      if (mask[tileSize.height * 4 + idx + 3]) {
         ortho[idx] = opi[idx];
         ortho[idx + 1] = opi[idx + 1];
         ortho[idx + 2] = opi[idx + 2];
