@@ -9,6 +9,8 @@ import gdal
 import numpy as np
 from numpy import base_repr
 
+import time
+
 PNG_DRIVER = gdal.GetDriverByName('png')
 
 
@@ -125,7 +127,7 @@ def new_color(image, color_dict):
     return color
 
 
-def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option):
+def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option, verbose):
     """Preparation for tiling images according to overviews file"""
     opi_already_calculated = []
     args_cut_image = []
@@ -148,7 +150,8 @@ def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option):
                 'overviews': overviews,
                 'tileBox': get_tilebox(filename, overviews, change),
                 'cache': dir_cache,
-                'gdalOption': gdal_option
+                'gdalOption': gdal_option,
+                'verbose': verbose
             })
 
             # on ajoute l'OPI traitée à la liste (avec sa couleur)
@@ -203,7 +206,10 @@ def cut_image_1arg(arg):
 
     for level in range(overviews['dataSet']['level']['min'],
                        overviews['dataSet']['level']['max'] + 1):
-        print('  (', arg['opi']['name'], ') level : ', level, sep="")
+
+        tps1 = time.process_time()
+        if arg['verbose'] == 0:
+            print('  (', arg['opi']['name'], ') level : ', level, sep="")
 
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
 
@@ -233,6 +239,10 @@ def cut_image_1arg(arg):
                               tile_root,
                               tile_param,
                               arg['gdalOption'])
+
+        tps2 = time.process_time()
+        if arg['verbose'] > 0:
+            print('  (', arg['opi']['name'], ') level : ', level, ' in ', tps2 - tps1, sep="")
 
 
 def progress_bar(nb_steps, nb_tiles, args_create_ortho_and_graph):
