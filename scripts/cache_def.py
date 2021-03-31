@@ -348,10 +348,13 @@ def create_ortho_and_graph_1arg(arg):
 
             # on rasterise la partie du graphe qui concerne ce cliche
             db_graph = gdal.OpenEx(arg['dbOption']['connString'], gdal.OF_VECTOR)
+            # requete sql adaptee pour marcher avec des nomenclatures du type
+            # 20FD1325x00001_02165 ou OPI_20FD1325x00001_02165
             gdal.Rasterize(mask,
                            db_graph,
                            SQLStatement='select geom from '
-                           + arg['dbOption']['table'] + ' where cliche = \'' + stem + '\'')
+                           + arg['dbOption']['table']
+                           + ' where cliche like \'%' + stem[-20:] + '%\'')
             img_mask = mask.GetRasterBand(1).ReadAsArray()
             # si mask est vide, on ne fait rien
             val_max = np.amax(img_mask)
