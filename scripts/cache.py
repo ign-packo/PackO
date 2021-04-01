@@ -46,6 +46,11 @@ def read_args(update):
                             " (e.g., 15 19)",
                             type=int,
                             nargs='+')
+    if update is True:
+        parser.add_argument("-r", "--recalcul",
+                            help="recalcul apres bug",
+                            type=int,
+                            default=0)
     parser.add_argument("-g", "--geopackage",
                         help="base GeoPackage (default: "")",
                         type=str,
@@ -78,6 +83,8 @@ def read_args(update):
                 lvl_max = args.level[0]
                 args.level[0] = args.level[1]
                 args.level[1] = lvl_max
+
+        args.recalcul = 0
     else:
         if not os.path.isdir(args.cache):
             raise SystemExit("Cache '" + args.cache + "' doesn't exist.")
@@ -172,7 +179,8 @@ def generate(update):
                                                                   'nbBands': NB_BANDS,
                                                                   'spatialRef': spatial_ref_wkt
                                                               },
-                                                              args.verbose)
+                                                              args.verbose,
+                                                              args.recalcul)
 
     print(" Découpage")
 
