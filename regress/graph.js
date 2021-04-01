@@ -49,6 +49,23 @@ describe('Graph', () => {
           });
       });
     });
+    describe('query: x=230757 & y=6759654', () => {
+      // outside of graph but inside the image frame
+      it("should return a 'out of graph'", (done) => {
+        chai.request(server)
+          .get('/graph')
+          .query({ x: 230757, y: 6759654 })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(201);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.jsonSchema(schema);
+            resJson.should.have.property('cliche').equal('out of graph');
+
+            done();
+          });
+      });
+    });
     describe('query: x=230755 & y=6759650', () => {
       it('should return a Json { "color": Array(3), "cliche": 19FD5606Ax00020_16371 }', (done) => {
         chai.request(server)
@@ -82,17 +99,18 @@ describe('Graph', () => {
       });
     });
     describe('query: x=230747 & y=6759643', () => {
-      it("should return a 'missing'", (done) => {
+      // image not yet in the cache
+      it("should return a 'out of graph'", (done) => {
         chai.request(server)
           .get('/graph')
           .query({ x: 230747, y: 6759643 })
           .end((err, res) => {
             should.not.exist(err);
-            res.should.have.status(200);
+            res.should.have.status(201);
             const resJson = JSON.parse(res.text);
 
             resJson.should.be.jsonSchema(schema);
-            resJson.should.have.property('cliche').equal('missing');
+            resJson.should.have.property('cliche').equal('out of graph');
 
             done();
           });
