@@ -207,16 +207,45 @@ def cut_image_1arg(arg):
     """Cut a given image in all corresponding tiles for all levels"""
     overviews = arg['overviews']
     tilebox = arg['tileBox']
-    input_image = gdal.Open(arg['opi']['path'])
 
-    for level in range(overviews['dataSet']['level']['min'],
-                       overviews['dataSet']['level']['max'] + 1):
+    opi_reech = gdal.Open(arg['opi']['path'])
+    opi_gdal = gdal.Open(arg['opi']['path'])
+
+    for level in range(overviews['dataSet']['level']['max'],
+                       overviews['dataSet']['level']['min'] - 1,
+                       -1):
 
         tps1 = time.process_time()
         if arg['verbose'] == 0:
             print('  (', arg['opi']['name'], ') level : ', level, sep="")
 
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
+
+        if not level == overviews['level']['max']:
+            # RE-echantilonage de l'image
+            nb_col = tilebox[str(level)]['MaxTileCol'] - tilebox[str(level)]['MinTileCol'] + 1
+            nb_row = tilebox[str(level)]['MaxTileRow'] - tilebox[str(level)]['MinTileRow'] + 1
+            xmin = overviews['crs']['boundingBox']['xmin']\
+                + tilebox[str(level)]['MinTileCol'] * resolution * overviews['tileSize']['width']
+            ymax = overviews['crs']['boundingBox']['ymax']\
+                - tilebox[str(level)]['MinTileRow'] * resolution * overviews['tileSize']['height']
+
+            opi_reech = gdal.GetDriverByName('MEM').Create('',
+                                                           nb_col * overviews['tileSize']['width'],
+                                                           nb_row * overviews['tileSize']['height'],
+                                                           arg['gdalOption']['nbBands'],
+                                                           gdal.GDT_Byte)
+            opi_reech.SetGeoTransform((xmin,
+                                       resolution,
+                                       0,
+                                       ymax,
+                                       0,
+                                       -resolution))
+            opi_reech.SetProjection(arg['gdalOption']['spatialRef'])
+            opi_reech.FlushCache()
+
+            gdal.Warp(opi_reech, opi_gdal, resampleAlg=gdal.GRA_Average)
+            opi_gdal = opi_reech
 
         for tile_x in range(tilebox[str(level)]['MinTileCol'],
                             tilebox[str(level)]['MaxTileCol'] + 1):
@@ -239,11 +268,20 @@ def cut_image_1arg(arg):
                 # si necessaire on cree le dossier de la tuile
                 Path(tile_root[:-2]).mkdir(parents=True, exist_ok=True)
 
-                cut_opi_1tile(input_image,
-                              arg['opi']['name'],
-                              tile_root,
-                              tile_param,
-                              arg['gdalOption'])
+                win = [tile_param['origin']['x'],
+                       tile_param['origin']['y'],
+                       tile_param['origin']['x'] + overviews['tileSize']['width'] * resolution,
+                       tile_param['origin']['y'] - overviews['tileSize']['height'] * resolution]
+
+                gdal.Translate(tile_root + "_" + arg['opi']['name'] + ".png",
+                               opi_reech,
+                               projWin=win)
+
+                # cut_opi_1tile(input_image,
+                #               arg['opi']['name'],
+                #               tile_root,
+                #               tile_param,
+                #               arg['gdalOption'])
 
         tps2 = time.process_time()
         if arg['verbose'] > 0:
