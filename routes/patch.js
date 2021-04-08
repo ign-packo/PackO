@@ -403,6 +403,29 @@ router.put('/patchs/clear', [], (req, res) => {
     });
   });
 
+  req.app.unactivePatchs.features.forEach((feature) => {
+    // trouver la liste des tuiles concernées par ces patchs
+    const { tiles } = feature.properties;
+    debug(tiles.size, 'tuiles impactées');
+    // pour chaque tuile, on efface les images du redo
+    tiles.forEach((tile) => {
+      const rok4Path = rok4.getPath(tile.x, tile.y, tile.z, overviews.pathDepth);
+
+      const graphDir = path.join(global.dir_cache, 'graph', rok4Path.dirPath);
+      const orthoDir = path.join(global.dir_cache, 'ortho', rok4Path.dirPath);
+
+      const arrayLinkGraph = fs.readdirSync(graphDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.png')));
+      // suppression des images intermediaires
+      arrayLinkGraph.forEach((file) => fs.unlinkSync(
+        path.join(graphDir, file),
+      ));
+      const arrayLinkOrtho = fs.readdirSync(orthoDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.png')));
+      // suppression des images intermediaires
+      arrayLinkOrtho.forEach((file) => fs.unlinkSync(
+        path.join(orthoDir, file),
+      ));
+    });
+  });
   req.app.activePatchs.features = [];
   req.app.unactivePatchs.features = [];
   fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
