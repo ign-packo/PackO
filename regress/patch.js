@@ -142,14 +142,53 @@ describe('Patch', () => {
         });
     });
     it("should return 'clear: all patches deleted'", (done) => {
+      // Ajout d'un nouveau patch
       chai.request(server)
-        .put('/patchs/clear?test=true')
+        .post('/patch')
+        .send({
+          type: 'FeatureCollection',
+          crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
+          features: [
+            {
+              type: 'Feature',
+              properties: { color: [58, 149, 47], cliche: '19FD5606Ax00020_16371' },
+              geometry: { type: 'Polygon', coordinates: [[[230748, 6759646], [230752, 6759646], [230752, 6759644], [230748, 6759644], [230748, 6759646]]] },
+            }],
+        })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
-          res.text.should.equal('clear: all patches deleted');
-          done();
+          const resJson = JSON.parse(res.text);
+          resJson.should.be.a('array');
+
+          // Avant de l'annuler
+          chai.request(server)
+            .put('/patch/undo')
+            .end((err1, res1) => {
+              should.not.exist(err1);
+              res1.should.have.status(200);
+              res1.text.should.equal('undo: patch 2 canceled');
+
+              // Pour faire le clear
+              chai.request(server)
+                .put('/patchs/clear?test=true')
+                .end((err2, res2) => {
+                  should.not.exist(err2);
+                  res2.should.have.status(200);
+                  res2.text.should.equal('clear: all patches deleted');
+                  done();
+                });
+            });
         });
+
+      // chai.request(server)
+      //   .put('/patchs/clear?test=true')
+      //   .end((err, res) => {
+      //     should.not.exist(err);
+      //     res.should.have.status(200);
+      //     res.text.should.equal('clear: all patches deleted');
+      //     done();
+      //   });
     });
     it("should return a warning (code 201): 'nothing to clear'", (done) => {
       chai.request(server)
