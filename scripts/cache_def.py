@@ -6,6 +6,7 @@ from random import randrange
 import math
 import glob
 import gdal
+import os
 import numpy as np
 from numpy import base_repr
 
@@ -153,8 +154,9 @@ def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option, ve
                 'verbose': verbose
             })
 
-            # on ajoute l'OPI traitée à la liste (avec sa couleur)
-            overviews["list_OPI"][opi] = new_color(opi, color_dict)
+            if not recalcul:
+                # on choisit une nouvelle couleur pour l'OPI et on l'ajoute à la liste
+                overviews["list_OPI"][opi] = new_color(opi, color_dict)
 
     return args_cut_image, opi_already_calculated, change
 
@@ -257,7 +259,7 @@ def progress_bar(nb_steps, nb_tiles, args_create_ortho_and_graph):
             args_create_ortho_and_graph[i]['advancement'] = 1
 
 
-def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change):
+def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change, recalcul):
     """Preparation for computation of ortho and graph"""
     print(" Préparation")
 
@@ -285,7 +287,8 @@ def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change):
                         'overviews': overviews,
                         'dbOption': db_option,
                         'cache': dir_cache,
-                        'gdalOption':  gdal_option
+                        'gdalOption':  gdal_option,
+                        'recalcul': recalcul
                     })
 
     return args_create_ortho_and_graph
@@ -335,17 +338,20 @@ def create_ortho_and_graph_1arg(arg):
     if arg['advancement'] != 0:
         print("█", end='', flush=True)
 
-    # on cree le graphe et l'ortho
-    img_ortho = create_blank_tile(overviews, arg['tile'],
-                                  arg['gdalOption']['nbBands'], arg['gdalOption']['spatialRef'])
-    img_graph = create_blank_tile(overviews, arg['tile'],
-                                  arg['gdalOption']['nbBands'], arg['gdalOption']['spatialRef'])
-
     tile_path = get_tile_path(arg['tile']['x'], arg['tile']['y'], overviews['pathDepth'])
     tile_opi_root = arg['cache'] + '/opi/' + str(arg['tile']['level']) + '/' + tile_path
     tile_ortho = arg['cache'] + '/ortho/' + str(arg['tile']['level']) + '/' + tile_path + '.png'
     tile_graph = arg['cache'] + '/graph/' + str(arg['tile']['level']) + '/' + tile_path + '.png'
     is_empty = False
+
+    if arg['recalcul'] and os.path.isfile(tile_ortho):
+        return
+
+    # on cree le graphe et l'ortho
+    img_ortho = create_blank_tile(overviews, arg['tile'],
+                                  arg['gdalOption']['nbBands'], arg['gdalOption']['spatialRef'])
+    img_graph = create_blank_tile(overviews, arg['tile'],
+                                  arg['gdalOption']['nbBands'], arg['gdalOption']['spatialRef'])
 
     for filename in glob.glob(tile_opi_root + '*.png'):
         stem = Path(filename).stem[3:]

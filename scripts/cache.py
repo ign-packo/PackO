@@ -185,21 +185,24 @@ def generate(update):
     print(" Découpage")
 
     cpu_dispo = multiprocessing.cpu_count()
-    if (cpu_dispo > 2):
-        pool = multiprocessing.Pool(cpu_dispo - 1)
-        pool.map(cache.cut_image_1arg, args_cut_image)
 
-        pool.close()
-        pool.join()
-    else:
-        for arg in args_cut_image:
-            cache.cut_image_1arg(arg)
+    if not args.recalcul:
 
-    with open(args.cache + '/cache_mtd.json', 'w') as outfile:
-        json.dump(color_dict, outfile)
+        if (cpu_dispo > 2):
+            pool = multiprocessing.Pool(cpu_dispo - 1)
+            pool.map(cache.cut_image_1arg, args_cut_image)
 
-    with open(args.cache + '/overviews.json', 'w') as outfile:
-        json.dump(overviews_dict, outfile)
+            pool.close()
+            pool.join()
+        else:
+            for arg in args_cut_image:
+                cache.cut_image_1arg(arg)
+
+        with open(args.cache + '/cache_mtd.json', 'w') as outfile:
+            json.dump(color_dict, outfile)
+
+        with open(args.cache + '/overviews.json', 'w') as outfile:
+            json.dump(overviews_dict, outfile)
 
     tps1 = time.perf_counter()
     if args.verbose > 0:
@@ -219,7 +222,8 @@ def generate(update):
                                                                  'nbBands': NB_BANDS,
                                                                  'spatialRef': spatial_ref_wkt
                                                              },
-                                                             change)
+                                                             change,
+                                                             args.recalcul > 1)
 
     tps2 = time.perf_counter()
     if args.verbose > 0:
