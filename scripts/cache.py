@@ -177,7 +177,6 @@ def generate(update):
     print(" Découpage")
 
     cpu_dispo = multiprocessing.cpu_count()
-
     if (cpu_dispo > 2):
         pool = multiprocessing.Pool(cpu_dispo - 1)
         pool.map(cache.cut_image_1arg, args_cut_image)
@@ -226,11 +225,18 @@ def generate(update):
     print('   |', end='', flush=True)
 
     if (cpu_dispo > 2):
-        pool = multiprocessing.Pool(cpu_dispo - 1)
-        pool.map(cache.create_ortho_and_graph_1arg, args_create_ortho_and_graph)
+        step = cpu_dispo * 100
+        for thread in range(0, len(args_create_ortho_and_graph), step):
+            argument = args_create_ortho_and_graph[thread:thread + step]
+            pool = multiprocessing.Pool(cpu_dispo - 1)
+            pool.map(cache.create_ortho_and_graph_1arg, argument)
 
-        pool.close()
-        pool.join()
+            pool.close()
+            pool.join()
+
+            with open(args.cache + '/log.txt', 'a') as outfile:
+                print(str(thread) + " to " + str(thread + step - 1) + ": DONE", file=outfile)
+
     else:
         for arg in args_create_ortho_and_graph:
             cache.create_ortho_and_graph_1arg(arg)
