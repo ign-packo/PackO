@@ -229,15 +229,22 @@ def generate(update):
     cache.progress_bar(50, nb_tiles, args_create_ortho_and_graph)
     print('   |', end='', flush=True)
 
-    if (cpu_util > 1):
-        pool = multiprocessing.Pool(cpu_util)
-        pool.map(cache.create_ortho_and_graph_1arg, args_create_ortho_and_graph)
+    batchSize = cpu_util * 100
+    for numBatch in range(0, len(args_create_ortho_and_graph), batchSize):
+        argument = args_create_ortho_and_graph[numBatch:numBatch + batchSize]
+        if (cpu_util > 1):
+            pool = multiprocessing.Pool(cpu_util)
+            pool.map(cache.create_ortho_and_graph_1arg, argument)
 
-        pool.close()
-        pool.join()
-    else:
-        for arg in args_create_ortho_and_graph:
-            cache.create_ortho_and_graph_1arg(arg)
+            pool.close()
+            pool.join()
+        else:
+            for arg in argument:
+                cache.create_ortho_and_graph_1arg(arg)
+
+        with open(args.cache + '/log.txt', 'a') as outfile:
+            print(str(numBatch) + " to " + str(numBatch + batchSize - 1) + ": DONE",
+                  file=outfile)
 
     print("|")
     tps4 = time.perf_counter()
