@@ -185,6 +185,9 @@ def generate(update):
     print(" Découpage")
 
     cpu_dispo = multiprocessing.cpu_count()
+    #########################
+    cpu_dispo = 6
+    #########################
 
     if not args.recalcul:
 
