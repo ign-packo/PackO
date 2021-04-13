@@ -1,8 +1,8 @@
 const path = require('path');
 const debug = require('debug')('rok4');
 
-function getTileRoot(X, Y, Z, pathDepth) {
-  debug('~~~getTileRoot');
+function getPath(X, Y, Z, pathDepth) {
+  debug('~~~getPath');
   debug(X, Y, Z, pathDepth);
   const strX = Math.trunc(X).toString(36).padStart(pathDepth + 1, 0).toUpperCase();
   const strY = Math.trunc(Y).toString(36).padStart(pathDepth + 1, 0).toUpperCase();
@@ -14,8 +14,8 @@ function getTileRoot(X, Y, Z, pathDepth) {
   debug(url);
   return {
     dirPath: url,
-    fileName: strX[pathDepth] + strY[pathDepth],
+    filename: strX[pathDepth] + strY[pathDepth],
   };
 }
 
-exports.getTileRoot = getTileRoot;
+exports.getPath = getPath;

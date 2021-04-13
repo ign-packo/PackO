@@ -273,8 +273,8 @@ router.get('/wmts', [
     } else if (FORMAT === 'image/jpeg') {
       mime = Jimp.MIME_JPEG; // "image/jpeg"
     }
-    const tileRoot = rok4.getTileRoot(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth);
-    let url = path.join(global.dir_cache, layerName, tileRoot.dirPath, tileRoot.fileName);
+    const rok4Path = rok4.getPath(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth);
+    let url = path.join(global.dir_cache, layerName, rok4Path.dirPath, rok4Path.filename);
     if (LAYER === 'opi') {
       if (!Name) {
         url += `_${overviews.list_OPI[0]}`;
@@ -306,8 +306,8 @@ router.get('/wmts', [
   } else if (REQUEST === 'GetFeatureInfo') {
     debug('~~~GetFeatureInfo');
     debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-    const tileRoot = rok4.getTileRoot(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth);
-    const url = path.join(global.dir_cache, 'graph', tileRoot.dirPath, `${tileRoot.fileName}.png`);
+    const rok4Path = rok4.getPath(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth);
+    const url = path.join(global.dir_cache, 'graph', rok4Path.dirPath, `${rok4Path.filename}.png`);
 
     if (!fs.existsSync(url)) {
       const erreur = new Error();
