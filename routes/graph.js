@@ -43,8 +43,8 @@ router.get('/graph', [
   const Ty = Math.floor(Py / overviews.tileSize.height);
   const I = Math.floor(Px - Tx * overviews.tileSize.width);
   const J = Math.floor(Py - Ty * overviews.tileSize.height);
-
-  const url = path.join(global.dir_cache, 'graph', `${rok4.getTileRoot(Tx, Ty, lvlMax, overviews.pathDepth)}.png`);
+  const tileRoot = rok4.getTileRoot(Tx, Ty, lvlMax, overviews.pathDepth);
+  const url = path.join(global.dir_cache, 'graph', tileRoot.dirPath, `${tileRoot.fileName}.png`);
   debug(url);
   // _graph.png`;
   if (!fs.existsSync(url)) {

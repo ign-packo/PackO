@@ -11,6 +11,14 @@ const status = {
   WAITING: 4,
 };
 
+export function fetcher(url) {
+  return itowns.Fetcher.json(url);
+}
+
+export function parser(geojson, option) {
+  return itowns.GeoJsonParser.parse(geojson, option);
+}
+
 class Saisie {
   constructor(view, layer, apiUrl) {
     this.view = view;
@@ -25,17 +33,43 @@ class Saisie {
     this.mousePosition = null;
   }
 
-  refreshView(layers) {
+  async refreshView(layers) {
     // Pour le moment on force le rechargement complet des couches
+
+    let redrawPatches = false;
+
     layers.forEach((id) => {
       this.view.removeLayer(this.layer[id].colorLayer.id);
-      this.layer[id].config.opacity = this.layer[id].colorLayer.opacity;
-      this.layer[id].colorLayer = new itowns.ColorLayer(this.layer[id].name, this.layer[id].config);
-      this.view.addLayer(this.layer[id].colorLayer);
+      if (id !== 'patches') {
+        this.layer[id].config.opacity = this.layer[id].colorLayer.opacity;
+        this.layer[id].colorLayer = new itowns.ColorLayer(
+          this.layer[id].name,
+          this.layer[id].config,
+        );
+        this.view.addLayer(this.layer[id].colorLayer);
+      } else {
+        redrawPatches = true;
+      }
     });
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Ortho', 0);
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Opi', 1);
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Graph', 2);
+
+    if (redrawPatches) {
+      this.layer.patches.config.opacity = this.layer.patches.colorLayer.opacity;
+
+      const json = await fetcher(`${this.apiUrl}/json/activePatchs`);
+      const features = await parser(JSON.stringify(json),
+        this.layer.patches.optionsGeoJsonParser);
+      this.layer.patches.config.source = new itowns.FileSource({ features });
+      this.layer.patches.colorLayer = new itowns.ColorLayer(
+        this.layer.patches.name,
+        this.layer.patches.config,
+      );
+      this.view.addLayer(this.layer.patches.colorLayer);
+      itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Patches', 3);
+    }
+
     this.view.notifyChange();
   }
 
@@ -121,7 +155,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph']);
+        this.refreshView(['ortho', 'graph', 'patches']);
       } else {
         this.message = "polygon: out of OPI's bounds";
       }
@@ -342,7 +376,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph']);
+        this.refreshView(['ortho', 'graph', 'patches']);
       }
       res.text().then((msg) => {
         this.message = msg;
@@ -364,7 +398,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph']);
+        this.refreshView(['ortho', 'graph', 'patches']);
       }
       res.text().then((msg) => {
         this.message = msg;
@@ -374,7 +408,7 @@ class Saisie {
 
   clear() {
     if (this.currentStatus === status.WAITING) return;
-    const ok = window.confirm('Voulez-vous effacer toutes les modifications?');
+    const ok = window.confirm('Voulez-vous effacer toutes les modifications ?');
     if (!ok) return;
     console.log('clear');
     this.currentStatus = status.WAITING;
@@ -387,7 +421,30 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph']);
+        this.refreshView(['ortho', 'graph', 'patches']);
+      }
+      res.text().then((msg) => {
+        this.message = msg;
+      });
+    });
+  }
+
+  save() {
+    if (this.currentStatus === status.WAITING) return;
+    const ok = window.confirm('Voulez-vous sauvegarder toutes les modifications ?');
+    if (!ok) return;
+    console.log('save');
+    this.currentStatus = status.WAITING;
+    document.getElementById('viewerDiv').style.cursor = 'wait';
+    this.message = 'calcul en cours';
+
+    fetch(`${this.apiUrl}/patchs/save?`,
+      {
+        method: 'PUT',
+      }).then((res) => {
+      this.cancelcurrentPolygon();
+      if (res.status === 200) {
+        this.refreshView(['ortho', 'graph', 'patches']);
       }
       res.text().then((msg) => {
         this.message = msg;

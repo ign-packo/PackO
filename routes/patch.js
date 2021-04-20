@@ -139,8 +139,8 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         return;
       }
       /* eslint-disable no-param-reassign */
-      patch.urlGraphOutput = path.join(global.dir_cache, 'graph', `${patch.tileRoot}_${newPatchId}.png`);
-      patch.urlOrthoOutput = path.join(global.dir_cache, 'ortho', `${patch.tileRoot}_${newPatchId}.png`);
+      patch.urlGraphOutput = path.join(global.dir_cache, 'graph', patch.tileRoot.dirPath, `${patch.tileRoot.fileName}_${newPatchId}.png`);
+      patch.urlOrthoOutput = path.join(global.dir_cache, 'ortho', patch.tileRoot.dirPath, `${patch.tileRoot.fileName}_${newPatchId}.png`);
       /* eslint-enable no-param-reassign */
       tilesModified.push(patch.tile);
       promises.push(pool.exec(
@@ -158,7 +158,7 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         if (patch === null) {
           return;
         }
-        const urlHistory = path.join(global.dir_cache, 'opi', `${patch.tileRoot}_history.packo`);
+        const urlHistory = path.join(global.dir_cache, 'opi', patch.tileRoot.dirPath, `${patch.tileRoot.fileName}_history.packo`);
         if (fs.lstatSync(patch.urlGraph).nlink > 1) {
           const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
           debug(patch.urlGraph);
@@ -169,8 +169,8 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         } else {
           const history = `orig;${newPatchId}`;
           fs.writeFileSync(`${urlHistory}`, history);
-          const urlGraphOrig = path.join(global.dir_cache, 'graph', `${patch.tileRoot}_orig.png`);
-          const urlOrthoOrig = path.join(global.dir_cache, 'ortho', `${patch.tileRoot}_orig.png`);
+          const urlGraphOrig = path.join(global.dir_cache, 'graph', patch.tileRoot.dirPath, `${patch.tileRoot.fileName}_orig.png`);
+          const urlOrthoOrig = path.join(global.dir_cache, 'ortho', patch.tileRoot.dirPath, `${patch.tileRoot.fileName}_orig.png`);
           fs.renameSync(patch.urlGraph, urlGraphOrig);
           fs.renameSync(patch.urlOrtho, urlOrthoOrig);
         }
@@ -241,7 +241,7 @@ router.put('/patch/undo', [], (req, res) => {
   tiles.forEach((tile) => {
     const tileRoot = rok4.getTileRoot(tile.x, tile.y, tile.z, overviews.pathDepth);
     // on récupère l'historique de cette tuile
-    const urlHistory = path.join(global.dir_cache, 'opi', `${tileRoot}_history.packo`);
+    const urlHistory = path.join(global.dir_cache, 'opi', tileRoot.dirPath, `${tileRoot.fileName}_history.packo`);
     const history = fs.readFileSync(`${urlHistory}`).toString().split(';');
     // on vérifie que le lastPatchId est bien le dernier sur cette tuile
     if (`${history[history.length - 1]}` !== `${lastPatchId}`) {
@@ -261,10 +261,10 @@ router.put('/patch/undo', [], (req, res) => {
     debug(` tuile ${tile.z}/${tile.y}/${tile.x} : version ${idSelected} selectionnée`);
     // debug(' version selectionnée pour la tuile :', idSelected);
     // modifier les liens symboliques pour pointer sur ce numéro de version
-    const urlGraph = path.join(global.dir_cache, 'graph', `${tileRoot}.png`);
-    const urlOrtho = path.join(global.dir_cache, 'ortho', `${tileRoot}.png`);
-    const urlGraphSelected = path.join(global.dir_cache, 'graph', `${tileRoot}_${idSelected}.png`);
-    const urlOrthoSelected = path.join(global.dir_cache, 'ortho', `${tileRoot}_${idSelected}.png`);
+    const urlGraph = path.join(global.dir_cache, 'graph', tileRoot.dirPath, `${tileRoot.fileName}.png`);
+    const urlOrtho = path.join(global.dir_cache, 'ortho', tileRoot.dirPath, `${tileRoot.fileName}.png`);
+    const urlGraphSelected = path.join(global.dir_cache, 'graph', tileRoot.dirPath, `${tileRoot.fileName}_${idSelected}.png`);
+    const urlOrthoSelected = path.join(global.dir_cache, 'ortho', tileRoot.dirPath, `${tileRoot.fileName}_${idSelected}.png`);
     // on supprime l'ancien lien
     fs.unlinkSync(urlGraph);
     fs.unlinkSync(urlOrtho);
@@ -316,15 +316,15 @@ router.put('/patch/redo', [], (req, res) => {
   tiles.forEach((tile) => {
     const tileRoot = rok4.getTileRoot(tile.x, tile.y, tile.z, overviews.pathDepth);
     // on met a jour l'historique
-    const urlHistory = path.join(global.dir_cache, 'opi', `${tileRoot}_history.packo`);
+    const urlHistory = path.join(global.dir_cache, 'opi', tileRoot.dirPath, `${tileRoot.fileName}_history.packo`);
     const history = `${fs.readFileSync(`${urlHistory}`)};${patchIdRedo}`;
     fs.writeFileSync(`${urlHistory}`, history);
     // on verifie si la tuile a été effectivement modifiée par ce patch
-    const urlGraphSelected = path.join(global.dir_cache, 'graph', `${tileRoot}_${patchIdRedo}.png`);
-    const urlOrthoSelected = path.join(global.dir_cache, 'ortho', `${tileRoot}_${patchIdRedo}.png`);
+    const urlGraphSelected = path.join(global.dir_cache, 'graph', tileRoot.dirPath, `${tileRoot.fileName}_${patchIdRedo}.png`);
+    const urlOrthoSelected = path.join(global.dir_cache, 'ortho', tileRoot.dirPath, `${tileRoot.fileName}_${patchIdRedo}.png`);
     // modifier les liens symboliques pour pointer sur ce numéro de version
-    const urlGraph = path.join(global.dir_cache, 'graph', `${tileRoot}.png`);
-    const urlOrtho = path.join(global.dir_cache, 'ortho', `${tileRoot}.png`);
+    const urlGraph = path.join(global.dir_cache, 'graph', tileRoot.dirPath, `${tileRoot.fileName}.png`);
+    const urlOrtho = path.join(global.dir_cache, 'ortho', tileRoot.dirPath, `${tileRoot.fileName}.png`);
     // on supprime l'ancien lien
     fs.unlinkSync(urlGraph);
     fs.unlinkSync(urlOrtho);
@@ -368,12 +368,14 @@ router.put('/patchs/clear', [], (req, res) => {
     // pour chaque tuile, on retablit la version orig
     tiles.forEach((tile) => {
       const tileRoot = rok4.getTileRoot(tile.x, tile.y, tile.z, overviews.pathDepth);
-      const urlGraphSelected = path.join(global.dir_cache, 'graph', `${tileRoot}_orig.png`);
-      const urlOrthoSelected = path.join(global.dir_cache, 'ortho', `${tileRoot}_orig.png`);
 
-      const graphDir = path.join(global.dir_cache, 'graph', path.dirname(tileRoot));
-      const orthoDir = path.join(global.dir_cache, 'ortho', path.dirname(tileRoot));
+      const graphDir = path.join(global.dir_cache, 'graph', tileRoot.dirPath);
+      const orthoDir = path.join(global.dir_cache, 'ortho', tileRoot.dirPath);
 
+      const urlGraphSelected = path.join(graphDir, `${tileRoot.fileName}_orig.png`);
+      const urlOrthoSelected = path.join(orthoDir, `${tileRoot.fileName}_orig.png`);
+
+      // include('_') suffit car on veut tout supprimer (meme sur les autres tuiles)
       const arrayLinkGraph = fs.readdirSync(graphDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.png')));
       // suppression des images intermediaires
       arrayLinkGraph.forEach((file) => fs.unlinkSync(
@@ -386,12 +388,12 @@ router.put('/patchs/clear', [], (req, res) => {
       ));
 
       // remise à zéro de l'historique de la tuile
-      const urlHistory = path.join(global.dir_cache, 'opi', `${tileRoot}_history.packo`);
+      const urlHistory = path.join(global.dir_cache, 'opi', tileRoot.dirPath, `${tileRoot.fileName}_history.packo`);
       fs.writeFileSync(`${urlHistory}`, 'orig');
 
       // modifier les liens symboliques pour pointer sur ce numéro de version
-      const urlGraph = path.join(global.dir_cache, 'graph', `${tileRoot}.png`);
-      const urlOrtho = path.join(global.dir_cache, 'ortho', `${tileRoot}.png`);
+      const urlGraph = path.join(graphDir, `${tileRoot.fileName}.png`);
+      const urlOrtho = path.join(orthoDir, `${tileRoot.fileName}.png`);
       // on supprime l'ancien lien
       fs.unlinkSync(urlGraph);
       fs.unlinkSync(urlOrtho);
@@ -403,6 +405,29 @@ router.put('/patchs/clear', [], (req, res) => {
     });
   });
 
+  req.app.unactivePatchs.features.forEach((feature) => {
+    // trouver la liste des tuiles concernées par ces patchs
+    const { tiles } = feature.properties;
+    debug(tiles.size, 'tuiles impactées');
+    // pour chaque tuile, on efface les images du redo
+    tiles.forEach((tile) => {
+      const tileRoot = rok4.getTileRoot(tile.x, tile.y, tile.z, overviews.pathDepth);
+
+      const graphDir = path.join(global.dir_cache, 'graph', tileRoot.dirPath);
+      const orthoDir = path.join(global.dir_cache, 'ortho', tileRoot.dirPath);
+
+      const arrayLinkGraph = fs.readdirSync(graphDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.png')));
+      // suppression des images intermediaires
+      arrayLinkGraph.forEach((file) => fs.unlinkSync(
+        path.join(graphDir, file),
+      ));
+      const arrayLinkOrtho = fs.readdirSync(orthoDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.png')));
+      // suppression des images intermediaires
+      arrayLinkOrtho.forEach((file) => fs.unlinkSync(
+        path.join(orthoDir, file),
+      ));
+    });
+  });
   req.app.activePatchs.features = [];
   req.app.unactivePatchs.features = [];
   fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
@@ -411,6 +436,111 @@ router.put('/patchs/clear', [], (req, res) => {
   debug(' features in unactivePatchs:', req.app.unactivePatchs.features.length);
   debug('fin du clear');
   res.status(200).send('clear: all patches deleted');
+});
+
+router.put('/patchs/save', [], (req, res) => {
+  debug('~~~PUT patchs/save');
+  if (!(process.env.NODE_ENV === 'development' || req.query.test === 'true')) {
+    debug('unauthorized');
+    res.status(401).send('unauthorized');
+    return;
+  }
+  // pour chaque patch de req.app.activePatchs.features
+  if (req.app.activePatchs.features.length === 0) {
+    debug('nothing to save');
+    res.status(201).send('nothing to save');
+    return;
+  }
+  const { overviews } = req.app;
+  const { features } = req.app.activePatchs;
+
+  const lastPatchId = req.app.activePatchs.features[req.app.activePatchs.features.length - 1]
+    .properties.patchId;
+  debug('lastPatchId:', lastPatchId);
+
+  features.forEach((feature) => {
+    // trouver la liste des tuiles concernées par ces patchs
+    const { tiles } = feature.properties;
+    debug(tiles.length, 'tuiles impactées');
+    // pour chaque tuile, on écrase la version orig
+    tiles.forEach((tile) => {
+      const tileRoot = rok4.getTileRoot(tile.x, tile.y, tile.z, overviews.pathDepth);
+      // on récupère l'historique de cette tuile
+      const urlHistory = path.join(global.dir_cache, 'opi', tileRoot.dirPath, `${tileRoot.fileName}_history.packo`);
+      const history = fs.readFileSync(`${urlHistory}`).toString().split(';');
+
+      debug('____');
+      debug(tile);
+      debug(history);
+
+      // on récupère la version à restaurer
+      const idSelected = history[history.length - 1];
+      debug('  version sauvegardée pour la tuile :', idSelected);
+
+      // on supprime chaque image sauf l'image active (pour graph et ortho)
+      const graphDir = path.join(global.dir_cache, 'graph', tileRoot.dirPath);
+      const arrayLinkGraph = fs.readdirSync(graphDir).filter((filename) => (filename.includes(`${tileRoot.fileName}_`)));
+      arrayLinkGraph.forEach((file) => {
+        if (file.split('_')[1] !== `${idSelected}.png`) {
+          debug('supp', file);
+          fs.unlinkSync(path.join(graphDir, file));
+        }
+      });
+      const orthoDir = path.join(global.dir_cache, 'ortho', tileRoot.dirPath);
+      const arrayLinkOrtho = fs.readdirSync(orthoDir).filter((filename) => (filename.includes(`${tileRoot.fileName}_`)));
+      arrayLinkOrtho.forEach((file) => {
+        if (file.split('_')[1] !== `${idSelected}.png`) {
+          debug('supp', file);
+          fs.unlinkSync(path.join(orthoDir, file));
+        }
+      });
+      // on renomme l'image active en _orig
+      fs.renameSync(
+        path.join(graphDir, `${tileRoot.fileName}_${idSelected}.png`),
+        path.join(graphDir, `${tileRoot.fileName}_orig.png`),
+      );
+      fs.renameSync(
+        path.join(orthoDir, `${tileRoot.fileName}_${idSelected}.png`),
+        path.join(orthoDir, `${tileRoot.fileName}_orig.png`),
+      );
+      // remise à zéro de l'historique de la tuile
+      fs.writeFileSync(`${urlHistory}`, 'orig');
+    });
+  });
+
+  req.app.unactivePatchs.features.forEach((feature) => {
+    // trouver la liste des tuiles concernées par ces patchs
+    const { tiles } = feature.properties;
+    debug(tiles.size, 'tuiles impactées');
+    // pour chaque tuile, on efface les images du redo
+    tiles.forEach((tile) => {
+      const tileRoot = rok4.getTileRoot(tile.x, tile.y, tile.z, overviews.pathDepth);
+
+      const graphDir = path.join(global.dir_cache, 'graph', tileRoot.dirPath);
+      const orthoDir = path.join(global.dir_cache, 'ortho', tileRoot.dirPath);
+
+      const arrayLinkGraph = fs.readdirSync(graphDir).filter((filename) => (filename.includes(`${tileRoot.fileName}_`) && !filename.endsWith('orig.png')));
+      // suppression des images intermediaires
+      arrayLinkGraph.forEach((file) => fs.unlinkSync(
+        path.join(graphDir, file),
+      ));
+      const arrayLinkOrtho = fs.readdirSync(orthoDir).filter((filename) => (filename.includes(`${tileRoot.fileName}_`) && !filename.endsWith('orig.png')));
+      // suppression des images intermediaires
+      arrayLinkOrtho.forEach((file) => fs.unlinkSync(
+        path.join(orthoDir, file),
+      ));
+    });
+  });
+  const date = new Date(Date.now()).toISOString().replace(/-|T|:/g, '').substr(0, 14);
+  fs.writeFileSync(path.join(global.dir_cache, `save_${date}Z.json`), JSON.stringify(req.app.activePatchs, null, 4));
+  req.app.activePatchs.features = [];
+  req.app.unactivePatchs.features = [];
+  fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
+  fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
+  debug('features in activePatchs:', req.app.activePatchs.features.length);
+  debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
+  debug('fin du save');
+  res.status(200).send('save: all active patches saved');
 });
 
 module.exports = router;
