@@ -67,6 +67,8 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     ycenter - viewerDiv.height * resolInit * 0.5, ycenter + viewerDiv.height * resolInit * 0.5,
   );
 
+  const resolLvMin = overviews.resolution * 2 ** (overviews.level.max - overviews.level.min);
+
   // Instanciate PlanarView*
   const view = new itowns.PlanarView(viewerDiv, extent, {
     camera: {
@@ -78,6 +80,8 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     controls: {
       enableSmartTravel: false,
       zoomFactor: 2,
+      maxResolution: 0.5 * overviews.resolution,
+      minResolution: 2 * resolLvMin,
     },
   });
 
@@ -243,20 +247,22 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   }, false);
   document.getElementById('zoomInBtn').addEventListener('click', () => {
     console.log('Zoom-In');
-    view.camera.camera3D.zoom *= 2;
-    view.camera.camera3D.updateProjectionMatrix();
-    view.notifyChange(view.camera.camera3D);
-    console.log(view.camera.camera3D.zoom);
-    updateScaleWidget();
+    if (view.getPixelsToMeters() > overviews.resolution) {
+      view.camera.camera3D.zoom *= 2;
+      view.camera.camera3D.updateProjectionMatrix();
+      view.notifyChange(view.camera.camera3D);
+      updateScaleWidget();
+    }
     return false;
   });
   document.getElementById('zoomOutBtn').addEventListener('click', () => {
     console.log('Zoom-Out');
-    view.camera.camera3D.zoom *= 0.5;
-    view.camera.camera3D.updateProjectionMatrix();
-    view.notifyChange(view.camera.camera3D);
-    console.log(view.camera.camera3D.zoom);
-    updateScaleWidget();
+    if (view.getPixelsToMeters() < resolLvMin) {
+      view.camera.camera3D.zoom *= 0.5;
+      view.camera.camera3D.updateProjectionMatrix();
+      view.notifyChange(view.camera.camera3D);
+      updateScaleWidget();
+    }
     return false;
   });
 
