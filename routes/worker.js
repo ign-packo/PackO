@@ -64,13 +64,15 @@ function createPatch(tile, geoJson, overviews, dirCache) {
   }
 
   const patch = { tile, mask, color: geoJson.features[0].properties.color };
-  patch.tileRoot = rok4Process.getTileRoot(patch.tile.x,
+  patch.rok4Path = rok4Process.getPath(
+    patch.tile.x,
     patch.tile.y,
     patch.tile.z,
-    overviews.pathDepth);
-  patch.urlGraph = pathProcess.join(dirCache, 'graph', `${patch.tileRoot}.png`);
-  patch.urlOrtho = pathProcess.join(dirCache, 'ortho', `${patch.tileRoot}.png`);
-  patch.urlOpi = pathProcess.join(dirCache, 'opi', `${patch.tileRoot}_${geoJson.features[0].properties.cliche}.png`);
+    overviews.pathDepth,
+  );
+  patch.urlGraph = pathProcess.join(dirCache, 'graph', patch.rok4Path.dirPath, `${patch.rok4Path.filename}.png`);
+  patch.urlOrtho = pathProcess.join(dirCache, 'ortho', patch.rok4Path.dirPath, `${patch.rok4Path.filename}.png`);
+  patch.urlOpi = pathProcess.join(dirCache, 'opi', patch.rok4Path.dirPath, `${patch.rok4Path.filename}_${geoJson.features[0].properties.cliche}.png`);
   const checkGraph = fsProcess.promises.access(patch.urlGraph, fsProcess.constants.F_OK);
   const checkOrtho = fsProcess.promises.access(patch.urlOrtho, fsProcess.constants.F_OK);
   const checkOpi = fsProcess.promises.access(patch.urlOpi, fsProcess.constants.F_OK);
