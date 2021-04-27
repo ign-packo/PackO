@@ -41,8 +41,6 @@ class Saisie {
 
   pickPoint(event) {
     const pointUnderCursor = new THREE.Vector3();
-    // const mousePosition = new THREE.Vector2();
-    // mousePosition.set(e.clientX, e.clientY);
     const coords = this.view.eventToViewCoords(event);
     this.view.getPickingPositionFromDepth(coords, pointUnderCursor);
     return pointUnderCursor;
@@ -77,7 +75,6 @@ class Saisie {
     }
     this.currentStatus = status.RAS;
     this.message = '';
-    document.getElementById('viewerDiv').style.cursor = 'auto';
     const positions = this.currentPolygon.geometry.attributes.position.array;
     const geojson = {
       type: 'FeatureCollection',
@@ -107,7 +104,7 @@ class Saisie {
     const dataStr = JSON.stringify(geojson);
     this.view.scene.remove(this.currentPolygon);
     this.currentStatus = status.WAITING;
-    document.getElementById('viewerDiv').style.cursor = 'wait';
+    this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
     // On post le geojson sur l'API
     fetch(`${this.apiUrl}/patch?`,
@@ -135,7 +132,7 @@ class Saisie {
       this.currentPolygon = null;
       this.view.notifyChange();
     }
-    document.getElementById('viewerDiv').style.cursor = 'auto';
+    this.view.controls.setCursor('default', 'auto');
     this.currentStatus = status.RAS;
     this.message = '';
 
@@ -148,13 +145,14 @@ class Saisie {
     if (this.currentStatus === status.WAITING) return;
     console.log(e.key, ' down');
     if (e.key === 'Escape') {
-      document.getElementById('viewerDiv').style.cursor = 'auto';
+      this.view.controls.setCursor('default', 'auto');
       this.cancelcurrentPolygon();
     } else if (e.key === 'Shift') {
       if (this.currentStatus === status.POLYGON) {
         if (this.currentPolygon && (this.nbVertices > 2)) {
           this.currentStatus = status.ENDING;
           this.message = 'Cliquer pour valider la saisie';
+          this.view.controls.setCursor('default', 'progress');
 
           const vertices = this.currentPolygon.geometry.attributes.position;
           vertices.copyAt(this.nbVertices, vertices, 0);
@@ -203,6 +201,7 @@ class Saisie {
           this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 2);
           this.currentPolygon.geometry.computeBoundingSphere();
           this.view.notifyChange(this.currentPolygon);
+          this.view.controls.setCursor('default', 'crosshair');
         }
         this.currentStatus = status.POLYGON;
       }
@@ -221,7 +220,7 @@ class Saisie {
         console.log('get OPI');
         // on selectionne le cliche
         const pos = this.pickPoint(e);
-        document.getElementById('viewerDiv').style.cursor = 'auto';
+        this.view.controls.setCursor('default', 'auto');
         fetch(`${this.apiUrl}/graph?x=${pos.x}&y=${pos.y}`,
           {
             method: 'GET',
@@ -286,7 +285,7 @@ class Saisie {
     if (this.currentStatus === status.WAITING) return;
     this.cancelcurrentPolygon();
     this.controllers.select.__li.style.backgroundColor = '#FF000055';
-    document.getElementById('viewerDiv').style.cursor = 'crosshair';
+    this.view.controls.setCursor('default', 'crosshair');
     console.log('"select": En attente de sélection');
     this.currentStatus = status.SELECT;
     this.message = 'choisir un cliche';
@@ -305,7 +304,7 @@ class Saisie {
     }
     this.controllers.select.__li.style.backgroundColor = '';
     this.controllers.polygon.__li.style.backgroundColor = '#FF000055';
-    document.getElementById('viewerDiv').style.cursor = 'crosshair';
+    this.view.controls.setCursor('default', 'crosshair');
     console.log("saisie d'un polygon");
     this.message = "saisie d'un polygon";
     const MAX_POINTS = 500;
@@ -334,7 +333,7 @@ class Saisie {
     this.message = '';
     console.log('undo');
     this.currentStatus = status.WAITING;
-    document.getElementById('viewerDiv').style.cursor = 'wait';
+    this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
     fetch(`${this.apiUrl}/patch/undo?`,
       {
@@ -356,7 +355,7 @@ class Saisie {
     this.message = '';
     console.log('redo');
     this.currentStatus = status.WAITING;
-    document.getElementById('viewerDiv').style.cursor = 'wait';
+    this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
     fetch(`${this.apiUrl}/patch/redo?`,
       {
@@ -378,7 +377,7 @@ class Saisie {
     if (!ok) return;
     console.log('clear');
     this.currentStatus = status.WAITING;
-    document.getElementById('viewerDiv').style.cursor = 'wait';
+    this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
 
     fetch(`${this.apiUrl}/patchs/clear?`,
