@@ -4,12 +4,10 @@
     <title>Mosaique</title>
 
     <meta charset="UTF-8">
-    <link rel="stylesheet" type="text/css" href="node_modules/itowns/examples/css/example.css">
     <link rel="stylesheet" type="text/css" href="node_modules/itowns/examples/css/LoadingScreen.css">
+    <link rel="stylesheet" type="text/css" href="css/View.css">
     <link rel="stylesheet" type="text/css" href="css/Buttons.css">
-    <!-- <link rel="stylesheet" type="text/css" href="css/APIVersion.css"> -->
-    
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.6/dat.gui.min.js"></script>
 </head>
 
@@ -29,8 +27,10 @@
     <div id="help-content">
         <p><strong>API : </strong><span id="spAPIVersion_val">???</span>
     </div>
-    <!-- <div id="divAPIVersion"> API <span id="spAPIVersion_val">???</span> </div> -->
-    <!--<span id="divScaleWidget"> Scale </span>-->
+    <div id="divScale">
+        <span id="spanScaleWidget"> Scale </span>
+        <span id="spanZoomWidget"> Zoom </span>
+    </div>
     <!-- <div id="miniDiv"></div> -->
     <script src="node_modules/itowns/examples/js/GUI/GuiTools.js"></script>
     <!-- <script src="node_modules/itowns/dist/itowns.js"></script> -->

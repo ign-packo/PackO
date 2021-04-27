@@ -22,25 +22,6 @@ itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
     document.getElementById('spAPIVersion_val').innerText = 'unknown';
   });
 
-/*         function updateScaleWidget() {
-    var pix = 200;
-    const point1 = new itowns.THREE.Vector3();
-    const point2 = new itowns.THREE.Vector3();
-    const mousePosition = new itowns.THREE.Vector2();
-    mousePosition.set(0, 0);
-    view.getPickingPositionFromDepth(mousePosition, point1);
-    mousePosition.set(pix, 0);
-    view.getPickingPositionFromDepth(mousePosition, point2);
-    var value = point1.distanceTo(point2);
-    var unit = 'm';
-    if (value >= 1000) {
-        value /= 1000;
-        unit = 'km';
-    }
-    divScaleWidget.innerHTML = `${value.toFixed(2)} ${unit}`;
-    divScaleWidget.style.width = `${pix}px`;
-} */
-
 // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
 const viewerDiv = document.getElementById('viewerDiv');
 
@@ -73,11 +54,20 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     yOrigin - (overviews.tileSize.height * resolutionLv0), yOrigin,
   );
 
+  const dezoomInitial = 4;
+  const resolInit = overviews.resolution * 2 ** dezoomInitial;
+  const xcenter = (xmin + xmax) * 0.5;
+  const ycenter = (ymin + ymax) * 0.5;
+
+  viewerDiv.height = viewerDiv.clientHeight;
+  viewerDiv.width = viewerDiv.clientWidth;
   const placement = new itowns.Extent(
     crs,
-    xmin, xmax,
-    ymin, ymax,
+    xcenter - viewerDiv.width * resolInit * 0.5, xcenter + viewerDiv.width * resolInit * 0.5,
+    ycenter - viewerDiv.height * resolInit * 0.5, ycenter + viewerDiv.height * resolInit * 0.5,
   );
+
+  const resolLvMin = overviews.resolution * 2 ** (overviews.level.max - overviews.level.min);
 
   // Instanciate PlanarView*
   const view = new itowns.PlanarView(viewerDiv, extent, {
@@ -88,11 +78,13 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     maxSubdivisionLevel: 30,
     disableSkirt: true,
     controls: {
-      // maxAltitude: 80000000,
-      // enableRotation: false,
       enableSmartTravel: false,
+      zoomFactor: 2,
+      maxResolution: 0.5 * overviews.resolution,
+      minResolution: 2 * resolLvMin,
     },
   });
+
   setupLoadingScreen(viewerDiv, view);
 
   view.isDebugMode = true;
@@ -141,7 +133,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   const saisie = new Saisie(view, layer, apiUrl);
   saisie.cliche = 'unknown';
   saisie.message = '';
-  saisie.coord = `${((xmax + xmin) * 0.5).toFixed(2)},${((ymax + ymin) * 0.5).toFixed(2)}`;
+  saisie.coord = `${xcenter.toFixed(2)},${ycenter.toFixed(2)}`;
   saisie.color = [0, 0, 0];
   saisie.controllers = {};
   saisie.controllers.select = menuGlobe.gui.add(saisie, 'select');
@@ -157,32 +149,23 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   saisie.controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
 
   viewerDiv.focus();
-  view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
-    // eslint-disable-next-line no-console
-    console.info('View initialized');
-    // updateScaleWidget();
-  });
-  viewerDiv.addEventListener('mousewheel', (ev) => {
-    ev.preventDefault();
-    // updateScaleWidget();
-  });
-  viewerDiv.addEventListener('mousemove', (ev) => {
-    ev.preventDefault();
-    saisie.mousemove(ev);
-    return false;
-  }, false);
-  viewerDiv.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    saisie.click(ev);
-    return false;
-  }, false);
-  viewerDiv.addEventListener('mousedown', (ev) => {
-    if (ev.button === 1) {
-      console.log('middle button clicked');
-      view.controls.initiateDrag();
-      view.controls.updateMouseCursorType();
+
+  // fonction permettant d'afficher la valeur de l'echelle et du niveau de dezoom
+  function updateScaleWidget() {
+    let distance = view.getPixelsToMeters(200);
+    let unit = 'm';
+    const dezoom = Math.fround(distance / (200 * overviews.resolution));
+    if (distance >= 1000) {
+      distance /= 1000;
+      unit = 'km';
     }
-  });
+    if (distance <= 1) {
+      distance *= 100;
+      unit = 'cm';
+    }
+    document.getElementById('spanZoomWidget').innerHTML = dezoom <= 1 ? `zoom: ${1 / dezoom}` : `zoom: 1/${dezoom}`;
+    document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
+  }
 
   // check if string is in "x,y" format with x and y positive floats
   // return "null" if incorrect string format, otherwise [x, y] array
@@ -195,6 +178,25 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     }
     return null;
   }
+
+  view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
+    // eslint-disable-next-line no-console
+    console.info('View initialized');
+    updateScaleWidget();
+  });
+  view.addEventListener(itowns.PLANAR_CONTROL_EVENT.MOVED, () => {
+    // eslint-disable-next-line no-console
+    console.info('View moved');
+    if (view.controls.state === -1) {
+      updateScaleWidget();
+    }
+  });
+
+  viewerDiv.addEventListener('mousemove', (ev) => {
+    ev.preventDefault();
+    saisie.mousemove(ev);
+    return false;
+  }, false);
 
   saisie.controllers.coord.onChange(() => {
     if (!checkCoordString(saisie.coord)) {
@@ -237,7 +239,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
       view,
       view.camera.camera3D,
       {
-        coord: new itowns.Coordinates(crs, (xmax + xmin) * 0.5, (ymax + ymin) * 0.5),
+        coord: new itowns.Coordinates(crs, xcenter, ycenter),
         heading: 0,
       },
     );
@@ -245,18 +247,22 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   }, false);
   document.getElementById('zoomInBtn').addEventListener('click', () => {
     console.log('Zoom-In');
-    view.camera.camera3D.zoom *= 2;
-    view.camera.camera3D.updateProjectionMatrix();
-    view.notifyChange(view.camera.camera3D);
-    console.log(view.camera.camera3D.zoom);
+    if (view.getPixelsToMeters() > overviews.resolution) {
+      view.camera.camera3D.zoom *= 2;
+      view.camera.camera3D.updateProjectionMatrix();
+      view.notifyChange(view.camera.camera3D);
+      updateScaleWidget();
+    }
     return false;
   });
   document.getElementById('zoomOutBtn').addEventListener('click', () => {
     console.log('Zoom-Out');
-    view.camera.camera3D.zoom *= 0.5;
-    view.camera.camera3D.updateProjectionMatrix();
-    view.notifyChange(view.camera.camera3D);
-    console.log(view.camera.camera3D.zoom);
+    if (view.getPixelsToMeters() < resolLvMin) {
+      view.camera.camera3D.zoom *= 0.5;
+      view.camera.camera3D.updateProjectionMatrix();
+      view.notifyChange(view.camera.camera3D);
+      updateScaleWidget();
+    }
     return false;
   });
 
