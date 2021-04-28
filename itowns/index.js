@@ -197,6 +197,18 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     saisie.mousemove(ev);
     return false;
   }, false);
+  viewerDiv.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    saisie.click(ev);
+    return false;
+  }, false);
+  viewerDiv.addEventListener('mousedown', (ev) => {
+    if (ev.button === 1) {
+      console.log('middle button clicked');
+      view.controls.initiateDrag();
+      view.controls.updateMouseCursorType();
+    }
+  });
 
   saisie.controllers.coord.onChange(() => {
     if (!checkCoordString(saisie.coord)) {
