@@ -208,7 +208,6 @@ def cut_image_1arg(arg):
     overviews = arg['overviews']
     tilebox = arg['tileBox']
 
-    opi_reech = gdal.Open(arg['opi']['path'])
     opi_gdal = gdal.Open(arg['opi']['path'])
 
     for level in range(overviews['dataSet']['level']['max'],
@@ -221,31 +220,30 @@ def cut_image_1arg(arg):
 
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
 
-        if not level == overviews['level']['max']:
-            # RE-echantilonage de l'image
-            nb_col = tilebox[str(level)]['MaxTileCol'] - tilebox[str(level)]['MinTileCol'] + 1
-            nb_row = tilebox[str(level)]['MaxTileRow'] - tilebox[str(level)]['MinTileRow'] + 1
-            xmin = overviews['crs']['boundingBox']['xmin']\
-                + tilebox[str(level)]['MinTileCol'] * resolution * overviews['tileSize']['width']
-            ymax = overviews['crs']['boundingBox']['ymax']\
-                - tilebox[str(level)]['MinTileRow'] * resolution * overviews['tileSize']['height']
+        # RE-echantilonage de l'image
+        nb_col = tilebox[str(level)]['MaxTileCol'] - tilebox[str(level)]['MinTileCol'] + 1
+        nb_row = tilebox[str(level)]['MaxTileRow'] - tilebox[str(level)]['MinTileRow'] + 1
+        xmin = overviews['crs']['boundingBox']['xmin']\
+            + tilebox[str(level)]['MinTileCol'] * resolution * overviews['tileSize']['width']
+        ymax = overviews['crs']['boundingBox']['ymax']\
+            - tilebox[str(level)]['MinTileRow'] * resolution * overviews['tileSize']['height']
 
-            opi_reech = gdal.GetDriverByName('MEM').Create('',
-                                                           nb_col * overviews['tileSize']['width'],
-                                                           nb_row * overviews['tileSize']['height'],
-                                                           arg['gdalOption']['nbBands'],
-                                                           gdal.GDT_Byte)
-            opi_reech.SetGeoTransform((xmin,
-                                       resolution,
-                                       0,
-                                       ymax,
-                                       0,
-                                       -resolution))
-            opi_reech.SetProjection(arg['gdalOption']['spatialRef'])
-            opi_reech.FlushCache()
+        opi_reech = gdal.GetDriverByName('MEM').Create('',
+                                                       nb_col * overviews['tileSize']['width'],
+                                                       nb_row * overviews['tileSize']['height'],
+                                                       arg['gdalOption']['nbBands'],
+                                                       gdal.GDT_Byte)
+        opi_reech.SetGeoTransform((xmin,
+                                   resolution,
+                                   0,
+                                   ymax,
+                                   0,
+                                   -resolution))
+        opi_reech.SetProjection(arg['gdalOption']['spatialRef'])
+        opi_reech.FlushCache()
 
-            gdal.Warp(opi_reech, opi_gdal, resampleAlg=gdal.GRA_Average)
-            opi_gdal = opi_reech
+        gdal.Warp(opi_reech, opi_gdal, resampleAlg=gdal.GRA_Average)
+        opi_gdal = opi_reech
 
         for tile_x in range(tilebox[str(level)]['MinTileCol'],
                             tilebox[str(level)]['MaxTileCol'] + 1):
