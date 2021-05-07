@@ -5,11 +5,10 @@ from pathlib import Path
 from random import randrange
 import math
 import glob
-import gdal
-import numpy as np
-from numpy import base_repr
-
 import time
+import numpy as np
+from osgeo import gdal
+from numpy import base_repr
 
 PNG_DRIVER = gdal.GetDriverByName('png')
 
