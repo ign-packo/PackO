@@ -5,9 +5,9 @@ import argparse
 import json
 import glob
 import multiprocessing
-import gdal
-
 import time
+from osgeo import gdal
+from osgeo import osr
 
 import cache_def as cache
 
@@ -148,7 +148,7 @@ def generate(update):
     args = read_args(update)
     overviews_dict, color_dict = prep_dict(args, update)
 
-    spatial_ref = gdal.osr.SpatialReference()
+    spatial_ref = osr.SpatialReference()
     spatial_ref.ImportFromEPSG(overviews_dict['crs']['code'])
     spatial_ref_wkt = spatial_ref.ExportToWkt()
 
