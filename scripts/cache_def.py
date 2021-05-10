@@ -110,20 +110,26 @@ def get_tilebox(input_filename, overviews, tile_change):
 
 
 def new_color(image, color_dict):
-    """Choose a new color for an image"""
+    """Choose a new color [R,G,B] for an image"""
+    """
+    the relation color <-> image will be saved in 2 different files :
+    - a dictionnary at 3 level ("R"/"G"/"B") to find the OPI name based on the 3 colors in string
+        (variable color_dict saved in cache_mtd.json)
+    - a dictionnary at 1 level to find the int array of colors [R,G,B] based on the OPI name
+        (color saved in overviews.json under "list_OPI")
+    """
+    color_str = [str(randrange(255)), str(randrange(255)), str(randrange(255))]
+    while (color_str[0] in color_dict)\
+            and (color_str[1] in color_dict[color_str[0]])\
+            and (color_str[2] in color_dict[color_str[0]][color_str[1]]):
+        color_str = [str(randrange(255)), str(randrange(255)), str(randrange(255))]
+    if color_str[0] not in color_dict:
+        color_dict[color_str[0]] = {}
+    if color_str[1] not in color_dict[color_str[0]]:
+        color_dict[color_str[0]][color_str[1]] = {}
 
-    color = [randrange(255), randrange(255), randrange(255)]
-    while (color[0] in color_dict)\
-            and (color[1] in color_dict[color[0]])\
-            and (color[2] in color_dict[color[0]][color[1]]):
-        color = [randrange(255), randrange(255), randrange(255)]
-    if color[0] not in color_dict:
-        color_dict[color[0]] = {}
-    if color[1] not in color_dict[color[0]]:
-        color_dict[color[0]][color[1]] = {}
-
-    color_dict[color[0]][color[1]][color[2]] = image
-    return color
+    color_dict[color_str[0]][color_str[1]][color_str[2]] = image
+    return [int(color_str[0]), int(color_str[1]), int(color_str[2])]
 
 
 def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option, verbose):
