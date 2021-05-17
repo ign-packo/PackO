@@ -22,6 +22,7 @@ conn_string = "PG:host="\
     + " user=" + user + " password=" + password
 
 NB_BANDS = 3
+cpu_dispo = multiprocessing.cpu_count()
 
 
 def read_args(update):
@@ -176,10 +177,14 @@ def generate(update):
 
     print(" Découpage")
 
-    cpu_dispo = multiprocessing.cpu_count()
+    # cpu_dispo = multiprocessing.cpu_count()
+    if (cpu_dispo > len(list_filename)):
+        nb_thread = len(list_filename)
+    else:
+        nb_thread = cpu_dispo - 1
 
-    if (cpu_dispo > 2):
-        pool = multiprocessing.Pool(cpu_dispo - 1)
+    if (nb_thread > 1):
+        pool = multiprocessing.Pool(nb_thread)
         pool.map(cache.cut_image_1arg, args_cut_image)
 
         pool.close()
