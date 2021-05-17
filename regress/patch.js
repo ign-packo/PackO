@@ -130,19 +130,8 @@ describe('Patch', () => {
         });
     });
   });
-  describe('PUT /patchs/clear', () => {
-    it("should return a warning (code 401): 'unauthorized'", (done) => {
-      chai.request(server)
-        .put('/patchs/clear')
-        .end((err, res) => {
-          should.not.exist(err);
-          res.should.have.status(401);
-          res.text.should.equal('unauthorized');
-          done();
-        });
-    });
-    it("should return 'clear: all patches deleted'", (done) => {
-      // Ajout d'un nouveau patch
+  describe('prep for clear', () => {
+    it('Add a new patch', (done) => {
       chai.request(server)
         .post('/patch')
         .send({
@@ -160,36 +149,42 @@ describe('Patch', () => {
           res.should.have.status(200);
           const resJson = JSON.parse(res.text);
           resJson.should.be.a('array');
-
-          // Avant de l'annuler
-          chai.request(server)
-            .put('/patch/undo')
-            .end((err1, res1) => {
-              should.not.exist(err1);
-              res1.should.have.status(200);
-              res1.text.should.equal('undo: patch 2 canceled');
-
-              // Pour faire le clear
-              chai.request(server)
-                .put('/patchs/clear?test=true')
-                .end((err2, res2) => {
-                  should.not.exist(err2);
-                  res2.should.have.status(200);
-                  res2.text.should.equal('clear: all patches deleted');
-                  done();
-                });
-            });
+          done();
         });
-
-      // chai.request(server)
-      //   .put('/patchs/clear?test=true')
-      //   .end((err, res) => {
-      //     should.not.exist(err);
-      //     res.should.have.status(200);
-      //     res.text.should.equal('clear: all patches deleted');
-      //     done();
-      //   });
     }).timeout(3000);
+    it('undoing it', (done) => {
+      chai.request(server)
+        .put('/patch/undo')
+        .end((err1, res1) => {
+          should.not.exist(err1);
+          res1.should.have.status(200);
+          res1.text.should.equal('undo: patch 2 canceled');
+          done();
+        });
+    });
+  });
+
+  describe('PUT /patchs/clear', () => {
+    it("should return a warning (code 401): 'unauthorized'", (done) => {
+      chai.request(server)
+        .put('/patchs/clear')
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(401);
+          res.text.should.equal('unauthorized');
+          done();
+        });
+    });
+    it("should return 'clear: all patches deleted'", (done) => {
+      chai.request(server)
+        .put('/patchs/clear?test=true')
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          res.text.should.equal('clear: all patches deleted');
+          done();
+        });
+    });
     it("should return a warning (code 201): 'nothing to clear'", (done) => {
       chai.request(server)
         .put('/patchs/clear?test=true')
