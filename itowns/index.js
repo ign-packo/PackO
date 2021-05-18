@@ -96,12 +96,50 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
 
   const opacity = {
     ortho: 1,
-    graph: 0.2,
+    graph: 0.001,
+    contour: 0.5,
     opi: 0.5,
   };
 
+  const source = {
+    ortho: 'ortho',
+    graph: 'graph',
+    contour: 'graph',
+    opi: 'opi',
+  };
+
+  itowns.ShaderChunk.customHeaderColorLayer(`
+  float edge(sampler2D textu, float stepx, float stepy, vec2 center){
+      // get samples around pixel
+      float t0 = length(texture2D(textu,center + vec2(-stepx,stepy)) - texture2D(textu,center));
+      float t1 = length(texture2D(textu,center + vec2(0,stepy)) - texture2D(textu,center));
+      float t2 = length(texture2D(textu,center + vec2(+stepx,stepy)) - texture2D(textu,center));
+      float t3 = length(texture2D(textu,center + vec2(-stepx,0)) - texture2D(textu,center));
+      float t4 = length(texture2D(textu,center + vec2(+stepx,0)) - texture2D(textu,center));
+      float t5 = length(texture2D(textu,center + vec2(-stepx,-stepy)) - texture2D(textu,center));
+      float t6 = length(texture2D(textu,center + vec2(0,-stepy)) - texture2D(textu,center));
+      float t7 = length(texture2D(textu,center + vec2(+stepx,-stepy)) - texture2D(textu,center));
+
+      return max(t0, max(t1, max(t2, max(t3, max(t4, max(t5, max(t6, t7)))))));
+  }
+`);
+
+  itowns.ShaderChunk.customBodyColorLayer(`
+  ivec2 textureSize2d = textureSize(tex,0);
+  vec2 resolution = vec2(float(textureSize2d.x), float(textureSize2d.y));
+  float step = layer.effect_parameter;
+  vec2 cuv = pitUV(uv.xy, offsetScale);
+  float value = edge(tex, step/resolution.x, step/resolution.y, cuv);
+  if (value > 0.0){
+    color = vec4(vec3(1.0, 0.0, 0.0), 1.0);
+  }
+  else {
+    color = vec4(vec3(0.0, 0.0, 0.0), 0.0);
+  }
+  `);
+
   const layer = {};
-  ['ortho', 'graph', 'opi'].forEach((id) => {
+  ['ortho', 'graph', 'contour', 'opi'].forEach((id) => {
     layer[id] = {
       name: id.charAt(0).toUpperCase() + id.slice(1),
       config: {
@@ -109,7 +147,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
           url: `${apiUrl}/wmts`,
           crs,
           format: 'image/png',
-          name: id,
+          name: source[id],
           tileMatrixSet: overviews.identifier,
           tileMatrixSetLimits: overviews.dataSet.limits,
         },
@@ -123,11 +161,18 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
 
     layer[id].colorLayer = new itowns.ColorLayer(layer[id].name, layer[id].config);
     if (id === 'opi') layer[id].colorLayer.visible = false;
+    if (id === 'contour') {
+      layer[id].colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
+      layer[id].colorLayer.effect_parameter = 1.0;
+      layer[id].colorLayer.magFilter = 1003;// itowns.THREE.NearestFilter;
+      layer[id].colorLayer.minFilter = 1003;// itowns.THREE.NearestFilter;
+    }
     view.addLayer(layer[id].colorLayer);// .then(menuGlobe.addLayerGUI.bind(menuGlobe));
   });
   itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
   itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
   itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+  itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Contour', 3);
   // Et ouvrir l'onglet "Color Layers" par defaut ?
 
   // Request redraw
