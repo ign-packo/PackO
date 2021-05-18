@@ -32,10 +32,17 @@ class Saisie {
       this.layer[id].config.opacity = this.layer[id].colorLayer.opacity;
       this.layer[id].colorLayer = new itowns.ColorLayer(this.layer[id].name, this.layer[id].config);
       this.view.addLayer(this.layer[id].colorLayer);
+      if (id === 'contour') {
+        this.layer[id].colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
+        this.layer[id].colorLayer.effect_parameter = 1.0;
+        this.layer[id].colorLayer.magFilter = 1003;// itowns.THREE.NearestFilter;
+        this.layer[id].colorLayer.minFilter = 1003;// itowns.THREE.NearestFilter;
+      }
     });
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Ortho', 0);
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Opi', 1);
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Graph', 2);
+    itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Contour', 3);
     this.view.notifyChange();
   }
 
@@ -118,7 +125,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph']);
+        this.refreshView(['ortho', 'graph', 'contour']);
       } else {
         this.message = "polygon: out of OPI's bounds";
       }
@@ -348,7 +355,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph']);
+        this.refreshView(['ortho', 'graph', 'contour']);
       }
       res.text().then((msg) => {
         this.message = msg;
@@ -370,7 +377,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph']);
+        this.refreshView(['ortho', 'graph', 'contour']);
       }
       res.text().then((msg) => {
         this.message = msg;
@@ -393,7 +400,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph']);
+        this.refreshView(['ortho', 'graph', 'contour']);
       }
       res.text().then((msg) => {
         this.message = msg;
