@@ -248,6 +248,13 @@ class Saisie {
               this.controllers.cliche.__li.style.backgroundColor = '';
               this.view.notifyChange(this.layer.opi.colorLayer, true);
             }
+            if (res.status === 202) {
+              console.log('Server Error');
+              console.log(json);
+              const err = new Error('cache corrompu');
+              err.name = 'Server Error';
+              window.alert(`${err}\n${JSON.stringify(json)}`);
+            }
           });
         });
         break;
