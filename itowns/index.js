@@ -47,15 +47,16 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   const ymax = overviews.dataSet.boundingBox.UpperCorner[1];
 
   // Define geographic extent of level 0 : CRS, min/max X, min/max Y
-  const resolutionLv0 = overviews.resolution * 2 ** overviews.level.max;
+  const { resolution } = overviews;
+  const resolutionLv0 = resolution * 2 ** overviews.level.max;
   const extent = new itowns.Extent(
     crs,
     xOrigin, xOrigin + (overviews.tileSize.width * resolutionLv0),
     yOrigin - (overviews.tileSize.height * resolutionLv0), yOrigin,
   );
 
-  const dezoomInitial = 4;
-  const resolInit = overviews.resolution * 2 ** dezoomInitial;
+  const dezoomInitial = 4;// to define
+  const resolInit = resolution * 2 ** dezoomInitial;
   const xcenter = (xmin + xmax) * 0.5;
   const ycenter = (ymin + ymax) * 0.5;
 
@@ -67,9 +68,11 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     ycenter - viewerDiv.height * resolInit * 0.5, ycenter + viewerDiv.height * resolInit * 0.5,
   );
 
-  const resolLvMin = overviews.resolution * 2 ** (overviews.level.max - overviews.level.min);
+  const resolLvMax = resolution * 2 ** (overviews.level.max - overviews.dataSet.level.max);
+  const resolLvMin = resolution * 2 ** (overviews.level.max - overviews.dataSet.level.min);
 
   // Instanciate PlanarView*
+  const zoomFactor = 2;// customizable
   const view = new itowns.PlanarView(viewerDiv, extent, {
     camera: {
       type: itowns.CAMERA_TYPE.ORTHOGRAPHIC,
@@ -79,9 +82,9 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     disableSkirt: true,
     controls: {
       enableSmartTravel: false,
-      zoomFactor: 2,
-      maxResolution: 0.5 * overviews.resolution,
-      minResolution: 2 * resolLvMin,
+      zoomFactor,
+      maxResolution: resolLvMax * zoomFactor ** -1,
+      minResolution: resolLvMin * zoomFactor,
     },
   });
 
@@ -259,7 +262,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   }, false);
   document.getElementById('zoomInBtn').addEventListener('click', () => {
     console.log('Zoom-In');
-    if (view.getPixelsToMeters() > overviews.resolution) {
+    if (view.getPixelsToMeters() > resolLvMax) {
       view.camera.camera3D.zoom *= 2;
       view.camera.camera3D.updateProjectionMatrix();
       view.notifyChange(view.camera.camera3D);
