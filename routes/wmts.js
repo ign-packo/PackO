@@ -2,7 +2,7 @@ const debug = require('debug')('wmts');
 const debugFeatureInfo = require('debug')('wmts:GetFeatureInfo');
 const debugGetTile = require('debug')('wmts:GetTile');
 const router = require('express').Router();
-const { matchedData, query } = require('express-validator');
+const { matchedData, query, param } = require('express-validator');
 const Jimp = require('jimp');
 const path = require('path');
 
@@ -14,7 +14,11 @@ const rok4 = require('../rok4.js');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
-router.get('/wmts', [
+router.get('/:idBranch/wmts', [
+  param('idBranch')
+    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+    .isInt({ min: 0 })
+    .withMessage(createErrMsg.invalidParameter('idBranch')),
   query('SERVICE')
     .exists().withMessage(createErrMsg.missingParameter('SERVICE'))
     .isIn(['WMTS', 'WMS'])
@@ -89,6 +93,22 @@ router.get('/wmts', [
   const { TILECOL } = params;
   const { I } = params;
   const { J } = params;
+  const { idBranch } = params;
+
+  // si la branch n'existe pas, il faut renvoyer une erreur
+  let valid = false;
+  req.app.branches.forEach((branch) => {
+    if (branch.id === Number(idBranch)) {
+      valid = true;
+    }
+  });
+
+  if (!valid) {
+    res.status(400).json({
+      errors: 'branch does not exist',
+    });
+    return;
+  }
 
   // GetCapabilities
   if (REQUEST === 'GetCapabilities') {
@@ -261,9 +281,10 @@ router.get('/wmts', [
 
     res.type('application/xml');
     res.send(xml);
+    return;
 
     // GetTile
-  } else if (REQUEST === 'GetTile') {
+  } if (REQUEST === 'GetTile') {
     debug('~~~GetTile');
     debugGetTile(LAYER, TILEMATRIX, TILEROW, TILECOL);
     let mime = null;
@@ -274,15 +295,23 @@ router.get('/wmts', [
       mime = Jimp.MIME_JPEG; // "image/jpeg"
     }
     const rok4Path = rok4.getPath(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth);
-    let url = path.join(global.dir_cache, layerName, rok4Path.dirPath, rok4Path.filename);
+    let url;
     if (LAYER === 'opi') {
+      url = path.join(global.dir_cache, layerName, rok4Path.dirPath, rok4Path.filename);
       if (!Name) {
         url += `_${overviews.list_OPI[0]}`;
       } else {
         url += `_${Name}`;
       }
+      url += '.png';
+    } else {
+      // on commence par chercher la version de la branche
+      url = path.join(global.dir_cache, layerName, rok4Path.dirPath, `${idBranch}_${rok4Path.filename}.png`);
+      // si jamais la version de la branch n'existe pas, il faut prendre la version d'origine
+      if (!fs.existsSync(url)) {
+        url = path.join(global.dir_cache, layerName, rok4Path.dirPath, `${rok4Path.filename}.png`);
+      }
     }
-    url += '.png';
     debug(url);
     Jimp.read(url, (err, image) => {
       new Promise((success, failure) => {
@@ -319,39 +348,41 @@ router.get('/wmts', [
         }],
       };
       res.status(400).send(erreur.msg);
-    } else {
-      Jimp.read(url, (err, image) => {
-        if (err) {
-          const erreur = new Error();
-          erreur.msg = {
-            status: err,
-            errors: [{
-              localisation: 'Jimp.read()',
-              msg: err,
-            }],
-          };
-          res.status(500).send(erreur.msg);
+      return;
+    }
+    Jimp.read(url, (err, image) => {
+      if (err) {
+        const erreur = new Error();
+        erreur.msg = {
+          status: err,
+          errors: [{
+            localisation: 'Jimp.read()',
+            msg: err,
+          }],
+        };
+        res.status(500).send(erreur.msg);
+        return;
         // res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
-        } else {
-          let resCode = 200;
-          const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
-          debugFeatureInfo('index: ', index);
-          const out = {
-            color: [image.bitmap.data[index],
-              image.bitmap.data[index + 1],
-              image.bitmap.data[index + 2]],
-          };
-          debugFeatureInfo(out);
-          if ((out.color[0] in req.app.cache_mtd)
+      }
+      let resCode = 200;
+      const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
+      debugFeatureInfo('index: ', index);
+      const out = {
+        color: [image.bitmap.data[index],
+          image.bitmap.data[index + 1],
+          image.bitmap.data[index + 2]],
+      };
+      debugFeatureInfo(out);
+      if ((out.color[0] in req.app.cache_mtd)
           && (out.color[1] in req.app.cache_mtd[out.color[0]])
           && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-            out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
-          } else {
-            out.cliche = 'missing';
-            resCode = 201;
-          }
+        out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+      } else {
+        out.cliche = 'missing';
+        resCode = 201;
+      }
 
-          const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
+      const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
                            + '<ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"'
                                                     + ' xmlns:gml="http://www.opengis.net/gml"'
                                                     + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
@@ -367,10 +398,8 @@ router.get('/wmts', [
                                + `</${LAYER}>`
                              + '</featureMember>'
                            + '</ReguralGriddedElevations>';
-          res.status(resCode).send(testResponse);
-        }
-      });
-    }
+      res.status(resCode).send(testResponse);
+    });
   }
 });
 

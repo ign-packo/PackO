@@ -15,7 +15,7 @@ describe('Wmts', () => {
   describe('GET /wmts?SERVICE=OTHER&REQUEST=GetCapabilities', () => {
     it('should return an error', (done) => {
       chai.request(server)
-        .get('/wmts')
+        .get('/0/wmts')
         .query({ REQUEST: 'GetCapabilities', SERVICE: 'OTHER', VERSION: '1.0.0' })
         .end((err, res) => {
           should.not.exist(err);
@@ -30,7 +30,7 @@ describe('Wmts', () => {
   describe('GET /wmts?SERVICE=WMTS&REQUEST=Other', () => {
     it('should return an error', (done) => {
       chai.request(server)
-        .get('/wmts')
+        .get('/0/wmts')
         .query({ REQUEST: 'Other', SERVICE: 'WMTS', VERSION: '1.0.0' })
         .end((err, res) => {
           should.not.exist(err);
@@ -46,7 +46,7 @@ describe('Wmts', () => {
   describe('GetCapabilities', () => {
     it('should return the Capabilities.xml', (done) => {
       chai.request(server)
-        .get('/wmts')
+        .get('/0/wmts')
         .query({ REQUEST: 'GetCapabilities', SERVICE: 'WMTS', VERSION: '1.0.0' })
         .end((err, res) => {
           should.not.exist(err);
@@ -62,7 +62,7 @@ describe('Wmts', () => {
   describe('GetTile', () => {
     it('should return an error', (done) => {
       chai.request(server)
-        .get('/wmts')
+        .get('/0/wmts')
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/autre', LAYER: 'ortho', STYLE: 'normal',
         })
@@ -77,7 +77,7 @@ describe('Wmts', () => {
 
     it('should return a png image', (done) => {
       chai.request(server)
-        .get('/wmts')
+        .get('/0/wmts')
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'ortho', STYLE: 'normal',
         })
@@ -91,7 +91,7 @@ describe('Wmts', () => {
     });
     it('should return a jpeg image', (done) => {
       chai.request(server)
-        .get('/wmts')
+        .get('/0/wmts')
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/jpeg', LAYER: 'ortho', STYLE: 'normal',
         })
@@ -106,7 +106,7 @@ describe('Wmts', () => {
 
     it("should return the OPI '19FD5606Ax00020_16371' as png", (done) => {
       chai.request(server)
-        .get('/wmts')
+        .get('/0/wmts')
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'opi', Name: '19FD5606Ax00020_16371', STYLE: 'normal',
         })
@@ -125,7 +125,7 @@ describe('Wmts', () => {
     describe('query: LAYER=other', () => {
       it('should return an error', (done) => {
         chai.request(server)
-          .get('/wmts')
+          .get('/0/wmts')
           .query({
             SERVICE: 'WMTS',
             REQUEST: 'GetFeatureInfo',
@@ -152,7 +152,7 @@ describe('Wmts', () => {
     describe('query: STYLE=other', () => {
       it('should return an error', (done) => {
         chai.request(server)
-          .get('/wmts')
+          .get('/0/wmts')
           .query({
             SERVICE: 'WMTS',
             REQUEST: 'GetFeatureInfo',
@@ -179,7 +179,7 @@ describe('Wmts', () => {
     describe('query: TILEMATRIXSET=OTHER', () => {
       it('should return an error', (done) => {
         chai.request(server)
-          .get('/wmts')
+          .get('/0/wmts')
           .query({
             SERVICE: 'WMTS',
             REQUEST: 'GetFeatureInfo',
@@ -205,7 +205,7 @@ describe('Wmts', () => {
     });
     it('should return an xml', (done) => {
       chai.request(server)
-        .get('/wmts')
+        .get('/0/wmts')
         .query({
           SERVICE: 'WMTS',
           REQUEST: 'GetFeatureInfo',
@@ -230,7 +230,7 @@ describe('Wmts', () => {
     });
     it("should return a warning: 'missing'", (done) => {
       chai.request(server)
-        .get('/wmts')
+        .get('/0/wmts')
         .query({
           SERVICE: 'WMTS',
           REQUEST: 'GetFeatureInfo',
@@ -254,7 +254,7 @@ describe('Wmts', () => {
     });
     it("should return an error: 'out of bounds'", (done) => {
       chai.request(server)
-        .get('/wmts')
+        .get('/0/wmts')
         .query({
           SERVICE: 'WMTS',
           REQUEST: 'GetFeatureInfo',

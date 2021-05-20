@@ -25,8 +25,16 @@ itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
 // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
 const viewerDiv = document.getElementById('viewerDiv');
 
-itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
-  const overviews = json;
+const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews`);
+const getBranches = itowns.Fetcher.json(`${apiUrl}/branches`);
+Promise.all([getOverviews, getBranches]).then((results) => {
+  const overviews = results[0];
+  const branches = results[1];
+  const currentBranch = branches[0];
+  const branchNames = [];
+  branches.forEach((element) => {
+    branchNames.push(element.name);
+  });
 
   // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
   const crs = `${overviews.crs.type}:${overviews.crs.code}`;
@@ -106,7 +114,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
       name: id.charAt(0).toUpperCase() + id.slice(1),
       config: {
         source: {
-          url: `${apiUrl}/wmts`,
+          url: `${apiUrl}/${currentBranch.id}/wmts`,
           crs,
           format: 'image/png',
           name: id,
@@ -133,9 +141,11 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   // Request redraw
   view.notifyChange();
 
-  const saisie = new Saisie(view, layer, apiUrl);
+  const saisie = new Saisie(view, layer, apiUrl, currentBranch.id);
   saisie.cliche = 'unknown';
   saisie.message = '';
+  saisie.branch = currentBranch.name;
+  saisie.idBranch = currentBranch.id;
   saisie.coord = `${xcenter.toFixed(2)},${ycenter.toFixed(2)}`;
   saisie.color = [0, 0, 0];
   saisie.controllers = {};
@@ -150,6 +160,18 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   if (process.env.NODE_ENV === 'development') saisie.controllers.clear = menuGlobe.gui.add(saisie, 'clear');
   saisie.controllers.message = menuGlobe.gui.add(saisie, 'message');
   saisie.controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
+  saisie.controllers.branch = menuGlobe.gui.add(saisie, 'branch', branchNames);
+  saisie.controllers.branch.onChange((value) => {
+    console.log('new active branch : ', value);
+    branches.forEach((branch) => {
+      if (branch.name === value) {
+        saisie.branch = value;
+        saisie.idBranch = branch.id;
+        saisie.changeBranchId(saisie.idBranch);
+      }
+    });
+  });
+  saisie.controllers.createBranch = menuGlobe.gui.add(saisie, 'createBranch');
 
   viewerDiv.focus();
 

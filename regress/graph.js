@@ -35,7 +35,7 @@ describe('Graph', () => {
     describe('query: x=0 & y=0', () => {
       it("should return a 'out of bounds'", (done) => {
         chai.request(server)
-          .get('/graph')
+          .get('/0/graph')
           .query({ x: 0, y: 0 })
           .end((err, res) => {
             should.not.exist(err);
@@ -53,7 +53,7 @@ describe('Graph', () => {
       // outside of graph but inside the image frame
       it("should return a 'out of graph'", (done) => {
         chai.request(server)
-          .get('/graph')
+          .get('/0/graph')
           .query({ x: 230757, y: 6759654 })
           .end((err, res) => {
             should.not.exist(err);
@@ -69,7 +69,7 @@ describe('Graph', () => {
     describe('query: x=230755 & y=6759650', () => {
       it('should return a Json { "color": Array(3), "cliche": 19FD5606Ax00020_16371 }', (done) => {
         chai.request(server)
-          .get('/graph')
+          .get('/0/graph')
           .query({ x: 230755, y: 6759650 })
           .end((err, res) => {
             should.not.exist(err);
@@ -85,7 +85,7 @@ describe('Graph', () => {
     describe('query: x=230749.8 & y=6759645.1', () => {
       it('should return a Json { "color": Array(3), "cliche": 19FD5606Ax00020_16372 }', (done) => {
         chai.request(server)
-          .get('/graph')
+          .get('/0/graph')
           .query({ x: 230749.8, y: 6759645.1 })
           .end((err, res) => {
             should.not.exist(err);
@@ -102,7 +102,7 @@ describe('Graph', () => {
       // image not yet in the cache
       it("should return a 'out of graph'", (done) => {
         chai.request(server)
-          .get('/graph')
+          .get('/0/graph')
           .query({ x: 230747, y: 6759643 })
           .end((err, res) => {
             should.not.exist(err);
@@ -111,6 +111,20 @@ describe('Graph', () => {
 
             resJson.should.be.jsonSchema(schema);
             resJson.should.have.property('cliche').equal('out of graph');
+
+            done();
+          });
+      });
+    });
+    describe('query: x=230747 & y=6759643', () => {
+      // branch doesn't exist
+      it("should return a 'branch does not exist'", (done) => {
+        chai.request(server)
+          .get('/12/graph')
+          .query({ x: 230747, y: 6759643 })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
 
             done();
           });

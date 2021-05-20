@@ -39,6 +39,7 @@ const graph = require('./routes/graph.js');
 const file = require('./routes/file.js');
 const patch = require('./routes/patch.js');
 const misc = require('./routes/misc.js');
+const branch = require('./routes/branch.js');
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
@@ -55,37 +56,37 @@ try {
   app.overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
 
   try {
-    app.activePatchs = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'activePatchs.json')));
+    app.branches = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'branches.json')));
   } catch (err) {
-    app.activePatchs = {
-      type: 'FeatureCollection',
-      name: 'annotation',
-      crs: {
-        type: 'name',
-        properties: {
-          name: 'urn:ogc:def:crs:EPSG::2154',
+    app.branches = [
+      {
+        id: 0,
+        name: 'master',
+        activePatchs: {
+          type: 'FeatureCollection',
+          name: 'annotation',
+          crs: {
+            type: 'name',
+            properties: {
+              name: 'urn:ogc:def:crs:EPSG::2154',
+            },
+          },
+          features: [],
+        },
+        unactivePatchs: {
+          type: 'FeatureCollection',
+          name: 'annotation',
+          crs: {
+            type: 'name',
+            properties: {
+              name: 'urn:ogc:def:crs:EPSG::2154',
+            },
+          },
+          features: [],
         },
       },
-      features: [],
-    };
-    fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(app.activePatchs, null, 4));
-  }
-
-  try {
-    app.unactivePatchs = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'unactivePatchs.json')));
-  } catch (err) {
-    app.unactivePatchs = {
-      type: 'FeatureCollection',
-      name: 'annotation',
-      crs: {
-        type: 'name',
-        properties: {
-          name: 'urn:ogc:def:crs:EPSG::2154',
-        },
-      },
-      features: [],
-    };
-    fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(app.unactivePatchs, null, 4));
+    ];
+    fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(app.branches, null, 4));
   }
 
   app.use(cors());
@@ -113,6 +114,7 @@ try {
   app.use('/', file);
   app.use('/', patch);
   app.use('/', misc);
+  app.use('/', branch);
 
   app.use('/itowns', express.static('itowns'));
 

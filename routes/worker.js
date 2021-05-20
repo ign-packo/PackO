@@ -8,7 +8,7 @@ const pathProcess = require('path');
 const rok4Process = require('../rok4.js');
 
 // Preparation des masques
-function createPatch(tile, geoJson, overviews, dirCache) {
+function createPatch(tile, geoJson, overviews, dirCache, idBranch) {
   debugProcess('createPatch : ', tile);
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
@@ -63,18 +63,44 @@ function createPatch(tile, geoJson, overviews, dirCache) {
     ctx.fill();
   }
 
-  const patch = { tile, mask, color: geoJson.features[0].properties.color };
+  const patch = {
+    tile, mask, color: geoJson.features[0].properties.color, idBranch,
+  };
   patch.rok4Path = rok4Process.getPath(
     patch.tile.x,
     patch.tile.y,
     patch.tile.z,
     overviews.pathDepth,
   );
-  patch.urlGraph = pathProcess.join(dirCache, 'graph', patch.rok4Path.dirPath, `${patch.rok4Path.filename}.png`);
-  patch.urlOrtho = pathProcess.join(dirCache, 'ortho', patch.rok4Path.dirPath, `${patch.rok4Path.filename}.png`);
+  patch.urlGraph = pathProcess.join(dirCache,
+    'graph',
+    patch.rok4Path.dirPath,
+    `${patch.idBranch}_${patch.rok4Path.filename}.png`);
+  patch.urlOrtho = pathProcess.join(dirCache,
+    'ortho',
+    patch.rok4Path.dirPath,
+    `${patch.idBranch}_${patch.rok4Path.filename}.png`);
+  patch.urlGraphOrig = pathProcess.join(dirCache,
+    'graph',
+    patch.rok4Path.dirPath,
+    `${patch.rok4Path.filename}.png`);
+  patch.urlOrthoOrig = pathProcess.join(dirCache,
+    'ortho',
+    patch.rok4Path.dirPath,
+    `${patch.rok4Path.filename}.png`);
   patch.urlOpi = pathProcess.join(dirCache, 'opi', patch.rok4Path.dirPath, `${patch.rok4Path.filename}_${geoJson.features[0].properties.cliche}.png`);
-  const checkGraph = fsProcess.promises.access(patch.urlGraph, fsProcess.constants.F_OK);
-  const checkOrtho = fsProcess.promises.access(patch.urlOrtho, fsProcess.constants.F_OK);
+  patch.withOrig = false;
+  const checkGraph = fsProcess.promises.access(patch.urlGraph, fsProcess.constants.F_OK).catch(
+    () => {
+      fsProcess.promises.access(patch.urlGraphOrig, fsProcess.constants.F_OK);
+      patch.withOrig = true;
+    },
+  );
+  const checkOrtho = fsProcess.promises.access(patch.urlOrtho, fsProcess.constants.F_OK).catch(
+    () => {
+      fsProcess.promises.access(patch.urlOrthoOrig, fsProcess.constants.F_OK);
+    },
+  );
   const checkOpi = fsProcess.promises.access(patch.urlOpi, fsProcess.constants.F_OK);
   return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => patch);
 }
@@ -83,7 +109,8 @@ function processPatch(patch) {
   // On patch le graph
   const { mask } = patch;
   /* eslint-disable no-param-reassign */
-  const graphPromise = jimp.read(patch.urlGraph).then((graph) => {
+  const urlGraph = patch.withOrig ? patch.urlGraphOrig : patch.urlGraph;
+  const graphPromise = jimp.read(urlGraph).then((graph) => {
     const { bitmap } = graph;
     for (let idx = 0; idx < bitmap.width * bitmap.height * 4; idx += 4) {
       if (mask.data[mask.width * 4 + idx + 3]) {
@@ -99,8 +126,9 @@ function processPatch(patch) {
 
   // On patch l ortho
   /* eslint-disable no-param-reassign */
+  const urlOrtho = patch.withOrig ? patch.urlOrthoOrig : patch.urlOrtho;
   const orthoPromise = Promise.all([
-    jimp.read(patch.urlOrtho),
+    jimp.read(urlOrtho),
     jimp.read(patch.urlOpi),
   ]).then((images) => {
     const ortho = images[0].bitmap;
