@@ -71,15 +71,20 @@ router.get('/graph', [
             image.bitmap.data[index + 2]],
         };
         debug(req.app.cache_mtd);
-        if ((out.color[0] in req.app.cache_mtd)
-            && (out.color[1] in req.app.cache_mtd[out.color[0]])
-            && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-          out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+        if (out.color.some((item) => item !== 0)) {
+          if ((out.color[0] in req.app.cache_mtd)
+          && (out.color[1] in req.app.cache_mtd[out.color[0]])
+          && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
+            out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+            debug(JSON.stringify(out));
+            res.status(200).send(JSON.stringify(out));
+          } else {
+            out.cliche = 'not found';
+            res.status(202).send(out);
+          }
         } else {
-          out.cliche = 'missing';
+          res.status(201).send('{"color":[0,0,0], "cliche":"out of graph"}');
         }
-        debug(JSON.stringify(out));
-        res.status(200).send(JSON.stringify(out));
       }
     });
   }

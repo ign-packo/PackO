@@ -189,7 +189,7 @@ describe('Patch', () => {
       //     res.text.should.equal('clear: all patches deleted');
       //     done();
       //   });
-    });
+    }).timeout(3000);
     it("should return a warning (code 201): 'nothing to clear'", (done) => {
       chai.request(server)
         .put('/patchs/clear?test=true')
