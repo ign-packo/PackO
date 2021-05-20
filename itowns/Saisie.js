@@ -324,6 +324,7 @@ class Saisie {
               branhcId = element.id;
             }
           });
+<<<<<<< HEAD
           this.controllers.branch = this.controllers.branch.options(branchNames)
             .setValue(branchName);
           this.controllers.branch.onChange((value) => {
@@ -336,6 +337,9 @@ class Saisie {
               }
             });
           });
+=======
+          this.controllers.branch.options(branchNames).setValue(branchName);
+>>>>>>> a30c3f7... feat: add a branch management for cache history
           this.changeBranchId(branhcId);
         });
       } else {
