@@ -40,6 +40,7 @@ const file = require('./routes/file.js');
 const patch = require('./routes/patch.js');
 const misc = require('./routes/misc.js');
 const branch = require('./routes/branch.js');
+const pacthMiddlewares = require('./middlewares/patch');
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
@@ -121,7 +122,7 @@ try {
   module.exports = app.listen(PORT, () => {
     debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);
   });
-  module.exports.workerpool = patch.workerpool;
+  module.exports.workerpool = pacthMiddlewares.workerpool;
 } catch (err) {
   debug.log(err);
 }

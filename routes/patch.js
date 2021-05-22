@@ -4,15 +4,16 @@ const fs = require('fs');
 const path = require('path');
 const { body, matchedData, param } = require('express-validator');
 const GJV = require('geojson-validation');
-const workerpool = require('workerpool');
+// const workerpool = require('workerpool');
 const branch = require('../middlewares/branch');
 const validator = require('../paramValidation/validator');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 const rok4 = require('../rok4.js');
+const pacthMiddlewares = require('../middlewares/patch');
 
 // create a worker pool using an external worker script
-const pool = workerpool.pool(`${__dirname}/worker.js`);
+// const pool = workerpool.pool(`${__dirname}/worker.js`);
 
 const geoJsonAPatcher = [
   body('geoJSON')
@@ -55,50 +56,6 @@ function encapBody(req, res, next) {
   next();
 }
 
-function getTiles(features, overviews) {
-  const BBox = {};
-  features.forEach((feature) => {
-    feature.geometry.coordinates[0].forEach((point) => {
-      if ('xmin' in BBox) {
-        BBox.xmin = Math.min(BBox.xmin, point[0]);
-        BBox.xmax = Math.max(BBox.xmax, point[0]);
-        BBox.ymin = Math.min(BBox.ymin, point[1]);
-        BBox.ymax = Math.max(BBox.ymax, point[1]);
-      } else {
-        [BBox.xmin, BBox.ymin] = point;
-        [BBox.xmax, BBox.ymax] = point;
-      }
-    });
-  });
-  debug('~BBox:', 'Done');
-
-  const tiles = [];
-
-  const lvlMin = overviews.dataSet.level.min;
-  const lvlMax = overviews.dataSet.level.max;
-  const xOrigin = overviews.crs.boundingBox.xmin;
-  const yOrigin = overviews.crs.boundingBox.ymax;
-  // const Rmax = overviews.resolution;
-  const tileWidth = overviews.tileSize.width;
-  const tileHeight = overviews.tileSize.height;
-
-  // tileSet.forEach((level) => {
-  // Array.from({ length: lvlMax - lvlMin + 1 }, (_, i) => i + lvlMin).forEach((level) => {
-  for (let level = lvlMin; level <= lvlMax; level += 1) {
-    const resolution = overviews.resolution * 2 ** (overviews.level.max - level);
-    const x0 = Math.floor((BBox.xmin - xOrigin) / (resolution * tileWidth));
-    const x1 = Math.ceil((BBox.xmax - xOrigin) / (resolution * tileWidth));
-    const y0 = Math.floor((yOrigin - BBox.ymax) / (resolution * tileHeight));
-    const y1 = Math.ceil((yOrigin - BBox.ymin) / (resolution * tileHeight));
-    for (let y = y0; y < y1; y += 1) {
-      for (let x = x0; x < x1; x += 1) {
-        tiles.push({ x: `${x}`, y: `${y}`, z: `${level}` });
-      }
-    }
-  }
-  return tiles;
-}
-
 router.get('/:idBranch/patchs', [
   param('idBranch')
     .exists().withMessage(createErrMsg.missingParameter('idBranch'))
@@ -127,7 +84,7 @@ branch.validBranch,
   const { overviews } = req.app;
   const params = matchedData(req);
   const geoJson = params.geoJSON;
-  const { idBranch } = params;
+  // const { idBranch } = params;
 
   let newPatchId = 0;
   for (let i = 0; i < req.selectedBranch.activePatchs.features.length; i += 1) {
@@ -137,98 +94,26 @@ branch.validBranch,
 
   newPatchId += 1;
 
-  const tiles = getTiles(geoJson.features, overviews);
-  const promisesCreatePatch = [];
-  debug('~create patch avec workers');
-  tiles.forEach((tile) => {
-    promisesCreatePatch.push(pool.exec(
-      'createPatch', [tile, geoJson, overviews, global.dir_cache, idBranch],
-    ));
-  });
-  Promise.all(promisesCreatePatch).then((patches) => {
-    const promises = [];
-    const tilesModified = [];
-
-    debug('~process patch avec workers');
-
-    patches.forEach((patch) => {
-      if (patch === null) {
-        return;
-      }
-      /* eslint-disable no-param-reassign */
-      patch.urlGraphOutput = path.join(global.dir_cache,
-        'graph',
-        patch.rok4Path.dirPath,
-        `${idBranch}_${patch.rok4Path.filename}_${newPatchId}.png`);
-      patch.urlOrthoOutput = path.join(global.dir_cache,
-        'ortho', patch.rok4Path.dirPath,
-        `${idBranch}_${patch.rok4Path.filename}_${newPatchId}.png`);
-      /* eslint-enable no-param-reassign */
-      tilesModified.push(patch.tile);
-      promises.push(pool.exec(
-        'processPatch', [patch],
-      ).catch((err) => {
-        debug(err);
-        throw err;
-      }));
-    });
-    debug('', promises.length, 'patchs à appliquer.');
-    Promise.all(promises).then(() => {
-      // Tout c'est bien passé
-      debug("=> tout c'est bien passé on peut mettre à jour les liens symboliques");
-      patches.forEach((patch) => {
-        if (patch === null) {
-          return;
-        }
-        const urlHistory = path.join(global.dir_cache,
-          'opi',
-          patch.rok4Path.dirPath,
-          `${idBranch}_${patch.rok4Path.filename}_history.packo`);
-        if (patch.withOrig) {
-          const history = `orig;${newPatchId}`;
-          fs.writeFileSync(`${urlHistory}`, history);
-        } else {
-          const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
-          debug(patch.urlGraph);
-          debug(' historique :', history);
-          fs.writeFileSync(`${urlHistory}`, history);
-          fs.unlinkSync(patch.urlGraph);
-          fs.unlinkSync(patch.urlOrtho);
-        }
-        fs.linkSync(patch.urlGraphOutput, patch.urlGraph);
-        fs.linkSync(patch.urlOrthoOutput, patch.urlOrtho);
-      });
-      // on note le patch Id
-      geoJson.features.forEach((feature) => {
-        /* eslint-disable no-param-reassign */
-        feature.properties.patchId = newPatchId;
-        feature.properties.tiles = tilesModified;
-        /* eslint-enable no-param-reassign */
-      });
-      // on ajoute ce patch à l'historique
-      debug('=> Patch', newPatchId, 'ajouté');
-      req.selectedBranch.activePatchs.features = req.selectedBranch.activePatchs.features.concat(
-        geoJson.features,
-      );
-      debug('features in activePatchs:', req.selectedBranch.activePatchs.features.length);
-      // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
-      req.selectedBranch.unactivePatchs.features = [];
-      debug('features in unactivePatchs:', req.selectedBranch.unactivePatchs.features.length);
+  const tiles = pacthMiddlewares.getTiles(geoJson.features, overviews);
+  pacthMiddlewares.applyPatch(
+    geoJson.features,
+    overviews,
+    tiles,
+    req.selectedBranch,
+    newPatchId,
+  )
+    .then((tilesModified) => {
+      debug('fin du traitement');
       // on sauve l'historique (au cas ou l'API devrait etre relancee)
       fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
       res.status(200).send(JSON.stringify(tilesModified));
-    }).catch((err) => {
-      debug(err);
-      res.status(400).send(err);
+    }).catch((error) => {
+      debug('on a reçu une erreur : ', error);
+      res.status(404).send(JSON.stringify({
+        status: 'File(s) missing',
+        errors: [error],
+      }));
     });
-  }).catch((error) => {
-    debug('on a reçu une erreur : ', error);
-    pool.terminate(true);
-    res.status(404).send(JSON.stringify({
-      status: 'File(s) missing',
-      errors: [error],
-    }));
-  });
 });
 
 router.put('/:idBranch/patch/undo', [
@@ -475,4 +360,4 @@ branch.validBranch,
 });
 
 module.exports = router;
-module.exports.workerpool = pool;
+// module.exports.workerpool = pool;
