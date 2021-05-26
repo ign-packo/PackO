@@ -25,8 +25,9 @@ itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
 // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
 const viewerDiv = document.getElementById('viewerDiv');
 
-itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
-  const overviews = json;
+async function main() {
+  try {
+    const overviews = await itowns.Fetcher.json(`${apiUrl}/json/overviews`);
 
   // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
   const crs = `${overviews.crs.type}:${overviews.crs.code}`;
@@ -287,8 +288,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   document.getElementById('help').addEventListener('click', () => {
     helpContent.style.visibility = (helpContent.style.visibility === 'hidden') ? 'visible' : 'hidden';
   });
-})
-  .catch((err) => {
+} catch (err) {
     console.log(`${err.name}: ${err.message}`);
     if (`${err.name}: ${err.message}` === 'TypeError: Failed to fetch') {
       const newApiUrl = window.prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl);
@@ -297,4 +297,6 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     } else {
       window.alert(err);
     }
-  });
+  }
+}
+main();
