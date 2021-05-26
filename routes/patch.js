@@ -240,7 +240,6 @@ router.put('/patch/undo', [], (req, res) => {
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
   tiles.forEach((tile) => {
     const rok4Path = rok4.getPath(tile.x, tile.y, tile.z, overviews.pathDepth);
-
     const graphDir = path.join(global.dir_cache, 'graph', rok4Path.dirPath);
     const orthoDir = path.join(global.dir_cache, 'ortho', rok4Path.dirPath);
     const opiDir = path.join(global.dir_cache, 'opi', rok4Path.dirPath);
@@ -320,7 +319,6 @@ router.put('/patch/redo', [], (req, res) => {
   // pour chaque tuile, modifier les liens symboliques
   tiles.forEach((tile) => {
     const rok4Path = rok4.getPath(tile.x, tile.y, tile.z, overviews.pathDepth);
-
     const graphDir = path.join(global.dir_cache, 'graph', rok4Path.dirPath);
     const orthoDir = path.join(global.dir_cache, 'ortho', rok4Path.dirPath);
     const opiDir = path.join(global.dir_cache, 'opi', rok4Path.dirPath);
@@ -378,7 +376,6 @@ router.put('/patchs/clear', [], (req, res) => {
     // pour chaque tuile, on retablit la version orig
     tiles.forEach((tile) => {
       const rok4Path = rok4.getPath(tile.x, tile.y, tile.z, overviews.pathDepth);
-
       const graphDir = path.join(global.dir_cache, 'graph', rok4Path.dirPath);
       const orthoDir = path.join(global.dir_cache, 'ortho', rok4Path.dirPath);
       const opiDir = path.join(global.dir_cache, 'opi', rok4Path.dirPath);
@@ -386,6 +383,7 @@ router.put('/patchs/clear', [], (req, res) => {
       const urlGraphSelected = path.join(graphDir, `${rok4Path.filename}_orig.png`);
       const urlOrthoSelected = path.join(orthoDir, `${rok4Path.filename}_orig.png`);
 
+      // include('_') suffit car on veut tout supprimer (meme sur les autres tuiles)
       const arrayLinkGraph = fs.readdirSync(graphDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.png')));
       // suppression des images intermediaires
       arrayLinkGraph.forEach((file) => fs.unlinkSync(
@@ -415,6 +413,28 @@ router.put('/patchs/clear', [], (req, res) => {
     });
   });
 
+  req.app.unactivePatchs.features.forEach((feature) => {
+    // trouver la liste des tuiles concernées par ces patchs
+    const { tiles } = feature.properties;
+    debug(tiles.size, 'tuiles impactées');
+    // pour chaque tuile, on efface les images du redo
+    tiles.forEach((tile) => {
+      const rok4Path = rok4.getPath(tile.x, tile.y, tile.z, overviews.pathDepth);
+      const graphDir = path.join(global.dir_cache, 'graph', rok4Path.dirPath);
+      const orthoDir = path.join(global.dir_cache, 'ortho', rok4Path.dirPath);
+
+      const arrayLinkGraph = fs.readdirSync(graphDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.png')));
+      // suppression des images intermediaires
+      arrayLinkGraph.forEach((file) => fs.unlinkSync(
+        path.join(graphDir, file),
+      ));
+      const arrayLinkOrtho = fs.readdirSync(orthoDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.png')));
+      // suppression des images intermediaires
+      arrayLinkOrtho.forEach((file) => fs.unlinkSync(
+        path.join(orthoDir, file),
+      ));
+    });
+  });
   req.app.activePatchs.features = [];
   req.app.unactivePatchs.features = [];
   fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
