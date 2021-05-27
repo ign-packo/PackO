@@ -243,8 +243,9 @@ def cut_image_1arg(arg):
         opi_reech.SetProjection(arg['gdalOption']['spatialRef'])
         opi_reech.FlushCache()
 
-        gdal.Warp(opi_reech, opi_gdal, resampleAlg=gdal.GRA_Average)
-        opi_gdal = opi_reech
+        # gdal.Warp(opi_reech, opi_gdal, resampleAlg=gdal.GRA_Average)
+        # opi_gdal = opi_reech
+        gdal.Warp(opi_reech, opi_gdal)
 
         for tile_x in range(tilebox[str(level)]['MinTileCol'],
                             tilebox[str(level)]['MaxTileCol'] + 1):
