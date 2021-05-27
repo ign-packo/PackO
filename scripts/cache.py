@@ -47,8 +47,15 @@ def read_args(update):
                             " (e.g., 15 19)",
                             type=int,
                             nargs='+')
+    if update is True:
+        parser.add_argument("-r", "--reprocessing",
+                            help="reprocessing of OPI already processed"
+                            " (default: 0, existing OPIs are not reprocessed)",
+                            type=int,
+                            default=0)
     parser.add_argument("-g", "--geopackage",
-                        help="base GeoPackage (default: "")",
+                        help="in case the graph base is a GeoPackage"
+                        " and not a postgres base define through env variables",
                         type=str,
                         default="")
     parser.add_argument("-t", "--table",
@@ -83,6 +90,8 @@ def read_args(update):
                 lvl_max = args.level[0]
                 args.level[0] = args.level[1]
                 args.level[1] = lvl_max
+
+        args.reprocessing = 0
     else:
         if not os.path.isdir(args.cache):
             raise SystemExit("Cache '" + args.cache + "' doesn't exist.")
@@ -178,7 +187,8 @@ def generate(update):
                                                                   'nbBands': NB_BANDS,
                                                                   'spatialRef': spatial_ref_wkt
                                                               },
-                                                              args.verbose)
+                                                              args.verbose,
+                                                              args.reprocessing)
 
     print(" Découpage")
 
