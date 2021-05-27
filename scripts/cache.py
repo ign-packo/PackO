@@ -175,106 +175,110 @@ def generate(update):
     tps0 = time.perf_counter()
     print("\n ", len(list_filename), " image(s) à traiter (", cpu_util, " cpu)", sep="")
 
-    # Decoupage des images et calcul de l'emprise globale
-    print("Découpe des images :")
-    print(" Préparation")
+    try:
+        # Decoupage des images et calcul de l'emprise globale
+        print("Découpe des images :")
+        print(" Préparation")
 
-    args_cut_image, opi_duplicate, change = cache.prep_tiling(list_filename,
-                                                              args.cache,
-                                                              overviews_dict,
-                                                              color_dict,
-                                                              {
-                                                                  'nbBands': NB_BANDS,
-                                                                  'spatialRef': spatial_ref_wkt
-                                                              },
-                                                              args.verbose,
-                                                              args.reprocessing)
+        args_cut_image, opi_duplicate, change = cache.prep_tiling(list_filename,
+                                                                  args.cache,
+                                                                  overviews_dict,
+                                                                  color_dict,
+                                                                  {
+                                                                    'nbBands': NB_BANDS,
+                                                                    'spatialRef': spatial_ref_wkt
+                                                                  },
+                                                                  args.verbose,
+                                                                  args.reprocessing)
 
-    print(" Découpage")
+        print(" Découpage")
 
-    if (cpu_util > 1):
-        pool = multiprocessing.Pool(cpu_util)
-        pool.map(cache.cut_image_1arg, args_cut_image)
-
-        pool.close()
-        pool.join()
-    else:
-        for arg in args_cut_image:
-            cache.cut_image_1arg(arg)
-
-    with open(args.cache + '/cache_mtd.json', 'w') as outfile:
-        json.dump(color_dict, outfile)
-
-    with open(args.cache + '/overviews.json', 'w') as outfile:
-        json.dump(overviews_dict, outfile)
-
-    tps1 = time.perf_counter()
-    if args.verbose > 0:
-        print('=> DONE in', tps1 - tps0)
-    else:
-        print('=> DONE')
-
-    print("Génération du graph et de l'ortho (par tuile) :")
-
-    args_create_ortho_and_graph = cache.prep_ortho_and_graph(args.cache,
-                                                             overviews_dict,
-                                                             {
-                                                                 'connString': conn_string,
-                                                                 'table': args.table
-                                                             },
-                                                             {
-                                                                 'nbBands': NB_BANDS,
-                                                                 'spatialRef': spatial_ref_wkt
-                                                             },
-                                                             change)
-
-    tps2 = time.perf_counter()
-    if args.verbose > 0:
-        print("    in ", tps2 - tps1, sep="")
-
-    print(" Calcul")
-    nb_tiles = len(args_create_ortho_and_graph)
-    tps3 = time.perf_counter()
-    print(" ", nb_tiles, "tuiles à traiter")
-    cache.progress_bar(50, nb_tiles, args_create_ortho_and_graph)
-    print('   |', end='', flush=True)
-
-    batchSize = cpu_util * 100
-    for numBatch in range(0, len(args_create_ortho_and_graph), batchSize):
-        argument = args_create_ortho_and_graph[numBatch:numBatch + batchSize]
         if (cpu_util > 1):
             pool = multiprocessing.Pool(cpu_util)
-            pool.map(cache.create_ortho_and_graph_1arg, argument)
+            pool.map(cache.cut_image_1arg, args_cut_image)
 
             pool.close()
             pool.join()
         else:
-            for arg in argument:
-                cache.create_ortho_and_graph_1arg(arg)
+            for arg in args_cut_image:
+                cache.cut_image_1arg(arg)
 
-        with open(args.cache + '/log.txt', 'a') as outfile:
-            print(str(numBatch) + " to " + str(numBatch + batchSize - 1) + ": DONE",
-                  file=outfile)
+        with open(args.cache + '/cache_mtd.json', 'w') as outfile:
+            json.dump(color_dict, outfile)
 
-    print("|")
-    tps4 = time.perf_counter()
-    if args.verbose > 0:
-        print("    in ", tps4 - tps3, sep="")
-    print('=> DONE')
+        with open(args.cache + '/overviews.json', 'w') as outfile:
+            json.dump(overviews_dict, outfile)
 
-    tpsf = time.perf_counter()
+        tps1 = time.perf_counter()
+        if args.verbose > 0:
+            print('=> DONE in', tps1 - tps0)
+        else:
+            print('=> DONE')
 
-    print("\n",
-          len(list_filename) - len(opi_duplicate),
-          "/",
-          len(list_filename), "OPI(s) ajoutée(s)", end='')
+        print("Génération du graph et de l'ortho (par tuile) :")
 
-    if args.verbose > 0:
-        print(" in", tpsf - tps0)
-    else:
-        print()
+        args_create_ortho_and_graph = cache.prep_ortho_and_graph(args.cache,
+                                                                 overviews_dict,
+                                                                 {
+                                                                    'connString': conn_string,
+                                                                    'table': args.table
+                                                                 },
+                                                                 {
+                                                                    'nbBands': NB_BANDS,
+                                                                    'spatialRef': spatial_ref_wkt
+                                                                 },
+                                                                 change)
 
-    if len(opi_duplicate) > 0:
-        print("présence de doublons :")
-        for opi_name in opi_duplicate:
-            print(" -", opi_name)
+        tps2 = time.perf_counter()
+        if args.verbose > 0:
+            print("    in ", tps2 - tps1, sep="")
+
+        print(" Calcul")
+        nb_tiles = len(args_create_ortho_and_graph)
+        tps3 = time.perf_counter()
+        print(" ", nb_tiles, "tuiles à traiter")
+        cache.progress_bar(50, nb_tiles, args_create_ortho_and_graph)
+        print('   |', end='', flush=True)
+
+        batchSize = cpu_util * 100
+        for numBatch in range(0, len(args_create_ortho_and_graph), batchSize):
+            argument = args_create_ortho_and_graph[numBatch:numBatch + batchSize]
+            if (cpu_util > 1):
+                pool = multiprocessing.Pool(cpu_util)
+                pool.map(cache.create_ortho_and_graph_1arg, argument)
+
+                pool.close()
+                pool.join()
+            else:
+                for arg in argument:
+                    cache.create_ortho_and_graph_1arg(arg)
+
+            with open(args.cache + '/log.txt', 'a') as outfile:
+                print(str(numBatch) + " to " + str(numBatch + batchSize - 1) + ": DONE",
+                      file=outfile)
+
+        print("|")
+        tps4 = time.perf_counter()
+        if args.verbose > 0:
+            print("    in ", tps4 - tps3, sep="")
+        print('=> DONE')
+
+        tpsf = time.perf_counter()
+
+        print("\n",
+              len(list_filename) - len(opi_duplicate),
+              "/",
+              len(list_filename), "OPI(s) ajoutée(s)", end='')
+
+        if args.verbose > 0:
+            print(" in", tpsf - tps0)
+        else:
+            print()
+
+        if len(opi_duplicate) > 0:
+            print("présence de doublons :")
+            for opi_name in opi_duplicate:
+                print(" -", opi_name)
+
+    except Exception as err:
+        print(err)
