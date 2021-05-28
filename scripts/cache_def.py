@@ -13,6 +13,7 @@ from numpy import base_repr
 PNG_DRIVER = gdal.GetDriverByName('png')
 JPG_DRIVER = gdal.GetDriverByName('Jpeg')
 
+
 def get_tile_limits(filename):
     """Return tms limits for a georef image at a given level"""
     src_image = gdal.Open(filename)
@@ -179,7 +180,7 @@ def get_slab_path(slab_x, slab_y, path_depth):
     return slib_path
 
 
-def cut_opi_1tile(opi, dst_root, slab, gdal_option):
+def cut_opi_1tile(opi, opi_name, dst_root, slab, gdal_option):
     """Cut and resample a specified image at a given level"""
 
     target_ds = gdal.GetDriverByName('MEM').Create('',
@@ -229,13 +230,15 @@ def cut_image_1arg(arg):
                 slab_param = {
                     'origin': {
                         'x': overviews['crs']['boundingBox']['xmin']
-                             + slab_x * resolution * overviews['tileSize']['width'] * overviews['slabSize']['width'],  # noqa: E131
+                             + slab_x * resolution * overviews['tileSize']['width']  # noqa: E131
+                             * overviews['slabSize']['width'],  # noqa: E131
                         'y': overviews['crs']['boundingBox']['ymax']
-                             - slab_y * resolution * overviews['tileSize']['height'] * overviews['slabSize']['height']  # noqa: E131
+                             - slab_y * resolution * overviews['tileSize']['height']  # noqa: E131
+                             * overviews['slabSize']['height']  # noqa: E131
                     },
-                    'size':  {
-                        'width' : overviews['tileSize']['width'] * overviews['slabSize']['width'],
-                        'height' : overviews['tileSize']['height'] * overviews['slabSize']['height']
+                    'size': {
+                        'width': overviews['tileSize']['width'] * overviews['slabSize']['width'],
+                        'height': overviews['tileSize']['height'] * overviews['slabSize']['height']
                     },
                     'resolution': resolution
                 }
@@ -312,12 +315,18 @@ def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change):
 def create_blank_slab(overviews, slab, nb_bands, spatial_ref):
     """Return a blank georef image for a tile"""
     origin_x = overviews['crs']['boundingBox']['xmin']\
-        + slab['x'] * slab['resolution'] * overviews['tileSize']['width'] * overviews['slabSize']['width']
+        + slab['x'] * slab['resolution']\
+        * overviews['tileSize']['width']\
+        * overviews['slabSize']['width']
     origin_y = overviews['crs']['boundingBox']['ymax']\
-        - slab['y'] * slab['resolution'] * overviews['tileSize']['height'] * overviews['slabSize']['height']
+        - slab['y'] * slab['resolution']\
+        * overviews['tileSize']['height']\
+        * overviews['slabSize']['height']
     target_ds = gdal.GetDriverByName('MEM').Create('',
-                                                   overviews['tileSize']['width'] * overviews['slabSize']['width'],
-                                                   overviews['tileSize']['height'] * overviews['slabSize']['height'],
+                                                   overviews['tileSize']['width']
+                                                   * overviews['slabSize']['width'],
+                                                   overviews['tileSize']['height']
+                                                   * overviews['slabSize']['height'],
                                                    nb_bands,
                                                    gdal.GDT_Byte)
     target_ds.SetGeoTransform((origin_x, slab['resolution'], 0,
