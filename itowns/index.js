@@ -177,8 +177,7 @@ async function main() {
           crs: view.tileLayer.extent.crs,
           buildExtent: true,
           mergeFeatures: true,
-          withNormal: false,
-          withAltitude: false,
+          structure: '2d',
         },
       },
     };
