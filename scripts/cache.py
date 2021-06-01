@@ -1,5 +1,5 @@
 # coding: utf-8
-"""This script create or update a cache with a list of OPI"""
+"""This script creates or updates a cache with a list of OPI"""
 import os
 import argparse
 import json
@@ -200,7 +200,7 @@ def generate(update):
     else:
         print('=> DONE')
 
-    print("Génération du graph et de l'ortho (par tuile) :")
+    print("Génération du graph et de l'ortho (par dalle) :")
 
     args_create_ortho_and_graph = cache.prep_ortho_and_graph(args.cache,
                                                              overviews_dict,
@@ -219,10 +219,10 @@ def generate(update):
         print("    in ", tps2 - tps1, sep="")
 
     print(" Calcul")
-    nb_tiles = len(args_create_ortho_and_graph)
+    nb_slabs = len(args_create_ortho_and_graph)
     tps3 = time.perf_counter()
-    print(" ", nb_tiles, "tuiles à traiter")
-    cache.progress_bar(50, nb_tiles, args_create_ortho_and_graph)
+    print(" ", nb_slabs, "dalles à traiter")
+    cache.progress_bar(50, nb_slabs, args_create_ortho_and_graph)
     print('   |', end='', flush=True)
 
     if (cpu_dispo > 2):
@@ -242,6 +242,11 @@ def generate(update):
     print('=> DONE')
 
     tpsf = time.perf_counter()
+
+    print("Encodage ROK4 :")
+    cache.encodage_rok4(args.cache,
+                        overviews_dict['tileSize']['width'],
+                        overviews_dict['tileSize']['height'])
 
     print("\n",
           len(list_filename) - len(opi_duplicate),

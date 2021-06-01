@@ -9,6 +9,7 @@ import time
 import numpy as np
 from osgeo import gdal
 from numpy import base_repr
+import rok4_io
 
 PNG_DRIVER = gdal.GetDriverByName('png')
 JPG_DRIVER = gdal.GetDriverByName('Jpeg')
@@ -58,6 +59,19 @@ def get_slabbox(input_filename, overviews, slab_change):
                         overviews['dataSet']['level']['max'] + 1):
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - slab_z)
 
+        min_tile_col = math.floor(round((tile_limits['LowerCorner'][0] -
+                                         overviews['crs']['boundingBox']['xmin'])
+                                        / (resolution * overviews['tileSize']['width']), 8))
+        min_tile_row = math.floor(round((overviews['crs']['boundingBox']['ymax'] -
+                                         tile_limits['UpperCorner'][1])
+                                        / (resolution * overviews['tileSize']['height']), 8))
+        max_tile_col = math.ceil(round((tile_limits['UpperCorner'][0] -
+                                        overviews['crs']['boundingBox']['xmin'])
+                                       / (resolution * overviews['tileSize']['width']), 8)) - 1
+        max_tile_row = math.ceil(round((overviews['crs']['boundingBox']['ymax'] -
+                                        tile_limits['LowerCorner'][1])
+                                       / (resolution * overviews['tileSize']['height']), 8)) - 1
+
         min_slab_col = math.floor(round((tile_limits['LowerCorner'][0] -
                                          overviews['crs']['boundingBox']['xmin'])
                                         / (resolution * overviews['tileSize']['width']
@@ -76,6 +90,10 @@ def get_slabbox(input_filename, overviews, slab_change):
                                        * overviews['slabSize']['height']), 8)) - 1
 
         slabbox_z = {
+            'MinTileCol': min_tile_col,
+            'MinTileRow': min_tile_row,
+            'MaxTileCol': max_tile_col,
+            'MaxTileRow': max_tile_row,
             'MinSlabCol': min_slab_col,
             'MinSlabRow': min_slab_row,
             'MaxSlabCol': max_slab_col,
@@ -85,6 +103,10 @@ def get_slabbox(input_filename, overviews, slab_change):
 
         if str(slab_z) not in overviews['dataSet']['limits']:
             overviews['dataSet']['limits'][str(slab_z)] = {
+                'MinTileCol': min_tile_col,
+                'MinTileRow': min_tile_row,
+                'MaxTileCol': max_tile_col,
+                'MaxTileRow': max_tile_row,
                 'MinSlabCol': min_slab_col,
                 'MinSlabRow': min_slab_row,
                 'MaxSlabCol': max_slab_col,
@@ -92,6 +114,18 @@ def get_slabbox(input_filename, overviews, slab_change):
             }
         else:
             overviews['dataSet']['limits'][str(slab_z)]['MinTileCol']\
+                = min(min_tile_col,
+                      overviews['dataSet']['limits'][str(slab_z)]['MinTileCol'])
+            overviews['dataSet']['limits'][str(slab_z)]['MinTileRow']\
+                = min(min_tile_row,
+                      overviews['dataSet']['limits'][str(slab_z)]['MinTileRow'])
+            overviews['dataSet']['limits'][str(slab_z)]['MaxTileCol']\
+                = max(max_tile_col,
+                      overviews['dataSet']['limits'][str(slab_z)]['MaxTileCol'])
+            overviews['dataSet']['limits'][str(slab_z)]['MaxTileRow']\
+                = max(max_tile_row,
+                      overviews['dataSet']['limits'][str(slab_z)]['MaxTileRow'])
+            overviews['dataSet']['limits'][str(slab_z)]['MinSlabCol']\
                 = min(min_slab_col,
                       overviews['dataSet']['limits'][str(slab_z)]['MinSlabCol'])
             overviews['dataSet']['limits'][str(slab_z)]['MinSlabRow']\
@@ -304,16 +338,24 @@ def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change):
                         'gdalOption':  gdal_option
                     })
 
-    print(" Calcul")
-    nb_slabs = len(args_create_ortho_and_graph)
-    print(" ", nb_slabs, "dalles à traiter")
-    progress_bar(50, nb_slabs, args_create_ortho_and_graph)
-
     return args_create_ortho_and_graph
 
 
+def encodage_rok4(dir_cache, tile_width, tile_height):
+    elem = glob.glob(dir_cache + "/**/*.jpg", recursive=True)
+    for img in elem:
+        print(' convert :', img)
+        rok4_io.Jpeg2Rok(img, img.replace('.jpg', '.tif'), tile_width, tile_height)
+        # os.remove(f)
+    elem = glob.glob(dir_cache + "/**/*.png", recursive=True)
+    for img in elem:
+        print(' convert :', img)
+        rok4_io.Png2Rok(img, img.replace('.png', '.tif'), tile_width, tile_height)
+        # os.remove(f)
+
+
 def create_blank_slab(overviews, slab, nb_bands, spatial_ref):
-    """Return a blank georef image for a tile"""
+    """Return a blank georef image for a slab"""
     origin_x = overviews['crs']['boundingBox']['xmin']\
         + slab['x'] * slab['resolution']\
         * overviews['tileSize']['width']\
