@@ -35,6 +35,10 @@ def read_args(update):
                         help="cache directory (default: cache)",
                         type=str,
                         default="cache")
+    parser.add_argument("-k", "--rok4",
+                        help="à la Rok4 (default: 0)",
+                        type=int,
+                        default=0)
     if update is False:
         parser.add_argument("-o", "--overviews",
                             help="params for the mosaic (default: ressources/LAMB93_5cm.json)",
