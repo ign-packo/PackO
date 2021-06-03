@@ -539,7 +539,10 @@ router.put('/patches/save', [], (req, res) => {
     });
   });
   const date = new Date(Date.now()).toISOString().replace(/-|T|:/g, '').substr(0, 14);
-  fs.writeFileSync(path.join(global.dir_cache, `save_${date}Z.json`), JSON.stringify(req.app.activePatches, null, 4));
+  req.app.savedPatches.nbSave += 1;
+  req.app.savedPatches.save.push({ name: `${date}Z.json` });
+  fs.writeFileSync(path.join(global.dir_cache, 'patch', 'save', `${date}Z.json`), JSON.stringify(req.app.activePatches, null, 4));
+  fs.writeFileSync(path.join(global.dir_cache, 'patch', 'savedPatches.json'), JSON.stringify(req.app.savedPatches, null, 4));
   req.app.activePatches.features = [];
   req.app.unactivePatches.features = [];
   fs.writeFileSync(path.join(global.dir_cache, 'patch', 'activePatches.json'), JSON.stringify(req.app.activePatches, null, 4));
