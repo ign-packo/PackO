@@ -98,9 +98,9 @@ function getTiles(features, overviews) {
   return tiles;
 }
 
-router.get('/patchs', [], (req, res) => {
-  debug('~~~GET patchs');
-  res.status(200).send(JSON.stringify(req.app.activePatchs));
+router.get('/patches', [], (req, res) => {
+  debug('~~~GET patches');
+  res.status(200).send(JSON.stringify(req.app.activePatches));
 });
 
 router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
@@ -113,8 +113,8 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   const geoJson = params.geoJSON;
 
   let newPatchId = 0;
-  for (let i = 0; i < req.app.activePatchs.features.length; i += 1) {
-    const id = req.app.activePatchs.features[i].properties.patchId;
+  for (let i = 0; i < req.app.activePatches.features.length; i += 1) {
+    const id = req.app.activePatches.features[i].properties.patchId;
     if (newPatchId < id) newPatchId = id;
   }
 
@@ -186,16 +186,16 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
       });
       // on ajoute ce patch à l'historique
       debug('=> Patch', newPatchId, 'ajouté');
-      req.app.activePatchs.features = req.app.activePatchs.features.concat(geoJson.features);
-      debug('features in activePatchs:', req.app.activePatchs.features.length);
+      req.app.activePatches.features = req.app.activePatches.features.concat(geoJson.features);
+      debug('features in activePatches:', req.app.activePatches.features.length);
 
       // on sauve l'historique (au cas ou l'API devrait etre relancee)
-      fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
+      fs.writeFileSync(path.join(global.dir_cache, 'patch', 'activePatches.json'), JSON.stringify(req.app.activePatches, null, 4));
 
       // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
-      req.app.unactivePatchs.features = [];
-      debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
-      fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
+      req.app.unactivePatches.features = [];
+      debug('features in unactivePatches:', req.app.unactivePatches.features.length);
+      fs.writeFileSync(path.join(global.dir_cache, 'patch', 'unactivePatches.json'), JSON.stringify(req.app.unactivePatches, null, 4));
       res.status(200).send(JSON.stringify(tilesModified));
     }).catch((err) => {
       debug(err);
@@ -213,25 +213,25 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
 
 router.put('/patch/undo', [], (req, res) => {
   debug('~~~PUT patch/undo');
-  if (req.app.activePatchs.features.length === 0) {
+  if (req.app.activePatches.features.length === 0) {
     debug('rien à annuler');
     res.status(201).send('nothing to undo');
     return;
   }
   const { overviews } = req.app;
   // trouver le patch a annuler: c'est-à-dire sortir les éléments
-  // de req.app.activePatchs.features avec patchId == lastPatchId
-  const lastPatchId = req.app.activePatchs.features[req.app.activePatchs.features.length - 1]
+  // de req.app.activePatches.features avec patchId == lastPatchId
+  const lastPatchId = req.app.activePatches.features[req.app.activePatches.features.length - 1]
     .properties.patchId;
   debug(`Patch '${lastPatchId}' à annuler.`);
   const features = [];
-  let index = req.app.activePatchs.features.length - 1;
+  let index = req.app.activePatches.features.length - 1;
   const tiles = new Set();
   while (index >= 0) {
-    const feature = req.app.activePatchs.features[index];
+    const feature = req.app.activePatches.features[index];
     if (feature.properties.patchId === lastPatchId) {
       features.push(feature);
-      req.app.activePatchs.features.splice(index, 1);
+      req.app.activePatches.features.splice(index, 1);
       feature.properties.tiles.forEach((item) => tiles.add(item));
     }
     index -= 1;
@@ -279,39 +279,39 @@ router.put('/patch/undo', [], (req, res) => {
     fs.linkSync(urlOrthoSelected, urlOrtho);
   });
 
-  fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
+  fs.writeFileSync(path.join(global.dir_cache, 'patch', 'activePatches.json'), JSON.stringify(req.app.activePatches, null, 4));
 
-  req.app.unactivePatchs.features = req.app.unactivePatchs.features.concat(features);
-  fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
+  req.app.unactivePatches.features = req.app.unactivePatches.features.concat(features);
+  fs.writeFileSync(path.join(global.dir_cache, 'patch', 'unactivePatches.json'), JSON.stringify(req.app.unactivePatches, null, 4));
 
   debug('fin du undo');
-  debug('features in activePatchs:', req.app.activePatchs.features.length);
-  debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
+  debug('features in activePatches:', req.app.activePatches.features.length);
+  debug('features in unactivePatches:', req.app.unactivePatches.features.length);
   res.status(200).send(`undo: patch ${lastPatchId} canceled`);
 });
 
 router.put('/patch/redo', [], (req, res) => {
   debug('~~~PUT patch/redo');
-  if (req.app.unactivePatchs.features.length === 0) {
+  if (req.app.unactivePatches.features.length === 0) {
     debug('nothing to redo');
     res.status(201).send('nothing to redo');
     return;
   }
   const { overviews } = req.app;
   // trouver le patch a refaire: c'est-à-dire sortir les éléments
-  // de req.app.unactivePatchs.features avec patchId == patchIdRedo
-  const patchIdRedo = req.app.unactivePatchs.features[req.app.unactivePatchs.features.length - 1]
+  // de req.app.unactivePatches.features avec patchId == patchIdRedo
+  const patchIdRedo = req.app.unactivePatches.features[req.app.unactivePatches.features.length - 1]
     .properties.patchId;
   debug('patchIdRedo:', patchIdRedo);
   const features = [];
   const tiles = new Set();
-  let index = req.app.unactivePatchs.features.length - 1;
+  let index = req.app.unactivePatches.features.length - 1;
   while (index >= 0) {
-    const feature = req.app.unactivePatchs.features[index];
+    const feature = req.app.unactivePatches.features[index];
     if (feature.properties.patchId === patchIdRedo) {
       features.push(feature);
       feature.properties.tiles.forEach((item) => tiles.add(item));
-      req.app.unactivePatchs.features.splice(index, 1);
+      req.app.unactivePatches.features.splice(index, 1);
     }
     index -= 1;
   }
@@ -342,32 +342,32 @@ router.put('/patch/redo', [], (req, res) => {
     fs.linkSync(urlGraphSelected, urlGraph);
     fs.linkSync(urlOrthoSelected, urlOrtho);
   });
-  // on remet les features dans req.app.activePatchs.features
-  req.app.activePatchs.features = req.app.activePatchs.features.concat(features);
+  // on remet les features dans req.app.activePatches.features
+  req.app.activePatches.features = req.app.activePatches.features.concat(features);
 
-  fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
-  fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
-  debug('features in activePatchs:', req.app.activePatchs.features.length);
-  debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
+  fs.writeFileSync(path.join(global.dir_cache, 'patch', 'activePatches.json'), JSON.stringify(req.app.activePatches, null, 4));
+  fs.writeFileSync(path.join(global.dir_cache, 'patch', 'unactivePatches.json'), JSON.stringify(req.app.unactivePatches, null, 4));
+  debug('features in activePatches:', req.app.activePatches.features.length);
+  debug('features in unactivePatches:', req.app.unactivePatches.features.length);
   debug('fin du redo');
   res.status(200).send(`redo: patch ${patchIdRedo} reapplied`);
 });
 
-router.put('/patchs/clear', [], (req, res) => {
-  debug('~~~PUT patchs/clear');
+router.put('/patches/clear', [], (req, res) => {
+  debug('~~~PUT patches/clear');
   if (!(process.env.NODE_ENV === 'development' || req.query.test === 'true')) {
     debug('unauthorized');
     res.status(401).send('unauthorized');
     return;
   }
-  // pour chaque patch de req.app.activePatchs.features
-  if (req.app.activePatchs.features.length === 0) {
+  // pour chaque patch de req.app.activePatches.features
+  if (req.app.activePatches.features.length === 0) {
     debug(' nothing to clear');
     res.status(201).send('nothing to clear');
     return;
   }
   const { overviews } = req.app;
-  const { features } = req.app.activePatchs;
+  const { features } = req.app.activePatches;
 
   features.forEach((feature) => {
     // trouver la liste des tuiles concernées par ces patchs
@@ -413,7 +413,7 @@ router.put('/patchs/clear', [], (req, res) => {
     });
   });
 
-  req.app.unactivePatchs.features.forEach((feature) => {
+  req.app.unactivePatches.features.forEach((feature) => {
     // trouver la liste des tuiles concernées par ces patchs
     const { tiles } = feature.properties;
     debug(tiles.size, 'tuiles impactées');
@@ -435,33 +435,33 @@ router.put('/patchs/clear', [], (req, res) => {
       ));
     });
   });
-  req.app.activePatchs.features = [];
-  req.app.unactivePatchs.features = [];
-  fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
-  fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
-  debug(' features in activePatchs:', req.app.activePatchs.features.length);
-  debug(' features in unactivePatchs:', req.app.unactivePatchs.features.length);
+  req.app.activePatches.features = [];
+  req.app.unactivePatches.features = [];
+  fs.writeFileSync(path.join(global.dir_cache, 'patch', 'activePatches.json'), JSON.stringify(req.app.activePatches, null, 4));
+  fs.writeFileSync(path.join(global.dir_cache, 'patch', 'unactivePatches.json'), JSON.stringify(req.app.unactivePatches, null, 4));
+  debug(' features in activePatches:', req.app.activePatches.features.length);
+  debug(' features in unactivePatches:', req.app.unactivePatches.features.length);
   debug('fin du clear');
   res.status(200).send('clear: all patches deleted');
 });
 
-router.put('/patchs/save', [], (req, res) => {
-  debug('~~~PUT patchs/save');
+router.put('/patches/save', [], (req, res) => {
+  debug('~~~PUT patches/save');
   if (!(process.env.NODE_ENV === 'development' || req.query.test === 'true')) {
     debug('unauthorized');
     res.status(401).send('unauthorized');
     return;
   }
-  // pour chaque patch de req.app.activePatchs.features
-  if (req.app.activePatchs.features.length === 0) {
+  // pour chaque patch de req.app.activePatches.features
+  if (req.app.activePatches.features.length === 0) {
     debug('nothing to save');
     res.status(201).send('nothing to save');
     return;
   }
   const { overviews } = req.app;
-  const { features } = req.app.activePatchs;
+  const { features } = req.app.activePatches;
 
-  const lastPatchId = req.app.activePatchs.features[req.app.activePatchs.features.length - 1]
+  const lastPatchId = req.app.activePatches.features[req.app.activePatches.features.length - 1]
     .properties.patchId;
   debug('lastPatchId:', lastPatchId);
 
@@ -516,7 +516,7 @@ router.put('/patchs/save', [], (req, res) => {
     });
   });
 
-  req.app.unactivePatchs.features.forEach((feature) => {
+  req.app.unactivePatches.features.forEach((feature) => {
     // trouver la liste des tuiles concernées par ces patchs
     const { tiles } = feature.properties;
     debug(tiles.size, 'tuiles impactées');
@@ -539,13 +539,13 @@ router.put('/patchs/save', [], (req, res) => {
     });
   });
   const date = new Date(Date.now()).toISOString().replace(/-|T|:/g, '').substr(0, 14);
-  fs.writeFileSync(path.join(global.dir_cache, `save_${date}Z.json`), JSON.stringify(req.app.activePatchs, null, 4));
-  req.app.activePatchs.features = [];
-  req.app.unactivePatchs.features = [];
-  fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
-  fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(req.app.unactivePatchs, null, 4));
-  debug('features in activePatchs:', req.app.activePatchs.features.length);
-  debug('features in unactivePatchs:', req.app.unactivePatchs.features.length);
+  fs.writeFileSync(path.join(global.dir_cache, `save_${date}Z.json`), JSON.stringify(req.app.activePatches, null, 4));
+  req.app.activePatches.features = [];
+  req.app.unactivePatches.features = [];
+  fs.writeFileSync(path.join(global.dir_cache, 'patch', 'activePatches.json'), JSON.stringify(req.app.activePatches, null, 4));
+  fs.writeFileSync(path.join(global.dir_cache, 'patch', 'unactivePatches.json'), JSON.stringify(req.app.unactivePatches, null, 4));
+  debug('features in activePatches:', req.app.activePatches.features.length);
+  debug('features in unactivePatches:', req.app.unactivePatches.features.length);
   debug('fin du save');
   res.status(200).send('save: all active patches saved');
 });

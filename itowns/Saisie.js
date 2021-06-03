@@ -50,7 +50,7 @@ class Saisie {
     if (redrawPatches) {
       this.layer.patches.config.opacity = this.layer.patches.colorLayer.opacity;
 
-      const json = await itowns.Fetcher.json(`${this.apiUrl}/json/activePatchs`);
+      const json = await itowns.Fetcher.json(`${this.apiUrl}/json/activePatches`);
       const features = await itowns.GeoJsonParser.parse(JSON.stringify(json),
         this.layer.patches.optionsGeoJsonParser);
       this.layer.patches.config.source = new itowns.FileSource({ features });
@@ -413,7 +413,7 @@ class Saisie {
     this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
 
-    fetch(`${this.apiUrl}/patchs/clear?`,
+    fetch(`${this.apiUrl}/patches/clear?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -436,7 +436,7 @@ class Saisie {
     document.getElementById('viewerDiv').style.cursor = 'wait';
     this.message = 'calcul en cours';
 
-    fetch(`${this.apiUrl}/patchs/save?`,
+    fetch(`${this.apiUrl}/patches/save?`,
       {
         method: 'PUT',
       }).then((res) => {
