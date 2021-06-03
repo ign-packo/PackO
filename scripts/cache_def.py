@@ -10,6 +10,7 @@ import numpy as np
 from osgeo import gdal
 from numpy import base_repr
 import rok4_io
+# import os
 
 PNG_DRIVER = gdal.GetDriverByName('png')
 JPG_DRIVER = gdal.GetDriverByName('Jpeg')
@@ -236,7 +237,9 @@ def cut_opi_1tile(opi, opi_name, dst_root, slab, gdal_option):
 
     # on exporte en png (todo: gerer le niveau de Q)
     # pylint: disable=unused-variable
-    dst_ds = PNG_DRIVER.CreateCopy(dst_root + "_" + opi_name + ".png", target_ds)
+    # dst_ds = PNG_DRIVER.CreateCopy(dst_root + "_" + opi_name + ".png", target_ds)
+    dst_ds = JPG_DRIVER.CreateCopy(dst_root + "_" + opi_name + ".jpg",
+                                   target_ds, 0, ['QUALITY=90'])
     target_ds = None
     dst_ds = None  # noqa: F841
     # pylint: enable=unused-variable
@@ -344,14 +347,18 @@ def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change):
 def encodage_rok4(dir_cache, tile_width, tile_height):
     elem = glob.glob(dir_cache + "/**/*.jpg", recursive=True)
     for img in elem:
-        print(' convert :', img)
+        print(' Begin convert:', img)
         rok4_io.Jpeg2Rok(img, img.replace('.jpg', '.tif'), tile_width, tile_height)
-        # os.remove(f)
+        print(' ### convert DONE:', img)
+        # os.remove(img)
+        # print(' ### remove DONE:', img)
     elem = glob.glob(dir_cache + "/**/*.png", recursive=True)
     for img in elem:
-        print(' convert :', img)
+        print(' Begin convert :', img)
         rok4_io.Png2Rok(img, img.replace('.png', '.tif'), tile_width, tile_height)
-        # os.remove(f)
+        print(' ### convert DONE:', img)
+        # os.remove(img)
+        # print(' ### remove DONE:', img)
 
 
 def create_blank_slab(overviews, slab, nb_bands, spatial_ref):
@@ -412,11 +419,11 @@ def create_ortho_and_graph_1arg(arg):
 
     slab_path = get_slab_path(arg['slab']['x'], arg['slab']['y'], overviews['pathDepth'])
     slab_opi_root = arg['cache'] + '/opi/' + str(arg['slab']['level']) + '/' + slab_path
-    slab_ortho = arg['cache'] + '/ortho/' + str(arg['slab']['level']) + '/' + slab_path + '.png'
+    slab_ortho = arg['cache'] + '/ortho/' + str(arg['slab']['level']) + '/' + slab_path + '.jpg'
     slab_graph = arg['cache'] + '/graph/' + str(arg['slab']['level']) + '/' + slab_path + '.png'
     is_empty = False
 
-    for filename in glob.glob(slab_opi_root + '*.png'):
+    for filename in glob.glob(slab_opi_root + '*.jpg'):
         stem = Path(filename).stem[3:]
         if stem in overviews["list_OPI"]:
             color = overviews["list_OPI"][stem]
@@ -448,7 +455,7 @@ def create_ortho_and_graph_1arg(arg):
         Path(slab_graph).parent.mkdir(parents=True, exist_ok=True)
         Path(slab_ortho).parent.mkdir(parents=True, exist_ok=True)
         # pylint: disable=unused-variable
-        dst_ortho = PNG_DRIVER.CreateCopy(slab_ortho, img_ortho)
+        dst_ortho = JPG_DRIVER.CreateCopy(slab_ortho, img_ortho, 0, ['QUALITY=90'])
         dst_graph = PNG_DRIVER.CreateCopy(slab_graph, img_graph)
         dst_ortho = None  # noqa: F841
         dst_graph = None  # noqa: F841
