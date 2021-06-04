@@ -119,7 +119,7 @@ async function main() {
       },
     });
 
-    setupLoadingScreen(viewerDiv, view);
+    // setupLoadingScreen(viewerDiv, view);
 
     view.isDebugMode = true;
     const menuGlobe = new GuiTools('menuDiv', view);
@@ -187,6 +187,17 @@ async function main() {
     const features = await itowns.GeoJsonParser.parse(JSON.stringify(json), layer.patches.optionsGeoJsonParser);
 
     layer.patches.config.source = new itowns.FileSource({ features });
+
+    // layer.patches.config.source =  new itowns.FileSource({
+    //   crs: 'EPSG:2154',
+    //   // format: 'geojson',
+    //   url: `${apiUrl}/json/activePatches`,
+    //   fetcher: itowns.Fetcher.json,
+    //   parser: itowns.GeoJsonParser.parse,
+    // });
+
+
+
     layer.patches.config.style = new itowns.Style({
       stroke: {
         color: 'Red',
@@ -198,7 +209,7 @@ async function main() {
       layer.patches.name,
       layer.patches.config,
     );
-    view.addLayer(layer.patches.colorLayer);
+    view.addLayer(layer.patches.colorLayer).then((l) => console.log(l));
     itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Patches', 3);
 
     // Request redraw
