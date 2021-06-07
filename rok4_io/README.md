@@ -6,12 +6,13 @@ Tested only on Linux
 ### Dependencies:
 
 - build-essential 
+- pytyhon3-gdal
 - python3-dev
 - libpng-dev 
 - libjpeg-dev
 - swig
 
-`apt install build-essential python3-dev libpng-dev libjpeg-dev swig`
+`apt install build-essential pytyhon3-gdal python3-dev libpng-dev libjpeg-dev swig`
 
 ### Commands
 
