@@ -18,6 +18,18 @@ function validBranch(req, res, next) {
   return next();
 }
 
+function validUser(req, res, next) {
+  const params = matchedData(req);
+  const { userId } = params;
+  if (req.selectedBranch.user !== userId) {
+    return res.status(400).json({
+      errors: `branch already edited by ${req.selectedBranch.user}`,
+    });
+  }
+  return next();
+}
+
+
 function createCopy(newBranch, selectedBranch, overviews) {
   debug('~~~createCopy~~~');
   const { id } = selectedBranch;
@@ -97,6 +109,7 @@ function applyNextPatch(newBranch, features, overviews) {
 
 module.exports = {
   validBranch,
+  validUser,
   createCopy,
   applyNextPatch,
 };

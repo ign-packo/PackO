@@ -22,9 +22,12 @@ router.get('/branches', (req, res) => {
 router.post('/branch', [
   query('name')
     .exists().withMessage(createErrMsg.missingParameter('name')),
+  query('userId')
+    .exists().withMessage(createErrMsg.missingParameter('userId')),
 ], validateParams, (req, res) => {
   const params = matchedData(req);
   const { name } = params;
+  const { userId } = params;
   debug('~~~post branch~~~');
   // on vérifie si le nom est deja pris
   let largestId = 0;
@@ -42,6 +45,7 @@ router.post('/branch', [
   // on crée la nouvelle branche
   req.app.branches.push({
     id: largestId + 1,
+    user: userId,
     name,
     activePatchs: {
       type: 'FeatureCollection',
@@ -71,14 +75,35 @@ router.post('/branch', [
   res.status(200).send(JSON.stringify({ name, id: largestId + 1 }));
 });
 
+router.put('/branch/:idBranch/edit', [
+  param('idBranch')
+    .exists().withMessage(createErrMsg.missingParameter('id'))
+    .isInt({ min: 0 })
+    .withMessage(createErrMsg.invalidParameter('id')),
+  query('userId')
+    .exists().withMessage(createErrMsg.missingParameter('userId')),
+],
+validateParams,
+branchMiddelwares.validBranch,
+(req, res) => {
+  const { overviews } = req.app;
+  const params = matchedData(req);
+  const { userId } = params;
+  req.selectedBranch.user = userId;
+  res.status(200).send(JSON.stringify({ branchId: req.selectedBranch, userId}));
+});
+
 router.delete('/branch/:idBranch', [
   param('idBranch')
     .exists().withMessage(createErrMsg.missingParameter('id'))
     .isInt({ min: 0 })
     .withMessage(createErrMsg.invalidParameter('id')),
+  query('userId')
+    .exists().withMessage(createErrMsg.missingParameter('userId')),
 ],
 validateParams,
 branchMiddelwares.validBranch,
+branchMiddelwares.validUser,
 (req, res) => {
   const { overviews } = req.app;
   const params = matchedData(req);
@@ -155,12 +180,15 @@ router.post('/rebase', [
     .exists().withMessage(createErrMsg.missingParameter('secondId'))
     .isInt({ min: 0 })
     .withMessage(createErrMsg.invalidParameter('secondId')),
+  query('userId')
+    .exists().withMessage(createErrMsg.missingParameter('userId')),
 ],
 validateParams,
 (req, res) => {
   const { overviews } = req.app;
   const params = matchedData(req);
   const { name } = params;
+  const { userId } = params;
   const firstId = Number(params.firstId);
   const secondId = Number(params.secondId);
   debug('~~~post rebase~~~');
@@ -182,6 +210,18 @@ validateParams,
     return;
   }
   const [secondBranch] = secondBranches;
+  if (firstBranch.user !== userId) {
+    res.status(400).json({
+      errors: `branch ${firstBranch.name} already edited by ${firstBranch.user}`,
+    });
+    return;
+  }
+  if (secondBranch.user !== userId) {
+    res.status(400).json({
+      errors: `branch ${secondBranch.name} already edited by ${secondBranch.user}`,
+    });
+    return;
+  }
   // on vérifie si le nom est deja pris
   let largestId = 0;
   let ok = true;
@@ -199,6 +239,7 @@ validateParams,
   const newBranch = {
     id: largestId + 1,
     name,
+    user: userId,
     activePatchs: {
       type: 'FeatureCollection',
       name: 'annotation',
