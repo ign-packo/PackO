@@ -176,27 +176,27 @@ async function main() {
         out: {
           crs: view.tileLayer.extent.crs,
           buildExtent: true,
-          mergeFeatures: true,
+          mergeFeatures: false,
           structure: '2d',
         },
       },
     };
 
-    const json = await itowns.Fetcher.json(`${apiUrl}/json/activePatches`);
+    // const json = await itowns.Fetcher.json(`${apiUrl}/json/activePatches`);
+    // const features = await itowns.GeoJsonParser.parse(JSON.stringify(json),
+    //   layer.patches.optionsGeoJsonParser);
+    // layer.patches.config.source = new itowns.FileSource({ features });
 
-    const features = await itowns.GeoJsonParser.parse(JSON.stringify(json), layer.patches.optionsGeoJsonParser);
+    layer.patches.config.source = new itowns.FileSource({
+      crs: 'EPSG:2154',
+      // format: 'geojson',
+      url: `${apiUrl}/json/activePatches`,
+      fetcher: itowns.Fetcher.json,
+      parser: itowns.GeoJsonParser.parse,
 
-    layer.patches.config.source = new itowns.FileSource({ features });
+    });
 
-    // layer.patches.config.source =  new itowns.FileSource({
-    //   crs: 'EPSG:2154',
-    //   // format: 'geojson',
-    //   url: `${apiUrl}/json/activePatches`,
-    //   fetcher: itowns.Fetcher.json,
-    //   parser: itowns.GeoJsonParser.parse,
-    // });
-
-
+    view.tileLayer.showOutline = true;
 
     layer.patches.config.style = new itowns.Style({
       stroke: {
@@ -209,11 +209,14 @@ async function main() {
       layer.patches.name,
       layer.patches.config,
     );
-    view.addLayer(layer.patches.colorLayer).then((l) => console.log(l));
+    view.addLayer(layer.patches.colorLayer);// .then((l) => console.log(l));
     itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Patches', 3);
 
     // Request redraw
     view.notifyChange();
+
+    console.log(layer.patches.config.source);
+    console.log(layer.patches.config.source.extent);
 
     const saisie = new Saisie(view, layer, apiUrl);
     saisie.cliche = 'unknown';
@@ -302,7 +305,7 @@ async function main() {
     });
 
     document.getElementById('recenterBtn').addEventListener('click', () => {
-      // itowns.CameraUtils.animateCameraToLookAtTarget( ... ) <= bug itowns
+      // itowns.CameraUtils.animateCameraToLookAtTarget(// ... ) <= bug itowns
       itowns.CameraUtils.transformCameraToLookAtTarget(
         view,
         view.camera.camera3D,
