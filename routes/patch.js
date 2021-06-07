@@ -2,7 +2,9 @@ const debug = require('debug')('patch');
 const router = require('express').Router();
 const fs = require('fs');
 const path = require('path');
-const { body, matchedData, param } = require('express-validator');
+const {
+  body, matchedData, param, query,
+} = require('express-validator');
 const GJV = require('geojson-validation');
 // const workerpool = require('workerpool');
 const branch = require('../middlewares/branch');
@@ -56,35 +58,38 @@ function encapBody(req, res, next) {
   next();
 }
 
-router.get('/:idBranch/patchs', [
-  param('idBranch')
-    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+router.get('/:branchId/patchs', [
+  param('branchId')
+    .exists().withMessage(createErrMsg.missingParameter('branchId'))
     .isInt({ min: 0 })
-    .withMessage(createErrMsg.invalidParameter('idBranch')),
+    .withMessage(createErrMsg.invalidParameter('branchId')),
 ],
 validateParams,
-branch.validBranch,
+branch.valbranchId,
 (req, res) => {
   debug('~~~GET patchs');
   res.status(200).send(JSON.stringify(req.selectedBranch.activePatchs));
 });
 
-router.post('/:idBranch/patch', encapBody.bind({ keyName: 'geoJSON' }), [
-  param('idBranch')
-    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+router.post('/:branchId/patch', encapBody.bind({ keyName: 'geoJSON' }), [
+  param('branchId')
+    .exists().withMessage(createErrMsg.missingParameter('branchId'))
     .isInt({ min: 0 })
-    .withMessage(createErrMsg.invalidParameter('idBranch')),
+    .withMessage(createErrMsg.invalidParameter('branchId')),
+  query('userId')
+    .exists().withMessage(createErrMsg.missingParameter('userId')),
   ...geoJsonAPatcher,
 ],
 validateParams,
-branch.validBranch,
+branch.valbranchId,
+branch.validUser,
 (req, res) => {
   debug('~~~POST patch');
 
   const { overviews } = req.app;
   const params = matchedData(req);
   const geoJson = params.geoJSON;
-  // const { idBranch } = params;
+  // const { branchId } = params;
 
   let newPatchId = 0;
   for (let i = 0; i < req.selectedBranch.activePatchs.features.length; i += 1) {
@@ -116,18 +121,21 @@ branch.validBranch,
     });
 });
 
-router.put('/:idBranch/patch/undo', [
-  param('idBranch')
-    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+router.put('/:branchId/patch/undo', [
+  param('branchId')
+    .exists().withMessage(createErrMsg.missingParameter('branchId'))
     .isInt({ min: 0 })
-    .withMessage(createErrMsg.invalidParameter('idBranch')),
+    .withMessage(createErrMsg.invalidParameter('branchId')),
+  query('userId')
+    .exists().withMessage(createErrMsg.missingParameter('userId')),
 ],
 validateParams,
-branch.validBranch,
+branch.valbranchId,
+branch.validUser,
 (req, res) => {
   debug('~~~PUT patch/undo');
   const params = matchedData(req);
-  const { idBranch } = params;
+  const { branchId } = params;
   const { overviews } = req.app;
 
   if (req.selectedBranch.activePatchs.features.length === 0) {
@@ -163,7 +171,7 @@ branch.validBranch,
     const opiDir = path.join(global.dir_cache, 'opi', rok4Path.dirPath);
 
     // on récupère l'historique de cette tuile
-    const urlHistory = path.join(opiDir, `${idBranch}_${rok4Path.filename}_history.packo`);
+    const urlHistory = path.join(opiDir, `${branchId}_${rok4Path.filename}_history.packo`);
     const history = fs.readFileSync(`${urlHistory}`).toString().split(';');
     // on vérifie que le lastPatchId est bien le dernier sur cette tuile
     if (`${history[history.length - 1]}` !== `${lastPatchId}`) {
@@ -183,14 +191,14 @@ branch.validBranch,
     debug(` tuile ${tile.z}/${tile.y}/${tile.x} : version ${idSelected} selectionnée`);
     // debug(' version selectionnée pour la tuile :', idSelected);
     // modifier les liens symboliques pour pointer sur ce numéro de version
-    const urlGraph = path.join(graphDir, `${idBranch}_${rok4Path.filename}.png`);
-    const urlOrtho = path.join(orthoDir, `${idBranch}_${rok4Path.filename}.png`);
+    const urlGraph = path.join(graphDir, `${branchId}_${rok4Path.filename}.png`);
+    const urlOrtho = path.join(orthoDir, `${branchId}_${rok4Path.filename}.png`);
     const urlGraphSelected = (idSelected === 'orig')
       ? path.join(graphDir, `${rok4Path.filename}.png`)
-      : path.join(graphDir, `${idBranch}_${rok4Path.filename}_${idSelected}.png`);
+      : path.join(graphDir, `${branchId}_${rok4Path.filename}_${idSelected}.png`);
     const urlOrthoSelected = (idSelected === 'orig')
       ? path.join(orthoDir, `${rok4Path.filename}.png`)
-      : path.join(orthoDir, `${idBranch}_${rok4Path.filename}_${idSelected}.png`);
+      : path.join(orthoDir, `${branchId}_${rok4Path.filename}_${idSelected}.png`);
     // on supprime l'ancien lien
     fs.unlinkSync(urlGraph);
     fs.unlinkSync(urlOrtho);
@@ -210,18 +218,21 @@ branch.validBranch,
   res.status(200).send(`undo: patch ${lastPatchId} canceled`);
 });
 
-router.put('/:idBranch/patch/redo', [
-  param('idBranch')
-    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+router.put('/:branchId/patch/redo', [
+  param('branchId')
+    .exists().withMessage(createErrMsg.missingParameter('branchId'))
     .isInt({ min: 0 })
-    .withMessage(createErrMsg.invalidParameter('idBranch')),
+    .withMessage(createErrMsg.invalidParameter('branchId')),
+  query('userId')
+    .exists().withMessage(createErrMsg.missingParameter('userId')),
 ],
 validateParams,
-branch.validBranch,
+branch.valbranchId,
+branch.validUser,
 (req, res) => {
   debug('~~~PUT patch/redo');
   const params = matchedData(req);
-  const { idBranch } = params;
+  const { branchId } = params;
   const { overviews } = req.app;
 
   if (req.selectedBranch.unactivePatchs.features.length === 0) {
@@ -258,15 +269,15 @@ branch.validBranch,
     const opiDir = path.join(global.dir_cache, 'opi', rok4Path.dirPath);
 
     // on met a jour l'historique
-    const urlHistory = path.join(opiDir, `${idBranch}_${rok4Path.filename}_history.packo`);
+    const urlHistory = path.join(opiDir, `${branchId}_${rok4Path.filename}_history.packo`);
     const history = `${fs.readFileSync(`${urlHistory}`)};${patchIdRedo}`;
     fs.writeFileSync(`${urlHistory}`, history);
     // on verifie si la tuile a été effectivement modifiée par ce patch
-    const urlGraphSelected = path.join(graphDir, `${idBranch}_${rok4Path.filename}_${patchIdRedo}.png`);
-    const urlOrthoSelected = path.join(orthoDir, `${idBranch}_${rok4Path.filename}_${patchIdRedo}.png`);
+    const urlGraphSelected = path.join(graphDir, `${branchId}_${rok4Path.filename}_${patchIdRedo}.png`);
+    const urlOrthoSelected = path.join(orthoDir, `${branchId}_${rok4Path.filename}_${patchIdRedo}.png`);
     // modifier les liens symboliques pour pointer sur ce numéro de version
-    const urlGraph = path.join(graphDir, `${idBranch}_${rok4Path.filename}.png`);
-    const urlOrtho = path.join(orthoDir, `${idBranch}_${rok4Path.filename}.png`);
+    const urlGraph = path.join(graphDir, `${branchId}_${rok4Path.filename}.png`);
+    const urlOrtho = path.join(orthoDir, `${branchId}_${rok4Path.filename}.png`);
     // on supprime l'ancien lien
     fs.unlinkSync(urlGraph);
     fs.unlinkSync(urlOrtho);
@@ -289,14 +300,17 @@ branch.validBranch,
   res.status(200).send(`redo: patch ${patchIdRedo} reapplied`);
 });
 
-router.put('/:idBranch/patchs/clear', [
-  param('idBranch')
-    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+router.put('/:branchId/patchs/clear', [
+  param('branchId')
+    .exists().withMessage(createErrMsg.missingParameter('branchId'))
     .isInt({ min: 0 })
-    .withMessage(createErrMsg.invalidParameter('idBranch')),
+    .withMessage(createErrMsg.invalidParameter('branchId')),
+  query('userId')
+    .exists().withMessage(createErrMsg.missingParameter('userId')),
 ],
 validateParams,
-branch.validBranch,
+branch.valbranchId,
+branch.validUser,
 (req, res) => {
   debug('~~~PUT patchs/clear');
   if (!(process.env.NODE_ENV === 'development' || req.query.test === 'true')) {
@@ -305,7 +319,7 @@ branch.validBranch,
     return;
   }
   const params = matchedData(req);
-  const { idBranch } = params;
+  const { branchId } = params;
   const { overviews } = req.app;
 
   // pour chaque patch de req.app.activePatchs.features
@@ -330,21 +344,21 @@ branch.validBranch,
       const opiDir = path.join(global.dir_cache, 'opi', rok4Path.dirPath);
 
       const arrayLinkGraph = fs.readdirSync(graphDir).filter(
-        (filename) => (filename.startsWith(`${idBranch}_${rok4Path.filename}`)),
+        (filename) => (filename.startsWith(`${branchId}_${rok4Path.filename}`)),
       );
       // suppression des images intermediaires
       arrayLinkGraph.forEach((file) => fs.unlinkSync(
         path.join(graphDir, file),
       ));
       const arrayLinkOrtho = fs.readdirSync(orthoDir).filter(
-        (filename) => (filename.startsWith(`${idBranch}_${rok4Path.filename}`)),
+        (filename) => (filename.startsWith(`${branchId}_${rok4Path.filename}`)),
       );
       // suppression des images intermediaires
       arrayLinkOrtho.forEach((file) => fs.unlinkSync(
         path.join(orthoDir, file),
       ));
       // supression de l'historique
-      const urlHistory = path.join(opiDir, `${idBranch}_${rok4Path.filename}_history.packo`);
+      const urlHistory = path.join(opiDir, `${branchId}_${rok4Path.filename}_history.packo`);
       fs.unlinkSync(urlHistory);
     });
   });

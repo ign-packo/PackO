@@ -13,11 +13,11 @@ const validateParams = require('../paramValidation/validateParams');
 // const validator = require('../paramValidation/validator');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
-router.get('/:idBranch/graph', [
-  param('idBranch')
-    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+router.get('/:branchId/graph', [
+  param('branchId')
+    .exists().withMessage(createErrMsg.missingParameter('branchId'))
     .isInt({ min: 0 })
-    .withMessage(createErrMsg.invalidParameter('idBranch')),
+    .withMessage(createErrMsg.invalidParameter('branchId')),
   query('x')
     .exists().withMessage(createErrMsg.missingParameter('x'))
     .matches(/^\d+(.\d+)?$/i)
@@ -28,7 +28,7 @@ router.get('/:idBranch/graph', [
     .withMessage(createErrMsg.invalidParameter('y')),
 ],
 validateParams,
-branch.validBranch,
+branch.valbranchId,
 (req, res) => {
   debug('~~~GetGraph');
   const { overviews } = req.app;
@@ -36,7 +36,7 @@ branch.validBranch,
   const params = matchedData(req);
   const { x } = params;
   const { y } = params;
-  const { idBranch } = params;
+  const { branchId } = params;
 
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
@@ -55,7 +55,7 @@ branch.validBranch,
   const rok4Path = rok4.getPath(Tx, Ty, lvlMax, overviews.pathDepth);
 
   // on commence par cherche la version de la branche
-  let url = path.join(global.dir_cache, 'graph', rok4Path.dirPath, `${idBranch}_${rok4Path.filename}.png`);
+  let url = path.join(global.dir_cache, 'graph', rok4Path.dirPath, `${branchId}_${rok4Path.filename}.png`);
   // si jamais la version de la branch n'existe pas, il faut prendre la version d'origine
   if (!fs.existsSync(url)) {
     url = path.join(global.dir_cache, 'graph', rok4Path.dirPath, `${rok4Path.filename}.png`);

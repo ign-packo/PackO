@@ -18,6 +18,7 @@ describe('Patch', () => {
       it('should return an error', (done) => {
         chai.request(server)
           .post('/0/patch')
+          .query({ userId: 'default' })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(400);
@@ -29,6 +30,7 @@ describe('Patch', () => {
       it('should apply the patch and return the liste of tiles impacted', (done) => {
         chai.request(server)
           .post('/0/patch')
+          .query({ userId: 'default' })
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
@@ -52,6 +54,7 @@ describe('Patch', () => {
       it("should get an error: 'File(s) missing", (done) => {
         chai.request(server)
           .post('/0/patch')
+          .query({ userId: 'default' })
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
@@ -90,6 +93,7 @@ describe('Patch', () => {
     it("should return 'undo: patch 1 canceled'", (done) => {
       chai.request(server)
         .put('/0/patch/undo')
+        .query({ userId: 'default' })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -100,6 +104,7 @@ describe('Patch', () => {
     it("should return a warning (code 201): 'nothing to undo'", (done) => {
       chai.request(server)
         .put('/0/patch/undo')
+        .query({ userId: 'default' })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(201);
@@ -110,9 +115,21 @@ describe('Patch', () => {
   });
 
   describe('PUT /patch/redo', () => {
+    it("should return 'non valid user'", (done) => {
+      chai.request(server)
+        .put('/0/patch/redo')
+        .query({ userId: 'non_default' })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(400);
+          // res.text.should.equal('redo: patch 1 reapplied');
+          done();
+        });
+    });
     it("should return 'redo: patch 1 reapplied'", (done) => {
       chai.request(server)
         .put('/0/patch/redo')
+        .query({ userId: 'default' })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -123,6 +140,7 @@ describe('Patch', () => {
     it("should return a warning (code 201): 'nothing to redo'", (done) => {
       chai.request(server)
         .put('/0/patch/redo')
+        .query({ userId: 'default' })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(201);
@@ -136,6 +154,7 @@ describe('Patch', () => {
     it("should return a warning (code 401): 'unauthorized'", (done) => {
       chai.request(server)
         .put('/0/patchs/clear')
+        .query({ userId: 'default' })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(401);
@@ -147,6 +166,7 @@ describe('Patch', () => {
       // Ajout d'un nouveau patch
       chai.request(server)
         .post('/0/patch')
+        .query({ userId: 'default' })
         .send({
           type: 'FeatureCollection',
           crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
@@ -166,6 +186,7 @@ describe('Patch', () => {
           // Avant de l'annuler
           chai.request(server)
             .put('/0/patch/undo')
+            .query({ userId: 'default' })
             .end((err1, res1) => {
               should.not.exist(err1);
               res1.should.have.status(200);
@@ -174,6 +195,7 @@ describe('Patch', () => {
               // Pour faire le clear
               chai.request(server)
                 .put('/0/patchs/clear?test=true')
+                .query({ userId: 'default' })
                 .end((err2, res2) => {
                   should.not.exist(err2);
                   res2.should.have.status(200);
@@ -195,6 +217,7 @@ describe('Patch', () => {
     it("should return a warning (code 201): 'nothing to clear'", (done) => {
       chai.request(server)
         .put('/0/patchs/clear?test=true')
+        .query({ userId: 'default' })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(201);

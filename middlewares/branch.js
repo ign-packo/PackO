@@ -5,10 +5,11 @@ const path = require('path');
 const pacthMiddlewares = require('./patch');
 const rok4 = require('../rok4.js');
 
-function validBranch(req, res, next) {
+function valbranchId(req, res, next) {
   const params = matchedData(req);
-  const { idBranch } = params;
-  const selectedBranches = req.app.branches.filter((item) => item.id === Number(idBranch));
+  const { branchId } = params;
+  const selectedBranches = req.app.branches.filter((item) => item.id === Number(branchId));
+  debug('selectedBranches : ', selectedBranches);
   if (selectedBranches.length === 0) {
     return res.status(400).json({
       errors: 'branch does not exist',
@@ -22,13 +23,13 @@ function validUser(req, res, next) {
   const params = matchedData(req);
   const { userId } = params;
   if (req.selectedBranch.user !== userId) {
+    debug('non valid user for selectedBranch');
     return res.status(400).json({
       errors: `branch already edited by ${req.selectedBranch.user}`,
     });
   }
   return next();
 }
-
 
 function createCopy(newBranch, selectedBranch, overviews) {
   debug('~~~createCopy~~~');
@@ -108,7 +109,7 @@ function applyNextPatch(newBranch, features, overviews) {
 }
 
 module.exports = {
-  validBranch,
+  valbranchId,
   validUser,
   createCopy,
   applyNextPatch,

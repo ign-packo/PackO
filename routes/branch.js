@@ -75,8 +75,8 @@ router.post('/branch', [
   res.status(200).send(JSON.stringify({ name, id: largestId + 1 }));
 });
 
-router.put('/branch/:idBranch/edit', [
-  param('idBranch')
+router.put('/branch/:branchId/edit', [
+  param('branchId')
     .exists().withMessage(createErrMsg.missingParameter('id'))
     .isInt({ min: 0 })
     .withMessage(createErrMsg.invalidParameter('id')),
@@ -84,17 +84,18 @@ router.put('/branch/:idBranch/edit', [
     .exists().withMessage(createErrMsg.missingParameter('userId')),
 ],
 validateParams,
-branchMiddelwares.validBranch,
+branchMiddelwares.valbranchId,
 (req, res) => {
-  const { overviews } = req.app;
+  debug('~~~edit branch~~~');
   const params = matchedData(req);
   const { userId } = params;
   req.selectedBranch.user = userId;
-  res.status(200).send(JSON.stringify({ branchId: req.selectedBranch, userId}));
+  debug(userId, req.selectedBranch);
+  res.status(200).send(JSON.stringify({ branchId: req.selectedBranch, userId }));
 });
 
-router.delete('/branch/:idBranch', [
-  param('idBranch')
+router.delete('/branch/:branchId', [
+  param('branchId')
     .exists().withMessage(createErrMsg.missingParameter('id'))
     .isInt({ min: 0 })
     .withMessage(createErrMsg.invalidParameter('id')),
@@ -102,12 +103,12 @@ router.delete('/branch/:idBranch', [
     .exists().withMessage(createErrMsg.missingParameter('userId')),
 ],
 validateParams,
-branchMiddelwares.validBranch,
+branchMiddelwares.valbranchId,
 branchMiddelwares.validUser,
 (req, res) => {
   const { overviews } = req.app;
   const params = matchedData(req);
-  const id = Number(params.idBranch);
+  const id = Number(params.branchId);
   debug('~~~delete branch~~~');
   if (req.app.branches.length <= 1) {
     res.status(406).send('it is not possible to delete the last branch');
@@ -169,7 +170,7 @@ branchMiddelwares.validUser,
   res.status(200).send(`branch ${id} deleted`);
 });
 
-router.post('/rebase', [
+router.post('/branch/rebase', [
   query('name')
     .exists().withMessage(createErrMsg.missingParameter('name')),
   query('firstId')

@@ -63,6 +63,7 @@ try {
       {
         id: 0,
         name: 'master',
+        user: 'default',
         activePatchs: {
           type: 'FeatureCollection',
           name: 'annotation',

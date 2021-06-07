@@ -24,11 +24,12 @@ describe('Branch', () => {
           });
       });
     });
+
     describe('add a valid branch', () => {
       it('should return a branchId', (done) => {
         chai.request(server)
           .post('/branch')
-          .query({ name: 'test' })
+          .query({ name: 'test', userId: 'default' })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(200);
@@ -39,14 +40,47 @@ describe('Branch', () => {
           });
       });
     });
+
     describe('add a non valid branch', () => {
       it('should return a error', (done) => {
         chai.request(server)
           .post('/branch')
-          .query({ name: 'test' })
+          .query({ name: 'test', userId: 'default' })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(406);
+            done();
+          });
+      });
+    });
+  });
+
+  describe('PUT branch edit', () => {
+    describe('edit a valid branch', () => {
+      it('should succed', (done) => {
+        chai.request(server)
+          .put('/branch/0/edit')
+          .query({ userId: 'default' })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(200);
+            done();
+          });
+      });
+    });
+  });
+
+  describe('POST branch rebase', () => {
+    describe('edit merge two branches', () => {
+      it('should succed', (done) => {
+        chai.request(server)
+          .post('/branch/rebase')
+          .query({
+            firstId: '0', secondId: '1', name: 'merged', userId: 'default',
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(200);
             done();
           });
       });
