@@ -48,6 +48,36 @@ paths:
           schema:
             type: string
           example: "maBranche"
+        - in: query
+          name: userId
+          description: l'identifiant de l'utilisateur
+          required: true
+          schema:
+            type: string
+          example: "defaultUser"
+      responses:
+        '200':
+          description: OK
+  '/branch/{id}/edit':
+    put:
+      tags:
+        - branch
+      summary: "Edition d'une branche"
+      description: ""
+      parameters:
+      - in: path
+        name: id
+        description: l'identifiant de la branche à modifier
+        required: true
+        schema:
+          type: integer
+      - in: query
+        name: userId
+        description: l'identifiant de l'utilisateur
+        required: true
+        schema:
+          type: string
+        example: "defaultUser"
       responses:
         '200':
           description: OK
@@ -64,6 +94,13 @@ paths:
         required: true
         schema:
           type: integer
+      - in: query
+        name: userId
+        description: l'identifiant de l'utilisateur
+        required: true
+        schema:
+          type: string
+        example: "defaultUser"
       responses:
         '200':
           description: OK
@@ -92,6 +129,13 @@ paths:
           schema:
             type: integer
           example: 1
+        - in: query
+          name: userId
+          description: l'identifiant de l'utilisateur
+          required: true
+          schema:
+            type: string
+          example: "defaultUser"
       responses:
         '200':
           description: OK
@@ -108,6 +152,13 @@ paths:
           required: true
           schema:
             type: integer
+        - in: query
+          name: userId
+          description: l'identifiant de l'utilisateur
+          required: true
+          schema:
+            type: string
+          example: "defaultUser"
       responses:
         '200':
           description: OK
@@ -124,6 +175,13 @@ paths:
           required: true
           schema:
             type: integer
+        - in: query
+          name: userId
+          description: l'identifiant de l'utilisateur
+          required: true
+          schema:
+            type: string
+          example: "defaultUser"
       responses:
         '200':
           description: OK
@@ -140,6 +198,13 @@ paths:
           required: true
           schema:
             type: integer
+        - in: query
+          name: userId
+          description: l'identifiant de l'utilisateur
+          required: true
+          schema:
+            type: string
+          example: "defaultUser"
       responses:
         '200':
           description: OK
@@ -156,6 +221,13 @@ paths:
           required: true
           schema:
             type: integer
+        - in: query
+          name: userId
+          description: l'identifiant de l'utilisateur
+          required: true
+          schema:
+            type: string
+          example: "defaultUser"
       requestBody:
         description: polygone à patcher (geoJson)
         required: true
