@@ -22,6 +22,7 @@ conn_string = "PG:host="\
     + " user=" + user + " password=" + password
 
 NB_BANDS = 3
+cpu_dispo = multiprocessing.cpu_count()
 
 
 def read_args(update):
@@ -54,6 +55,10 @@ def read_args(update):
                         help="graph table (default: graphe_pcrs56_zone_test)",
                         type=str,
                         default="graphe_pcrs56_zone_test")
+    parser.add_argument("-p", "--processors",
+                        help="number of processing units to allocate (default: Max_cpu-1)",
+                        type=int,
+                        default=(cpu_dispo-1, 1)[cpu_dispo - 1 == 0])
     parser.add_argument("-v", "--verbose",
                         help="verbose (default: 0)",
                         type=int,
@@ -146,6 +151,7 @@ def generate(update):
     """Create a cache from a list of input OPI"""
 
     args = read_args(update)
+    cpu_util = args.processors
     overviews_dict, color_dict = prep_dict(args, update)
 
     spatial_ref = osr.SpatialReference()
@@ -158,7 +164,7 @@ def generate(update):
         raise SystemExit("WARNING: Empty input folder: nothing to add in cache")
 
     tps0 = time.perf_counter()
-    print("\n", len(list_filename), "image(s) à traiter")
+    print("\n ", len(list_filename), " image(s) à traiter (", cpu_util, " cpu)", sep="")
 
     # Decoupage des images et calcul de l'emprise globale
     print("Découpe des images :")
@@ -176,10 +182,8 @@ def generate(update):
 
     print(" Découpage")
 
-    cpu_dispo = multiprocessing.cpu_count()
-
-    if (cpu_dispo > 2):
-        pool = multiprocessing.Pool(cpu_dispo - 1)
+    if (cpu_util > 1):
+        pool = multiprocessing.Pool(cpu_util)
         pool.map(cache.cut_image_1arg, args_cut_image)
 
         pool.close()
@@ -225,8 +229,8 @@ def generate(update):
     cache.progress_bar(50, nb_tiles, args_create_ortho_and_graph)
     print('   |', end='', flush=True)
 
-    if (cpu_dispo > 2):
-        pool = multiprocessing.Pool(cpu_dispo - 1)
+    if (cpu_util > 1):
+        pool = multiprocessing.Pool(cpu_util)
         pool.map(cache.create_ortho_and_graph_1arg, args_create_ortho_and_graph)
 
         pool.close()
