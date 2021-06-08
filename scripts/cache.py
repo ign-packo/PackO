@@ -35,10 +35,7 @@ def read_args(update):
                         help="cache directory (default: cache)",
                         type=str,
                         default="cache")
-    parser.add_argument("-k", "--rok4",
-                        help="à la Rok4 (default: 0)",
-                        type=int,
-                        default=0)
+
     if update is False:
         parser.add_argument("-o", "--overviews",
                             help="params for the mosaic (default: ressources/LAMB93_5cm.json)",
@@ -245,20 +242,25 @@ def generate(update):
         print("    in ", tps4 - tps3, sep="")
     print('=> DONE')
 
-    tpsf = time.perf_counter()
-
     print("Encodage ROK4 :")
+    tps_convert_start = time.perf_counter()
     cache.encodage_rok4(args.cache,
                         overviews_dict['tileSize']['width'],
                         overviews_dict['tileSize']['height'])
+    tps_convert_stop = time.perf_counter()
+    if args.verbose > 0:
+        print("=> DONE in ", tps_convert_stop - tps_convert_start, sep="")
+    else:
+        print('=> DONE')
 
+    tpsf = time.perf_counter()
     print("\n",
           len(list_filename) - len(opi_duplicate),
           "/",
           len(list_filename), "OPI(s) ajoutée(s)", end='')
 
     if args.verbose > 0:
-        print(" in", tpsf - tps0)
+        print(" in", tpsf - tps0, "s")
     else:
         print()
 
