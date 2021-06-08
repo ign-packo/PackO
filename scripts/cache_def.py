@@ -209,10 +209,10 @@ def get_slab_path(slab_x, slab_y, path_depth):
     """Calcul du chemin en base 36 avec la bonne profondeur"""
     str_x = base_repr(slab_x, 36).zfill(path_depth+1)
     str_y = base_repr(slab_y, 36).zfill(path_depth+1)
-    slib_path = ''
+    slab_path = ''
     for i in range(path_depth+1):
-        slib_path += '/' + str_x[i] + str_y[i]
-    return slib_path
+        slab_path += '/' + str_x[i] + str_y[i]
+    return slab_path
 
 
 def cut_opi_1tile(opi, opi_name, dst_root, slab, gdal_option):
@@ -347,18 +347,14 @@ def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change):
 def encodage_rok4(dir_cache, tile_width, tile_height):
     elem = glob.glob(dir_cache + "/**/*.jpg", recursive=True)
     for img in elem:
-        print(' Begin convert:', img)
+        print(' convert:', img)
         rok4_io.Jpeg2Rok(img, img.replace('.jpg', '.tif'), tile_width, tile_height)
-        print(' ### convert DONE:', img)
         # os.remove(img)
-        # print(' ### remove DONE:', img)
     elem = glob.glob(dir_cache + "/**/*.png", recursive=True)
     for img in elem:
-        print(' Begin convert :', img)
+        print(' convert:', img)
         rok4_io.Png2Rok(img, img.replace('.png', '.tif'), tile_width, tile_height)
-        print(' ### convert DONE:', img)
         # os.remove(img)
-        # print(' ### remove DONE:', img)
 
 
 def create_blank_slab(overviews, slab, nb_bands, spatial_ref):
