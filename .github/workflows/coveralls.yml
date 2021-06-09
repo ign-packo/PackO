@@ -33,6 +33,14 @@ jobs:
         pip install numpy
         pip install --global-option=build_ext --global-option="-I/usr/include/gdal" GDAL==`gdal-config --version`
 
+    - name: install for rok4 mode
+      run: |
+        sudo apt install build-essential python3-dev libpng-dev libjpeg-dev swig
+    
+    - name: rok4 module
+      run: |
+        cd rok4_io && python setup.py install
+
     - name: create cache
       run: |
         python scripts/create_cache.py -i "regress/data/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress -g "regress/data/regress_graphe.gpkg" -t graphe
