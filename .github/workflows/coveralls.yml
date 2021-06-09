@@ -39,7 +39,7 @@ jobs:
     
     - name: rok4 module
       run: |
-        cd rok4_io && python setup.py install
+        cd rok4_io && python setup.py build && python setup.py install --user && cd -
 
     - name: create cache
       run: |
