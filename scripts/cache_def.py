@@ -172,21 +172,19 @@ def new_color(image, color_dict):
     return [int(color_str[0]), int(color_str[1]), int(color_str[2])]
 
 
-def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option, verbose):
+def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option, verbose, reprocess):
     """Preparation for tiling images according to overviews file"""
     opi_already_calculated = []
     args_cut_image = []
-
     change = {}
 
     for filename in list_filename:
+        print('  image :', filename)
         opi = Path(filename).stem
-        if opi in overviews['list_OPI'].keys():
-            # OPI déjà traitée
+        if not reprocess and opi in overviews['list_OPI'].keys():
+            print('   -> déjà calculée')
             opi_already_calculated.append(opi)
         else:
-            print('  image :', filename)
-
             args_cut_image.append({
                 'opi': {
                     'path': filename,
