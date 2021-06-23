@@ -41,12 +41,17 @@ def read_args(update):
                             help="params for the mosaic (default: ressources/LAMB93_5cm.json)",
                             type=str,
                             default="ressources/LAMB93_5cm.json")
-        parser.add_argument("-l", "--level",
-                            help="level range for the overviews"
-                            " (default: values from ressources file)"
-                            " (e.g., 15 19)",
-                            type=int,
-                            nargs='+')
+        # pour le moment on suspend l'option level
+        # puisqu'on ne gère que les niveaux du COG
+        # en partant du niveau avec la meilleur résolution
+        # a ré-activer éventuellement si on veut gérer plus
+        # de niveau en sous-ech
+        # parser.add_argument("-l", "--level",
+        #                     help="level range for the overviews"
+        #                     " (default: values from ressources file)"
+        #                     " (e.g., 15 19)",
+        #                     type=int,
+        #                     nargs='+')
     if update is True:
         parser.add_argument("-r", "--reprocessing",
                             help="reprocessing of OPI already processed"
@@ -82,14 +87,14 @@ def read_args(update):
         if os.path.isdir(args.cache):
             raise SystemExit("Cache (" + args.cache + ") already in use")
 
-        if args.level:
-            if len(args.level) > 2:
-                raise SystemExit("create_cache.py: error: argument -l/--level:"
-                                 " one or two arguments expected.")
-            if len(args.level) == 2 and args.level[0] > args.level[1]:
-                lvl_max = args.level[0]
-                args.level[0] = args.level[1]
-                args.level[1] = lvl_max
+        # if args.level:
+        #     if len(args.level) > 2:
+        #         raise SystemExit("create_cache.py: error: argument -l/--level:"
+        #                          " one or two arguments expected.")
+        #     if len(args.level) == 2 and args.level[0] > args.level[1]:
+        #         lvl_max = args.level[0]
+        #         args.level[0] = args.level[1]
+        #         args.level[1] = lvl_max
 
         args.reprocessing = 0
     else:
@@ -131,20 +136,23 @@ def prep_dict(args, update):
         overviews_dict['dataSet'] = {}
         overviews_dict['dataSet']['boundingBox'] = {}
         overviews_dict['dataSet']['limits'] = {}
+        overviews_dict['dataSet']['slabLimits'] = {}
         overviews_dict['dataSet']['level'] = {}
 
-        if args.level:
-            if args.level[0] < overviews_dict['level']['min'] \
-                    or (len(args.level) == 1 and args.level[0] > overviews_dict['level']['max']) \
-                    or (len(args.level) > 1 and args.level[1] > overviews_dict['level']['max']):
-                raise SystemExit("create_cache.py: error: argument -l/--level: "
-                                 + str(args.level) +
-                                 ": out of default overviews level range: "
-                                 + str(overviews_dict['level']))
+        # if args.level:
+        #     if args.level[0] < overviews_dict['level']['min'] \
+        #             or (len(args.level) == 1 and args.level[0] > overviews_dict['level']['max']) \
+        #             or (len(args.level) > 1 and args.level[1] > overviews_dict['level']['max']):
+        #         raise SystemExit("create_cache.py: error: argument -l/--level: "
+        #                          + str(args.level) +
+        #                          ": out of default overviews level range: "
+        #                          + str(overviews_dict['level']))
 
-        level_min = overviews_dict['level']['min'] if args.level is None else args.level[0]
-        level_max = overviews_dict['level']['max'] if args.level is None \
-            else level_min if len(args.level) == 1 else args.level[1]
+        # level_min = overviews_dict['level']['min'] if args.level is None else args.level[0]
+        # level_max = overviews_dict['level']['max'] if args.level is None \
+        #     else level_min if len(args.level) == 1 else args.level[1]
+        level_min = overviews_dict['level']['min']
+        level_max = overviews_dict['level']['max']
 
         overviews_dict['dataSet']['level'] = {
             'min': level_min,
