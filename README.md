@@ -60,6 +60,8 @@ shp2pgsql /Volumes/PAOT\ 21/ZoneTestPCRS/Graphe/Graphe_PCRS56_ZONE_TEST.shp | ps
 psql -d pcrs -c "SELECT UpdateGeometrySRID('graphe_pcrs56_zone_test','geom',2154)"
 ```
 
+Pour la création d'un cache avec COG, GDAL doit avoir une version >= 3.2 
+
 ## Client web (uniquement si on souhaite le lancer séparément)
 
 ### Installation et lancement
