@@ -4,8 +4,9 @@ const router = require('express').Router();
 const fs = require('fs');
 const path = require('path');
 const { matchedData, query } = require('express-validator');
-const jimp = require('jimp');
-const rok4 = require('../rok4.js');
+// const jimp = require('jimp');
+const cog = require('../cog_path.js');
+const gdalProcessing = require('../gdal_processing.js');
 
 // const GJV = require('geojson-validation');
 const validateParams = require('../paramValidation/validateParams');
@@ -43,38 +44,20 @@ router.get('/graph', [
   const Ty = Math.floor(Py / overviews.tileSize.height);
   const I = Math.floor(Px - Tx * overviews.tileSize.width);
   const J = Math.floor(Py - Ty * overviews.tileSize.height);
-  const rok4Path = rok4.getPath(Tx, Ty, lvlMax, overviews.pathDepth);
-  const url = path.join(global.dir_cache, 'graph', rok4Path.dirPath, `${rok4Path.filename}.png`);
-  debug(url);
-  // _graph.png`;
-  if (!fs.existsSync(url)) {
-    res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
-  } else {
-    jimp.read(url, (err, image) => {
-      if (err) {
-        const erreur = new Error();
-        erreur.msg = {
-          status: err,
-          errors: [{
-            localisation: 'Jimp.read()',
-            msg: err,
-          }],
-        };
-        res.status(500).send(erreur);
-      } else {
-        const index = image.getPixelIndex(I, J);
-        debug(image.bitmap.data[index], image.bitmap.data[index + 1], image.bitmap.data[index + 2]);
-        const out = {
-          color: [
-            image.bitmap.data[index],
-            image.bitmap.data[index + 1],
-            image.bitmap.data[index + 2]],
-        };
+  try {
+    const cogPath = cog.getTilePath(Tx, Ty, lvlMax, overviews);
+    const url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
+    debug(url);
+    if (!fs.existsSync(url)) {
+      res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
+    } else {
+      gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, I, J, overviews.tileSize.width, 'graph').then((out) => {
         debug(req.app.cache_mtd);
+        /* eslint-disable no-param-reassign */
         if (out.color.some((item) => item !== 0)) {
           if ((out.color[0] in req.app.cache_mtd)
-          && (out.color[1] in req.app.cache_mtd[out.color[0]])
-          && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
+            && (out.color[1] in req.app.cache_mtd[out.color[0]])
+            && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
             out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
             debug(JSON.stringify(out));
             res.status(200).send(JSON.stringify(out));
@@ -85,8 +68,11 @@ router.get('/graph', [
         } else {
           res.status(201).send('{"color":[0,0,0], "cliche":"out of graph"}');
         }
-      }
-    });
+        /* eslint-enable no-param-reassign */
+      });
+    }
+  } catch (error) {
+    res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
   }
 });
 

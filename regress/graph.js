@@ -26,7 +26,6 @@ const schema = {
 
 describe('Graph', () => {
   after((done) => {
-    server.workerpool.terminate();
     server.close();
     done();
   });
