@@ -22,6 +22,8 @@ jobs:
         sudo apt update
     - name: Install gdal
       run: |
+        sudo apt install software-properties-common
+        sudo add-apt-repository ppa:ubuntugis/ppa && apt-get update
         sudo apt install python3-gdal
     - name: Install libgdal
       run: |
