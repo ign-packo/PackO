@@ -35,7 +35,7 @@ describe('Patch', () => {
             features: [
               {
                 type: 'Feature',
-                properties: { color: [58, 149, 47], cliche: '19FD5606Ax00020_16371' },
+                properties: { color: [119, 72, 57], cliche: '19FD5606Ax00020_16371' },
                 geometry: { type: 'Polygon', coordinates: [[[230748, 6759646], [230752, 6759646], [230752, 6759644], [230748, 6759644], [230748, 6759646]]] },
               }],
           })
@@ -47,7 +47,7 @@ describe('Patch', () => {
 
             done();
           });
-      });
+      }).timeout(9000);
       // TODO gestion des polygones Out of bounds
       it("should get an error: 'File(s) missing", (done) => {
         chai.request(server)
@@ -67,7 +67,7 @@ describe('Patch', () => {
             res.should.have.status(404);
             done();
           });
-      });
+      }).timeout(9000);
     });
   });
 
@@ -140,7 +140,7 @@ describe('Patch', () => {
           res.text.should.equal('unauthorized');
           done();
         });
-    });
+    }).timeout(9000);
     it("should return 'clear: all patches deleted'", (done) => {
       // Ajout d'un nouveau patch
       chai.request(server)
@@ -189,7 +189,7 @@ describe('Patch', () => {
       //     res.text.should.equal('clear: all patches deleted');
       //     done();
       //   });
-    }).timeout(3000);
+    }).timeout(9000);
     it("should return a warning (code 201): 'nothing to clear'", (done) => {
       chai.request(server)
         .put('/patchs/clear?test=true')

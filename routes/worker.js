@@ -1,21 +1,20 @@
 const workerpool = require('workerpool');
 const PImage = require('pureimage');
-const jimp = require('jimp');
 const debugProcess = require('debug')('patch');
 const fsProcess = require('fs');
 const trurfProcess = require('@turf/turf');
 const pathProcess = require('path');
-const rok4Process = require('../rok4.js');
+const cogProcess = require('../cog_path.js');
 
 // Preparation des masques
-function createPatch(tile, geoJson, overviews, dirCache) {
-  debugProcess('createPatch : ', tile);
+function createPatch(slab, geoJson, overviews, dirCache) {
+  debugProcess('createPatch : ', slab);
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
-  const tileWidth = overviews.tileSize.width;
-  const tileHeight = overviews.tileSize.height;
+  const slabWidth = overviews.tileSize.width * overviews.slabSize.width;
+  const slabHeight = overviews.tileSize.height * overviews.slabSize.height;
 
-  const resolution = overviews.resolution * 2 ** (overviews.level.max - tile.z);
+  const resolution = overviews.resolution * 2 ** (overviews.level.max - slab.z);
   const inputRings = [];
   for (let f = 0; f < geoJson.features.length; f += 1) {
     const feature = geoJson.features[f];
@@ -24,9 +23,9 @@ function createPatch(tile, geoJson, overviews, dirCache) {
       const ring = [];
       for (let i = 0; i < coordinates.length; i += 1) {
         const point = coordinates[i];
-        const x = Math.round((point[0] - xOrigin - tile.x * tileWidth * resolution)
+        const x = Math.round((point[0] - xOrigin - slab.x * slabWidth * resolution)
               / resolution);
-        const y = Math.round((yOrigin - point[1] - tile.y * tileHeight * resolution)
+        const y = Math.round((yOrigin - point[1] - slab.y * slabHeight * resolution)
               / resolution) + 1;
         ring.push([x, y]);
       }
@@ -34,21 +33,21 @@ function createPatch(tile, geoJson, overviews, dirCache) {
     }
   }
 
-  const bbox = [0, 0, tileWidth, tileHeight + 1];
+  const bbox = [0, 0, slabWidth, slabHeight + 1];
   const poly = trurfProcess.polygon(inputRings);
   const clipped = trurfProcess.bboxClip(poly, bbox);
   const rings = clipped.geometry.coordinates;
 
   if (rings.length === 0) {
-    debugProcess('masque vide, on passe a la suite : ', tile);
+    debugProcess('masque vide, on passe a la suite : ', slab);
     return null;
   }
 
   // La BBox et le polygone s'intersectent
-  debugProcess('on calcule un masque : ', tile);
+  debugProcess('on calcule un masque : ', slab);
   // Il y a parfois un bug sur le dessin du premier pixel
   // on cree donc un masque une ligne de plus
-  const mask = PImage.make(tileWidth, tileHeight + 1);
+  const mask = PImage.make(slabWidth, slabHeight + 1);
   const ctx = mask.getContext('2d');
   ctx.fillStyle = '#FFFFFF';
   for (let n = 0; n < rings.length; n += 1) {
@@ -63,64 +62,23 @@ function createPatch(tile, geoJson, overviews, dirCache) {
     ctx.fill();
   }
 
-  const patch = { tile, mask, color: geoJson.features[0].properties.color };
-  patch.rok4Path = rok4Process.getPath(
-    patch.tile.x,
-    patch.tile.y,
-    patch.tile.z,
-    overviews.pathDepth,
+  const patch = { slab, mask, color: geoJson.features[0].properties.color };
+  patch.cogPath = cogProcess.getSlabPath(
+    patch.slab.x,
+    patch.slab.y,
+    patch.slab.z,
+    overviews,
   );
-  patch.urlGraph = pathProcess.join(dirCache, 'graph', patch.rok4Path.dirPath, `${patch.rok4Path.filename}.png`);
-  patch.urlOrtho = pathProcess.join(dirCache, 'ortho', patch.rok4Path.dirPath, `${patch.rok4Path.filename}.png`);
-  patch.urlOpi = pathProcess.join(dirCache, 'opi', patch.rok4Path.dirPath, `${patch.rok4Path.filename}_${geoJson.features[0].properties.cliche}.png`);
+  patch.urlGraph = pathProcess.join(dirCache, 'graph', patch.cogPath.dirPath, `${patch.cogPath.filename}.tif`);
+  patch.urlOrtho = pathProcess.join(dirCache, 'ortho', patch.cogPath.dirPath, `${patch.cogPath.filename}.tif`);
+  patch.urlOpi = pathProcess.join(dirCache, 'opi', patch.cogPath.dirPath, `${patch.cogPath.filename}_${geoJson.features[0].properties.cliche}.tif`);
   const checkGraph = fsProcess.promises.access(patch.urlGraph, fsProcess.constants.F_OK);
   const checkOrtho = fsProcess.promises.access(patch.urlOrtho, fsProcess.constants.F_OK);
   const checkOpi = fsProcess.promises.access(patch.urlOpi, fsProcess.constants.F_OK);
   return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => patch);
 }
 
-function processPatch(patch) {
-  // On patch le graph
-  const { mask } = patch;
-  /* eslint-disable no-param-reassign */
-  const graphPromise = jimp.read(patch.urlGraph).then((graph) => {
-    const { bitmap } = graph;
-    for (let idx = 0; idx < bitmap.width * bitmap.height * 4; idx += 4) {
-      if (mask.data[mask.width * 4 + idx + 3]) {
-        [bitmap.data[idx],
-          bitmap.data[idx + 1],
-          bitmap.data[idx + 2]] = patch.color;
-      }
-    }
-    return graph.writeAsync(patch.urlGraphOutput);
-  }).then(() => {
-    debugProcess('graph done');
-  });
-
-  // On patch l ortho
-  /* eslint-disable no-param-reassign */
-  const orthoPromise = Promise.all([
-    jimp.read(patch.urlOrtho),
-    jimp.read(patch.urlOpi),
-  ]).then((images) => {
-    const ortho = images[0].bitmap;
-    const opi = images[1].bitmap;
-    for (let idx = 0; idx < ortho.width * ortho.height * 4; idx += 4) {
-      if (mask.data[mask.width * 4 + idx + 3]) {
-        ortho.data[idx] = opi.data[idx];
-        ortho.data[idx + 1] = opi.data[idx + 1];
-        ortho.data[idx + 2] = opi.data[idx + 2];
-      }
-    }
-    return images[0].writeAsync(patch.urlOrthoOutput);
-  }).then(() => {
-    debugProcess('ortho done');
-  });
-  return Promise.all([graphPromise, orthoPromise]);
-}
-
 // create a worker and register public functions
 workerpool.worker({
   createPatch,
-  processPatch,
 });

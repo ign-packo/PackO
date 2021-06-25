@@ -9,7 +9,8 @@ const path = require('path');
 const fs = require('fs');
 const xml2js = require('xml2js');
 const proj4 = require('proj4');
-const rok4 = require('../rok4.js');
+const cog = require('../cog_path.js');
+const gdalProcessing = require('../gdal_processing.js');
 
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
@@ -105,32 +106,36 @@ router.get('/wmts', [
       const resolution = overviews.resolution * 2 ** (overviews.level.max - level);
       const scaleDenominator = resolution / 0.00028;
 
-      tileMatrixLimit.push({
-        TileMatrix: level,
-        MinTileRow: overviews.dataSet.limits[level].MinTileRow,
-        MaxTileRow: overviews.dataSet.limits[level].MaxTileRow,
-        MinTileCol: overviews.dataSet.limits[level].MinTileCol,
-        MaxTileCol: overviews.dataSet.limits[level].MaxTileCol,
-      });
+      // Attention, avec le passage au COG on n'a les limites que pour le niveau
+      // à pleine résolution
+      if (level in overviews.dataSet.limits) {
+        tileMatrixLimit.push({
+          TileMatrix: level,
+          MinTileRow: overviews.dataSet.limits[level].MinTileRow,
+          MaxTileRow: overviews.dataSet.limits[level].MaxTileRow,
+          MinTileCol: overviews.dataSet.limits[level].MinTileCol,
+          MaxTileCol: overviews.dataSet.limits[level].MaxTileCol,
+        });
 
-      const MatrixWidth = Math.ceil(
-        (overviews.crs.boundingBox.xmax - overviews.crs.boundingBox.xmin)
-           / (overviews.tileSize.width * resolution),
-      );
-      const MatrixHeight = Math.ceil(
-        (overviews.crs.boundingBox.ymax - overviews.crs.boundingBox.ymin)
-           / (overviews.tileSize.height * resolution),
-      );
+        const MatrixWidth = Math.ceil(
+          (overviews.crs.boundingBox.xmax - overviews.crs.boundingBox.xmin)
+             / (overviews.tileSize.width * resolution),
+        );
+        const MatrixHeight = Math.ceil(
+          (overviews.crs.boundingBox.ymax - overviews.crs.boundingBox.ymin)
+             / (overviews.tileSize.height * resolution),
+        );
 
-      tileMatrix.push({
-        'ows:Identifier': level,
-        ScaleDenominator: scaleDenominator,
-        TopLeftCorner: `${overviews.crs.boundingBox.xmin} ${overviews.crs.boundingBox.ymax}`,
-        TileWidth: overviews.tileSize.width,
-        TileHeight: overviews.tileSize.height,
-        MatrixWidth,
-        MatrixHeight,
-      });
+        tileMatrix.push({
+          'ows:Identifier': level,
+          ScaleDenominator: scaleDenominator,
+          TopLeftCorner: `${overviews.crs.boundingBox.xmin} ${overviews.crs.boundingBox.ymax}`,
+          TileWidth: overviews.tileSize.width,
+          TileHeight: overviews.tileSize.height,
+          MatrixWidth,
+          MatrixHeight,
+        });
+      }
     }
 
     const listOpi = Object.keys(overviews.list_OPI);
@@ -273,41 +278,38 @@ router.get('/wmts', [
     } else if (FORMAT === 'image/jpeg') {
       mime = Jimp.MIME_JPEG; // "image/jpeg"
     }
-    const rok4Path = rok4.getPath(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth);
-    let url = path.join(global.dir_cache, layerName, rok4Path.dirPath, rok4Path.filename);
-    if (LAYER === 'opi') {
-      if (!Name) {
-        url += `_${overviews.list_OPI[0]}`;
-      } else {
-        url += `_${Name}`;
-      }
-    }
-    url += '.png';
-    debug(url);
-    Jimp.read(url, (err, image) => {
-      new Promise((success, failure) => {
-        if (err) {
-          /* eslint-disable no-new */
-          new Jimp(256, 256, 0x000000ff, (errJimp, img) => {
-            if (errJimp) {
-              failure(err);
-            }
-            success(img);
-          });
+    try {
+      const cogPath = cog.getTilePath(TILECOL, TILEROW, TILEMATRIX, overviews);
+      let url = path.join(global.dir_cache, layerName, cogPath.dirPath, cogPath.filename);
+      let cacheKey = layerName;
+      if (LAYER === 'opi') {
+        if (!Name) {
+          url += `_${overviews.list_OPI[0]}`;
+          [cacheKey] = overviews.list_OPI;
         } else {
-          success(image);
+          url += `_${Name}`;
+          cacheKey = Name;
         }
-      }).then((img) => {
-        img.getBuffer(mime, (err2, buffer) => { res.send(buffer); });
+      }
+      url += '.tif';
+      debug(url);
+      gdalProcessing.getTileEncoded(url,
+        cogPath.x, cogPath.y, cogPath.z,
+        mime, overviews.tileSize.width, cacheKey).then((img) => {
+        res.send(img);
       });
-    });
-
+    } catch (error) {
+      debug('ICI : ');
+      gdalProcessing.getDefaultEncoded(mime, overviews.tileSize.width).then((img) => {
+        res.send(img);
+      });
+    }
     // GetFeatureInfo
   } else if (REQUEST === 'GetFeatureInfo') {
     debug('~~~GetFeatureInfo');
     debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-    const rok4Path = rok4.getPath(TILECOL, TILEROW, TILEMATRIX, overviews.pathDepth);
-    const url = path.join(global.dir_cache, 'graph', rok4Path.dirPath, `${rok4Path.filename}.png`);
+    const cogPath = cog.getTilePath(TILECOL, TILEROW, TILEMATRIX, overviews);
+    const url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
 
     if (!fs.existsSync(url)) {
       const erreur = new Error();
@@ -320,28 +322,11 @@ router.get('/wmts', [
       };
       res.status(400).send(erreur.msg);
     } else {
-      Jimp.read(url, (err, image) => {
-        if (err) {
-          const erreur = new Error();
-          erreur.msg = {
-            status: err,
-            errors: [{
-              localisation: 'Jimp.read()',
-              msg: err,
-            }],
-          };
-          res.status(500).send(erreur.msg);
-        // res.status(200).send('{"color":[0,0,0], "cliche":"unknown"}');
-        } else {
-          let resCode = 200;
-          const index = image.getPixelIndex(parseInt(I, 10), parseInt(J, 10));
-          debugFeatureInfo('index: ', index);
-          const out = {
-            color: [image.bitmap.data[index],
-              image.bitmap.data[index + 1],
-              image.bitmap.data[index + 2]],
-          };
+      gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, parseInt(I, 10), parseInt(J, 10), overviews.tileSize.width, 'graph')
+        .then((out) => {
           debugFeatureInfo(out);
+          let resCode = 200;
+          /* eslint-disable no-param-reassign */
           if ((out.color[0] in req.app.cache_mtd)
           && (out.color[1] in req.app.cache_mtd[out.color[0]])
           && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
@@ -350,26 +335,35 @@ router.get('/wmts', [
             out.cliche = 'missing';
             resCode = 201;
           }
-
+          /* eslint-enable no-param-reassign */
           const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
-                           + '<ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"'
-                                                    + ' xmlns:gml="http://www.opengis.net/gml"'
-                                                    + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
-                                                    + ' xsi:schemaLocation="http://www.maps.bob/etopo2  GetFeatureInfoExampleSchema.xsd">'
-                             + '<featureMember>'
-                               + `<${LAYER}>`
-                                 + `<ortho>${out.cliche}</ortho>`
-                                 + `<graph>${out.color}</graph>`
-                                 + `<TileRow>${TILEROW}</TileRow>`
-                                 + `<TileCol>${TILECOL}</TileCol>`
-                                 + `<J>${J}</J>`
-                                 + `<I>${I}</I>`
-                               + `</${LAYER}>`
-                             + '</featureMember>'
-                           + '</ReguralGriddedElevations>';
+            + '<ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"'
+                                     + ' xmlns:gml="http://www.opengis.net/gml"'
+                                     + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+                                     + ' xsi:schemaLocation="http://www.maps.bob/etopo2  GetFeatureInfoExampleSchema.xsd">'
+              + '<featureMember>'
+                + `<${LAYER}>`
+                  + `<ortho>${out.cliche}</ortho>`
+                  + `<graph>${out.color}</graph>`
+                  + `<TileRow>${TILEROW}</TileRow>`
+                  + `<TileCol>${TILECOL}</TileCol>`
+                  + `<J>${J}</J>`
+                  + `<I>${I}</I>`
+                + `</${LAYER}>`
+              + '</featureMember>'
+            + '</ReguralGriddedElevations>';
           res.status(resCode).send(testResponse);
-        }
-      });
+        }).catch(() => {
+          const erreur = new Error();
+          erreur.msg = {
+            status: 'out of bounds',
+            errors: [{
+              localisation: 'GetFeatureInfo',
+              msg: 'out of bounds',
+            }],
+          };
+          res.status(400).send(erreur.msg);
+        });
     }
   }
 });
