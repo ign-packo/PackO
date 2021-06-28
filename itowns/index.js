@@ -182,7 +182,7 @@ async function main() {
       },
     };
 
-    const json = await itowns.Fetcher.json(`${apiUrl}/json/activePatchs`);
+    const json = await itowns.Fetcher.json(`${apiUrl}/json/activePatches`);
     const features = await itowns.GeoJsonParser.parse(
       JSON.stringify(json),
       layer.patches.optionsGeoJsonParser,
