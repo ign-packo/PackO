@@ -71,10 +71,10 @@ describe('Patch', () => {
     });
   });
 
-  describe('GET /patchs', () => {
+  describe('GET /patches', () => {
     it('should return an valid geoJson', (done) => {
       chai.request(server)
-        .get('/patchs')
+        .get('/patches')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -131,10 +131,10 @@ describe('Patch', () => {
     });
   });
 
-  describe('PUT /patchs/clear', () => {
+  describe('PUT /patches/clear', () => {
     it("should return a warning (code 401): 'unauthorized'", (done) => {
       chai.request(server)
-        .put('/patchs/clear')
+        .put('/patches/clear')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(401);
@@ -172,7 +172,7 @@ describe('Patch', () => {
 
               // Pour faire le clear
               chai.request(server)
-                .put('/patchs/clear?test=true')
+                .put('/patches/clear?test=true')
                 .end((err2, res2) => {
                   should.not.exist(err2);
                   res2.should.have.status(200);
@@ -193,7 +193,7 @@ describe('Patch', () => {
     }).timeout(3000);
     it("should return a warning (code 201): 'nothing to clear'", (done) => {
       chai.request(server)
-        .put('/patchs/clear?test=true')
+        .put('/patches/clear?test=true')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(201);
@@ -203,10 +203,10 @@ describe('Patch', () => {
     });
   });
 
-  describe('PUT /patchs/save', () => {
+  describe('PUT /patches/save', () => {
     it("should return a warning (code 401): 'unauthorized'", (done) => {
       chai.request(server)
-        .put('/patchs/save')
+        .put('/patches/save')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(401);
@@ -263,7 +263,7 @@ describe('Patch', () => {
 
                   // then save
                   chai.request(server)
-                    .put('/patchs/save?test=true')
+                    .put('/patches/save?test=true')
                     .end((err3, res3) => {
                       should.not.exist(err3);
                       res3.should.have.status(200);
@@ -276,7 +276,7 @@ describe('Patch', () => {
     }).timeout(3000);
     it("should return a warning (code 201): 'nothing to save'", (done) => {
       chai.request(server)
-        .put('/patchs/save?test=true')
+        .put('/patches/save?test=true')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(201);

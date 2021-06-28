@@ -42,7 +42,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/patchs/clear':
+  '/patches/clear':
     put:
       tags:
         - patch
@@ -85,7 +85,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/patchs':
+  '/patches':
     get:
       tags:
         - patch
@@ -259,7 +259,7 @@ paths:
             type: string
             enum:
               - overviews
-              - activePatchs
+              - activePatches
 
       responses:
         '200':

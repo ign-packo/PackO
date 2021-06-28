@@ -54,27 +54,17 @@ try {
   app.cache_mtd = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'cache_mtd.json')));
   app.overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
 
-  try {
-    app.activePatchs = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'activePatchs.json')));
-  } catch (err) {
-    app.activePatchs = {
-      type: 'FeatureCollection',
-      name: 'annotation',
-      crs: {
-        type: 'name',
-        properties: {
-          name: 'urn:ogc:def:crs:EPSG::2154',
-        },
-      },
-      features: [],
-    };
-    fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(app.activePatchs, null, 4));
+  // gestion des patchs
+
+  const dirPatch = path.join(global.dir_cache, 'patch');
+  if (!fs.existsSync(dirPatch)) {
+    fs.mkdirSync(dirPatch);
   }
 
   try {
-    app.unactivePatchs = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'unactivePatchs.json')));
+    app.activePatches = JSON.parse(fs.readFileSync(path.join(dirPatch, 'activePatches.json')));
   } catch (err) {
-    app.unactivePatchs = {
+    app.activePatches = {
       type: 'FeatureCollection',
       name: 'annotation',
       crs: {
@@ -85,7 +75,35 @@ try {
       },
       features: [],
     };
-    fs.writeFileSync(path.join(global.dir_cache, 'unactivePatchs.json'), JSON.stringify(app.unactivePatchs, null, 4));
+    fs.writeFileSync(path.join(dirPatch, 'activePatches.json'), JSON.stringify(app.activePatches, null, 4));
+  }
+
+  try {
+    app.unactivePatches = JSON.parse(fs.readFileSync(path.join(dirPatch, 'unactivePatches.json')));
+  } catch (err) {
+    app.unactivePatches = {
+      type: 'FeatureCollection',
+      name: 'annotation',
+      crs: {
+        type: 'name',
+        properties: {
+          name: 'urn:ogc:def:crs:EPSG::2154',
+        },
+      },
+      features: [],
+    };
+    fs.writeFileSync(path.join(dirPatch, 'unactivePatches.json'), JSON.stringify(app.unactivePatches, null, 4));
+  }
+
+  try {
+    app.savedPatches = JSON.parse(fs.readFileSync(path.join(dirPatch, 'savedPatches.json')));
+  } catch (err) {
+    app.savedPatches = {
+      nbSave: 0,
+      save: [],
+    };
+    fs.writeFileSync(path.join(dirPatch, 'savedPatches.json'), JSON.stringify(app.savedPatches, null, 4));
+    fs.mkdirSync(path.join(dirPatch, 'save'));
   }
 
   app.use(cors());

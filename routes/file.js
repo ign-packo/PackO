@@ -7,22 +7,21 @@ const fs = require('fs');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
-// Dossier contenant les differents fichiers
-const parentDir = `${global.dir_cache}`;
-
 router.get('/json/:typefile', [
   param('typefile')
     .exists().withMessage(createErrMsg.missingParameter('typefile'))
-    .isIn(['overviews', 'activePatchs', 'test'])
+    .isIn(['overviews', 'activePatches', 'test'])
     .withMessage(createErrMsg.invalidParameter('typefile')),
 ], validateParams,
 (req, res) => {
   debug('~~~getJson~~~');
   const params = matchedData(req);
   const { typefile } = params;
-
-  const filePath = path.join(parentDir, `${typefile}.json`);
-
+  const parentDir = {
+    overviews: global.dir_cache,
+    activePatches: path.join(global.dir_cache, 'patch'),
+  };
+  const filePath = path.join(`${parentDir[typefile]}`, `${typefile}.json`);
   try {
     if (!fs.existsSync(filePath)) {
       const err = new Error();
