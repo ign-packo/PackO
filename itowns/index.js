@@ -22,11 +22,38 @@ itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
     document.getElementById('spAPIVersion_val').innerText = 'unknown';
   });
 
-// `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
-const viewerDiv = document.getElementById('viewerDiv');
+// check if string is in "x,y" format with x and y positive floats
+// return "null" if incorrect string format, otherwise [x, y] array
+function checkCoordString(coordStr) {
+  const rgxFloat = '\\s*([0-9]+[.]?[0-9]*)\\s*';
+  const rgxCoord = new RegExp(`^${rgxFloat},${rgxFloat}$`);
+  const rgxCatch = rgxCoord.exec(coordStr);
+  if (rgxCatch) {
+    return [parseFloat(rgxCatch[1]), parseFloat(rgxCatch[2])];
+  }
+  return null;
+}
 
-itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
-  const overviews = json;
+// fonction permettant d'afficher la valeur de l'echelle et du niveau de dezoom
+function updateScaleWidget(view, resolution) {
+  let distance = view.getPixelsToMeters(200);
+  let unit = 'm';
+  const dezoom = Math.fround(distance / (200 * resolution));
+  if (distance >= 1000) {
+    distance /= 1000;
+    unit = 'km';
+  }
+  if (distance <= 1) {
+    distance *= 100;
+    unit = 'cm';
+  }
+  document.getElementById('spanZoomWidget').innerHTML = dezoom <= 1 ? `zoom: ${1 / dezoom}` : `zoom: 1/${dezoom}`;
+  document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
+}
+
+async function main() {
+  try {
+    const overviews = await itowns.Fetcher.json(`${apiUrl}/json/overviews`);
 
   // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
   const crs = `${overviews.crs.type}:${overviews.crs.code}`;
@@ -60,12 +87,15 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   const xcenter = (xmin + xmax) * 0.5;
   const ycenter = (ymin + ymax) * 0.5;
 
-  viewerDiv.height = viewerDiv.clientHeight;
-  viewerDiv.width = viewerDiv.clientWidth;
+  // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
+  const viewerDiv = document.getElementById('viewerDiv');
+
   const placement = new itowns.Extent(
     crs,
-    xcenter - viewerDiv.width * resolInit * 0.5, xcenter + viewerDiv.width * resolInit * 0.5,
-    ycenter - viewerDiv.height * resolInit * 0.5, ycenter + viewerDiv.height * resolInit * 0.5,
+    xcenter - viewerDiv.clientWidth * resolInit * 0.5,
+    xcenter + viewerDiv.clientWidth * resolInit * 0.5,
+    ycenter - viewerDiv.clientHeight * resolInit * 0.5,
+    ycenter + viewerDiv.clientHeight * resolInit * 0.5,
   );
 
   const resolLvMax = resolution * 2 ** (overviews.level.max - overviews.dataSet.level.max);
@@ -153,45 +183,16 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
 
   viewerDiv.focus();
 
-  // fonction permettant d'afficher la valeur de l'echelle et du niveau de dezoom
-  function updateScaleWidget() {
-    let distance = view.getPixelsToMeters(200);
-    let unit = 'm';
-    const dezoom = Math.fround(distance / (200 * overviews.resolution));
-    if (distance >= 1000) {
-      distance /= 1000;
-      unit = 'km';
-    }
-    if (distance <= 1) {
-      distance *= 100;
-      unit = 'cm';
-    }
-    document.getElementById('spanZoomWidget').innerHTML = dezoom <= 1 ? `zoom: ${1 / dezoom}` : `zoom: 1/${dezoom}`;
-    document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
-  }
-
-  // check if string is in "x,y" format with x and y positive floats
-  // return "null" if incorrect string format, otherwise [x, y] array
-  function checkCoordString(coordStr) {
-    const rgxFloat = '\\s*([0-9]+[.]?[0-9]*)\\s*';
-    const rgxCoord = new RegExp(`^${rgxFloat},${rgxFloat}$`);
-    const rgxCatch = rgxCoord.exec(coordStr);
-    if (rgxCatch) {
-      return [parseFloat(rgxCatch[1]), parseFloat(rgxCatch[2])];
-    }
-    return null;
-  }
-
   view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
     // eslint-disable-next-line no-console
     console.info('View initialized');
-    updateScaleWidget();
+    updateScaleWidget(view, resolution);
   });
   view.addEventListener(itowns.PLANAR_CONTROL_EVENT.MOVED, () => {
     // eslint-disable-next-line no-console
     console.info('View moved');
     if (view.controls.state === -1) {
-      updateScaleWidget();
+      updateScaleWidget(view, resolution);
     }
   });
 
@@ -266,7 +267,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
       view.camera.camera3D.zoom *= 2;
       view.camera.camera3D.updateProjectionMatrix();
       view.notifyChange(view.camera.camera3D);
-      updateScaleWidget();
+      updateScaleWidget(view, resolution);
     }
     return false;
   });
@@ -276,7 +277,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
       view.camera.camera3D.zoom *= 0.5;
       view.camera.camera3D.updateProjectionMatrix();
       view.notifyChange(view.camera.camera3D);
-      updateScaleWidget();
+      updateScaleWidget(view, resolution);
     }
     return false;
   });
@@ -286,8 +287,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   document.getElementById('help').addEventListener('click', () => {
     helpContent.style.visibility = (helpContent.style.visibility === 'hidden') ? 'visible' : 'hidden';
   });
-})
-  .catch((err) => {
+} catch (err) {
     console.log(`${err.name}: ${err.message}`);
     if (`${err.name}: ${err.message}` === 'TypeError: Failed to fetch') {
       const newApiUrl = window.prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl);
@@ -296,4 +296,6 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     } else {
       window.alert(err);
     }
-  });
+  }
+}
+main();

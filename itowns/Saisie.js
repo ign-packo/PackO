@@ -25,7 +25,7 @@ class Saisie {
     this.mousePosition = null;
   }
 
-  refreshView(layers) {
+  async refreshView(layers) {
     // Pour le moment on force le rechargement complet des couches
     layers.forEach((id) => {
       this.view.removeLayer(this.layer[id].colorLayer.id);
