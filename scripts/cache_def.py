@@ -211,6 +211,12 @@ def get_slab_path(slab_x, slab_y, path_depth):
     return slab_path
 
 
+def assert_square(obj):
+    """Verify that obj is square"""
+    if obj['width'] != obj['height']:
+        raise ValueError("Object is not square!")
+
+
 def cut_opi_1tile(opi, opi_name, dst_root, slab, gdal_option):
     """Cut and resample a specified image at a given level"""
 
@@ -234,9 +240,12 @@ def cut_opi_1tile(opi, opi_name, dst_root, slab, gdal_option):
     # on exporte en png (todo: gerer le niveau de Q)
     # pylint: disable=unused-variable
     # dst_ds = PNG_DRIVER.CreateCopy(dst_root + "_" + opi_name + ".png", target_ds)
+    assert_square(slab['tile_size'])
     dst_ds = COG_DRIVER.CreateCopy(dst_root + "_" + opi_name + ".tif",
                                    target_ds,
-                                   options=["BLOCKSIZE=256", "COMPRESS=JPEG", "LEVEL=90"])
+                                   options=["BLOCKSIZE="
+                                            + str(slab['tile_size']['width']),
+                                            "COMPRESS=JPEG", "LEVEL=90"])
     target_ds = None
     dst_ds = None  # noqa: F841
     # pylint: enable=unused-variable
@@ -275,7 +284,11 @@ def cut_image_1arg(arg):
                         'width': overviews['tileSize']['width'] * overviews['slabSize']['width'],
                         'height': overviews['tileSize']['height'] * overviews['slabSize']['height']
                     },
-                    'resolution': resolution
+                    'resolution': resolution,
+                    'tile_size': {
+                        'width': overviews['tileSize']['width'],
+                        'height': overviews['tileSize']['height']
+                    }
                 }
 
                 slab_root = arg['cache'] + '/opi/' + str(level) + '/'\
@@ -436,10 +449,15 @@ def create_ortho_and_graph_1arg(arg):
         Path(slab_graph).parent.mkdir(parents=True, exist_ok=True)
         Path(slab_ortho).parent.mkdir(parents=True, exist_ok=True)
         # pylint: disable=unused-variable
+        assert_square(overviews['tileSize'])
         dst_ortho = COG_DRIVER.CreateCopy(slab_ortho, img_ortho,
-                                          options=["BLOCKSIZE=256", "COMPRESS=JPEG", "LEVEL=90"])
+                                          options=["BLOCKSIZE="
+                                                   + str(overviews['tileSize']['width']),
+                                                   "COMPRESS=JPEG", "LEVEL=90"])
         dst_graph = COG_DRIVER.CreateCopy(slab_graph, img_graph,
-                                          options=["BLOCKSIZE=256", "COMPRESS=LZW"])
+                                          options=["BLOCKSIZE="
+                                                   + str(overviews['tileSize']['width']),
+                                                   "COMPRESS=LZW"])
         dst_ortho = None  # noqa: F841
         dst_graph = None  # noqa: F841
         # pylint: enable=unused-variable
