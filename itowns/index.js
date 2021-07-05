@@ -68,9 +68,17 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
     ycenter - viewerDiv.height * resolInit * 0.5, ycenter + viewerDiv.height * resolInit * 0.5,
   );
 
-  const resolLvMax = resolution * 2 ** (overviews.level.max - overviews.dataSet.level.max);
-  const resolLvMin = resolution * 2 ** (overviews.level.max - overviews.dataSet.level.min);
+  const levelMax = overviews.dataSet.level.max;
+  const levelMin = overviews.dataSet.level.min;
 
+  // par défaut, on autorise un sur-ech x2 et on affiche un niveau
+  // de plus que la plus faible résolution du cache
+  // ce n'est pas très performant mais c'est demandé par les utilisateurs
+  // on ajoute 1cm de marge pour éviter les erreurs d'arrondi sur le calcul de la résolution
+  // avec le view.getPixelsToMeters() d'iTowns
+  const resolLvMax = resolution * 2 ** (overviews.level.max - levelMax - 1) - 0.01;
+  const resolLvMin = resolution * 2 ** (overviews.level.max - levelMin + 1) + 0.01;
+  console.log('resol min/max : ', resolLvMin, resolLvMax);
   // Instanciate PlanarView*
   const zoomFactor = 2;// customizable
   const view = new itowns.PlanarView(viewerDiv, extent, {
@@ -78,13 +86,13 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
       type: itowns.CAMERA_TYPE.ORTHOGRAPHIC,
     },
     placement,
-    maxSubdivisionLevel: 30,
-    disableSkirt: true,
+    maxSubdivisionLevel: levelMax,
+    minSubdivisionLevel: levelMin,
     controls: {
       enableSmartTravel: false,
       zoomFactor,
-      maxResolution: resolLvMax * zoomFactor ** -1,
-      minResolution: resolLvMin * zoomFactor,
+      maxResolution: resolLvMax,
+      minResolution: resolLvMin,
     },
   });
 
@@ -155,9 +163,9 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
       },
     };
     layer[id].config.source = new itowns.WMTSSource(layer[id].config.source);
-    layer[id].config.source.extentInsideLimit = function extentInsideLimit() {
-      return true;
-    };
+    // layer[id].config.source.extentInsideLimit = function extentInsideLimit() {
+    //   return true;
+    // };
 
     layer[id].colorLayer = new itowns.ColorLayer(layer[id].name, layer[id].config);
     if (id === 'opi') layer[id].colorLayer.visible = false;
@@ -307,7 +315,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   }, false);
   document.getElementById('zoomInBtn').addEventListener('click', () => {
     console.log('Zoom-In');
-    if (view.getPixelsToMeters() > resolLvMax) {
+    if ((view.getPixelsToMeters() / 2) > resolLvMax) {
       view.camera.camera3D.zoom *= 2;
       view.camera.camera3D.updateProjectionMatrix();
       view.notifyChange(view.camera.camera3D);
@@ -317,7 +325,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   });
   document.getElementById('zoomOutBtn').addEventListener('click', () => {
     console.log('Zoom-Out');
-    if (view.getPixelsToMeters() < resolLvMin) {
+    if ((view.getPixelsToMeters() * 2) < resolLvMin) {
       view.camera.camera3D.zoom *= 0.5;
       view.camera.camera3D.updateProjectionMatrix();
       view.notifyChange(view.camera.camera3D);
