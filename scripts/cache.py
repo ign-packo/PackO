@@ -131,6 +131,7 @@ def prep_dict(args, update):
         overviews_dict['dataSet'] = {}
         overviews_dict['dataSet']['boundingBox'] = {}
         overviews_dict['dataSet']['limits'] = {}
+        overviews_dict['dataSet']['slabLimits'] = {}
         overviews_dict['dataSet']['level'] = {}
 
         if args.level:
