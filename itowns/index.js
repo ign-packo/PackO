@@ -71,8 +71,8 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
   const arrayLimits = Object.keys(overviews.dataSet.limits);
   const maxZoom = Number(arrayLimits[arrayLimits.length - 1]);
   const minZoom = maxZoom - arrayLimits.length + 1;
-  const resolLvMax = resolution * 2 ** (overviews.level.max - maxZoom) / 2;
-  const resolLvMin = resolution * 2 ** (overviews.level.max - minZoom) * 2;
+  const resolLvMax = resolution * 2 ** (overviews.level.max - maxZoom - 1);
+  const resolLvMin = resolution * 2 ** (overviews.level.max - minZoom + 1);
   console.log('resol min/max : ', resolLvMin, resolLvMax);
   // Instanciate PlanarView*
   const zoomFactor = 2;// customizable
