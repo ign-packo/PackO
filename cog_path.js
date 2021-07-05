@@ -28,8 +28,16 @@ function getTilePath(X, Y, Z, overviews) {
   const nbTiles = overviews.slabSize.width;
   const levelMax = overviews.level.max;
 
+  // facteur de sous-ech par rapport à la pleine resolution
+  // typiquement entre 1 et 16
   const factor = 2 ** (levelMax - Z);
-  debug(factor);
+  // le nombre de sous-ech dispo dans un COG est lié
+  // au nombre de bloc dans l'image
+  // si on a 16 blocs en pleine resolution
+  // il y aura 4 sous niveaux de sous-ech:
+  // (8 blocs, 4 blocs, 2 bloc, 1 bloc)
+  // on a donc nbTiles (qui est une puissance de 2)
+  // correspond au facteur max
   if (factor > nbTiles) {
     const error = new Error();
     error.msg = {
