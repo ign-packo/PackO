@@ -308,10 +308,65 @@ router.get('/wmts', [
   } else if (REQUEST === 'GetFeatureInfo') {
     debug('~~~GetFeatureInfo');
     debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
-    const cogPath = cog.getTilePath(TILECOL, TILEROW, TILEMATRIX, overviews);
-    const url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
+    try {
+      const cogPath = cog.getTilePath(TILECOL, TILEROW, TILEMATRIX, overviews);
+      const url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
 
-    if (!fs.existsSync(url)) {
+      if (!fs.existsSync(url)) {
+        const erreur = new Error();
+        erreur.msg = {
+          status: 'out of bounds',
+          errors: [{
+            localisation: 'GetFeatureInfo',
+            msg: 'out of bounds',
+          }],
+        };
+        res.status(400).send(erreur.msg);
+      } else {
+        gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, parseInt(I, 10), parseInt(J, 10), overviews.tileSize.width, 'graph')
+          .then((out) => {
+            debugFeatureInfo(out);
+            let resCode = 200;
+            /* eslint-disable no-param-reassign */
+            if ((out.color[0] in req.app.cache_mtd)
+            && (out.color[1] in req.app.cache_mtd[out.color[0]])
+            && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
+              out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+            } else {
+              out.cliche = 'missing';
+              resCode = 201;
+            }
+            /* eslint-enable no-param-reassign */
+            const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
+              + '<ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"'
+                                       + ' xmlns:gml="http://www.opengis.net/gml"'
+                                       + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+                                       + ' xsi:schemaLocation="http://www.maps.bob/etopo2  GetFeatureInfoExampleSchema.xsd">'
+                + '<featureMember>'
+                  + `<${LAYER}>`
+                    + `<ortho>${out.cliche}</ortho>`
+                    + `<graph>${out.color}</graph>`
+                    + `<TileRow>${TILEROW}</TileRow>`
+                    + `<TileCol>${TILECOL}</TileCol>`
+                    + `<J>${J}</J>`
+                    + `<I>${I}</I>`
+                  + `</${LAYER}>`
+                + '</featureMember>'
+              + '</ReguralGriddedElevations>';
+            res.status(resCode).send(testResponse);
+          }).catch(() => {
+            const erreur = new Error();
+            erreur.msg = {
+              status: 'out of bounds',
+              errors: [{
+                localisation: 'GetFeatureInfo',
+                msg: 'out of bounds',
+              }],
+            };
+            res.status(400).send(erreur.msg);
+          });
+      }
+    } catch (error) {
       const erreur = new Error();
       erreur.msg = {
         status: 'out of bounds',
@@ -321,49 +376,6 @@ router.get('/wmts', [
         }],
       };
       res.status(400).send(erreur.msg);
-    } else {
-      gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, parseInt(I, 10), parseInt(J, 10), overviews.tileSize.width, 'graph')
-        .then((out) => {
-          debugFeatureInfo(out);
-          let resCode = 200;
-          /* eslint-disable no-param-reassign */
-          if ((out.color[0] in req.app.cache_mtd)
-          && (out.color[1] in req.app.cache_mtd[out.color[0]])
-          && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-            out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
-          } else {
-            out.cliche = 'missing';
-            resCode = 201;
-          }
-          /* eslint-enable no-param-reassign */
-          const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
-            + '<ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"'
-                                     + ' xmlns:gml="http://www.opengis.net/gml"'
-                                     + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
-                                     + ' xsi:schemaLocation="http://www.maps.bob/etopo2  GetFeatureInfoExampleSchema.xsd">'
-              + '<featureMember>'
-                + `<${LAYER}>`
-                  + `<ortho>${out.cliche}</ortho>`
-                  + `<graph>${out.color}</graph>`
-                  + `<TileRow>${TILEROW}</TileRow>`
-                  + `<TileCol>${TILECOL}</TileCol>`
-                  + `<J>${J}</J>`
-                  + `<I>${I}</I>`
-                + `</${LAYER}>`
-              + '</featureMember>'
-            + '</ReguralGriddedElevations>';
-          res.status(resCode).send(testResponse);
-        }).catch(() => {
-          const erreur = new Error();
-          erreur.msg = {
-            status: 'out of bounds',
-            errors: [{
-              localisation: 'GetFeatureInfo',
-              msg: 'out of bounds',
-            }],
-          };
-          res.status(400).send(erreur.msg);
-        });
     }
   }
 });

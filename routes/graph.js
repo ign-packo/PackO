@@ -44,31 +44,35 @@ router.get('/graph', [
   const Ty = Math.floor(Py / overviews.tileSize.height);
   const I = Math.floor(Px - Tx * overviews.tileSize.width);
   const J = Math.floor(Py - Ty * overviews.tileSize.height);
-  const cogPath = cog.getTilePath(Tx, Ty, lvlMax, overviews);
-  const url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
-  debug(url);
-  if (!fs.existsSync(url)) {
-    res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
-  } else {
-    gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, I, J, overviews.tileSize.width, 'graph').then((out) => {
-      debug(req.app.cache_mtd);
-      /* eslint-disable no-param-reassign */
-      if (out.color.some((item) => item !== 0)) {
-        if ((out.color[0] in req.app.cache_mtd)
-          && (out.color[1] in req.app.cache_mtd[out.color[0]])
-          && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-          out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
-          debug(JSON.stringify(out));
-          res.status(200).send(JSON.stringify(out));
+  try {
+    const cogPath = cog.getTilePath(Tx, Ty, lvlMax, overviews);
+    const url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
+    debug(url);
+    if (!fs.existsSync(url)) {
+      res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
+    } else {
+      gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, I, J, overviews.tileSize.width, 'graph').then((out) => {
+        debug(req.app.cache_mtd);
+        /* eslint-disable no-param-reassign */
+        if (out.color.some((item) => item !== 0)) {
+          if ((out.color[0] in req.app.cache_mtd)
+            && (out.color[1] in req.app.cache_mtd[out.color[0]])
+            && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
+            out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+            debug(JSON.stringify(out));
+            res.status(200).send(JSON.stringify(out));
+          } else {
+            out.cliche = 'not found';
+            res.status(202).send(out);
+          }
         } else {
-          out.cliche = 'not found';
-          res.status(202).send(out);
+          res.status(201).send('{"color":[0,0,0], "cliche":"out of graph"}');
         }
-      } else {
-        res.status(201).send('{"color":[0,0,0], "cliche":"out of graph"}');
-      }
-      /* eslint-enable no-param-reassign */
-    });
+        /* eslint-enable no-param-reassign */
+      });
+    }
+  } catch (error) {
+    res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
   }
 });
 
