@@ -28,40 +28,34 @@ def read_args():
 
 args = read_args()
 
-pathOut = os.path.join(args.output, os.path.basename(args.input).split(".")[0] + ".txt")
+path_out = os.path.join(args.output, os.path.basename(args.input))
 
 graph_dir = args.input + "/graph"
-fOut = open(pathOut, "w")
+f_out = open(path_out + ".txt", "w")
 
 # on parcourt le repertoire graph du cache pour recuperer l'ensemble des images de graphe
 for (root, dirs, files) in os.walk(graph_dir):
     for file in files:
         file = os.path.join(root, file)
-        fOut.write(file + "\n")
+        f_out.write(file + "\n")
 
-fOut.close()
+f_out.close()
 
 # on construit un vrt a partir de la liste des images recuperee precedemment
-GDAL_BIN = "C:\\Users\\nlenglet\\.conda\\envs\\packo\\Library\\bin"
-buildvrt_exe = os.path.join(GDAL_BIN, "gdalbuildvrt")
-
 cmd_buildvrt = (
-    buildvrt_exe + " -input_file_list " + pathOut + " " + pathOut.split(".")[0] + ".vrt"
+    "gdalbuildvrt" + " -input_file_list "
+    + path_out + ".txt "
+    + path_out + ".vrt"
 )
-
+print(cmd_buildvrt)
 os.system(cmd_buildvrt)
 
 # on vectorise le graphe à partir du vrt
-GDAL_SCRIPT_ROOT = "C:\\Users\\nlenglet\\.conda\\envs\\packo\\Scripts"
-polygonize_exe = os.path.join(GDAL_SCRIPT_ROOT, "gdal_polygonize.py")
-
 cmd_polygonize = (
-    "python "
-    + polygonize_exe
-    + " "
-    + pathOut.split(".")[0]
-    + ".vrt "
-    + pathOut.split(".")[0]
-    + '.geojson -f "Geojson"'
+    "gdal_polygonize.py "
+    + path_out + ".vrt "
+    + path_out + ".geojson"
+    + ' -f "Geojson"'
 )
+print(cmd_polygonize)
 os.system(cmd_polygonize)
