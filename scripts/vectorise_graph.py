@@ -28,7 +28,19 @@ def read_args():
 
 args = read_args()
 
-path_out = os.path.join(args.output, os.path.basename(args.input))
+try:
+    os.mkdir(args.output)
+except FileExistsError:
+    print("Output dir already exists")
+
+# define working dir
+os.chdir(args.output)
+print("Working directory: '" + os.getcwd() + "'")
+# redefine input directory
+args.input = os.path.relpath(args.input, args.output)
+print("Updated input path relative to working dir: '" + args.input + "'")
+
+path_out = os.path.basename(args.input)
 
 graph_dir = args.input + "/graph"
 f_out = open(path_out + ".txt", "w")
