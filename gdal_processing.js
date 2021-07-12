@@ -9,6 +9,15 @@ let DEFAULT_IMAGE = null;
 // cache pour réutiliser les images ouvertes lorsque c'est possible
 let cache = {};
 
+function clearCache() {
+  debug('debut de clearCache : ', cache);
+  for (const [key, value] of Object.entries(cache)) {
+    value.ds.close();
+  }
+  cache = {};
+  debug('fin de clearCache ');
+}
+
 /**
  *
  * @param {string} url - url de l'image
@@ -29,7 +38,11 @@ function getTile(url, x, y, z, blocSize, cacheKey) {
     return Promise.resolve(DEFAULT_IMAGE);
   }
 
-  if (!(cacheKey in cache) || (cache[cacheKey][url] !== url)) {
+  if ((cacheKey in cache) && (cache[cacheKey][url] !== url)) {
+	  cache[cacheKey].ds.close();
+	  delete cache[cacheKey];
+  }
+  if (!(cacheKey in cache)) {
     cache[cacheKey] = {
       url,
       ds: gdal.open(url),
@@ -257,8 +270,11 @@ function processPatchAsync(patch, blocSize) {
             COMPRESS: 'JPEG',
             QUALITY: 90,
           }),
-        ]).then(() => {
+        ]).then((createdDs) => {
           debug('...fin creation des COGs');
+		  createdDs.forEach((ds) => {
+			  ds.close();
+		  });
           res('fin');
         });
       });
@@ -270,3 +286,4 @@ exports.getTileEncoded = getTileEncoded;
 exports.getPixel = getPixel;
 exports.getDefaultEncoded = getDefaultEncoded;
 exports.processPatch = processPatchAsync;
+exports.clearCache = clearCache;

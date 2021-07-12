@@ -153,23 +153,40 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
           return;
         }
         const urlHistory = path.join(global.dir_cache, 'opi', patch.cogPath.dirPath, `${patch.cogPath.filename}_history.packo`);
-        if (fs.lstatSync(patch.urlGraph).nlink > 1) {
+        if (fs.existsSync(urlHistory)) {
+          // if (fs.lstatSync(patch.urlGraph).nlink > 1) {
+		  debug('history existe');
           const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
+		  const tabHistory = history.split(';');
+		  const prevId = tabHistory[tabHistory.length - 2];
+
+		  patch.urlGraphPrev = path.join(global.dir_cache, 'graph', patch.cogPath.dirPath, `${patch.cogPath.filename}_${prevId}.tif`);
+		  patch.urlOrthoPrev = path.join(global.dir_cache, 'ortho', patch.cogPath.dirPath, `${patch.cogPath.filename}_${prevId}.tif`);
+
           debug(patch.urlGraph);
           debug(' historique :', history);
           fs.writeFileSync(`${urlHistory}`, history);
-          fs.unlinkSync(patch.urlGraph);
-          fs.unlinkSync(patch.urlOrtho);
+		  // fs.unlinkSync(patch.urlGraph);
+          // fs.unlinkSync(patch.urlOrtho);
+		  // unlink(patch.urlGraph);
+          // unlink(patch.urlOrtho);
+		  rename(patch.urlGraph, patch.urlGraphPrev);
+		  rename(patch.urlOrtho, patch.urlOrthoPrev);
         } else {
+		  debug('history n existe pas encore');
           const history = `orig;${newPatchId}`;
           fs.writeFileSync(`${urlHistory}`, history);
           const urlGraphOrig = path.join(global.dir_cache, 'graph', patch.cogPath.dirPath, `${patch.cogPath.filename}_orig.tif`);
           const urlOrthoOrig = path.join(global.dir_cache, 'ortho', patch.cogPath.dirPath, `${patch.cogPath.filename}_orig.tif`);
-          fs.renameSync(patch.urlGraph, urlGraphOrig);
-          fs.renameSync(patch.urlOrtho, urlOrthoOrig);
+          // fs.renameSync(patch.urlGraph, urlGraphOrig);
+          // fs.renameSync(patch.urlOrtho, urlOrthoOrig);
+		  rename(patch.urlGraph, urlGraphOrig);
+		  rename(patch.urlOrtho, urlOrthoOrig);
         }
-        fs.linkSync(patch.urlGraphOutput, patch.urlGraph);
-        fs.linkSync(patch.urlOrthoOutput, patch.urlOrtho);
+        rename(patch.urlGraphOutput, patch.urlGraph);
+        rename(patch.urlOrthoOutput, patch.urlOrtho);
+        // fs.linkSync(patch.urlGraphOutput, patch.urlGraph);
+        // fs.linkSync(patch.urlOrthoOutput, patch.urlOrtho);
       });
       // on note le patch Id
       geoJson.features.forEach((feature) => {
@@ -205,6 +222,30 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   });
 });
 
+function unlink(url) {
+  debug('avant le clearCache');
+  gdalProcessing.clearCache();
+  debug('apres le clearCache');
+  try {
+    fs.unlinkSync(url);
+  } catch (e) {
+    debug(e);
+    setTimeout(unlink(url), 500);
+  }
+}
+
+function rename(url, urlOrig) {
+  debug('avant le clearCache');
+  gdalProcessing.clearCache();
+  debug('apres le clearCache');
+  try {
+    fs.renameSync(url, urlOrig);
+  } catch (e) {
+    debug(e);
+    setTimeout(rename(url, urlOrig), 500);
+  }
+}
+
 router.put('/patch/undo', [], (req, res) => {
   debug('~~~PUT patch/undo');
   if (req.app.activePatchs.features.length === 0) {
@@ -212,6 +253,7 @@ router.put('/patch/undo', [], (req, res) => {
     res.status(201).send('nothing to undo');
     return;
   }
+
   const { overviews } = req.app;
   // trouver le patch a annuler: c'est-à-dire sortir les éléments
   // de req.app.activePatchs.features avec patchId == lastPatchId
@@ -220,23 +262,25 @@ router.put('/patch/undo', [], (req, res) => {
   debug(`Patch '${lastPatchId}' à annuler.`);
   const features = [];
   let index = req.app.activePatchs.features.length - 1;
-  const slabs = new Set();
+  const slabs = {};
   while (index >= 0) {
     const feature = req.app.activePatchs.features[index];
     if (feature.properties.patchId === lastPatchId) {
       features.push(feature);
       req.app.activePatchs.features.splice(index, 1);
-      feature.properties.slabs.forEach((item) => slabs.add(item));
+      feature.properties.slabs.forEach((item) => {
+        slabs[`${item.x}_${item.y}_${item.z}`] = item;
+	  });
     }
     index -= 1;
   }
-  debug(slabs.size, 'dalles impactées');
+  debug(Object.keys(slabs).length, 'dalles impactées');
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
-  slabs.forEach((slab) => {
+  const errors = [];
+  const histories = [];
+  Object.values(slabs).forEach((slab, index) => {
+    debug('slab :', slab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
-
-    const graphDir = path.join(global.dir_cache, 'graph', cogPath.dirPath);
-    const orthoDir = path.join(global.dir_cache, 'ortho', cogPath.dirPath);
     const opiDir = path.join(global.dir_cache, 'opi', cogPath.dirPath);
 
     // on récupère l'historique de cette tuile
@@ -245,10 +289,24 @@ router.put('/patch/undo', [], (req, res) => {
     // on vérifie que le lastPatchId est bien le dernier sur cette tuile
     if (`${history[history.length - 1]}` !== `${lastPatchId}`) {
       debug("erreur d'historique");
-      res.status(404).send(`erreur d'historique sur la tuile ${cogPath}`);
-      return;
+	  errors.push(`erreur d'historique sur la tuile ${cogPath}`);
+	  debug('erreur : ', history, lastPatchId);
+      // res.status(404).send(`erreur d'historique sur la tuile ${cogPath}`);
+    } else {
+      histories[index] = history;
     }
+  });
+  if (errors.length > 0) {
+    res.status(404).send(errors);
+    return;
+  }
+  Object.values(slabs).forEach((slab, index) => {
+    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
+    const opiDir = path.join(global.dir_cache, 'opi', cogPath.dirPath);
+    const urlHistory = path.join(opiDir, `${cogPath.filename}_history.packo`);
     // on récupère la version à restaurer
+    const history = histories[index];
+    const patchIdPrev = history[history.length - 1];
     const idSelected = history[history.length - 2];
     // mise à jour de l'historique
     let newHistory = '';
@@ -256,22 +314,35 @@ router.put('/patch/undo', [], (req, res) => {
       newHistory += history[i];
       if (i < (history.length - 2)) newHistory += ';';
     }
+    debug('newHistory : ', newHistory);
     fs.writeFileSync(`${urlHistory}`, newHistory);
     debug(` dalle ${slab.z}/${slab.y}/${slab.x} : version ${idSelected} selectionnée`);
     // debug(' version selectionnée pour la tuile :', idSelected);
+    const graphDir = path.join(global.dir_cache, 'graph', cogPath.dirPath);
+    const orthoDir = path.join(global.dir_cache, 'ortho', cogPath.dirPath);
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = path.join(graphDir, `${cogPath.filename}.tif`);
     const urlOrtho = path.join(orthoDir, `${cogPath.filename}.tif`);
     const urlGraphSelected = path.join(graphDir, `${cogPath.filename}_${idSelected}.tif`);
     const urlOrthoSelected = path.join(orthoDir, `${cogPath.filename}_${idSelected}.tif`);
+
     // on supprime l'ancien lien
-    fs.unlinkSync(urlGraph);
-    fs.unlinkSync(urlOrtho);
+    // fs.unlinkSync(urlGraph);
+    // fs.unlinkSync(urlOrtho);
+    // unlink(urlGraph);
+    // unlink(urlOrtho);
+    const urlGraphPrev = path.join(graphDir, `${cogPath.filename}_${patchIdPrev}.tif`);
+    const urlOrthoPrev = path.join(orthoDir, `${cogPath.filename}_${patchIdPrev}.tif`);
+    rename(urlGraph, urlGraphPrev);
+    rename(urlOrtho, urlOrthoPrev);
+
     // on crée le nouveau
     // fs.symlinkSync(urlGraphSelected, urlGraph);
     // fs.symlinkSync(urlOrthoSelected, urlOrtho);
-    fs.linkSync(urlGraphSelected, urlGraph);
-    fs.linkSync(urlOrthoSelected, urlOrtho);
+    // fs.linkSync(urlGraphSelected, urlGraph);
+    // fs.linkSync(urlOrthoSelected, urlOrtho);
+    rename(urlGraphSelected, urlGraph);
+    rename(urlOrthoSelected, urlOrtho);
   });
 
   fs.writeFileSync(path.join(global.dir_cache, 'activePatchs.json'), JSON.stringify(req.app.activePatchs, null, 4));
@@ -299,20 +370,23 @@ router.put('/patch/redo', [], (req, res) => {
     .properties.patchId;
   debug('patchIdRedo:', patchIdRedo);
   const features = [];
-  const slabs = new Set();
+  const slabs = {};
   let index = req.app.unactivePatchs.features.length - 1;
   while (index >= 0) {
     const feature = req.app.unactivePatchs.features[index];
     if (feature.properties.patchId === patchIdRedo) {
       features.push(feature);
-      feature.properties.slabs.forEach((item) => slabs.add(item));
+      feature.properties.slabs.forEach((item) => {
+		  slabs[`${item.x}_${item.y}_${item.z}`] = item;
+	  });
       req.app.unactivePatchs.features.splice(index, 1);
     }
     index -= 1;
   }
-  debug(slabs.size, ' dalles impactées');
+  debug(Object.keys(slabs).length, ' dalles impactées');
   // pour chaque tuile, modifier les liens symboliques
-  slabs.forEach((slab) => {
+  Object.values(slabs).forEach((slab) => {
+  // slabs.forEach((slab) => {
     debug(slab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
     debug(cogPath);
@@ -323,6 +397,8 @@ router.put('/patch/redo', [], (req, res) => {
     // on met a jour l'historique
     const urlHistory = path.join(opiDir, `${cogPath.filename}_history.packo`);
     const history = `${fs.readFileSync(`${urlHistory}`)};${patchIdRedo}`;
+    const tabHistory = history.split(';');
+    const patchIdPrev = tabHistory[tabHistory.length - 2];
     fs.writeFileSync(`${urlHistory}`, history);
     // on verifie si la tuile a été effectivement modifiée par ce patch
     const urlGraphSelected = path.join(graphDir, `${cogPath.filename}_${patchIdRedo}.tif`);
@@ -331,13 +407,22 @@ router.put('/patch/redo', [], (req, res) => {
     const urlGraph = path.join(graphDir, `${cogPath.filename}.tif`);
     const urlOrtho = path.join(orthoDir, `${cogPath.filename}.tif`);
     // on supprime l'ancien lien
-    fs.unlinkSync(urlGraph);
-    fs.unlinkSync(urlOrtho);
+    // fs.unlinkSync(urlGraph);
+    // fs.unlinkSync(urlOrtho);
+    // unlink(urlGraph);
+    // unlink(urlOrtho);
+    const urlGraphPrev = path.join(graphDir, `${cogPath.filename}_${patchIdPrev}.tif`);
+    const urlOrthoPrev = path.join(orthoDir, `${cogPath.filename}_${patchIdPrev}.tif`);
+    rename(urlGraph, urlGraphPrev);
+    rename(urlOrtho, urlOrthoPrev);
+
     // on crée le nouveau
     // fs.symlinkSync(urlGraphSelected, urlGraph);
     // fs.symlinkSync(urlOrthoSelected, urlOrtho);
-    fs.linkSync(urlGraphSelected, urlGraph);
-    fs.linkSync(urlOrthoSelected, urlOrtho);
+    // fs.linkSync(urlGraphSelected, urlGraph);
+    // fs.linkSync(urlOrthoSelected, urlOrtho);
+    rename(urlGraphSelected, urlGraph);
+    rename(urlOrthoSelected, urlOrtho);
   });
   // on remet les features dans req.app.activePatchs.features
   req.app.activePatchs.features = req.app.activePatchs.features.concat(features);
@@ -357,6 +442,7 @@ router.put('/patchs/clear', [], (req, res) => {
     res.status(401).send('unauthorized');
     return;
   }
+  gdalProcessing.clearCache();
   // pour chaque patch de req.app.activePatchs.features
   if (req.app.activePatchs.features.length === 0) {
     debug(' nothing to clear');
@@ -366,48 +452,53 @@ router.put('/patchs/clear', [], (req, res) => {
   const { overviews } = req.app;
   const { features } = req.app.activePatchs;
 
+  const all_slabs = {};
   features.forEach((feature) => {
-    // trouver la liste des tuiles concernées par ces patchs
-    const { slabs } = feature.properties;
-    debug('', slabs.length, ' dalles impactées');
-    // pour chaque tuile, on retablit la version orig
-    slabs.forEach((slab) => {
-      const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
+	  feature.properties.slabs.forEach((item) => {
+	  all_slabs[`${item.x}_${item.y}_${item.z}`] = item;
+	  });
+  });
+  debug('', Object.keys(all_slabs).length, ' dalles impactées');
+  Object.values(all_slabs).forEach((slab) => {
+	  debug('clear sur : ', slab);
+    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
 
-      const graphDir = path.join(global.dir_cache, 'graph', cogPath.dirPath);
-      const orthoDir = path.join(global.dir_cache, 'ortho', cogPath.dirPath);
-      const opiDir = path.join(global.dir_cache, 'opi', cogPath.dirPath);
+    const graphDir = path.join(global.dir_cache, 'graph', cogPath.dirPath);
+    const orthoDir = path.join(global.dir_cache, 'ortho', cogPath.dirPath);
+    const opiDir = path.join(global.dir_cache, 'opi', cogPath.dirPath);
 
-      const urlGraphSelected = path.join(graphDir, `${cogPath.filename}_orig.tif`);
-      const urlOrthoSelected = path.join(orthoDir, `${cogPath.filename}_orig.tif`);
+    const urlGraphSelected = path.join(graphDir, `${cogPath.filename}_orig.tif`);
+    const urlOrthoSelected = path.join(orthoDir, `${cogPath.filename}_orig.tif`);
 
-      const arrayLinkGraph = fs.readdirSync(graphDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.tif')));
-      // suppression des images intermediaires
-      arrayLinkGraph.forEach((file) => fs.unlinkSync(
-        path.join(graphDir, file),
-      ));
-      const arrayLinkOrtho = fs.readdirSync(orthoDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.tif')));
-      // suppression des images intermediaires
-      arrayLinkOrtho.forEach((file) => fs.unlinkSync(
-        path.join(orthoDir, file),
-      ));
+    const arrayLinkGraph = fs.readdirSync(graphDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.tif')));
+    // suppression des images intermediaires
+    arrayLinkGraph.forEach((file) => fs.unlinkSync(
+      path.join(graphDir, file),
+    ));
+    const arrayLinkOrtho = fs.readdirSync(orthoDir).filter((filename) => (filename.includes('_') && !filename.endsWith('orig.tif')));
+    // suppression des images intermediaires
+    arrayLinkOrtho.forEach((file) => fs.unlinkSync(
+      path.join(orthoDir, file),
+    ));
 
-      // remise à zéro de l'historique de la tuile
-      const urlHistory = path.join(opiDir, `${cogPath.filename}_history.packo`);
-      fs.writeFileSync(`${urlHistory}`, 'orig');
+    // remise à zéro de l'historique de la tuile
+    const urlHistory = path.join(opiDir, `${cogPath.filename}_history.packo`);
+    // fs.writeFileSync(`${urlHistory}`, 'orig');
+	  fs.unlinkSync(urlHistory);
 
-      // modifier les liens symboliques pour pointer sur ce numéro de version
-      const urlGraph = path.join(graphDir, `${cogPath.filename}.tif`);
-      const urlOrtho = path.join(orthoDir, `${cogPath.filename}.tif`);
-      // on supprime l'ancien lien
-      fs.unlinkSync(urlGraph);
-      fs.unlinkSync(urlOrtho);
-      // on crée le nouveau
-      // fs.symlinkSync(urlGraphSelected, urlGraph);
-      // fs.symlinkSync(urlOrthoSelected, urlOrtho);
-      fs.linkSync(urlGraphSelected, urlGraph);
-      fs.linkSync(urlOrthoSelected, urlOrtho);
-    });
+    // modifier les liens symboliques pour pointer sur ce numéro de version
+    const urlGraph = path.join(graphDir, `${cogPath.filename}.tif`);
+    const urlOrtho = path.join(orthoDir, `${cogPath.filename}.tif`);
+    // on supprime l'ancien lien
+    fs.unlinkSync(urlGraph);
+    fs.unlinkSync(urlOrtho);
+    // on crée le nouveau
+    // fs.symlinkSync(urlGraphSelected, urlGraph);
+    // fs.symlinkSync(urlOrthoSelected, urlOrtho);
+    // fs.linkSync(urlGraphSelected, urlGraph);
+    // fs.linkSync(urlOrthoSelected, urlOrtho);
+	  rename(urlGraphSelected, urlGraph);
+    rename(urlOrthoSelected, urlOrtho);
   });
 
   req.app.activePatchs.features = [];
