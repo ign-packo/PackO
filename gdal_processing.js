@@ -11,9 +11,9 @@ let cache = {};
 
 function clearCache() {
   debug('debut de clearCache : ', cache);
-  for (const [key, value] of Object.entries(cache)) {
+  Object.values(cache).forEach((value) => {
     value.ds.close();
-  }
+  });
   cache = {};
   debug('fin de clearCache ');
 }
@@ -39,8 +39,8 @@ function getTile(url, x, y, z, blocSize, cacheKey) {
   }
 
   if ((cacheKey in cache) && (cache[cacheKey][url] !== url)) {
-	  cache[cacheKey].ds.close();
-	  delete cache[cacheKey];
+    cache[cacheKey].ds.close();
+    delete cache[cacheKey];
   }
   if (!(cacheKey in cache)) {
     cache[cacheKey] = {
@@ -204,10 +204,10 @@ function processPatchAsync(patch, blocSize) {
       gdal.openAsync(patch.urlGraph),
       gdal.openAsync(patch.urlOpi),
       gdal.openAsync(patch.urlOrtho),
-    ]).then((ds) => {
-      const dsGraph = ds[0];
-      const dsOpi = ds[1];
-      const dsOrtho = ds[2];
+    ]).then((dsArray) => {
+      const dsGraph = dsArray[0];
+      const dsOpi = dsArray[1];
+      const dsOrtho = dsArray[2];
       debug('chargement...');
       Promise.all([
         dsGraph.bands.get(1).pixels.readAsync(0, 0, dsGraph.rasterSize.x, dsGraph.rasterSize.y),
@@ -272,9 +272,9 @@ function processPatchAsync(patch, blocSize) {
           }),
         ]).then((createdDs) => {
           debug('...fin creation des COGs');
-		  createdDs.forEach((ds) => {
-			  ds.close();
-		  });
+          createdDs.forEach((ds) => {
+            ds.close();
+          });
           res('fin');
         });
       });

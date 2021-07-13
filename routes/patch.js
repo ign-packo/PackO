@@ -93,6 +93,18 @@ function getCOGs(features, overviews) {
   return cogs;
 }
 
+function rename(url, urlOrig) {
+  debug('avant le clearCache');
+  gdalProcessing.clearCache();
+  debug('apres le clearCache');
+  try {
+    fs.renameSync(url, urlOrig);
+  } catch (e) {
+    debug(e);
+    setTimeout(rename(url, urlOrig), 500);
+  }
+}
+
 router.get('/patchs', [], (req, res) => {
   debug('~~~GET patchs');
   res.status(200).send(JSON.stringify(req.app.activePatchs));
@@ -155,33 +167,33 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
         const urlHistory = path.join(global.dir_cache, 'opi', patch.cogPath.dirPath, `${patch.cogPath.filename}_history.packo`);
         if (fs.existsSync(urlHistory)) {
           // if (fs.lstatSync(patch.urlGraph).nlink > 1) {
-		  debug('history existe');
+          debug('history existe');
           const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
-		  const tabHistory = history.split(';');
-		  const prevId = tabHistory[tabHistory.length - 2];
+          const tabHistory = history.split(';');
+          const prevId = tabHistory[tabHistory.length - 2];
 
-		  patch.urlGraphPrev = path.join(global.dir_cache, 'graph', patch.cogPath.dirPath, `${patch.cogPath.filename}_${prevId}.tif`);
-		  patch.urlOrthoPrev = path.join(global.dir_cache, 'ortho', patch.cogPath.dirPath, `${patch.cogPath.filename}_${prevId}.tif`);
+          const urlGraphPrev = path.join(global.dir_cache, 'graph', patch.cogPath.dirPath, `${patch.cogPath.filename}_${prevId}.tif`);
+          const urlOrthoPrev = path.join(global.dir_cache, 'ortho', patch.cogPath.dirPath, `${patch.cogPath.filename}_${prevId}.tif`);
 
           debug(patch.urlGraph);
           debug(' historique :', history);
           fs.writeFileSync(`${urlHistory}`, history);
-		  // fs.unlinkSync(patch.urlGraph);
+          // fs.unlinkSync(patch.urlGraph);
           // fs.unlinkSync(patch.urlOrtho);
-		  // unlink(patch.urlGraph);
+          // unlink(patch.urlGraph);
           // unlink(patch.urlOrtho);
-		  rename(patch.urlGraph, patch.urlGraphPrev);
-		  rename(patch.urlOrtho, patch.urlOrthoPrev);
+          rename(patch.urlGraph, urlGraphPrev);
+          rename(patch.urlOrtho, urlOrthoPrev);
         } else {
-		  debug('history n existe pas encore');
+          debug('history n existe pas encore');
           const history = `orig;${newPatchId}`;
           fs.writeFileSync(`${urlHistory}`, history);
           const urlGraphOrig = path.join(global.dir_cache, 'graph', patch.cogPath.dirPath, `${patch.cogPath.filename}_orig.tif`);
           const urlOrthoOrig = path.join(global.dir_cache, 'ortho', patch.cogPath.dirPath, `${patch.cogPath.filename}_orig.tif`);
           // fs.renameSync(patch.urlGraph, urlGraphOrig);
           // fs.renameSync(patch.urlOrtho, urlOrthoOrig);
-		  rename(patch.urlGraph, urlGraphOrig);
-		  rename(patch.urlOrtho, urlOrthoOrig);
+          rename(patch.urlGraph, urlGraphOrig);
+          rename(patch.urlOrtho, urlOrthoOrig);
         }
         rename(patch.urlGraphOutput, patch.urlGraph);
         rename(patch.urlOrthoOutput, patch.urlOrtho);
@@ -222,30 +234,6 @@ router.post('/patch', encapBody.bind({ keyName: 'geoJSON' }), [
   });
 });
 
-function unlink(url) {
-  debug('avant le clearCache');
-  gdalProcessing.clearCache();
-  debug('apres le clearCache');
-  try {
-    fs.unlinkSync(url);
-  } catch (e) {
-    debug(e);
-    setTimeout(unlink(url), 500);
-  }
-}
-
-function rename(url, urlOrig) {
-  debug('avant le clearCache');
-  gdalProcessing.clearCache();
-  debug('apres le clearCache');
-  try {
-    fs.renameSync(url, urlOrig);
-  } catch (e) {
-    debug(e);
-    setTimeout(rename(url, urlOrig), 500);
-  }
-}
-
 router.put('/patch/undo', [], (req, res) => {
   debug('~~~PUT patch/undo');
   if (req.app.activePatchs.features.length === 0) {
@@ -270,7 +258,7 @@ router.put('/patch/undo', [], (req, res) => {
       req.app.activePatchs.features.splice(index, 1);
       feature.properties.slabs.forEach((item) => {
         slabs[`${item.x}_${item.y}_${item.z}`] = item;
-	  });
+      });
     }
     index -= 1;
   }
@@ -278,7 +266,7 @@ router.put('/patch/undo', [], (req, res) => {
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
   const errors = [];
   const histories = [];
-  Object.values(slabs).forEach((slab, index) => {
+  Object.values(slabs).forEach((slab, indexSlab) => {
     debug('slab :', slab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
     const opiDir = path.join(global.dir_cache, 'opi', cogPath.dirPath);
@@ -289,23 +277,23 @@ router.put('/patch/undo', [], (req, res) => {
     // on vérifie que le lastPatchId est bien le dernier sur cette tuile
     if (`${history[history.length - 1]}` !== `${lastPatchId}`) {
       debug("erreur d'historique");
-	  errors.push(`erreur d'historique sur la tuile ${cogPath}`);
-	  debug('erreur : ', history, lastPatchId);
+      errors.push(`erreur d'historique sur la tuile ${cogPath}`);
+      debug('erreur : ', history, lastPatchId);
       // res.status(404).send(`erreur d'historique sur la tuile ${cogPath}`);
     } else {
-      histories[index] = history;
+      histories[indexSlab] = history;
     }
   });
   if (errors.length > 0) {
     res.status(404).send(errors);
     return;
   }
-  Object.values(slabs).forEach((slab, index) => {
+  Object.values(slabs).forEach((slab, indexSlab) => {
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
     const opiDir = path.join(global.dir_cache, 'opi', cogPath.dirPath);
     const urlHistory = path.join(opiDir, `${cogPath.filename}_history.packo`);
     // on récupère la version à restaurer
-    const history = histories[index];
+    const history = histories[indexSlab];
     const patchIdPrev = history[history.length - 1];
     const idSelected = history[history.length - 2];
     // mise à jour de l'historique
@@ -377,8 +365,8 @@ router.put('/patch/redo', [], (req, res) => {
     if (feature.properties.patchId === patchIdRedo) {
       features.push(feature);
       feature.properties.slabs.forEach((item) => {
-		  slabs[`${item.x}_${item.y}_${item.z}`] = item;
-	  });
+        slabs[`${item.x}_${item.y}_${item.z}`] = item;
+      });
       req.app.unactivePatchs.features.splice(index, 1);
     }
     index -= 1;
@@ -452,15 +440,15 @@ router.put('/patchs/clear', [], (req, res) => {
   const { overviews } = req.app;
   const { features } = req.app.activePatchs;
 
-  const all_slabs = {};
+  const slabsDico = {};
   features.forEach((feature) => {
-	  feature.properties.slabs.forEach((item) => {
-	  all_slabs[`${item.x}_${item.y}_${item.z}`] = item;
-	  });
+    feature.properties.slabs.forEach((item) => {
+      slabsDico[`${item.x}_${item.y}_${item.z}`] = item;
+    });
   });
-  debug('', Object.keys(all_slabs).length, ' dalles impactées');
-  Object.values(all_slabs).forEach((slab) => {
-	  debug('clear sur : ', slab);
+  debug('', Object.keys(slabsDico).length, ' dalles impactées');
+  Object.values(slabsDico).forEach((slab) => {
+    debug('clear sur : ', slab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
 
     const graphDir = path.join(global.dir_cache, 'graph', cogPath.dirPath);
@@ -484,7 +472,7 @@ router.put('/patchs/clear', [], (req, res) => {
     // remise à zéro de l'historique de la tuile
     const urlHistory = path.join(opiDir, `${cogPath.filename}_history.packo`);
     // fs.writeFileSync(`${urlHistory}`, 'orig');
-	  fs.unlinkSync(urlHistory);
+    fs.unlinkSync(urlHistory);
 
     // modifier les liens symboliques pour pointer sur ce numéro de version
     const urlGraph = path.join(graphDir, `${cogPath.filename}.tif`);
@@ -497,7 +485,7 @@ router.put('/patchs/clear', [], (req, res) => {
     // fs.symlinkSync(urlOrthoSelected, urlOrtho);
     // fs.linkSync(urlGraphSelected, urlGraph);
     // fs.linkSync(urlOrthoSelected, urlOrtho);
-	  rename(urlGraphSelected, urlGraph);
+    rename(urlGraphSelected, urlGraph);
     rename(urlOrthoSelected, urlOrtho);
   });
 
