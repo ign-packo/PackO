@@ -7,7 +7,6 @@ const server = require('..');
 
 describe('Wmts', () => {
   after((done) => {
-    server.workerpool.terminate();
     server.close();
     done();
   });

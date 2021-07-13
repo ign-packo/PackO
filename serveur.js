@@ -119,7 +119,6 @@ try {
   module.exports = app.listen(PORT, () => {
     debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);
   });
-  module.exports.workerpool = patch.workerpool;
 } catch (err) {
   debug.log(err);
 }
