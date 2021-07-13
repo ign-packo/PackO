@@ -87,7 +87,7 @@ itowns.Fetcher.json(`${apiUrl}/json/overviews`).then((json) => {
       enableSmartTravel: false,
       zoomFactor,
       maxResolution: resolLvMax,
-      minResolution: resolLvMin,
+      minResolution: resolLvMin + 0.1, // Pour eviter des problèmes d'arrondis
     },
   });
 
