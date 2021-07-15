@@ -124,10 +124,13 @@ function processPatchAsync(patch, blocSize) {
     // Modification du graph
     debug('ouverture de l image');
     debug(patch);
+    const urlGraph = patch.withOrig ? patch.urlGraphOrig : patch.urlGraph;
+    const urlOrtho = patch.withOrig ? patch.urlOrthoOrig : patch.urlOrtho;
+    const { urlOpi } = patch;
     Promise.all([
-      gdal.openAsync(patch.urlGraph),
-      gdal.openAsync(patch.urlOpi),
-      gdal.openAsync(patch.urlOrtho),
+      gdal.openAsync(urlGraph),
+      gdal.openAsync(urlOpi),
+      gdal.openAsync(urlOrtho),
     ]).then((dsArray) => {
       const dsGraph = dsArray[0];
       const dsOpi = dsArray[1];

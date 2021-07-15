@@ -39,6 +39,7 @@ function getTilePath(X, Y, Z, overviews) {
   // on a donc nbTiles (qui est une puissance de 2)
   // correspond au facteur max
   if (factor > nbTiles) {
+    debug('Niveau de zoom non dispo');
     const error = new Error();
     error.msg = {
       status: 'zoom non dispo',

@@ -6,6 +6,8 @@ servers:
   - url: "http://localhost:8081"
     description: "Serveur de dev"
 tags:
+  - name: branch
+    description: Gestion des branches
   - name: wmts
     description: Requête sur les tuiles
   - name: graph
@@ -24,39 +26,92 @@ paths:
       responses:
         '200':
           description: OK
-  '/patch/undo':
+  '/branches':
+    get:
+      tags:
+        - branch
+      summary: "Récupération de la liste des branches"
+      description: ""
+      responses:
+        '200':
+          description: OK
+  '/branch':
+    post:
+      tags:
+        - branch
+      summary: "Création d'une branche"
+      description: ""
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+          example: "maBranche"
+      responses:
+        '200':
+          description: OK
+  '/{branchId}/patch/undo':
     put:
       tags:
         - patch
       summary: "Annulation de la dernière modification"
       description: ""
+      parameters:
+        - in: path
+          name: branchId
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
       responses:
         '200':
           description: OK
-  '/patch/redo':
+  '/{branchId}/patch/redo':
     put:
       tags:
         - patch
       summary: "Reprise en compte de la dernière modification annulée"
       description: ""
+      parameters:
+        - in: path
+          name: branchId
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
       responses:
         '200':
           description: OK
-  '/patchs/clear':
+  '/{branchId}/patches/clear':
     put:
       tags:
         - patch
       summary: "Annulation de toutes les modifications"
       description: ""
+      parameters:
+        - in: path
+          name: branchId
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
       responses:
         '200':
           description: OK
-  '/patch':
+  '/{branchId}/patch':
     post:
       tags:
         - patch
       summary: "Application d'un patch de correction"
       description: "Mise a jour du graph de mosaiquage a partir d'un geoJSON"
+      parameters:
+        - in: path
+          name: branchId
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
       requestBody:
         description: polygone à patcher (geoJson)
         required: true
@@ -85,22 +140,35 @@ paths:
       responses:
         '200':
           description: OK
-  '/patchs':
+  '/{branchId}/patches':
     get:
       tags:
         - patch
       summary: "Récupération de tous les patchs de correction"
       description: ""
+      parameters:
+        - in: path
+          name: branchId
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
       responses:
         '200':
           description: OK
-  '/graph':
+  '/{branchId}/graph':
     get:
       tags:
         - graph
       summary: "Récupération de l'identifiant du cliche"
       description: ""
       parameters:
+        - in: path
+          name: branchId
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
         - in: query
           name: x
           required: true
@@ -117,13 +185,19 @@ paths:
         '200':
           description: OK
 
-  '/wmts':
+  '/{branchId}/wmts':
     get:
       tags:
         - wmts
       summary: "service wmts pour ortho et graph"
       description: ""
       parameters:
+        - in: path
+          name: branchId
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
         - in: query
           name: SERVICE
           required: true
