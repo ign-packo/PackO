@@ -2,7 +2,7 @@ const debug = require('debug')('wmts');
 const debugFeatureInfo = require('debug')('wmts:GetFeatureInfo');
 const debugGetTile = require('debug')('wmts:GetTile');
 const router = require('express').Router();
-const { matchedData, query } = require('express-validator');
+const { matchedData, query, param } = require('express-validator');
 const Jimp = require('jimp');
 const path = require('path');
 
@@ -15,7 +15,11 @@ const gdalProcessing = require('../gdal_processing.js');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
-router.get('/wmts', [
+router.get('/:idBranch/wmts', [
+  param('idBranch')
+    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+    .isInt({ min: 0 })
+    .withMessage(createErrMsg.invalidParameter('idBranch')),
   query('SERVICE')
     .exists().withMessage(createErrMsg.missingParameter('SERVICE'))
     .isIn(['WMTS', 'WMS'])
@@ -90,7 +94,22 @@ router.get('/wmts', [
   const { TILECOL } = params;
   const { I } = params;
   const { J } = params;
+  const { idBranch } = params;
 
+  // si la branch n'existe pas, il faut renvoyer une erreur
+  let valid = false;
+  req.app.branches.forEach((branch) => {
+    if (branch.id === Number(idBranch)) {
+      valid = true;
+    }
+  });
+
+  if (!valid) {
+    res.status(400).json({
+      errors: 'branch does not exist',
+    });
+    return;
+  }
   // GetCapabilities
   if (REQUEST === 'GetCapabilities') {
     debug('~~~GetCapabilities');
@@ -266,7 +285,6 @@ router.get('/wmts', [
 
     res.type('application/xml');
     res.send(xml);
-
     // GetTile
   } else if (REQUEST === 'GetTile') {
     debug('~~~GetTile');
@@ -280,7 +298,14 @@ router.get('/wmts', [
     }
     try {
       const cogPath = cog.getTilePath(TILECOL, TILEROW, TILEMATRIX, overviews);
-      let url = path.join(global.dir_cache, layerName, cogPath.dirPath, cogPath.filename);
+      let urlBranch = path.join(global.dir_cache,
+        layerName,
+        cogPath.dirPath,
+        `${idBranch}_${cogPath.filename}`);
+      let url = path.join(global.dir_cache,
+        layerName,
+        cogPath.dirPath,
+        `${cogPath.filename}`);
       let cacheKey = layerName;
       if (LAYER === 'opi') {
         if (!Name) {
@@ -290,16 +315,26 @@ router.get('/wmts', [
           url += `_${Name}`;
           cacheKey = Name;
         }
+        // Pas de gestion de branche pour les OPI
+        urlBranch = url;
       }
+      urlBranch += '.tif';
       url += '.tif';
-      debug(url);
+      // si jamais la version de la branche existe, c'est elle qu'il faut utiliser
+      debug(url, urlBranch);
+      if (fs.existsSync(urlBranch)) {
+        debug('version branche');
+        url = urlBranch;
+      } else {
+        debug('version orig');
+      }
       gdalProcessing.getTileEncoded(url,
         cogPath.x, cogPath.y, cogPath.z,
         mime, overviews.tileSize.width, cacheKey).then((img) => {
         res.send(img);
       });
     } catch (error) {
-      debug('ICI : ');
+      debug(error);
       gdalProcessing.getDefaultEncoded(mime, overviews.tileSize.width).then((img) => {
         res.send(img);
       });
@@ -310,7 +345,16 @@ router.get('/wmts', [
     debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
     try {
       const cogPath = cog.getTilePath(TILECOL, TILEROW, TILEMATRIX, overviews);
-      const url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
+      const urlBranch = path.join(global.dir_cache, 'graph',
+        cogPath.dirPath,
+        `${idBranch}_${cogPath.filename}.tif`);
+      let url = path.join(global.dir_cache, 'graph',
+        cogPath.dirPath,
+        `${cogPath.filename}.tif`);
+      // si jamais la version de la branche existe, c'est elle qu'il faut utiliser
+      if (fs.existsSync(urlBranch)) {
+        url = urlBranch;
+      }
 
       if (!fs.existsSync(url)) {
         const erreur = new Error();
@@ -367,6 +411,7 @@ router.get('/wmts', [
           });
       }
     } catch (error) {
+      debug(error);
       const erreur = new Error();
       erreur.msg = {
         status: 'out of bounds',

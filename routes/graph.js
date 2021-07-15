@@ -3,8 +3,9 @@ const debug = require('debug')('graph');
 const router = require('express').Router();
 const fs = require('fs');
 const path = require('path');
-const { matchedData, query } = require('express-validator');
+const { matchedData, query, param } = require('express-validator');
 // const jimp = require('jimp');
+const branch = require('../middlewares/branch');
 const cog = require('../cog_path.js');
 const gdalProcessing = require('../gdal_processing.js');
 
@@ -13,7 +14,11 @@ const validateParams = require('../paramValidation/validateParams');
 // const validator = require('../paramValidation/validator');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
-router.get('/graph', [
+router.get('/:idBranch/graph', [
+  param('idBranch')
+    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+    .isInt({ min: 0 })
+    .withMessage(createErrMsg.invalidParameter('idBranch')),
   query('x')
     .exists().withMessage(createErrMsg.missingParameter('x'))
     .matches(/^\d+(.\d+)?$/i)
@@ -22,13 +27,16 @@ router.get('/graph', [
     .exists().withMessage(createErrMsg.missingParameter('y'))
     .matches(/^\d+(.\d+)?$/i)
     .withMessage(createErrMsg.invalidParameter('y')),
-], validateParams,
+],
+validateParams,
+branch.validBranch,
 (req, res) => {
   debug('~~~GetGraph');
   const { overviews } = req.app;
   const params = matchedData(req);
   const { x } = params;
   const { y } = params;
+  const { idBranch } = params;
 
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
@@ -46,32 +54,39 @@ router.get('/graph', [
   const J = Math.floor(Py - Ty * overviews.tileSize.height);
   try {
     const cogPath = cog.getTilePath(Tx, Ty, lvlMax, overviews);
-    const url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
+    // const url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
+    // on commence par cherche la version de la branche
+    let url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${idBranch}_${cogPath.filename}.tif`);
+    // si jamais la version de la branch n'existe pas, il faut prendre la version d'origine
+    if (!fs.existsSync(url)) {
+      url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
+    }
     debug(url);
     if (!fs.existsSync(url)) {
       res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
-    } else {
-      gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, I, J, overviews.tileSize.width, 'graph').then((out) => {
-        debug(req.app.cache_mtd);
-        /* eslint-disable no-param-reassign */
-        if (out.color.some((item) => item !== 0)) {
-          if ((out.color[0] in req.app.cache_mtd)
-            && (out.color[1] in req.app.cache_mtd[out.color[0]])
-            && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-            out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
-            debug(JSON.stringify(out));
-            res.status(200).send(JSON.stringify(out));
-          } else {
-            out.cliche = 'not found';
-            res.status(202).send(out);
-          }
-        } else {
-          res.status(201).send('{"color":[0,0,0], "cliche":"out of graph"}');
-        }
-        /* eslint-enable no-param-reassign */
-      });
+      return;
     }
+    gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, I, J, overviews.tileSize.width, 'graph').then((out) => {
+      debug(req.app.cache_mtd);
+      /* eslint-disable no-param-reassign */
+      if (out.color.some((item) => item !== 0)) {
+        if ((out.color[0] in req.app.cache_mtd)
+          && (out.color[1] in req.app.cache_mtd[out.color[0]])
+          && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
+          out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
+          debug(JSON.stringify(out));
+          res.status(200).send(JSON.stringify(out));
+        } else {
+          out.cliche = 'not found';
+          res.status(202).send(out);
+        }
+      } else {
+        res.status(201).send('{"color":[0,0,0], "cliche":"out of graph"}');
+      }
+      /* eslint-enable no-param-reassign */
+    });
   } catch (error) {
+    debug(error);
     res.status(201).send('{"color":[0,0,0], "cliche":"out of bounds"}');
   }
 });

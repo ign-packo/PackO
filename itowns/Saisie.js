@@ -12,10 +12,11 @@ const status = {
 };
 
 class Saisie {
-  constructor(view, layer, apiUrl) {
+  constructor(view, layer, apiUrl, branchId) {
     this.view = view;
     this.layer = layer;
     this.apiUrl = apiUrl;
+    this.branchId = branchId;
 
     this.validClicheSelected = false;
     this.currentStatus = status.RAS;
@@ -23,6 +24,16 @@ class Saisie {
     this.nbVertices = 0;
     this.lastPos = null;
     this.mousePosition = null;
+  }
+
+  changeBranchId(branchId) {
+    this.message = '';
+    this.branchId = branchId;
+    Object.keys(this.layer).forEach((element) => {
+      const regex = /^.*\/wmts/;
+      this.layer[element].config.source.url = this.layer[element].config.source.url.replace(regex, `${this.apiUrl}/${this.branchId}/wmts`);
+    });
+    this.refreshView(['ortho', 'graph', 'contour']);
   }
 
   refreshView(layers) {
@@ -114,7 +125,7 @@ class Saisie {
     this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
     // On post le geojson sur l'API
-    fetch(`${this.apiUrl}/patch?`,
+    fetch(`${this.apiUrl}/${this.branchId}/patch?`,
       {
         method: 'POST',
         headers: {
@@ -228,7 +239,7 @@ class Saisie {
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         this.view.controls.setCursor('default', 'auto');
-        fetch(`${this.apiUrl}/graph?x=${pos.x}&y=${pos.y}`,
+        fetch(`${this.apiUrl}/${this.branchId}/graph?x=${pos.x}&y=${pos.y}`,
           {
             method: 'GET',
             headers: {
@@ -305,6 +316,52 @@ class Saisie {
     this.message = 'choisir un cliche';
   }
 
+  createBranch() {
+    this.message = '';
+    const branchName = window.prompt('Choose a new branch name:', '');
+    console.log(branchName);
+    if (branchName === null) return;
+    if (branchName.length === 0) {
+      this.message = 'le nom n\'est pas valide';
+      return;
+    }
+    fetch(`${this.apiUrl}/branch?name=${branchName}`,
+      {
+        method: 'POST',
+      }).then((res) => {
+      if (res.status === 200) {
+        itowns.Fetcher.json(`${this.apiUrl}/branches`).then((branches) => {
+          const branchNames = [];
+          let branchId = null;
+          branches.forEach((element) => {
+            branchNames.push(element.name);
+            if (element.name === branchName) {
+              branchId = element.id;
+            }
+          });
+          this.controllers.branch = this.controllers.branch.options(branchNames)
+            .setValue(branchName);
+          this.controllers.branch.onChange((value) => {
+            console.log('new active branch : ', value);
+            branches.forEach((branch) => {
+              if (branch.name === value) {
+                this.branch = value;
+                this.idBranch = branch.id;
+                this.changeBranchId(this.idBranch);
+              }
+            });
+          });
+          this.changeBranchId(branchId);
+        });
+      } else {
+        res.text().then((err) => {
+          console.log(err);
+          this.message = 'le nom n\'est pas valide';
+        });
+      }
+    });
+  }
+
   polygon() {
     if (this.currentStatus === status.WAITING) return;
     if (!this.validClicheSelected) {
@@ -349,7 +406,7 @@ class Saisie {
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/patch/undo?`,
+    fetch(`${this.apiUrl}/${this.branchId}/patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -371,7 +428,7 @@ class Saisie {
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/patch/redo?`,
+    fetch(`${this.apiUrl}/${this.branchId}/patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -394,7 +451,7 @@ class Saisie {
     this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
 
-    fetch(`${this.apiUrl}/patchs/clear?`,
+    fetch(`${this.apiUrl}/${this.branchId}/patches/clear?`,
       {
         method: 'PUT',
       }).then((res) => {
