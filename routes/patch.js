@@ -1,8 +1,6 @@
 const debug = require('debug')('patch');
 const router = require('express').Router();
 const fs = require('fs');
-const PImage = require('pureimage');
-const turf = require('@turf/turf');
 const path = require('path');
 const { body, matchedData, param } = require('express-validator');
 const GJV = require('geojson-validation');
@@ -12,6 +10,7 @@ const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 const cog = require('../cog_path.js');
 const gdalProcessing = require('../gdal_processing.js');
+const pacthMiddlewares = require('../middlewares/patch');
 
 const geoJsonAPatcher = [
   body('geoJSON')
@@ -54,139 +53,6 @@ function encapBody(req, res, next) {
   next();
 }
 
-function getCOGs(features, overviews) {
-  const BBox = {};
-  features.forEach((feature) => {
-    feature.geometry.coordinates[0].forEach((point) => {
-      if ('xmin' in BBox) {
-        BBox.xmin = Math.min(BBox.xmin, point[0]);
-        BBox.xmax = Math.max(BBox.xmax, point[0]);
-        BBox.ymin = Math.min(BBox.ymin, point[1]);
-        BBox.ymax = Math.max(BBox.ymax, point[1]);
-      } else {
-        [BBox.xmin, BBox.ymin] = point;
-        [BBox.xmax, BBox.ymax] = point;
-      }
-    });
-  });
-  debug('~BBox:', 'Done');
-
-  const cogs = [];
-
-  const lvlMax = overviews.dataSet.level.max;
-  const xOrigin = overviews.crs.boundingBox.xmin;
-  const yOrigin = overviews.crs.boundingBox.ymax;
-  const slabWidth = overviews.tileSize.width * overviews.slabSize.width;
-  const slabHeight = overviews.tileSize.height * overviews.slabSize.height;
-
-  const resolution = overviews.resolution * 2 ** (overviews.level.max - lvlMax);
-  const x0 = Math.floor((BBox.xmin - xOrigin) / (resolution * slabWidth));
-  const x1 = Math.ceil((BBox.xmax - xOrigin) / (resolution * slabWidth));
-  const y0 = Math.floor((yOrigin - BBox.ymax) / (resolution * slabHeight));
-  const y1 = Math.ceil((yOrigin - BBox.ymin) / (resolution * slabHeight));
-  for (let y = y0; y < y1; y += 1) {
-    for (let x = x0; x < x1; x += 1) {
-      cogs.push({ x: `${x}`, y: `${y}`, z: `${lvlMax}` });
-    }
-  }
-  return cogs;
-}
-
-function rename(url, urlOrig) {
-  gdalProcessing.clearCache();
-  fs.renameSync(url, urlOrig);
-}
-
-// Preparation des masques
-function createPatch(slab, geoJson, overviews, dirCache, idBranch) {
-  debug('createPatch : ', slab);
-  const xOrigin = overviews.crs.boundingBox.xmin;
-  const yOrigin = overviews.crs.boundingBox.ymax;
-  const slabWidth = overviews.tileSize.width * overviews.slabSize.width;
-  const slabHeight = overviews.tileSize.height * overviews.slabSize.height;
-
-  const resolution = overviews.resolution * 2 ** (overviews.level.max - slab.z);
-  const inputRings = [];
-  for (let f = 0; f < geoJson.features.length; f += 1) {
-    const feature = geoJson.features[f];
-    for (let n = 0; n < feature.geometry.coordinates.length; n += 1) {
-      const coordinates = feature.geometry.coordinates[n];
-      const ring = [];
-      for (let i = 0; i < coordinates.length; i += 1) {
-        const point = coordinates[i];
-        const x = Math.round((point[0] - xOrigin - slab.x * slabWidth * resolution)
-              / resolution);
-        const y = Math.round((yOrigin - point[1] - slab.y * slabHeight * resolution)
-              / resolution) + 1;
-        ring.push([x, y]);
-      }
-      inputRings.push(ring);
-    }
-  }
-
-  const bbox = [0, 0, slabWidth, slabHeight + 1];
-  const poly = turf.polygon(inputRings);
-  const clipped = turf.bboxClip(poly, bbox);
-  const rings = clipped.geometry.coordinates;
-
-  if (rings.length === 0) {
-    debug('masque vide, on passe a la suite : ', slab);
-    return null;
-  }
-
-  // La BBox et le polygone s'intersectent
-  debug('on calcule un masque : ', slab);
-  // Il y a parfois un bug sur le dessin du premier pixel
-  // on cree donc un masque une ligne de plus
-  const mask = PImage.make(slabWidth, slabHeight + 1);
-  const ctx = mask.getContext('2d');
-  ctx.fillStyle = '#FFFFFF';
-  for (let n = 0; n < rings.length; n += 1) {
-    const ring = rings[n];
-    // console.log(ring);
-    ctx.beginPath();
-    ctx.moveTo(ring[0][0], ring[0][1]);
-    for (let i = 1; i < ring.length; i += 1) {
-      ctx.lineTo(ring[i][0], ring[i][1]);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  const patch = { slab, mask, color: geoJson.features[0].properties.color };
-  patch.cogPath = cog.getSlabPath(
-    patch.slab.x,
-    patch.slab.y,
-    patch.slab.z,
-    overviews,
-  );
-  patch.urlGraph = path.join(dirCache, 'graph', patch.cogPath.dirPath,
-    `${idBranch}_${patch.cogPath.filename}.tif`);
-  patch.urlOrtho = path.join(dirCache, 'ortho', patch.cogPath.dirPath,
-    `${idBranch}_${patch.cogPath.filename}.tif`);
-  patch.urlOpi = path.join(dirCache, 'opi', patch.cogPath.dirPath,
-    `${patch.cogPath.filename}_${geoJson.features[0].properties.cliche}.tif`);
-  patch.urlGraphOrig = path.join(dirCache, 'graph', patch.cogPath.dirPath,
-    `${patch.cogPath.filename}.tif`);
-  patch.urlOrthoOrig = path.join(dirCache, 'ortho', patch.cogPath.dirPath,
-    `${patch.cogPath.filename}.tif`);
-  patch.withOrig = false;
-  const checkGraph = fs.promises.access(patch.urlGraph, fs.constants.F_OK).catch(
-    () => {
-      fs.promises.access(patch.urlGraphOrig, fs.constants.F_OK);
-      patch.withOrig = true;
-    },
-  );
-  const checkOrtho = fs.promises.access(patch.urlOrtho, fs.constants.F_OK).catch(
-    () => {
-      fs.promises.access(patch.urlOrthoOrig, fs.constants.F_OK);
-      patch.withOrig = true;
-    },
-  );
-  const checkOpi = fs.promises.access(patch.urlOpi, fs.constants.F_OK);
-  return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => patch);
-}
-
 router.get('/:idBranch/patches', [
   param('idBranch')
     .exists().withMessage(createErrMsg.missingParameter('idBranch'))
@@ -215,7 +81,7 @@ branch.validBranch,
   const { overviews } = req.app;
   const params = matchedData(req);
   const geoJson = params.geoJSON;
-  const { idBranch } = params;
+  // const { idBranch } = params;
 
   let newPatchId = 0;
   for (let i = 0; i < req.selectedBranch.activePatches.features.length; i += 1) {
@@ -225,110 +91,27 @@ branch.validBranch,
 
   newPatchId += 1;
 
-  const cogs = getCOGs(geoJson.features, overviews);
-  const promisesCreatePatch = [];
-  debug('~create patch');
-  cogs.forEach((aCog) => {
-    promisesCreatePatch.push(createPatch(aCog, geoJson, overviews, global.dir_cache, idBranch));
-  });
-  Promise.all(promisesCreatePatch).then((patches) => {
-    const promises = [];
-    const slabsModified = [];
+  const cogs = pacthMiddlewares.getCOGs(geoJson.features, overviews);
 
-    debug('~process patch');
-
-    patches.forEach((patch) => {
-      if (patch === null) {
-        return;
-      }
-      /* eslint-disable no-param-reassign */
-      patch.urlGraphOutput = path.join(global.dir_cache,
-        'graph',
-        patch.cogPath.dirPath,
-        `${idBranch}_${patch.cogPath.filename}_${newPatchId}.tif`);
-      patch.urlOrthoOutput = path.join(global.dir_cache,
-        'ortho', patch.cogPath.dirPath,
-        `${idBranch}_${patch.cogPath.filename}_${newPatchId}.tif`);
-      /* eslint-enable no-param-reassign */
-      slabsModified.push(patch.slab);
-
-      promises.push(gdalProcessing.processPatch(patch, overviews.tileSize.width).catch((err) => {
-        debug(err);
-        throw err;
-      }));
-    });
-    debug('', promises.length, 'patchs à appliquer.');
-    Promise.all(promises).then(() => {
-      // Tout c'est bien passé
-      debug("=> tout c'est bien passé on peut renommer les images");
-      patches.forEach((patch) => {
-        if (patch === null) {
-          return;
-        }
-        const urlHistory = path.join(global.dir_cache,
-          'opi',
-          patch.cogPath.dirPath,
-          `${idBranch}_${patch.cogPath.filename}_history.packo`);
-        if (fs.existsSync(urlHistory)) {
-          debug('history existe');
-          const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
-          const tabHistory = history.split(';');
-          const prevId = tabHistory[tabHistory.length - 2];
-
-          const urlGraphPrev = path.join(global.dir_cache, 'graph', patch.cogPath.dirPath,
-            `${idBranch}_${patch.cogPath.filename}_${prevId}.tif`);
-          const urlOrthoPrev = path.join(global.dir_cache, 'ortho', patch.cogPath.dirPath,
-            `${idBranch}_${patch.cogPath.filename}_${prevId}.tif`);
-
-          debug(patch.urlGraph);
-          debug(' historique :', history);
-          fs.writeFileSync(`${urlHistory}`, history);
-          // on ne fait un rename que si prevId n'est pas 'orig'
-          if (prevId !== 'orig') {
-            rename(patch.urlGraph, urlGraphPrev);
-            rename(patch.urlOrtho, urlOrthoPrev);
-          }
-        } else {
-          debug('history n existe pas encore');
-          const history = `orig;${newPatchId}`;
-          fs.writeFileSync(`${urlHistory}`, history);
-          // On a pas besoin de renommer l'image d'origine
-          // qui reste partagée pour toutes les branches
-        }
-        rename(patch.urlGraphOutput, patch.urlGraph);
-        rename(patch.urlOrthoOutput, patch.urlOrtho);
-      });
-      // on note le patch Id
-      geoJson.features.forEach((feature) => {
-        /* eslint-disable no-param-reassign */
-        feature.properties.patchId = newPatchId;
-        feature.properties.slabs = slabsModified;
-        /* eslint-enable no-param-reassign */
-      });
-      // on ajoute ce patch à l'historique
-      debug('=> Patch', newPatchId, 'ajouté');
-      req.selectedBranch.activePatches.features = req.selectedBranch.activePatches.features.concat(
-        geoJson.features,
-      );
-      debug('features in activePatches:', req.selectedBranch.activePatches.features.length);
-
-      // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
-      req.selectedBranch.unactivePatches.features = [];
-      debug('features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
+  pacthMiddlewares.applyPatch(
+    geoJson.features,
+    overviews,
+    cogs,
+    req.selectedBranch,
+    newPatchId,
+  )
+    .then((slabsModified) => {
+      debug('fin du traitement');
       // on sauve l'historique (au cas ou l'API devrait etre relancee)
       fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
       res.status(200).send(JSON.stringify(slabsModified));
-    }).catch((err) => {
-      debug(err);
-      res.status(400).send(err);
+    }).catch((error) => {
+      debug('on a reçu une erreur : ', error);
+      res.status(404).send(JSON.stringify({
+        status: 'File(s) missing',
+        errors: [error],
+      }));
     });
-  }).catch((error) => {
-    debug('on a reçu une erreur : ', error);
-    res.status(404).send(JSON.stringify({
-      status: 'File(s) missing',
-      errors: [error],
-    }));
-  });
 });
 
 router.put('/:idBranch/patch/undo', [
@@ -425,13 +208,13 @@ branch.validBranch,
     // on renomme les anciennes images
     const urlGraphPrev = path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
     const urlOrthoPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
-    rename(urlGraph, urlGraphPrev);
-    rename(urlOrtho, urlOrthoPrev);
+    pacthMiddlewares.rename(urlGraph, urlGraphPrev);
+    pacthMiddlewares.rename(urlOrtho, urlOrthoPrev);
 
     // on renomme les nouvelles images sauf si c'est la version orig
     if (idSelected !== 'orig') {
-      rename(urlGraphSelected, urlGraph);
-      rename(urlOrthoSelected, urlOrtho);
+      pacthMiddlewares.rename(urlGraphSelected, urlGraph);
+      pacthMiddlewares.rename(urlOrthoSelected, urlOrtho);
     }
   });
 
@@ -511,13 +294,13 @@ branch.validBranch,
     const urlGraphPrev = path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
     const urlOrthoPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
     if (patchIdPrev !== 'orig') {
-      rename(urlGraph, urlGraphPrev);
-      rename(urlOrtho, urlOrthoPrev);
+      pacthMiddlewares.rename(urlGraph, urlGraphPrev);
+      pacthMiddlewares.rename(urlOrtho, urlOrthoPrev);
     }
 
     // on renomme les nouvelles images
-    rename(urlGraphSelected, urlGraph);
-    rename(urlOrthoSelected, urlOrtho);
+    pacthMiddlewares.rename(urlGraphSelected, urlGraph);
+    pacthMiddlewares.rename(urlOrthoSelected, urlOrtho);
   });
   // on remet les features dans req.app.activePatches.features
   req.selectedBranch.activePatches.features = req.selectedBranch.activePatches.features.concat(

@@ -51,6 +51,50 @@ paths:
       responses:
         '200':
           description: OK
+  '/branch/{id}':
+    delete:
+      tags:
+        - branch
+      summary: "Destruction d'une branche"
+      description: ""
+      parameters:
+      - in: path
+        name: id
+        description: l'identifiant de la branche à supprimer
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: OK
+  '/rebase':
+    post:
+      tags:
+        - branch
+      summary: "Création d'une branche par enchainement de deux branches"
+      description: ""
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+          example: "maBranche"
+        - in: query
+          name: firstId
+          required: true
+          schema:
+            type: integer
+          example: 0
+        - in: query
+          name: secondId
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: OK
   '/{branchId}/patch/undo':
     put:
       tags:
