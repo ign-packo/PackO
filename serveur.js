@@ -104,9 +104,9 @@ try {
 
   // swaggerDocument global var because needed in routes/misc.js
   global.swaggerDocument = YAML.load('./doc/swagger.yml');
-  app.use('/doc', swaggerUi.serve, swaggerUi.setup(global.swaggerDocument, options));
   global.swaggerDocument.info.version = '???';
   global.swaggerDocument.servers[0].url = app.urlApi;
+  app.use('/doc', swaggerUi.serve, swaggerUi.setup(global.swaggerDocument, options));
 
   app.use('/', wmts);
   app.use('/', graph);
