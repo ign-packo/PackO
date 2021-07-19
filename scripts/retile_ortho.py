@@ -79,16 +79,16 @@ cmd_buildvrt = (
 print(cmd_buildvrt)
 os.system(cmd_buildvrt)
 
-#on vectorise le graphe à partir du vrt
+# on vectorise le graphe à partir du vrt
 cmd_retile = (
     "gdal_retile.py "
     + "-targetDir " + path_out
     + path_out + ".vrt"
     + " -of " + args.format
     + " -r " + args.resampling
-    + "-ps " + str(args.pixelsize)
-    + "-s_srs " + args.srs
-    + "-levels " + str(args.levels)
+    + " -ps " + str(args.pixelsize)
+    + " -s_srs " + args.srs
+    + " -levels " + str(args.levels)
 )
 print(cmd_retile)
 os.system(cmd_retile)
