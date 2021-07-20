@@ -208,6 +208,55 @@ async function main() {
     itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Contour', 3);
     // Et ouvrir l'onglet "Color Layers" par defaut ?
 
+    // Couche Patches
+    layer.patches = {
+      name: 'Patches',
+      config: {
+        transparent: true,
+        opacity: opacity.patches,
+      },
+      optionsGeoJsonParser: {
+        in: {
+          crs,
+        },
+        out: {
+          crs: view.tileLayer.extent.crs,
+          buildExtent: true,
+          mergeFeatures: true,
+          structure: '2d',
+        },
+      },
+    };
+
+    const json = await itowns.Fetcher.json(`${apiUrl}/patchs`);
+    const features = await itowns.GeoJsonParser.parse(
+      json,
+      layer.patches.optionsGeoJsonParser,
+    );
+
+    layer.patches.config.source = new itowns.FileSource({ features });
+
+    // layer.patches.config.source = new itowns.FileSource({
+    //   url: `${apiUrl}/patchs`,
+    //   crs,
+    //   fetcher: itowns.Fetcher.json,
+    //   parser: itowns.GeoJsonParser.parse,
+    // });
+
+    layer.patches.config.style = new itowns.Style({
+      stroke: {
+        color: 'Red',
+        width: 2,
+      },
+    });
+
+    layer.patches.colorLayer = new itowns.ColorLayer(
+      layer.patches.name,
+      layer.patches.config,
+    );
+    view.addLayer(layer.patches.colorLayer);
+    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Patches', 4);
+
     // Request redraw
     view.notifyChange();
 
