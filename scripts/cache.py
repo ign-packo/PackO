@@ -41,11 +41,6 @@ def read_args(update):
                             help="params for the mosaic (default: ressources/LAMB93_5cm.json)",
                             type=str,
                             default="ressources/LAMB93_5cm.json")
-        # pour le moment on suspend l'option level
-        # puisqu'on ne gère que les niveaux du COG
-        # en partant du niveau avec la meilleur résolution
-        # a ré-activer éventuellement si on veut gérer plus
-        # de niveau en sous-ech
         # parser.add_argument("-l", "--level",
         #                     help="level range for the overviews"
         #                     " (default: values from ressources file)"
@@ -151,12 +146,13 @@ def prep_dict(args, update):
         # level_min = overviews_dict['level']['min'] if args.level is None else args.level[0]
         # level_max = overviews_dict['level']['max'] if args.level is None \
         #     else level_min if len(args.level) == 1 else args.level[1]
-        level_min = overviews_dict['level']['min']
-        level_max = overviews_dict['level']['max']
 
+        # nbLevelInCOG = cache.get_slabdeepth(overviews_dict['slabSize'])
         overviews_dict['dataSet']['level'] = {
-            'min': level_min,
-            'max': level_max
+            # 'min': ((level_min - 1 - (level_max % nbLevelInCOG)) // nbLevelInCOG) * nbLevelInCOG
+            # + (level_max % nbLevelInCOG) + 1,
+            'min': overviews_dict['level']['min'],
+            'max': overviews_dict['level']['max']
         }
 
         color_dict = {}
