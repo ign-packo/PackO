@@ -5,10 +5,28 @@ chai.use(require('chai-json-schema'));
 const should = chai.should();
 const server = require('..');
 
+let testBranchId = -1;
+
 describe('Wmts', () => {
   after((done) => {
     server.close();
     done();
+  });
+
+  describe('create a test branch', () => {
+    it('should return a branchId', (done) => {
+      chai.request(server)
+        .post('/branch')
+        .query({ name: 'test wmts' })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          const resJson = JSON.parse(res.text);
+          resJson.should.have.property('id');
+          testBranchId = resJson.id;
+          done();
+        });
+    });
   });
 
   describe('GET /0/wmts?SERVICE=OTHER&REQUEST=GetCapabilities', () => {
@@ -88,6 +106,7 @@ describe('Wmts', () => {
           done();
         });
     });
+
     it('should return a jpeg image', (done) => {
       chai.request(server)
         .get('/0/wmts')
@@ -107,13 +126,58 @@ describe('Wmts', () => {
       chai.request(server)
         .get('/0/wmts')
         .query({
-          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'opi', Name: '19FD5606Ax00020_16371', STYLE: 'normal',
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'opi', Name: '19FD5606Ax00020_16371', STYLE: 'normal',
         })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
           res.type.should.be.a('string').equal('application/octet-stream');
 
+          done();
+        });
+    });
+
+    it('should return the default OPI as png', (done) => {
+      chai.request(server)
+        .get('/0/wmts')
+        .query({
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'opi', STYLE: 'normal',
+        })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          res.type.should.be.a('string').equal('application/octet-stream');
+
+          done();
+        });
+    });
+
+    it('should return the default graph on a non-modified tile', (done) => {
+      chai.request(server)
+        .get(`/${testBranchId}/wmts`)
+        .query({
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'graph', STYLE: 'normal',
+        })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          res.type.should.be.a('string').equal('application/octet-stream');
+
+          done();
+        });
+    });
+
+    it('should failed as invalid branch', (done) => {
+      chai.request(server)
+        .get('/10/wmts')
+        .query({
+          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'opi', Name: '19FD5606Ax00020_16371', STYLE: 'normal',
+        })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(400);
+          const resJson = JSON.parse(res.text);
+          resJson.should.have.property('errors').equal('branch does not exist');
           done();
         });
     });

@@ -85,7 +85,8 @@ router.get('/:idBranch/wmts', [
   // const { SERVICE } = params;
   const { REQUEST } = params;
   //  const { VERSION } = params;
-  const { LAYER, Name } = params;
+  const { LAYER } = params;
+  let { Name } = params;
   // const STYLE = params.STYLE;
   const { FORMAT } = params;
   // const TILEMATRIXSET = params.TILEMATRIXSET;
@@ -309,12 +310,11 @@ router.get('/:idBranch/wmts', [
       let cacheKey = layerName;
       if (LAYER === 'opi') {
         if (!Name) {
-          url += `_${overviews.list_OPI[0]}`;
-          [cacheKey] = overviews.list_OPI;
-        } else {
-          url += `_${Name}`;
-          cacheKey = Name;
+          [Name] = Object.keys(overviews.list_OPI);
         }
+        debugGetTile('Name : ', Name);
+        url += `_${Name}`;
+        cacheKey = Name;
         // Pas de gestion de branche pour les OPI
         urlBranch = url;
       }
