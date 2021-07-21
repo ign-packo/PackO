@@ -32,7 +32,6 @@ describe('Branch', () => {
             should.not.exist(err);
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
-            resJson.should.have.property('id').equal(1);
             resJson.should.have.property('name').equal('test');
             done();
           });
