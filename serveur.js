@@ -38,7 +38,7 @@ const wmts = require('./routes/wmts.js');
 const graph = require('./routes/graph.js');
 const file = require('./routes/file.js');
 const patch = require('./routes/patch.js');
-const misc = require('./routes/misc.js');
+const { misc, gitVersion } = require('./routes/misc.js');
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
@@ -102,11 +102,10 @@ try {
     customCss: '.swagger-ui .topbar { display: none }',
   };
 
-  // swaggerDocument global var because needed in routes/misc.js
-  global.swaggerDocument = YAML.load('./doc/swagger.yml');
-  app.use('/doc', swaggerUi.serve, swaggerUi.setup(global.swaggerDocument, options));
-  global.swaggerDocument.info.version = '???';
-  global.swaggerDocument.servers[0].url = app.urlApi;
+  const swaggerDocument = YAML.load('./doc/swagger.yml');
+  swaggerDocument.servers[0].url = app.urlApi;
+  swaggerDocument.info.version = gitVersion;
+  app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerDocument, options));
 
   app.use('/', wmts);
   app.use('/', graph);

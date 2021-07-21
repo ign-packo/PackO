@@ -1,18 +1,13 @@
 const debug = require('debug')('misc');
 const router = require('express').Router();
-const { gitDescribe } = require('git-describe');
+const { gitDescribeSync } = require('git-describe');
 
-gitDescribe(__dirname, (err, gitInfo) => {
-  if (err) {
-    debug(err);
-  }
-  debug(`Git version: ${gitInfo.raw}`);
-  global.swaggerDocument.info.version = gitInfo.raw;
-});
+const gitVersion = gitDescribeSync(__dirname).raw;
+debug(`Git version: ${gitVersion}`);
 
 router.get('/version', (req, res) => {
   debug('~~~getVersion~~~');
-  res.status(200).send({ version_git: global.swaggerDocument.info.version });
+  res.status(200).send({ version_git: gitVersion });
 });
 
-module.exports = router;
+module.exports = { misc: router, gitVersion };
