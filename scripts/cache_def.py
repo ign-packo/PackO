@@ -256,7 +256,8 @@ def cut_image_1arg(arg):
 
     # seulement pour lmax
     level = overviews['dataSet']['level']['max']
-    tps1 = time.process_time()
+    tps1_actif = time.process_time()
+    tps1 = time.perf_counter()
     if arg['verbose'] == 0:
         print('  (', arg['opi']['name'], ') level : ', level, sep="")
 
@@ -297,9 +298,11 @@ def cut_image_1arg(arg):
                           slab_param,
                           arg['gdalOption'])
 
-    tps2 = time.process_time()
+    tps2_actif = time.process_time()
+    tps2 = time.perf_counter()
     if arg['verbose'] > 0:
-        print('  (', arg['opi']['name'], ') level : ', level, ' in ', tps2 - tps1, sep="")
+        print('  (', arg['opi']['name'], ') level : ', level, ' in ', tps2 - tps1,
+              ' (', tps2_actif - tps1_actif, ')', sep="")
 
 
 def progress_bar(nb_steps, nb_tiles, args_create_ortho_and_graph):

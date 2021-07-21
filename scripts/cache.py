@@ -201,8 +201,14 @@ def generate(update):
 
         print(" Découpage")
 
-        if (cpu_util > 1):
-            pool = multiprocessing.Pool(cpu_util)
+        # cas où il y a moins d'images à traiter que de cpu aloué(s)
+        if (cpu_util > len(list_filename)):
+            nb_thread = len(list_filename)
+        else:
+            nb_thread = cpu_util
+
+        if (nb_thread > 1):
+            pool = multiprocessing.Pool(nb_thread)
             pool.map(cache.cut_image_1arg, args_cut_image)
 
             pool.close()
