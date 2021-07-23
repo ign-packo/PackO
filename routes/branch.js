@@ -194,6 +194,17 @@ validateParams,
     res.status(406).send('A branch with this name already exist');
     return;
   }
+  // on crée le processus et en revoit son id
+  const process = {
+    id: req.app.processes.length,
+    name: `rebase ${firstId}, ${secondId} into ${name}`,
+    status: 'running',
+    progress: 0,
+    res: null,
+  };
+  req.app.processes.push(process);
+  res.status(200).send(JSON.stringify(process));
+
   // on crée la nouvelle branche
   const newBranch = {
     id: largestId + 1,
@@ -223,6 +234,7 @@ validateParams,
   };
   // on recupere l'historique de la premiere branche
   branchMiddelwares.createCopy(newBranch, firstBranch, overviews);
+  process.progress = 50;
 
   const features = [...secondBranch.activePatches.features];
 
@@ -241,7 +253,9 @@ validateParams,
     // on insere la nouvelle branche
     req.app.branches.push(newBranch);
     fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
-    res.status(200).send(JSON.stringify({ name, id: largestId + 1 }));
+    process.progress = 100;
+    process.status = 'done';
+    process.res = { name, id: largestId + 1 };
   });
 });
 

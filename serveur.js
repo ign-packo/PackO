@@ -40,6 +40,7 @@ const file = require('./routes/file.js');
 const patch = require('./routes/patch.js');
 const { misc, gitVersion } = require('./routes/misc.js');
 const branch = require('./routes/branch.js');
+const processManager = require('./routes/process.js');
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
@@ -89,6 +90,14 @@ try {
     fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(app.branches, null, 4));
   }
 
+  try {
+    app.processes = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'processes.json')));
+  } catch (err) {
+    app.processes = [
+    ];
+    fs.writeFileSync(path.join(global.dir_cache, 'processes.json'), JSON.stringify(app.processes, null, 4));
+  }
+
   app.use(cors());
   app.use(bodyParser.json());
 
@@ -114,7 +123,8 @@ try {
   app.use('/', patch);
   app.use('/', misc);
   app.use('/', branch);
-
+  app.use('/', processManager);
+ 
   app.use('/itowns', express.static('itowns'));
 
   module.exports = app.listen(PORT, () => {
