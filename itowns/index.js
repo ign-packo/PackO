@@ -6,6 +6,11 @@ import Saisie from './Saisie';
 // Global itowns pour GuiTools -> peut être améliorer
 global.itowns = itowns;
 
+async function addGitVersion(apiUrl) {
+  const obj = await itowns.Fetcher.json(`${apiUrl}/version`);
+  document.getElementById('spAPIVersion_val').innerText = typeof obj !== 'undefined' ? obj.version_git : 'unknown';
+}
+
 // check if string is in "x,y" format with x and y positive floats
 // return "null" if incorrect string format, otherwise [x, y] array
 function checkCoordString(coordStr) {
@@ -45,11 +50,7 @@ async function main() {
 
   const apiUrl = `http://${serverAPI}:${portAPI}`;
   try {
-    const obj = await itowns.Fetcher.json(`${apiUrl}/version`);
-    document.getElementById('spAPIVersion_val').innerText = typeof obj !== 'undefined' ? obj.version_git : 'unknown';
-
-    // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
-    const viewerDiv = document.getElementById('viewerDiv');
+    addGitVersion(apiUrl);
 
     const overviews = await itowns.Fetcher.json(`${apiUrl}/json/overviews`);
 
@@ -85,6 +86,8 @@ async function main() {
     const xcenter = (xmin + xmax) * 0.5;
     const ycenter = (ymin + ymax) * 0.5;
 
+    // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
+    const viewerDiv = document.getElementById('viewerDiv');
     viewerDiv.height = viewerDiv.clientHeight;
     viewerDiv.width = viewerDiv.clientWidth;
     const placement = new itowns.Extent(
