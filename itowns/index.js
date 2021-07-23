@@ -15,22 +15,49 @@ console.log('serverAPI:', serverAPI, 'portAPI:', portAPI);
 
 const apiUrl = `http://${serverAPI}:${portAPI}`;
 
+// fonction permettant d'afficher la valeur de l'echelle et du niveau de dezoom
+function updateScaleWidget(view, resolution) {
+  let distance = view.getPixelsToMeters(200);
+  let unit = 'm';
+  const dezoom = Math.fround(distance / (200 * resolution));
+  if (distance >= 1000) {
+    distance /= 1000;
+    unit = 'km';
+  }
+  if (distance <= 1) {
+    distance *= 100;
+    unit = 'cm';
+  }
+  document.getElementById('spanZoomWidget').innerHTML = dezoom <= 1 ? `zoom: ${1 / dezoom}` : `zoom: 1/${dezoom}`;
+  document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
+}
+
+// check if string is in "x,y" format with x and y positive floats
+// return "null" if incorrect string format, otherwise [x, y] array
+function checkCoordString(coordStr) {
+  const rgxFloat = '\\s*([0-9]+[.]?[0-9]*)\\s*';
+  const rgxCoord = new RegExp(`^${rgxFloat},${rgxFloat}$`);
+  const rgxCatch = rgxCoord.exec(coordStr);
+  if (rgxCatch) {
+    return [parseFloat(rgxCatch[1]), parseFloat(rgxCatch[2])];
+  }
+  return null;
+}
+
 itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
   document.getElementById('spAPIVersion_val').innerText = obj.version_git;
-})
-  .catch(() => {
-    document.getElementById('spAPIVersion_val').innerText = 'unknown';
-  });
-
-// `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
-const viewerDiv = document.getElementById('viewerDiv');
+}).catch(() => {
+  document.getElementById('spAPIVersion_val').innerText = 'unknown';
+});
 
 const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews`);
 const getBranches = itowns.Fetcher.json(`${apiUrl}/branches`);
-Promise.all([getOverviews, getBranches]).then((results) => {
+const getPatches = itowns.Fetcher.json(`${apiUrl}/0/patches`);
+Promise.all([getOverviews, getBranches, getPatches]).then((results) => {
   const overviews = results[0];
   const branches = results[1];
   const currentBranch = branches[0];
+  const currentPatches = results[2];
   const branchNames = [];
   branches.forEach((element) => {
     branchNames.push(element.name);
@@ -68,6 +95,8 @@ Promise.all([getOverviews, getBranches]).then((results) => {
   const xcenter = (xmin + xmax) * 0.5;
   const ycenter = (ymin + ymax) * 0.5;
 
+  // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
+  const viewerDiv = document.getElementById('viewerDiv');
   viewerDiv.height = viewerDiv.clientHeight;
   viewerDiv.width = viewerDiv.clientWidth;
   const placement = new itowns.Extent(
@@ -138,7 +167,7 @@ Promise.all([getOverviews, getBranches]).then((results) => {
 
       return max(t0, max(t1, max(t2, max(t3, max(t4, max(t5, max(t6, t7)))))));
   }
-`);
+  `);
 
   itowns.ShaderChunk.customBodyColorLayer(`
   ivec2 textureSize2d = textureSize(tex,0);
@@ -191,6 +220,45 @@ Promise.all([getOverviews, getBranches]).then((results) => {
   itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Contour', 3);
   // Et ouvrir l'onglet "Color Layers" par defaut ?
 
+  // Couche Patches
+  layer.patches = {
+    name: 'Patches',
+    config: {
+      transparent: true,
+      opacity: opacity.patches,
+    },
+    optionsGeoJsonParser: {
+      in: {
+        crs,
+      },
+      out: {
+        crs: view.tileLayer.extent.crs,
+        buildExtent: true,
+        mergeFeatures: true,
+        structure: '2d',
+      },
+    },
+  };
+  layer.patches.config.source = new itowns.FileSource({
+    fetchedData: currentPatches,
+    crs,
+    parser: itowns.GeoJsonParser.parse,
+  });
+
+  layer.patches.config.style = new itowns.Style({
+    stroke: {
+      color: 'Yellow',
+      width: 2,
+    },
+  });
+
+  layer.patches.colorLayer = new itowns.ColorLayer(
+    layer.patches.name,
+    layer.patches.config,
+  );
+  view.addLayer(layer.patches.colorLayer);
+  itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Patches', 4);
+
   // Request redraw
   view.notifyChange();
 
@@ -228,45 +296,16 @@ Promise.all([getOverviews, getBranches]).then((results) => {
 
   viewerDiv.focus();
 
-  // fonction permettant d'afficher la valeur de l'echelle et du niveau de dezoom
-  function updateScaleWidget() {
-    let distance = view.getPixelsToMeters(200);
-    let unit = 'm';
-    const dezoom = Math.fround(distance / (200 * overviews.resolution));
-    if (distance >= 1000) {
-      distance /= 1000;
-      unit = 'km';
-    }
-    if (distance <= 1) {
-      distance *= 100;
-      unit = 'cm';
-    }
-    document.getElementById('spanZoomWidget').innerHTML = dezoom <= 1 ? `zoom: ${1 / dezoom}` : `zoom: 1/${dezoom}`;
-    document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
-  }
-
-  // check if string is in "x,y" format with x and y positive floats
-  // return "null" if incorrect string format, otherwise [x, y] array
-  function checkCoordString(coordStr) {
-    const rgxFloat = '\\s*([0-9]+[.]?[0-9]*)\\s*';
-    const rgxCoord = new RegExp(`^${rgxFloat},${rgxFloat}$`);
-    const rgxCatch = rgxCoord.exec(coordStr);
-    if (rgxCatch) {
-      return [parseFloat(rgxCatch[1]), parseFloat(rgxCatch[2])];
-    }
-    return null;
-  }
-
   view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
     // eslint-disable-next-line no-console
     console.info('View initialized');
-    updateScaleWidget();
+    updateScaleWidget(view, resolution);
   });
   view.addEventListener(itowns.PLANAR_CONTROL_EVENT.MOVED, () => {
     // eslint-disable-next-line no-console
     console.info('View moved');
     if (view.controls.state === -1) {
-      updateScaleWidget();
+      updateScaleWidget(view, resolution);
     }
   });
 
@@ -341,7 +380,7 @@ Promise.all([getOverviews, getBranches]).then((results) => {
       view.camera.camera3D.zoom *= 2;
       view.camera.camera3D.updateProjectionMatrix();
       view.notifyChange(view.camera.camera3D);
-      updateScaleWidget();
+      updateScaleWidget(view, resolution);
     }
     return false;
   });
@@ -351,7 +390,7 @@ Promise.all([getOverviews, getBranches]).then((results) => {
       view.camera.camera3D.zoom *= 0.5;
       view.camera.camera3D.updateProjectionMatrix();
       view.notifyChange(view.camera.camera3D);
-      updateScaleWidget();
+      updateScaleWidget(view, resolution);
     }
     return false;
   });
