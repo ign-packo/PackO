@@ -31,9 +31,16 @@ def get_tile_limits(filename):
     return tile_limits
 
 
+def get_slabdeepth(slabSize):
+    """Get the number of levels per COG"""
+    slabsize = min(slabSize['width'], slabSize['height'])
+    return math.floor(math.log(slabsize, 2)) + 1
+
+
 def get_slabbox(input_filename, overviews, slab_change):
     """Get the Min/MaxTileRow/Col for a specified image at all levels"""
 
+    nb_level_COG = get_slabdeepth(overviews['slabSize'])
     slabbox = {}
     tile_limits = get_tile_limits(input_filename)
 
@@ -91,57 +98,59 @@ def get_slabbox(input_filename, overviews, slab_change):
                 = max(max_tile_row,
                       overviews['dataSet']['limits'][str(slab_z)]['MaxTileRow'])
 
-    min_slab_col = math.floor(round((tile_limits['LowerCorner'][0] -
-                                     overviews['crs']['boundingBox']['xmin'])
-                                    / (resolution * overviews['tileSize']['width']
-                                    * overviews['slabSize']['width']), 8))
-    min_slab_row = math.floor(round((overviews['crs']['boundingBox']['ymax'] -
-                                     tile_limits['UpperCorner'][1])
-                                    / (resolution * overviews['tileSize']['height']
-                                    * overviews['slabSize']['height']), 8))
-    max_slab_col = math.ceil(round((tile_limits['UpperCorner'][0] -
-                                    overviews['crs']['boundingBox']['xmin'])
-                                   / (resolution * overviews['tileSize']['width']
-                                   * overviews['slabSize']['width']), 8)) - 1
-    max_slab_row = math.ceil(round((overviews['crs']['boundingBox']['ymax'] -
-                                    tile_limits['LowerCorner'][1])
-                                   / (resolution * overviews['tileSize']['height']
-                                   * overviews['slabSize']['height']), 8)) - 1
-    if slab_z not in slab_change:
-        slab_change[slab_z] = {}
+        if (slab_z % nb_level_COG == overviews['dataSet']['level']['max'] % nb_level_COG):
 
-    for slab_x in range(min_slab_col, max_slab_col + 1):
-        for slab_y in range(min_slab_row, max_slab_row + 1):
-            slab_change[slab_z][str(slab_x) + "_" + str(slab_y)] = True
+            min_slab_col = math.floor(round((tile_limits['LowerCorner'][0] -
+                                            overviews['crs']['boundingBox']['xmin'])
+                                            / (resolution * overviews['tileSize']['width']
+                                            * overviews['slabSize']['width']), 8))
+            min_slab_row = math.floor(round((overviews['crs']['boundingBox']['ymax'] -
+                                            tile_limits['UpperCorner'][1])
+                                            / (resolution * overviews['tileSize']['height']
+                                            * overviews['slabSize']['height']), 8))
+            max_slab_col = math.ceil(round((tile_limits['UpperCorner'][0] -
+                                            overviews['crs']['boundingBox']['xmin'])
+                                           / (resolution * overviews['tileSize']['width']
+                                           * overviews['slabSize']['width']), 8)) - 1
+            max_slab_row = math.ceil(round((overviews['crs']['boundingBox']['ymax'] -
+                                            tile_limits['LowerCorner'][1])
+                                           / (resolution * overviews['tileSize']['height']
+                                           * overviews['slabSize']['height']), 8)) - 1
+            if slab_z not in slab_change:
+                slab_change[slab_z] = {}
 
-    slabbox_z = {
-        'MinSlabCol': min_slab_col,
-        'MinSlabRow': min_slab_row,
-        'MaxSlabCol': max_slab_col,
-        'MaxSlabRow': max_slab_row
-    }
-    slabbox[str(slab_z)] = slabbox_z
+            for slab_x in range(min_slab_col, max_slab_col + 1):
+                for slab_y in range(min_slab_row, max_slab_row + 1):
+                    slab_change[slab_z][str(slab_x) + "_" + str(slab_y)] = True
 
-    if str(slab_z) not in overviews['dataSet']['slabLimits']:
-        overviews['dataSet']['slabLimits'][str(slab_z)] = {
-            'MinSlabCol': min_slab_col,
-            'MinSlabRow': min_slab_row,
-            'MaxSlabCol': max_slab_col,
-            'MaxSlabRow': max_slab_row
-        }
-    else:
-        overviews['dataSet']['slabLimits'][str(slab_z)]['MinSlabCol']\
-            = min(min_slab_col,
-                  overviews['dataSet']['slabLimits'][str(slab_z)]['MinSlabCol'])
-        overviews['dataSet']['slabLimits'][str(slab_z)]['MinSlabRow']\
-            = min(min_slab_row,
-                  overviews['dataSet']['slabLimits'][str(slab_z)]['MinSlabRow'])
-        overviews['dataSet']['slabLimits'][str(slab_z)]['MaxSlabCol']\
-            = max(max_slab_col,
-                  overviews['dataSet']['slabLimits'][str(slab_z)]['MaxSlabCol'])
-        overviews['dataSet']['slabLimits'][str(slab_z)]['MaxSlabRow']\
-            = max(max_slab_row,
-                  overviews['dataSet']['slabLimits'][str(slab_z)]['MaxSlabRow'])
+            slabbox_z = {
+                'MinSlabCol': min_slab_col,
+                'MinSlabRow': min_slab_row,
+                'MaxSlabCol': max_slab_col,
+                'MaxSlabRow': max_slab_row
+            }
+            slabbox[str(slab_z)] = slabbox_z
+
+            if str(slab_z) not in overviews['dataSet']['slabLimits']:
+                overviews['dataSet']['slabLimits'][str(slab_z)] = {
+                    'MinSlabCol': min_slab_col,
+                    'MinSlabRow': min_slab_row,
+                    'MaxSlabCol': max_slab_col,
+                    'MaxSlabRow': max_slab_row
+                }
+            else:
+                overviews['dataSet']['slabLimits'][str(slab_z)]['MinSlabCol']\
+                    = min(min_slab_col,
+                          overviews['dataSet']['slabLimits'][str(slab_z)]['MinSlabCol'])
+                overviews['dataSet']['slabLimits'][str(slab_z)]['MinSlabRow']\
+                    = min(min_slab_row,
+                          overviews['dataSet']['slabLimits'][str(slab_z)]['MinSlabRow'])
+                overviews['dataSet']['slabLimits'][str(slab_z)]['MaxSlabCol']\
+                    = max(max_slab_col,
+                          overviews['dataSet']['slabLimits'][str(slab_z)]['MaxSlabCol'])
+                overviews['dataSet']['slabLimits'][str(slab_z)]['MaxSlabRow']\
+                    = max(max_slab_row,
+                          overviews['dataSet']['slabLimits'][str(slab_z)]['MaxSlabRow'])
     return slabbox
 
 
@@ -255,54 +264,56 @@ def cut_image_1arg(arg):
     slabbox = arg['slabBox']
 
     # seulement pour lmax
-    level = overviews['dataSet']['level']['max']
-    tps1_actif = time.process_time()
-    tps1 = time.perf_counter()
-    if arg['verbose'] == 0:
-        print('  (', arg['opi']['name'], ') level : ', level, sep="")
+    # level = overviews['dataSet']['level']['max']
+    for level in overviews['dataSet']['slabLimits'].keys():
+        level = int(level)
+        tps1_actif = time.process_time()
+        tps1 = time.perf_counter()
+        if arg['verbose'] == 0:
+            print('  (', arg['opi']['name'], ') level : ', level, sep="")
 
-    resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
+        resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
 
-    for slab_x in range(slabbox[str(level)]['MinSlabCol'],
-                        slabbox[str(level)]['MaxSlabCol'] + 1):
-        for slab_y in range(slabbox[str(level)]['MinSlabRow'],
-                            slabbox[str(level)]['MaxSlabRow'] + 1):
-            slab_param = {
-                'origin': {
-                    'x': overviews['crs']['boundingBox']['xmin']
-                            + slab_x * resolution * overviews['tileSize']['width']  # noqa: E131
-                            * overviews['slabSize']['width'],  # noqa: E131
-                    'y': overviews['crs']['boundingBox']['ymax']
-                            - slab_y * resolution * overviews['tileSize']['height']  # noqa: E131
-                            * overviews['slabSize']['height']  # noqa: E131
-                },
-                'size': {
-                    'width': overviews['tileSize']['width'] * overviews['slabSize']['width'],
-                    'height': overviews['tileSize']['height'] * overviews['slabSize']['height']
-                },
-                'resolution': resolution,
-                'tile_size': {
-                    'width': overviews['tileSize']['width'],
-                    'height': overviews['tileSize']['height']
+        for slab_x in range(slabbox[str(level)]['MinSlabCol'],
+                            slabbox[str(level)]['MaxSlabCol'] + 1):
+            for slab_y in range(slabbox[str(level)]['MinSlabRow'],
+                                slabbox[str(level)]['MaxSlabRow'] + 1):
+                slab_param = {
+                    'origin': {
+                        'x': overviews['crs']['boundingBox']['xmin']
+                                + slab_x * resolution * overviews['tileSize']['width']  # noqa: E131
+                                * overviews['slabSize']['width'],  # noqa: E131
+                        'y': overviews['crs']['boundingBox']['ymax']
+                        - slab_y * resolution * overviews['tileSize']['height']
+                        * overviews['slabSize']['height']
+                    },
+                    'size': {
+                        'width': overviews['tileSize']['width'] * overviews['slabSize']['width'],
+                        'height': overviews['tileSize']['height'] * overviews['slabSize']['height']
+                    },
+                    'resolution': resolution,
+                    'tile_size': {
+                        'width': overviews['tileSize']['width'],
+                        'height': overviews['tileSize']['height']
+                    }
                 }
-            }
 
-            slab_root = arg['cache'] + '/opi/' + str(level) + '/'\
-                + get_slab_path(slab_x, slab_y, overviews['pathDepth'])
-            # si necessaire, on cree le dossier
-            Path(slab_root[:-2]).mkdir(parents=True, exist_ok=True)
+                slab_root = arg['cache'] + '/opi/' + str(level) + '/'\
+                    + get_slab_path(slab_x, slab_y, overviews['pathDepth'])
+                # si necessaire, on cree le dossier
+                Path(slab_root[:-2]).mkdir(parents=True, exist_ok=True)
 
-            cut_opi_1tile(input_image,
-                          arg['opi']['name'],
-                          slab_root,
-                          slab_param,
-                          arg['gdalOption'])
+                cut_opi_1tile(input_image,
+                              arg['opi']['name'],
+                              slab_root,
+                              slab_param,
+                              arg['gdalOption'])
 
-    tps2_actif = time.process_time()
-    tps2 = time.perf_counter()
-    if arg['verbose'] > 0:
-        print('  (', arg['opi']['name'], ') level : ', level, ' in ', tps2 - tps1,
-              ' (', tps2_actif - tps1_actif, ')', sep="")
+        tps2_actif = time.process_time()
+        tps2 = time.perf_counter()
+        if arg['verbose'] > 0:
+            print('  (', arg['opi']['name'], ') level : ', level, ' in ', tps2 - tps1,
+                  ' (', tps2_actif - tps1_actif, ')', sep="")
 
 
 def progress_bar(nb_steps, nb_tiles, args_create_ortho_and_graph):
@@ -325,29 +336,30 @@ def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change):
     # Calcul des ortho et graph
     args_create_ortho_and_graph = []
     level = str(overviews["dataSet"]["level"]["max"])
-    print("  level :", level)
+    for level in overviews['dataSet']['slabLimits'].keys():
+        print("  level :", level)
 
-    level_limits = overviews["dataSet"]["slabLimits"][level]
-    resol = overviews['resolution'] * 2 ** (overviews['level']['max'] - int(level))
+        level_limits = overviews["dataSet"]["slabLimits"][level]
+        resol = overviews['resolution'] * 2 ** (overviews['level']['max'] - int(level))
 
-    for slab_x in range(level_limits["MinSlabCol"], level_limits["MaxSlabCol"] + 1):
-        for slab_y in range(level_limits["MinSlabRow"], level_limits["MaxSlabRow"] + 1):
+        for slab_x in range(level_limits["MinSlabCol"], level_limits["MaxSlabCol"] + 1):
+            for slab_y in range(level_limits["MinSlabRow"], level_limits["MaxSlabRow"] + 1):
 
-            if int(level) in change and str(slab_x) + "_" + str(slab_y) in change[int(level)] \
-                    and change[int(level)][str(slab_x) + "_" + str(slab_y)]:
+                if int(level) in change and str(slab_x) + "_" + str(slab_y) in change[int(level)] \
+                        and change[int(level)][str(slab_x) + "_" + str(slab_y)]:
 
-                args_create_ortho_and_graph.append({
-                    'slab': {
-                        'x': slab_x,
-                        'y': slab_y,
-                        'level': int(level),
-                        'resolution': resol
-                    },
-                    'overviews': overviews,
-                    'dbOption': db_option,
-                    'cache': dir_cache,
-                    'gdalOption':  gdal_option
-                })
+                    args_create_ortho_and_graph.append({
+                        'slab': {
+                            'x': slab_x,
+                            'y': slab_y,
+                            'level': int(level),
+                            'resolution': resol
+                        },
+                        'overviews': overviews,
+                        'dbOption': db_option,
+                        'cache': dir_cache,
+                        'gdalOption':  gdal_option
+                    })
     return args_create_ortho_and_graph
 
 

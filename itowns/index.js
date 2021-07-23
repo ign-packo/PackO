@@ -85,7 +85,7 @@ Promise.all([getOverviews, getBranches]).then((results) => {
   // on ajoute 1cm de marge pour éviter les erreurs d'arrondi sur le calcul de la résolution
   // avec le view.getPixelsToMeters() d'iTowns
   const resolLvMax = resolution * 2 ** (overviews.level.max - levelMax - 1) - 0.01;
-  const resolLvMin = resolution * 2 ** (overviews.level.max - levelMin + 1) + 0.01;
+  const resolLvMin = resolution * 2 ** (overviews.level.max - levelMin) + 0.01;
   console.log('resol min/max : ', resolLvMin, resolLvMax);
   // Instanciate PlanarView*
   const zoomFactor = 2;// customizable

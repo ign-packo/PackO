@@ -27,10 +27,16 @@ function getTilePath(X, Y, Z, overviews) {
   // On commence par trouver le niveau de zoom de la dalle correspondante
   const nbTiles = overviews.slabSize.width;
   const levelMax = overviews.level.max;
+  const level = Number(Z);
+  const nbLvlInCOG = Math.floor(Math.log2(nbTiles)) + 1;
+  const levelCOG = Math.floor((level + 4 - (levelMax % nbLvlInCOG)) / nbLvlInCOG) * nbLvlInCOG
+                    + (levelMax % nbLvlInCOG);
+
+  debug(levelMax, levelCOG);
 
   // facteur de sous-ech par rapport à la pleine resolution
   // typiquement entre 1 et 16
-  const factor = 2 ** (levelMax - Z);
+  const factor = 2 ** (levelCOG - Z);
   // le nombre de sous-ech dispo dans un COG est lié
   // au nombre de bloc dans l'image
   // si on a 16 blocs en pleine resolution
@@ -38,7 +44,19 @@ function getTilePath(X, Y, Z, overviews) {
   // (8 blocs, 4 blocs, 2 bloc, 1 bloc)
   // on a donc nbTiles (qui est une puissance de 2)
   // correspond au facteur max
-  if (factor > nbTiles) {
+  // if (factor > nbTiles) {
+  //   const error = new Error();
+  //   error.msg = {
+  //     status: 'zoom non dispo',
+  //     errors: [{
+  //       localisation: 'getPath',
+  //       msg: 'zoom non dispo',
+  //     }],
+  //   };
+  //   throw error;
+  // }
+
+  if (Z < overviews.dataSet.level.min) {
     debug('Niveau de zoom non dispo');
     const error = new Error();
     error.msg = {
@@ -50,15 +68,16 @@ function getTilePath(X, Y, Z, overviews) {
     };
     throw error;
   }
+
   const slabX = (X * factor) / nbTiles;
   const slabY = (Y * factor) / nbTiles;
   const tileX = ((X * factor) % nbTiles) / factor;
   const tileY = ((Y * factor) % nbTiles) / factor;
 
-  const slab = getSlabPath(slabX, slabY, levelMax, overviews);
+  const slab = getSlabPath(slabX, slabY, levelCOG, overviews);
   slab.x = tileX;
   slab.y = tileY;
-  slab.z = levelMax - Z;
+  slab.z = levelCOG - Z;
   return slab;
 }
 
