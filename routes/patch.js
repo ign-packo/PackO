@@ -10,7 +10,7 @@ const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 const cog = require('../cog_path.js');
 const gdalProcessing = require('../gdal_processing.js');
-const pacthMiddlewares = require('../middlewares/patch');
+const patchMiddlewares = require('../middlewares/patch');
 
 const geoJsonAPatcher = [
   body('geoJSON')
@@ -91,9 +91,9 @@ branch.validBranch,
 
   newPatchId += 1;
 
-  const cogs = pacthMiddlewares.getCOGs(geoJson.features, overviews);
+  const cogs = patchMiddlewares.getCOGs(geoJson.features, overviews);
 
-  pacthMiddlewares.applyPatch(
+  patchMiddlewares.applyPatch(
     geoJson.features,
     overviews,
     cogs,
@@ -208,13 +208,13 @@ branch.validBranch,
     // on renomme les anciennes images
     const urlGraphPrev = path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
     const urlOrthoPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
-    pacthMiddlewares.rename(urlGraph, urlGraphPrev);
-    pacthMiddlewares.rename(urlOrtho, urlOrthoPrev);
+    patchMiddlewares.rename(urlGraph, urlGraphPrev);
+    patchMiddlewares.rename(urlOrtho, urlOrthoPrev);
 
     // on renomme les nouvelles images sauf si c'est la version orig
     if (idSelected !== 'orig') {
-      pacthMiddlewares.rename(urlGraphSelected, urlGraph);
-      pacthMiddlewares.rename(urlOrthoSelected, urlOrtho);
+      patchMiddlewares.rename(urlGraphSelected, urlGraph);
+      patchMiddlewares.rename(urlOrthoSelected, urlOrtho);
     }
   });
 
@@ -294,13 +294,13 @@ branch.validBranch,
     const urlGraphPrev = path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
     const urlOrthoPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
     if (patchIdPrev !== 'orig') {
-      pacthMiddlewares.rename(urlGraph, urlGraphPrev);
-      pacthMiddlewares.rename(urlOrtho, urlOrthoPrev);
+      patchMiddlewares.rename(urlGraph, urlGraphPrev);
+      patchMiddlewares.rename(urlOrtho, urlOrthoPrev);
     }
 
     // on renomme les nouvelles images
-    pacthMiddlewares.rename(urlGraphSelected, urlGraph);
-    pacthMiddlewares.rename(urlOrthoSelected, urlOrtho);
+    patchMiddlewares.rename(urlGraphSelected, urlGraph);
+    patchMiddlewares.rename(urlOrthoSelected, urlOrtho);
   });
   // on remet les features dans req.app.activePatches.features
   req.selectedBranch.activePatches.features = req.selectedBranch.activePatches.features.concat(

@@ -3,7 +3,7 @@ const { matchedData } = require('express-validator');
 const path = require('path');
 const fs = require('fs');
 const cog = require('../cog_path.js');
-const pacthMiddlewares = require('./patch');
+const patchMiddlewares = require('./patch');
 
 function validBranch(req, res, next) {
   const params = matchedData(req);
@@ -86,7 +86,7 @@ function applyAllPatches(newBranch, features, overviews) {
     nextFeature.properties.patchId = newBranch.activePatches.features.length + 1;
     /* eslint-enable no-param-reassign */
     debug('application de ', nextFeature);
-    return pacthMiddlewares.applyPatch(
+    return patchMiddlewares.applyPatch(
       [nextFeature],
       overviews,
       nextFeature.properties.slabs,
