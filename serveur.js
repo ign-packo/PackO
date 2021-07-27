@@ -55,40 +55,6 @@ try {
   app.cache_mtd = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'cache_mtd.json')));
   app.overviews = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'overviews.json')));
 
-  try {
-    app.branches = JSON.parse(fs.readFileSync(path.join(global.dir_cache, 'branches.json')));
-  } catch (err) {
-    app.branches = [
-      {
-        id: 0,
-        name: 'master',
-        activePatches: {
-          type: 'FeatureCollection',
-          name: 'annotation',
-          crs: {
-            type: 'name',
-            properties: {
-              name: 'urn:ogc:def:crs:EPSG::2154',
-            },
-          },
-          features: [],
-        },
-        unactivePatches: {
-          type: 'FeatureCollection',
-          name: 'annotation',
-          crs: {
-            type: 'name',
-            properties: {
-              name: 'urn:ogc:def:crs:EPSG::2154',
-            },
-          },
-          features: [],
-        },
-      },
-    ];
-    fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(app.branches, null, 4));
-  }
-
   app.use(cors());
   app.use(bodyParser.json());
 

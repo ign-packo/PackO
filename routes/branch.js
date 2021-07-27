@@ -1,71 +1,27 @@
-const fs = require('fs');
-const path = require('path');
-const debug = require('debug')('branch');
 const router = require('express').Router();
-const { matchedData, query } = require('express-validator');
+const { query } = require('express-validator');
 
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
-router.get('/branches', (req, res) => {
-  debug('~~~get branches~~~');
-  const branchWithoutPatches = [];
-  req.app.branches.forEach((branch) => {
-    branchWithoutPatches.push({ id: branch.id, name: branch.name });
-  });
-  res.status(200).send(JSON.stringify(branchWithoutPatches));
-});
+const pgClient = require('../middlewares/pgClient');
+const branch = require('../middlewares/branch');
+const returnMsg = require('../middlewares/returnMsg');
+
+router.get('/branches',
+  pgClient.open,
+  branch.getBranches,
+  pgClient.close,
+  returnMsg);
 
 router.post('/branch', [
   query('name')
     .exists().withMessage(createErrMsg.missingParameter('name')),
-], validateParams, (req, res) => {
-  const params = matchedData(req);
-  const { name } = params;
-  debug('~~~post branch~~~');
-  // on vérifie si le nom est deja pris
-  let largestId = 0;
-  let ok = true;
-  req.app.branches.forEach((branch) => {
-    largestId = Math.max(largestId, branch.id);
-    if (branch.name === name) {
-      ok = false;
-    }
-  });
-  if (!ok) {
-    res.status(406).send('A branch with this name already exists');
-    return;
-  }
-  // on crée la nouvelle branche
-  req.app.branches.push({
-    id: largestId + 1,
-    name,
-    activePatches: {
-      type: 'FeatureCollection',
-      name: 'annotation',
-      crs: {
-        type: 'name',
-        properties: {
-          name: 'urn:ogc:def:crs:EPSG::2154',
-        },
-      },
-      features: [],
-    },
-    unactivePatches: {
-      type: 'FeatureCollection',
-      name: 'annotation',
-      crs: {
-        type: 'name',
-        properties: {
-          name: 'urn:ogc:def:crs:EPSG::2154',
-        },
-      },
-      features: [],
-    },
-  });
-  fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
-
-  res.status(200).send(JSON.stringify({ name, id: largestId + 1 }));
-});
+],
+validateParams,
+pgClient.open,
+branch.insertBranch,
+pgClient.close,
+returnMsg);
 
 module.exports = router;
