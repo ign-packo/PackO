@@ -154,12 +154,16 @@ function createPatch(slab, geoJson, overviews, dirCache, idBranch) {
   return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => P);
 }
 
-async function getSelectedBranchPatches(req, res, next) {
+async function getSelectedBranchPatches(req, _res, next) {
+  if (req.error) {
+    next();
+    return;
+  }
   debug('~~~GET patches');
   const params = matchedData(req);
   const { idBranch } = params;
   try {
-    const results = await req.client.query('SELECT patches.*, ARRAY_AGG(slabs.x) as x, ARRAY_AGG(slabs.y) as y, ARRAY_AGG(slabs.z) as z FROM patches, slabs WHERE patches.id_branch = $1 AND slabs.id_patch = patches.id GROUP BY patches.id ORDER BY patches.num', [idBranch]);
+    const results = await req.client.query('SELECT patches.id, patches.red, patches.green, patches.blue, patches.image, patches.num, patches.id_branch, patches.active, St_AsGeoJSON(patches.geom) as geom, ARRAY_AGG(slabs.x) as x, ARRAY_AGG(slabs.y) as y, ARRAY_AGG(slabs.z) as z FROM patches, slabs WHERE patches.id_branch = $1 AND slabs.id_patch = patches.id GROUP BY patches.id ORDER BY patches.num', [idBranch]);
     req.selectedBranch.patches = results.rows;
     debug('selectedBranch.patches :', req.selectedBranch.patches);
   } catch (error) {
@@ -173,13 +177,39 @@ async function getSelectedBranchPatches(req, res, next) {
   next();
 }
 
-function getPatches(req, _res, next) {
+async function getPatches(req, _res, next) {
+  if (req.error) {
+    next();
+    return;
+  }
   debug('~~~GET patches');
-  req.result = { json: req.selectedBranch.patches, code: 200 };
-  next();
+  const params = matchedData(req);
+  const { idBranch } = params;
+  try {
+    const results = await req.client.query(
+      "SELECT json_build_object('type', 'FeatureCollection', "
+      + "'features', json_agg(ST_AsGeoJSON(t.*)::json)) FROM "
+      + '(SELECT p.*, ARRAY_AGG(s.x) as x, ARRAY_AGG(s.y) as y, ARRAY_AGG(s.z) as z '
+      + 'FROM patches p, slabs s WHERE p.id = s.id_patch and p.id_branch = $1 '
+      + 'GROUP BY p.id ORDER BY p.num) as t', [idBranch],
+    );
+    req.result = { json: results.rows[0].json_build_object, code: 200 };
+    next();
+  } catch (error) {
+    debug(error);
+    req.error = {
+      msg: error.toString(),
+      code: 500,
+      function: 'getPatches',
+    };
+  }
 }
 
 function patch(req, _res, next) {
+  if (req.error) {
+    next();
+    return;
+  }
   debug('~~~POST patch');
 
   const { overviews } = req.app;
@@ -342,6 +372,10 @@ function patch(req, _res, next) {
 }
 
 function undo(req, _res, next) {
+  if (req.error) {
+    next();
+    return;
+  }
   debug('~~~PUT patch/undo');
   const params = matchedData(req);
   const { idBranch } = params;
@@ -360,11 +394,7 @@ function undo(req, _res, next) {
 
   if (lastActivePatch === null) {
     debug('rien à annuler');
-    req.error = {
-      msg: 'nothing to undo',
-      code: 201,
-      function: 'undo',
-    };
+    req.result = { json: 'nothing to undo', code: 201 };
     next();
     return;
   }
@@ -460,6 +490,10 @@ function undo(req, _res, next) {
 }
 
 function redo(req, _res, next) {
+  if (req.error) {
+    next();
+    return;
+  }
   debug('~~~PUT patch/redo');
   const params = matchedData(req);
   const { idBranch } = params;
@@ -478,11 +512,7 @@ function redo(req, _res, next) {
 
   if (firstUnActivePatch === null) {
     debug('nothing to redo');
-    req.error = {
-      msg: 'nothing to redo',
-      code: 201,
-      function: 'redo',
-    };
+    req.result = { json: 'nothing to redo', code: 201 };
     next();
     return;
   }
@@ -544,27 +574,33 @@ function redo(req, _res, next) {
 }
 
 function clear(req, res, next) {
-  debug('~~~PUT patches/clear');
-  if (!(process.env.NODE_ENV === 'development' || req.query.test === 'true')) {
-    debug('unauthorized');
-    res.status(401).send('unauthorized');
+  if (req.error) {
+    next();
     return;
   }
+  debug('~~~PUT patches/clear');
+  // if (!(process.env.NODE_ENV === 'development' || req.query.test === 'true')) {
+  //   debug('unauthorized');
+  //   res.status(401).send('unauthorized');
+  //   return;
+  // }
   const params = matchedData(req);
   const { idBranch } = params;
   const { overviews } = req.app;
   gdalProcessing.clearCache();
-  // on verifie qu'il y a des patchs (actif ou non)
-  if (req.selectedBranch.patches.length === 0) {
-    debug(' nothing to clear');
-    req.error = {
-      msg: 'nothing to clear',
-      code: 201,
-      function: 'clear',
-    };
-    next();
-    return;
-  }
+
+  // même s'il n'y a pas de patchs, on continue
+  // // on verifie qu'il y a des patchs (actif ou non)
+  // if (req.selectedBranch.patches.length === 0) {
+  //   debug(' nothing to clear');
+  //   req.error = {
+  //     msg: 'nothing to clear',
+  //     code: 201,
+  //     function: 'clear',
+  //   };
+  //   next();
+  //   return;
+  // }
 
   // Il faut trouver l'ensemble des dalles impactées
   const slabsDico = {};
@@ -599,6 +635,12 @@ function clear(req, res, next) {
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     fs.unlinkSync(urlHistory);
   });
+
+  // on fait une copie de sauvegarde de la branche
+  const timestamp = new Date().getTime();
+  fs.writeFileSync(path.join(global.dir_cache,
+    `clear_branch_${timestamp}.json`),
+  JSON.stringify(req.selectedBranch, null, 4));
 
   // On supprime l'historique dans le base
   req.client.query(

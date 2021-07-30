@@ -51,6 +51,22 @@ paths:
       responses:
         '200':
           description: OK
+  '/branch/{id}':
+    delete:
+      tags:
+        - branch
+      summary: "Destruction d'une branche"
+      description: ""
+      parameters:
+      - in: path
+        name: id
+        description: l'identifiant de la branche à supprimer
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: OK
   '/{branchId}/patch/undo':
     put:
       tags:

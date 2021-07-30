@@ -50,7 +50,6 @@ router.get('/:idBranch/patches', [
 validateParams,
 pgClient.open,
 branch.validBranch,
-patch.getSelectedBranchPatches,
 patch.getPatches,
 pgClient.close,
 returnMsg);

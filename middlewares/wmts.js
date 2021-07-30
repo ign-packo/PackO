@@ -12,6 +12,10 @@ const cog = require('../cog_path.js');
 const gdalProcessing = require('../gdal_processing.js');
 
 function wmts(req, _res, next) {
+  if (req.error) {
+    next();
+    return;
+  }
   const { overviews } = req.app;
   const params = matchedData(req);
   // const { SERVICE } = params;
@@ -215,6 +219,7 @@ function wmts(req, _res, next) {
       mime = Jimp.MIME_JPEG; // "image/jpeg"
     }
     try {
+      debug('getTilePath : ', TILECOL, TILEROW, TILEMATRIX);
       const cogPath = cog.getTilePath(TILECOL, TILEROW, TILEMATRIX, overviews);
       let urlBranch = path.join(global.dir_cache,
         layerName,

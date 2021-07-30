@@ -5,7 +5,12 @@ const { matchedData } = require('express-validator');
 const cog = require('../cog_path.js');
 const gdalProcessing = require('../gdal_processing.js');
 
-function getGraph(req, res, next) {
+function getGraph(req, _res, next) {
+  if (req.error) {
+    debug(req.error);
+    next();
+    return;
+  }
   debug('~~~GetGraph');
   const { overviews } = req.app;
   const params = matchedData(req);
@@ -37,11 +42,7 @@ function getGraph(req, res, next) {
     }
     debug(url);
     if (!fs.existsSync(url)) {
-      req.error = {
-        msg: '{"color":[0,0,0], "cliche":"out of bounds"}',
-        code: 201,
-        function: 'getGraph',
-      };
+      req.result = { json: { color: [0, 0, 0], cliche: 'out of bounds' }, code: 201 };
       next();
       return;
     }
