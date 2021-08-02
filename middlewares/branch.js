@@ -38,6 +38,7 @@ async function getBranches(req, _res, next) {
   try {
     const results = await req.client.query('SELECT name, id FROM branches');
     req.result = { json: results.rows, code: 200 };
+    debug('branches : ', req.result);
   } catch (error) {
     req.error = {
       msg: error.toString(),
@@ -57,9 +58,11 @@ async function insertBranch(req, _res, next) {
   const { name } = params;
   debug('~~~post branch~~~');
   try {
+    debug('ajout de la branche : ', name);
     const results = await req.client.query('INSERT INTO branches (name) values ($1) RETURNING id, name', [name]);
     req.result = { json: results.rows[0], code: 200 };
   } catch (error) {
+    debug(error);
     req.result = { json: 'A branch with this name already exists', code: 406 };
   }
   next();
@@ -76,6 +79,7 @@ async function deleteBranch(req, _res, next) {
     await req.client.query('DELETE FROM branches WHERE id=$1', [req.selectedBranch.id]);
     req.result = { json: `branch ${req.selectedBranch.id} deleted`, code: 200 };
   } catch (error) {
+    debug(error);
     req.result = { json: error, code: 406 };
   }
   next();
