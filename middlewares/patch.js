@@ -163,8 +163,17 @@ async function getSelectedBranchPatches(req, _res, next) {
   const params = matchedData(req);
   const { idBranch } = params;
   try {
-    const results = await req.client.query('SELECT patches.id, patches.red, patches.green, patches.blue, patches.image, patches.num, patches.id_branch, patches.active, St_AsGeoJSON(patches.geom) as geom, ARRAY_AGG(slabs.x) as x, ARRAY_AGG(slabs.y) as y, ARRAY_AGG(slabs.z) as z FROM patches, slabs WHERE patches.id_branch = $1 AND slabs.id_patch = patches.id GROUP BY patches.id ORDER BY patches.num', [idBranch]);
-    req.selectedBranch.patches = results.rows;
+    const results = await req.client.query(
+      "SELECT json_build_object('type', 'FeatureCollection', "
+      + "'features', json_agg(ST_AsGeoJSON(t.*)::json)) FROM "
+      + '(SELECT p.*, ARRAY_AGG(s.x) as x, ARRAY_AGG(s.y) as y, ARRAY_AGG(s.z) as z '
+      + 'FROM patches p, slabs s WHERE p.id = s.id_patch and p.id_branch = $1 '
+      + 'GROUP BY p.id ORDER BY p.num) as t', [idBranch],
+    );
+    req.selectedBranch.patches = results.rows[0].json_build_object;
+    if (req.selectedBranch.patches.features === null) {
+      req.selectedBranch.patches.features = [];
+    }
     debug('selectedBranch.patches :', req.selectedBranch.patches);
   } catch (error) {
     debug(error);
@@ -183,26 +192,8 @@ async function getPatches(req, _res, next) {
     return;
   }
   debug('~~~GET patches');
-  const params = matchedData(req);
-  const { idBranch } = params;
-  try {
-    const results = await req.client.query(
-      "SELECT json_build_object('type', 'FeatureCollection', "
-      + "'features', json_agg(ST_AsGeoJSON(t.*)::json)) FROM "
-      + '(SELECT p.*, ARRAY_AGG(s.x) as x, ARRAY_AGG(s.y) as y, ARRAY_AGG(s.z) as z '
-      + 'FROM patches p, slabs s WHERE p.id = s.id_patch and p.id_branch = $1 '
-      + 'GROUP BY p.id ORDER BY p.num) as t', [idBranch],
-    );
-    req.result = { json: results.rows[0].json_build_object, code: 200 };
-    next();
-  } catch (error) {
-    debug(error);
-    req.error = {
-      msg: error.toString(),
-      code: 500,
-      function: 'getPatches',
-    };
-  }
+  req.result = { json: req.selectedBranch.patches, code: 200 };
+  next();
 }
 
 function patch(req, _res, next) {
@@ -218,8 +209,8 @@ function patch(req, _res, next) {
   const { idBranch } = params;
 
   let newPatchNum = 0;
-  for (let i = 0; i < req.selectedBranch.patches.length; i += 1) {
-    const { num } = req.selectedBranch.patches[i];
+  for (let i = 0; i < req.selectedBranch.patches.features.length; i += 1) {
+    const { num } = req.selectedBranch.patches.features[i].properties;
     if (newPatchNum < num) newPatchNum = num;
   }
 
@@ -382,8 +373,8 @@ function undo(req, _res, next) {
   const { overviews } = req.app;
 
   let lastActivePatch = null;
-  for (let i = 0; i < req.selectedBranch.patches.length; i += 1) {
-    const P = req.selectedBranch.patches[i];
+  for (let i = 0; i < req.selectedBranch.patches.features.length; i += 1) {
+    const P = req.selectedBranch.patches.features[i].properties;
     if (P.active
       && ((lastActivePatch === null) || (lastActivePatch.num < P.num))) {
       lastActivePatch = P;
@@ -500,8 +491,8 @@ function redo(req, _res, next) {
   const { overviews } = req.app;
 
   let firstUnActivePatch = null;
-  for (let i = 0; i < req.selectedBranch.patches.length; i += 1) {
-    const P = req.selectedBranch.patches[i];
+  for (let i = 0; i < req.selectedBranch.patches.features.length; i += 1) {
+    const P = req.selectedBranch.patches.features[i].properties;
     if ((P.active === false)
       && ((firstUnActivePatch === null) || (firstUnActivePatch.num > P.num))) {
       firstUnActivePatch = P;
@@ -573,7 +564,7 @@ function redo(req, _res, next) {
   });
 }
 
-function clear(req, res, next) {
+function clear(req, _res, next) {
   if (req.error) {
     next();
     return;
@@ -604,9 +595,9 @@ function clear(req, res, next) {
 
   // Il faut trouver l'ensemble des dalles impactées
   const slabsDico = {};
-  req.selectedBranch.patches.forEach((P) => {
-    P.x.forEach((x, i) => {
-      const slab = { x, y: P.y[i], z: P.z[i] };
+  req.selectedBranch.patches.features.forEach((P) => {
+    P.properties.x.forEach((x, i) => {
+      const slab = { x, y: P.properties.y[i], z: P.properties.z[i] };
       slabsDico[`${slab.x}_${slab.y}_${slab.z}`] = slab;
     });
   });
@@ -640,7 +631,7 @@ function clear(req, res, next) {
   const timestamp = new Date().getTime();
   fs.writeFileSync(path.join(global.dir_cache,
     `clear_branch_${timestamp}.json`),
-  JSON.stringify(req.selectedBranch, null, 4));
+  JSON.stringify(req.selectedBranch.patches, null, 4));
 
   // On supprime l'historique dans le base
   req.client.query(
