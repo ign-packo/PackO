@@ -230,17 +230,6 @@ async function main() {
         transparent: true,
         opacity: opacity.patches,
       },
-      optionsGeoJsonParser: {
-        in: {
-          crs,
-        },
-        out: {
-          crs: view.tileLayer.extent.crs,
-          buildExtent: true,
-          mergeFeatures: true,
-          structure: '2d',
-        },
-      },
     };
 
     const currentPatches = await getPatches;

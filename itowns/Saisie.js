@@ -63,12 +63,13 @@ class Saisie {
     if (redrawPatches) {
       this.layer.patches.config.opacity = this.layer.patches.colorLayer.opacity;
 
-      const json = await itowns.Fetcher.json(`${this.apiUrl}/${this.idBranch}/patches`);
-      const features = await itowns.GeoJsonParser.parse(
-        json,
-        this.layer.patches.optionsGeoJsonParser,
-      );
-      this.layer.patches.config.source = new itowns.FileSource({ features });
+      const currentPatches = await itowns.Fetcher.json(`${this.apiUrl}/${this.idBranch}/patches`);
+      this.layer.patches.config.source = new itowns.FileSource({
+        fetchedData: currentPatches,
+        crs: this.view.camera.crs,
+        parser: itowns.GeoJsonParser.parse,
+      });
+
       this.layer.patches.colorLayer = new itowns.ColorLayer(
         this.layer.patches.name,
         this.layer.patches.config,
@@ -123,7 +124,7 @@ class Saisie {
     const geojson = {
       type: 'FeatureCollection',
       name: 'annotation',
-      crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
+      crs: { type: 'name', properties: { name: `urn:ogc:def:crs:${this.view.camera.crs.replace(':', '::')}` } },
       features: [
         {
           type: 'Feature',
