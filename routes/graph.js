@@ -6,8 +6,8 @@ const path = require('path');
 const { matchedData, query, param } = require('express-validator');
 // const jimp = require('jimp');
 const branch = require('../middlewares/branch');
-const cog = require('../cog_path.js');
-const gdalProcessing = require('../gdal_processing.js');
+const cog = require('../cog_path');
+const gdalProcessing = require('../gdal_processing');
 
 // const GJV = require('geojson-validation');
 const validateParams = require('../paramValidation/validateParams');

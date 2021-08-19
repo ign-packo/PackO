@@ -34,12 +34,12 @@ debug.log(`API in '${process.env.NODE_ENV}' mode`);
 global.dir_cache = argv.cache ? argv.cache : 'cache';
 debug.log(`using cache directory: ${global.dir_cache}`);
 
-const wmts = require('./routes/wmts.js');
-const graph = require('./routes/graph.js');
-const file = require('./routes/file.js');
-const patch = require('./routes/patch.js');
-const { misc, gitVersion } = require('./routes/misc.js');
-const branch = require('./routes/branch.js');
+const wmts = require('./routes/wmts');
+const graph = require('./routes/graph');
+const file = require('./routes/file');
+const patch = require('./routes/patch');
+const { misc, gitVersion } = require('./routes/misc');
+const branch = require('./routes/branch');
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
