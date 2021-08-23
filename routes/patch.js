@@ -10,8 +10,8 @@ const branch = require('../middlewares/branch');
 const validator = require('../paramValidation/validator');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
-const cog = require('../cog_path.js');
-const gdalProcessing = require('../gdal_processing.js');
+const cog = require('../cog_path');
+const gdalProcessing = require('../gdal_processing');
 
 const geoJsonAPatcher = [
   body('geoJSON')
