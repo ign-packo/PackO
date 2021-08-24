@@ -79,12 +79,17 @@ class Saisie {
       );
       this.view.addLayer(this.layer.patches.colorLayer);
     }
-    itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Ortho', 0);
-    itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Opi', 1);
-    itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Graph', 2);
-    itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Contour', 3);
-    itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Patches', 4);
-    this.view.notifyChange();
+    // itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Ortho', 0);
+    // itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Opi', 1);
+    // itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Graph', 2);
+    // itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Contour', 3);
+    // itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Patches', 4);
+    // this.view.notifyChange();
+    // Layer ordering
+    const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
+    listColorLayer.forEach((layerId) => {
+      itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, this.view.index[layerId]);
+    });
   }
 
   pickPoint(event) {
