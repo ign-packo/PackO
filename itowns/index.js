@@ -2,6 +2,7 @@
 /* global setupLoadingScreen, GuiTools */
 import * as itowns from 'itowns';
 import Saisie from './Saisie';
+import DragNDrop from './DragNDrop';
 
 // Global itowns pour GuiTools -> peut être améliorer
 global.itowns = itowns;
@@ -172,13 +173,6 @@ async function main() {
       patches: 1,
     };
 
-    // const source = {
-    //   ortho: 'ortho',
-    //   graph: 'graph',
-    //   contour: 'graph',
-    //   opi: 'opi',
-    // };
-
     view.index = {
       Ortho: 1,
       Opi: 2,
@@ -212,9 +206,6 @@ async function main() {
         },
       };
       layer[id].config.source = new itowns.WMTSSource(layer[id].config.source);
-      // layer[id].config.source.extentInsideLimit = function extentInsideLimit() {
-      //   return true;
-      // };
 
       layer[id].colorLayer = new itowns.ColorLayer(layer[id].name, layer[id].config);
       if (id === 'opi') layer[id].colorLayer.visible = false;
@@ -271,6 +262,15 @@ async function main() {
     // Request redraw
     // view.notifyChange();
 
+    DragNDrop.setView(view);
+    DragNDrop.register('geojson', DragNDrop.JSON, itowns.GeoJsonParser.parse, DragNDrop.COLOR);
+    DragNDrop.register('shapefile', {
+      shp: DragNDrop.BINARY,
+      dbf: DragNDrop.BINARY,
+      shx: DragNDrop.BINARY,
+      prj: DragNDrop.TEXT,
+    }, itowns.ShapefileParser.parse, DragNDrop.COLOR);
+
     const saisie = new Saisie(view, layer, apiUrl, currentBranch.id);
     saisie.cliche = 'unknown';
     saisie.message = '';
@@ -307,16 +307,20 @@ async function main() {
     viewerDiv.focus();
 
     view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
-      // eslint-disable-next-line no-console
       console.info('-> View initialized');
       updateScaleWidget(view, resolution);
     });
     view.addEventListener(itowns.PLANAR_CONTROL_EVENT.MOVED, () => {
-      // eslint-disable-next-line no-console
       console.info('-> View moved');
       if (view.controls.state === -1) {
         updateScaleWidget(view, resolution);
       }
+    });
+    view.addEventListener('layer-dropped', (event) => {
+      const { layerId } = event;
+      console.log(`-> Layer '${layerId}' added`);
+      view.index[layerId] = Object.keys(view.index).length;
+      itowns.ColorLayersOrdering.moveLayerToIndex(view, layerId, view.index[layerId]);
     });
 
     viewerDiv.addEventListener('mousemove', (ev) => {
