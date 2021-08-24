@@ -166,16 +166,25 @@ async function main() {
 
     const opacity = {
       ortho: 1,
-      graph: 0.001,
+      graph: 1,
       contour: 0.5,
       opi: 0.5,
+      patches: 1,
     };
 
-    const source = {
-      ortho: 'ortho',
-      graph: 'graph',
-      contour: 'graph',
-      opi: 'opi',
+    // const source = {
+    //   ortho: 'ortho',
+    //   graph: 'graph',
+    //   contour: 'graph',
+    //   opi: 'opi',
+    // };
+
+    view.index = {
+      Ortho: 1,
+      Opi: 2,
+      Graph: 0,
+      Contour: 3,
+      Patches: 4,
     };
 
     const branches = await getBranches;
@@ -195,7 +204,7 @@ async function main() {
             url: `${apiUrl}/${currentBranch.id}/wmts`,
             crs,
             format: 'image/png',
-            name: source[id],
+            name: id !== 'contour' ? id : 'graph',
             tileMatrixSet: overviews.identifier,
             tileMatrixSetLimits: overviews.dataSet.limits,
           },
@@ -217,10 +226,10 @@ async function main() {
       }
       view.addLayer(layer[id].colorLayer);// .then(menuGlobe.addLayerGUI.bind(menuGlobe));
     });
-    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
-    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
-    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
-    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Contour', 3);
+    // itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
+    // itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
+    // itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);
+    // itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Contour', 3);
     // Et ouvrir l'onglet "Color Layers" par defaut ?
 
     // Couche Patches
@@ -252,10 +261,15 @@ async function main() {
       layer.patches.config,
     );
     view.addLayer(layer.patches.colorLayer);
-    itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Patches', 4);
+    // itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Patches', 4);
 
+    // Layer ordering
+    const listColorLayer = view.getLayers((l) => l.isColorLayer).map((l) => l.id);
+    listColorLayer.forEach((layerId) => {
+      itowns.ColorLayersOrdering.moveLayerToIndex(view, layerId, view.index[layerId]);
+    });
     // Request redraw
-    view.notifyChange();
+    // view.notifyChange();
 
     const saisie = new Saisie(view, layer, apiUrl, currentBranch.id);
     saisie.cliche = 'unknown';
@@ -294,12 +308,12 @@ async function main() {
 
     view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
       // eslint-disable-next-line no-console
-      console.info('View initialized');
+      console.info('-> View initialized');
       updateScaleWidget(view, resolution);
     });
     view.addEventListener(itowns.PLANAR_CONTROL_EVENT.MOVED, () => {
       // eslint-disable-next-line no-console
-      console.info('View moved');
+      console.info('-> View moved');
       if (view.controls.state === -1) {
         updateScaleWidget(view, resolution);
       }
