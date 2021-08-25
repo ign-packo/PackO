@@ -10,4 +10,4 @@ router.get('/version', (req, res) => {
   res.status(200).send({ version_git: gitVersion });
 });
 
-module.exports = { misc: router, gitVersion };
+module.exports = { router, gitVersion };

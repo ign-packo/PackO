@@ -4,16 +4,14 @@ const debug = require('debug')('branch');
 const router = require('express').Router();
 const { matchedData, query } = require('express-validator');
 
+const serveur = require('../serveur');
+
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
 router.get('/branches', (req, res) => {
   debug('~~~get branches~~~');
-  const branchWithoutPatches = [];
-  req.app.branches.forEach((branch) => {
-    branchWithoutPatches.push({ id: branch.id, name: branch.name });
-  });
-  res.status(200).send(JSON.stringify(branchWithoutPatches));
+  res.status(200).send(JSON.stringify(serveur.branches));
 });
 
 router.post('/branch', [
@@ -23,22 +21,16 @@ router.post('/branch', [
   const params = matchedData(req);
   const { name } = params;
   debug('~~~post branch~~~');
-  // on vérifie si le nom est deja pris
-  let largestId = 0;
-  let ok = true;
-  req.app.branches.forEach((branch) => {
-    largestId = Math.max(largestId, branch.id);
-    if (branch.name === name) {
-      ok = false;
-    }
-  });
-  if (!ok) {
+
+  if (Object.values(serveur.branches).includes(name)) {
     res.status(406).send('A branch with this name already exists');
     return;
   }
+
+  const newBranchId = Math.max(...Object.keys(serveur.branches)) + 1;
   // on crée la nouvelle branche
   req.app.branches.push({
-    id: largestId + 1,
+    id: newBranchId,
     name,
     activePatches: {
       type: 'FeatureCollection',
@@ -64,8 +56,9 @@ router.post('/branch', [
     },
   });
   fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
+  serveur.branches[newBranchId] = name;
 
-  res.status(200).send(JSON.stringify({ name, id: largestId + 1 }));
+  res.status(200).send(JSON.stringify({ name, id: newBranchId }));
 });
 
 module.exports = router;

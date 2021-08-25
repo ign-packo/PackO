@@ -34,16 +34,24 @@ debug.log(`API in '${process.env.NODE_ENV}' mode`);
 global.dir_cache = argv.cache ? argv.cache : 'cache';
 debug.log(`using cache directory: ${global.dir_cache}`);
 
+const branches = JSON.parse(fs.readFileSync(path.join(global.dir_cache, '_branches.json')));
+
+module.exports = {
+  branches,
+  // brancheIds: Object.keys(branches),
+};
+
 const wmts = require('./routes/wmts');
 const graph = require('./routes/graph');
 const file = require('./routes/file');
 const patch = require('./routes/patch');
-const { misc, gitVersion } = require('./routes/misc');
+const misc = require('./routes/misc');
 const branch = require('./routes/branch');
+const vector = require('./routes/vector');
 
 try {
-  // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
-  // effet : maj autom apres saisie - OK Chrome/Chromium, Pas OK Firefox
+// desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
+// effet : maj autom apres saisie - OK Chrome/Chromium, Pas OK Firefox
   app.use(nocache());
 
   const PORT = argv.port ? argv.port : 8081;
@@ -105,21 +113,40 @@ try {
 
   const swaggerDocument = YAML.load('./doc/swagger.yml');
   swaggerDocument.servers[0].url = app.urlApi;
-  swaggerDocument.info.version = gitVersion;
+  swaggerDocument.info.version = misc.gitVersion;
   app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerDocument, options));
 
   app.use('/', wmts);
   app.use('/', graph);
   app.use('/', file);
   app.use('/', patch);
-  app.use('/', misc);
+  app.use('/', misc.router);
   app.use('/', branch);
+  app.use('/', vector);
 
   app.use('/itowns', express.static('itowns'));
 
-  module.exports = app.listen(PORT, () => {
+  app.listen(PORT, () => {
     debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);
   });
 } catch (err) {
   debug.log(err);
 }
+
+// const ServeurPort = process.env.SERVER_PORT || 8080;
+
+// module.exports = {
+// // DEV : cas ou les donnees et l'api ne sont pas sur le meme serveur
+//   rootPath_Data: process.env.ROOTPATH_DATA || '',
+//   // repertoire temporaire sur le serveur contenant les données
+//   pathFileTemp: process.env.PATH_TEMPFILE || '/tmp',
+//   ServeurPort,
+// };
+
+// const debug = require('debug');
+// const app = require('./src/app');
+
+// app.listen(ServeurPort, () => {
+//   debug.log(`App listening on port ${ServeurPort}!`);
+//   debug.log(`Debug: ${process.env.debug}`);
+// });
