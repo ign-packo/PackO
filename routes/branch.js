@@ -57,6 +57,7 @@ router.post('/branch', [
   });
   fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
   serveur.branches[newBranchId] = name;
+  fs.writeFileSync(path.join(global.dir_cache, '_branches.json'), JSON.stringify(serveur.branches, null, 4));
 
   res.status(200).send(JSON.stringify({ name, id: newBranchId }));
 });

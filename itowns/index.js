@@ -30,11 +30,13 @@ const getBranches = itowns.Fetcher.json(`${apiUrl}/branches`);
 Promise.all([getOverviews, getBranches]).then((results) => {
   const overviews = results[0];
   const branches = results[1];
-  const currentBranch = branches[0];
-  const branchNames = [];
-  branches.forEach((element) => {
-    branchNames.push(element.name);
-  });
+  // const currentBranch = branches[0];
+  // const branchNames = [];
+  // branches.forEach((element) => {
+  //   branchNames.push(element.name);
+  // });
+
+  const branchNames = Object.values(branches);
 
   // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
   const crs = `${overviews.crs.type}:${overviews.crs.code}`;
@@ -160,7 +162,7 @@ Promise.all([getOverviews, getBranches]).then((results) => {
       name: id.charAt(0).toUpperCase() + id.slice(1),
       config: {
         source: {
-          url: `${apiUrl}/${currentBranch.id}/wmts`,
+          url: `${apiUrl}/0/wmts`,
           crs,
           format: 'image/png',
           name: source[id],
@@ -194,11 +196,11 @@ Promise.all([getOverviews, getBranches]).then((results) => {
   // Request redraw
   view.notifyChange();
 
-  const saisie = new Saisie(view, layer, apiUrl, currentBranch.id);
+  const saisie = new Saisie(view, layer, apiUrl, 0);
   saisie.cliche = 'unknown';
   saisie.message = '';
-  saisie.branch = currentBranch.name;
-  saisie.idBranch = currentBranch.id;
+  saisie.branch = 'master';
+  saisie.idBranch = 0;
   saisie.coord = `${xcenter.toFixed(2)},${ycenter.toFixed(2)}`;
   saisie.color = [0, 0, 0];
   saisie.controllers = {};
@@ -216,13 +218,24 @@ Promise.all([getOverviews, getBranches]).then((results) => {
   saisie.controllers.branch = menuGlobe.gui.add(saisie, 'branch', branchNames);
   saisie.controllers.branch.onChange((value) => {
     console.log('new active branch : ', value);
-    branches.forEach((branch) => {
-      if (branch.name === value) {
-        saisie.branch = value;
-        saisie.idBranch = branch.id;
-        saisie.changeBranchId(saisie.idBranch);
-      }
-    });
+    // branches.forEach((branch) => {
+    //   if (branch.name === value) {
+    //     saisie.branch = value;
+    //     saisie.idBranch = branch.id;
+    //     saisie.changeBranchId(saisie.idBranch);
+    //   }
+    // });
+    // Object.entries(branches).forEach(([id, name]) => {
+    //   if (name === value) {
+    //     saisie.branch = value;
+    //     saisie.idBranch = id;
+    //     saisie.changeBranchId(saisie.idBranch);
+    //   }
+
+    // })
+    saisie.idBranch = Object.keys(branches).find((key) => branches[key] === value);
+    saisie.branch = value;
+    saisie.changeBranchId(saisie.idBranch);
   });
   saisie.controllers.createBranch = menuGlobe.gui.add(saisie, 'createBranch');
 

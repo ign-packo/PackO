@@ -331,25 +331,34 @@ class Saisie {
       }).then((res) => {
       if (res.status === 200) {
         itowns.Fetcher.json(`${this.apiUrl}/branches`).then((branches) => {
-          const branchNames = [];
-          let branchId = null;
-          branches.forEach((element) => {
-            branchNames.push(element.name);
-            if (element.name === branchName) {
-              branchId = element.id;
-            }
-          });
+          // const branchNames = [];
+          // let branchId = null;
+
+          // console.log(branches)
+          // branches.forEach((element) => {
+          //   branchNames.push(element.name);
+          //   if (element.name === branchName) {
+          //     branchId = element.id;
+          //   }
+          // });
+
+          const branchNames = Object.values(branches);
+          const branchId = Object.keys(branches).find((key) => branches[key] === branchName);
+
           this.controllers.branch = this.controllers.branch.options(branchNames)
             .setValue(branchName);
           this.controllers.branch.onChange((value) => {
             console.log('new active branch : ', value);
-            branches.forEach((branch) => {
-              if (branch.name === value) {
-                this.branch = value;
-                this.idBranch = branch.id;
-                this.changeBranchId(this.idBranch);
-              }
-            });
+            // branches.forEach((branch) => {
+            //   if (branch.name === value) {
+            //     this.branch = value;
+            //     this.idBranch = branch.id;
+            //     this.changeBranchId(this.idBranch);
+            //   }
+            // });
+            this.idBranch = Object.keys(branches).find((key) => branches[key] === value);
+            this.branch = value;
+            this.changeBranchId(this.idBranch);
           });
           this.changeBranchId(branchId);
         });
