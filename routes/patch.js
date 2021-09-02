@@ -5,14 +5,9 @@ const branch = require('../middlewares/branch');
 const validator = require('../paramValidation/validator');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
-<<<<<<< HEAD
-const cog = require('../cog_path');
-const gdalProcessing = require('../gdal_processing');
-=======
 const pgClient = require('../middlewares/pgClient');
 const patch = require('../middlewares/patch');
 const returnMsg = require('../middlewares/returnMsg');
->>>>>>> a05288d... feat(API): add Postgres DB store branches
 
 const geoJsonAPatcher = [
   body('geoJSON')
