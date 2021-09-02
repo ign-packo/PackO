@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 10.13
--- Dumped by pg_dump version 10.13
+-- Dumped from database version 13.3
+-- Dumped by pg_dump version 13.3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -17,21 +17,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
---
-
-CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
-
-
---
--- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
---
-
-COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
-
-
---
--- Name: postgis; Type: EXTENSION; Schema: -; Owner: 
+-- Name: postgis; Type: EXTENSION; Schema: -; Owner: -
 --
 
 CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
@@ -71,7 +57,7 @@ COMMENT ON FUNCTION public.suppr_unactive_pacthes() IS 'suppression des patchs i
 
 SET default_tablespace = '';
 
-SET default_with_oids = false;
+SET default_table_access_method = heap;
 
 --
 -- Name: branches; Type: TABLE; Schema: public; Owner: postgres
@@ -165,9 +151,46 @@ ALTER TABLE public.patches ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 -- Data for Name: branches; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.branches (id, name) FROM stdin;
-1	master
-\.
+INSERT INTO public.branches OVERRIDING SYSTEM VALUE VALUES (1, 'master');
+
+
+--
+-- Data for Name: patches; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: slabs; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Data for Name: spatial_ref_sys; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+
+
+--
+-- Name: branches_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.branches_id_seq', 2, false);
+
+
+--
+-- Name: overlaps_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.overlaps_id_seq', 1, false);
+
+
+--
+-- Name: patches_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.patches_id_seq', 1, false);
 
 
 --
@@ -206,7 +229,7 @@ ALTER TABLE ONLY public.slabs
 -- Name: patches insert; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER insert AFTER INSERT ON public.patches FOR EACH ROW EXECUTE PROCEDURE public.suppr_unactive_pacthes();
+CREATE TRIGGER insert AFTER INSERT ON public.patches FOR EACH ROW EXECUTE FUNCTION public.suppr_unactive_pacthes();
 
 
 --
