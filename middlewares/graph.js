@@ -2,8 +2,8 @@ const debug = require('debug')('graph');
 const fs = require('fs');
 const path = require('path');
 const { matchedData } = require('express-validator');
-const cog = require('../cog_path.js');
-const gdalProcessing = require('../gdal_processing.js');
+const cog = require('../cog_path');
+const gdalProcessing = require('../gdal_processing');
 
 function getGraph(req, _res, next) {
   if (req.error) {

@@ -4,8 +4,8 @@ const PImage = require('pureimage');
 const turf = require('@turf/turf');
 const path = require('path');
 const { matchedData } = require('express-validator');
-const cog = require('../cog_path.js');
-const gdalProcessing = require('../gdal_processing.js');
+const cog = require('../cog_path');
+const gdalProcessing = require('../gdal_processing');
 
 // Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
 function encapBody(req, res, next) {

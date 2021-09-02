@@ -8,8 +8,8 @@ const path = require('path');
 const fs = require('fs');
 const xml2js = require('xml2js');
 const proj4 = require('proj4');
-const cog = require('../cog_path.js');
-const gdalProcessing = require('../gdal_processing.js');
+const cog = require('../cog_path');
+const gdalProcessing = require('../gdal_processing');
 
 function wmts(req, _res, next) {
   if (req.error) {
