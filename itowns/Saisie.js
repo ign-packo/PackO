@@ -2,7 +2,7 @@
 /* eslint-disable no-underscore-dangle */
 import * as itowns from 'itowns';
 import * as THREE from 'three';
-import Vue from './Vue';
+// import Vue from './Vue';
 
 const status = {
   RAS: 0,
@@ -43,92 +43,10 @@ class Saisie {
     // Object.keys(this.layer).forEach((element) => {
     const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
     listColorLayer.forEach((element) => {
-      // const regex = /^.*\/wmts/;
-      // this.layer[element].config.source.url = this.layer[element].config.source.url.replace(regex, `${this.apiUrl}/${this.branchId}/wmts`);
       const regex = new RegExp(`^${this.apiUrl}\\/[0-9]+\\/`);
       this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url.replace(regex, `${this.apiUrl}/${this.branchId}/`);
     });
-    this.refreshView(['ortho', 'graph', 'contour', 'patches']);
-  }
-
-  refreshView(layers) {
-    this.vue.refresh(layers);
-  }
-
-  refreshView2(layers) {
-    // Pour le moment on force le rechargement complet des couches
-    // let redrawPatches = false;
-    layers.forEach((name) => {
-      const id = name.charAt(0).toUpperCase() + name.slice(1);
-      console.log(this.view.getLayerById('Ortho'));
-      console.log(this.view.getLayerById('Ortho').opacity);
-
-      const { opacity, source, transparent, visible } = this.view.getLayerById(id);
-
-      // this.view.removeLayer(this.layer[id].colorLayer.id);
-      this.view.removeLayer(id);
-
-      // this.layer[id].config.opacity = this.layer[id].colorLayer.opacity;
-
-      // ColorLayer
-      const layer = {};
-      if (id !== 'patchess') {
-        layer.colorLayer = new itowns.ColorLayer(id,
-          {
-            source,
-            transparent,
-            opacity,
-            visible,
-          });
-
-        // this.layer[id].colorLayer = new itowns.ColorLayer(
-        //   this.layer[id].name,
-        //   this.layer[id].config,
-        // );
-        // this.view.addLayer(this.layer[id].colorLayer);
-        if (id === 'Contour') {
-          // this.layer[id].colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
-          // this.layer[id].colorLayer.effect_parameter = 1.0;
-          // this.layer[id].colorLayer.magFilter = 1003;// itowns.THREE.NearestFilter;
-          // this.layer[id].colorLayer.minFilter = 1003;// itowns.THREE.NearestFilter;
-          layer.colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
-          layer.colorLayer.effect_parameter = 1.0;
-          layer.colorLayer.magFilter = 1003;// itowns.THREE.NearestFilter;
-          layer.colorLayer.minFilter = 1003;// itowns.THREE.NearestFilter;
-        }
-        this.view.addLayer(layer.colorLayer);
-      } else {
-        // redrawPatches = true;
-      }
-    });
-    // if (redrawPatches) {
-    //   this.layer.patches.config.opacity = this.layer.patches.colorLayer.opacity;
-
-    //   const currentPatches = await itowns.Fetcher.json(`${this.apiUrl}/${this.idBranch}/patches`);
-    //   this.layer.patches.config.source = new itowns.FileSource({
-    //     fetchedData: currentPatches,
-    //     crs: this.view.camera.crs,
-    //     parser: itowns.GeoJsonParser.parse,
-    //   });
-
-    //   this.layer.patches.colorLayer = new itowns.ColorLayer(
-    //     this.layer.patches.name,
-    //     this.layer.patches.config,
-    //   );
-    //   this.view.addLayer(this.layer.patches.colorLayer);
-    // }
-    // itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Ortho', 0);
-    // itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Opi', 1);
-    // itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Graph', 2);
-    // itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Contour', 3);
-    // itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Patches', 4);
-    // this.view.notifyChange();
-    // Layer ordering
-    const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
-    listColorLayer.forEach((layerId) => {
-      console.log(layerId, this.index[layerId]);
-      itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, this.index[layerId]);
-    });
+    this.vue.refresh(['ortho', 'graph', 'contour', 'patches']);
   }
 
   pickPoint(event) {
@@ -210,7 +128,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'contour', 'patches']);
+        this.vue.refresh(['ortho', 'graph', 'contour', 'patches']);
       } else {
         this.message = "polygon: out of OPI's bounds";
       }
@@ -329,10 +247,9 @@ class Saisie {
               this.color = json.color;
               this.controllers.cliche.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
               // On modifie la couche OPI
-              // this.layer.opi.config.source.url = this.layer.opi.config.source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
               this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
               this.view.getLayerById('Opi').visible = true;
-              this.refreshView(['opi']);
+              this.vue.refresh(['opi']);
               this.validClicheSelected = true;
             }
             if (res.status === 201) {
@@ -488,7 +405,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'contour', 'patches']);
+        this.vue.refresh(['ortho', 'graph', 'contour', 'patches']);
       }
       res.text().then((msg) => {
         this.message = msg;
@@ -510,7 +427,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'contour', 'patches']);
+        this.vue.refresh(['ortho', 'graph', 'contour', 'patches']);
       }
       res.text().then((msg) => {
         this.message = msg;
@@ -533,7 +450,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'contour', 'patches']);
+        this.vue.refresh(['ortho', 'graph', 'contour', 'patches']);
       }
       res.text().then((msg) => {
         this.message = msg;
