@@ -30,8 +30,9 @@ class Saisie {
     this.message = '';
     this.branchId = branchId;
     Object.keys(this.layer).forEach((element) => {
-      const regex = /^.*\/wmts/;
-      this.layer[element].config.source.url = this.layer[element].config.source.url.replace(regex, `${this.apiUrl}/${this.branchId}/wmts`);
+      // const regex = /^.*\/wmts/;
+      const regex = new RegExp(`^${this.apiUrl}\\/[0-9]+\\/`);
+      this.layer[element].config.source.url = this.layer[element].config.source.url.replace(regex, `${this.apiUrl}/${this.branchId}/`);
     });
     this.refreshView(['ortho', 'graph', 'contour', 'patches']);
   }
@@ -63,7 +64,7 @@ class Saisie {
     if (redrawPatches) {
       this.layer.patches.config.opacity = this.layer.patches.colorLayer.opacity;
 
-      const currentPatches = await itowns.Fetcher.json(`${this.apiUrl}/${this.idBranch}/patches`);
+      const currentPatches = await itowns.Fetcher.json(`${this.apiUrl}/${this.branchId}/patches`);
       this.layer.patches.config.source = new itowns.FileSource({
         fetchedData: currentPatches,
         crs: this.view.camera.crs,
@@ -373,8 +374,8 @@ class Saisie {
             branches.forEach((branch) => {
               if (branch.name === value) {
                 this.branch = value;
-                this.idBranch = branch.id;
-                this.changeBranchId(this.idBranch);
+                this.branchId = branch.id;
+                this.changeBranchId(this.branchId);
               }
             });
           });

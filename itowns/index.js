@@ -261,7 +261,7 @@ async function main() {
     saisie.cliche = 'unknown';
     saisie.message = '';
     saisie.branch = currentBranch.name;
-    saisie.idBranch = currentBranch.id;
+    saisie.branchId = currentBranch.id;
     saisie.coord = `${xcenter.toFixed(2)},${ycenter.toFixed(2)}`;
     saisie.color = [0, 0, 0];
     saisie.controllers = {};
@@ -282,8 +282,8 @@ async function main() {
       branches.forEach((branch) => {
         if (branch.name === value) {
           saisie.branch = value;
-          saisie.idBranch = branch.id;
-          saisie.changeBranchId(saisie.idBranch);
+          saisie.branchId = branch.id;
+          saisie.changeBranchId(saisie.branchId);
         }
       });
     });
