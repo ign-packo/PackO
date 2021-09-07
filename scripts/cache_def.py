@@ -190,6 +190,7 @@ def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option, ve
             print('   -> déjà calculée')
             opi_already_calculated.append(opi)
         else:
+            # TODO: prévoir un rgb_path et ir_path plutot que path
             args_cut_image.append({
                 'opi': {
                     'path': filename,
@@ -260,6 +261,7 @@ def cut_opi_1tile(opi, opi_name, dst_root, slab, gdal_option):
 def cut_image_1arg(arg):
     """Cut a given image in all corresponding tiles for all levels"""
     overviews = arg['overviews']
+    # TODO: créer un VRT avec RGB + IR pour avoir une image à 4 can.
     input_image = gdal.Open(arg['opi']['path'])
     slabbox = arg['slabBox']
 

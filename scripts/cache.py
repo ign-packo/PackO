@@ -21,6 +21,7 @@ conn_string = "PG:host="\
     + host + " dbname=" + database\
     + " user=" + user + " password=" + password
 
+# TODO: tester le passage de NB_BANDS à 4 pour les RVB+IR
 NB_BANDS = 3
 cpu_dispo = multiprocessing.cpu_count()
 
@@ -29,6 +30,7 @@ def read_args(update):
     """Gestion des arguments"""
 
     parser = argparse.ArgumentParser()
+    # TODO: gérer un param pour avoir le chemin des IR
     parser.add_argument("-i", "--input",
                         required=True,
                         help="input OPI pattern")
@@ -172,6 +174,8 @@ def generate(update):
     spatial_ref_wkt = spatial_ref.ExportToWkt()
 
     list_filename = glob.glob(args.input)
+
+    # TODO: vérifier que chaque RVB correspond a une IR
 
     if len(list_filename) == 0:
         raise SystemExit("WARNING: Empty input folder: nothing to add in cache")
