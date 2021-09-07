@@ -13,12 +13,12 @@ const status = {
 };
 
 class Saisie {
-  constructor(vue, layer, apiUrl, branchId) {
+  constructor(vue, layer, apiUrl) {
     this.vue = vue;
     this.view = vue.view;
     this.layer = layer;
     this.apiUrl = apiUrl;
-    this.branchId = branchId;
+    // this.branchId = branchId;
 
     this.validClicheSelected = false;
     this.currentStatus = status.RAS;
@@ -37,16 +37,16 @@ class Saisie {
   }
 
   changeBranchId(branchId) {
-    console.log('changeBranch');
+    console.log('changeBranch ->', branchId);
     this.message = '';
-    this.branchId = branchId;
+    this.vue.idBranch = branchId;
     // Object.keys(this.layer).forEach((element) => {
     const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
     listColorLayer.forEach((element) => {
       const regex = new RegExp(`^${this.apiUrl}\\/[0-9]+\\/`);
-      this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url.replace(regex, `${this.apiUrl}/${this.branchId}/`);
+      this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url.replace(regex, `${this.apiUrl}/${this.vue.idBranch}/`);
     });
-    this.vue.refresh(['ortho', 'graph', 'contour', 'patches']);
+    this.vue.refresh(['ortho', 'graph', 'contour', 'patches', 'vectors']);
   }
 
   pickPoint(event) {
@@ -117,7 +117,7 @@ class Saisie {
     this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
     // On post le geojson sur l'API
-    fetch(`${this.apiUrl}/${this.branchId}/patch?`,
+    fetch(`${this.apiUrl}/${this.vue.idBranch}/patch?`,
       {
         method: 'POST',
         headers: {
@@ -231,7 +231,7 @@ class Saisie {
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         this.view.controls.setCursor('default', 'auto');
-        fetch(`${this.apiUrl}/${this.branchId}/graph?x=${pos.x}&y=${pos.y}`,
+        fetch(`${this.apiUrl}/${this.vue.idBranch}/graph?x=${pos.x}&y=${pos.y}`,
           {
             method: 'GET',
             headers: {
@@ -339,8 +339,8 @@ class Saisie {
             branches.forEach((branch) => {
               if (branch.name === value) {
                 this.branch = value;
-                this.branchId = branch.id;
-                this.changeBranchId(this.branchId);
+                // this.idBranch = branch.id;
+                this.changeBranchId(branch.id);
               }
             });
           });
@@ -399,7 +399,7 @@ class Saisie {
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/${this.branchId}/patch/undo?`,
+    fetch(`${this.apiUrl}/${this.vue.idBranch}/patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -421,7 +421,7 @@ class Saisie {
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/${this.branchId}/patch/redo?`,
+    fetch(`${this.apiUrl}/${this.vue.idBranch}/patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -444,7 +444,7 @@ class Saisie {
     this.view.controls.setCursor('default', 'wait');
     this.message = 'calcul en cours';
 
-    fetch(`${this.apiUrl}/${this.branchId}/patches/clear?`,
+    fetch(`${this.apiUrl}/${this.vue.idBranch}/patches/clear?`,
       {
         method: 'PUT',
       }).then((res) => {

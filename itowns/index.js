@@ -54,7 +54,8 @@ async function main() {
   });
 
   const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews`);
-  const getVectorList = itowns.Fetcher.json(`${apiUrl}/0/vectors`);
+  // const getVectorList = itowns.Fetcher.json(`${apiUrl}/0/vectors`);
+  const getVectorList = itowns.Fetcher.json(`${apiUrl}/vectors`);
   const getBranches = itowns.Fetcher.json(`${apiUrl}/branches`);
 
   const viewerDiv = document.getElementById('viewerDiv');
@@ -67,7 +68,8 @@ async function main() {
   setupLoadingScreen(viewerDiv, vue.view);
 
   vue.view.isDebugMode = true;
-  const menuGlobe = new GuiTools('menuDiv', vue.view);
+  vue.menuGlobe = new GuiTools('menuDiv', vue.view);
+  const menuGlobe = vue.menuGlobe;
   menuGlobe.gui.width = 300;
 
   // const opacity = {
@@ -119,7 +121,7 @@ async function main() {
 
   vue.drawLayers(layerTest, getVectorList, overviews, menuGlobe, apiUrl);
 
-  try {
+  // try {
     const { view } = vue;
 
     vue.branches = await getBranches;
@@ -128,13 +130,12 @@ async function main() {
     });
 
     const { layer } = vue;
-    const { currentBranch } = vue;
 
-    const saisie = new Saisie(vue, layer, apiUrl, currentBranch.id);
+    // const saisie = new Saisie(vue, layer, apiUrl, currentBranch.id);
+    const saisie = new Saisie(vue, layer, apiUrl);
     saisie.cliche = 'unknown';
     saisie.message = '';
-    saisie.branch = currentBranch.name;
-    saisie.branchId = currentBranch.id;
+    saisie.idBranch = vue.currentBranch.id;
     saisie.coord = `${vue.xcenter.toFixed(2)},${vue.ycenter.toFixed(2)}`;
     saisie.color = [0, 0, 0];
     saisie.controllers = {};
@@ -149,17 +150,20 @@ async function main() {
     if (process.env.NODE_ENV === 'development') saisie.controllers.clear = menuGlobe.gui.add(saisie, 'clear');
     saisie.controllers.message = menuGlobe.gui.add(saisie, 'message');
     saisie.controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
+    saisie.branch = vue.currentBranch.name;
     saisie.controllers.branch = menuGlobe.gui.add(saisie, 'branch', vue.branchNames);
     saisie.controllers.branch.onChange((value) => {
       console.log('new active branch : ', value);
       vue.branches.forEach((branch) => {
         if (branch.name === value) {
           saisie.branch = value;
-          saisie.branchId = branch.id;
-          saisie.changeBranchId(saisie.branchId);
+          // saisie.idBranch = branch.id;
+          saisie.changeBranchId(branch.id);
         }
       });
     });
+
+    try {
 
     saisie.controllers.createBranch = menuGlobe.gui.add(saisie, 'createBranch');
 
