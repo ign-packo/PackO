@@ -15,6 +15,17 @@ const gdalProcessing = require('../gdal_processing');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 
+// 06-121r3_OGC_Web_Services_Common_Specification_version_1.1.0_with_Corrigendum
+// section 11.5.2
+// The capitalization of parameter names when KVP encoded shall be case insensitive,
+// meaning that parameter names may have mixed case or not.
+router.use((req, _res, next) => {
+  Object.keys(req.query).forEach((key) => {
+    req.query[key.toUpperCase()] = req.query[key];
+  });
+  next();
+});
+
 router.get('/:idBranch/wmts', [
   param('idBranch')
     .exists().withMessage(createErrMsg.missingParameter('idBranch'))
@@ -264,7 +275,7 @@ router.get('/:idBranch/wmts', [
           'ows:HTTP': {
             'ows:Get': {
               $: {
-                'xlink:href': `${req.app.urlApi}/wmts`,
+                'xlink:href': `${req.app.urlApi}/${idBranch}/wmts`,
               },
               'ows:Constraint': {
                 $: {
