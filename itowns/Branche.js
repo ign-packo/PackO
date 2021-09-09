@@ -80,7 +80,7 @@ class Branche {
         url: `${this.apiUrl}/${this.idBranch}/patches`,
         crs: this.vue.crs,
         opacity: 1,
-        visible: true,
+        visible: false,
         style: {
           stroke: {
             color: 'Yellow',
@@ -114,7 +114,7 @@ class Branche {
       this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url.replace(regex, `${this.apiUrl}/${this.idBranch}/`);
     });
     this.setLayers();
-    this.vue.refresh(Object.keys(this.layers), this.layers);
+    this.vue.refresh(this.layers);
   }
 
   createBranch() {

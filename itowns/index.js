@@ -77,7 +77,7 @@ async function main() {
   // vue.drawLayers(branche.layers, getVectorList, overviews, menuGlobe, apiUrl);
   branche.vectorList = await getVectorList;
   branche.setLayers();
-  vue.refresh(Object.keys(branche.layers), branche.layers);
+  vue.refresh(branche.layers);
 
   // try {
   const { view } = vue;

@@ -138,7 +138,8 @@ class Vue {
     });
   }
 
-  refresh(layerList, layerMeta) {
+  refresh(layerList) {
+    const layerNames = Array.isArray(layerList) ? layerList : Object.keys(layerList);
     // Clean up of all the extra layers
     let listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
     listColorLayer.forEach((layerName) => {
@@ -150,7 +151,7 @@ class Vue {
     });
 
     // Object.keys(layerList).forEach((layerName) => {
-    layerList.forEach((layerName) => {
+    layerNames.forEach((layerName) => {
       const layer = {};
       layer.config = {};
 
@@ -186,32 +187,32 @@ class Vue {
         layer.colorLayer.visible = visible;
         this.view.addLayer(layer.colorLayer);
       } else {
-        if (layerMeta[layerName].type === 'raster') {
+        if (layerList[layerName].type === 'raster') {
           layer.config.source = new itowns.WMTSSource({
-            url: layerMeta[layerName].url,
-            crs: layerMeta[layerName].crs,
+            url: layerList[layerName].url,
+            crs: layerList[layerName].crs,
             format: 'image/png',
             name: layerName !== 'Contour' ? layerName.toLowerCase() : 'graph',
             tileMatrixSet: this.overviews.identifier,
             tileMatrixSetLimits: this.overviews.dataSet.limits,
           });
-        } else if (layerMeta[layerName].type === 'vector') {
+        } else if (layerList[layerName].type === 'vector') {
           layer.config.source = new itowns.FileSource({
-            url: layerMeta[layerName].url,
+            url: layerList[layerName].url,
             fetcher: itowns.Fetcher.json,
-            crs: layerMeta[layerName].crs,
+            crs: layerList[layerName].crs,
             parser: itowns.GeoJsonParser.parse,
           });
-          layer.config.style = new itowns.Style(layerMeta[layerName].style);
+          layer.config.style = new itowns.Style(layerList[layerName].style);
         }
-        layer.config.opacity = layerMeta[layerName].opacity;
+        layer.config.opacity = layerList[layerName].opacity;
         layer.colorLayer = new itowns.ColorLayer(
           layerName,
           layer.config,
         );
 
         // if (layerName === 'Opi') layer.colorLayer.visible = false;
-        layer.colorLayer.visible = layerMeta[layerName].visible;
+        layer.colorLayer.visible = layerList[layerName].visible;
         if (layerName === 'Contour') {
           layer.colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
           layer.colorLayer.effect_parameter = 1.0;

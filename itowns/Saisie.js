@@ -94,7 +94,7 @@ class Saisie {
     this.view.controls.setCursor('default', 'wait');
     this.vue.message = 'calcul en cours';
     // On post le geojson sur l'API
-    fetch(`${this.apiUrl}/${this.vue.idBranch}/patch?`,
+    fetch(`${this.apiUrl}/${this.branche.idBranch}/patch?`,
       {
         method: 'POST',
         headers: {
@@ -105,7 +105,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.vue.refresh(['ortho', 'graph', 'contour', 'patches']);
+        this.vue.refresh(this.branche.layers);
       } else {
         this.vue.message = "polygon: out of OPI's bounds";
       }
@@ -226,7 +226,8 @@ class Saisie {
               // On modifie la couche OPI
               this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
               this.view.getLayerById('Opi').visible = true;
-              this.vue.refresh(['Opi']);
+              // this.vue.refresh(['Opi']);
+              this.vue.refresh(this.branche.layers);
               this.validClicheSelected = true;
             }
             if (res.status === 201) {
@@ -336,8 +337,8 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.vue.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
-        // this.vue.refresh(['Patches']);
+        // this.vue.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        this.vue.refresh(this.branche.layers);
       }
       res.text().then((msg) => {
         this.vue.message = msg;
@@ -359,7 +360,8 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.vue.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        // this.vue.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        this.vue.refresh(this.branche.layers);
       }
       res.text().then((msg) => {
         this.vue.message = msg;
@@ -382,7 +384,8 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.vue.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        // this.vue.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        this.vue.refresh(this.branche.layers);
       }
       res.text().then((msg) => {
         this.vue.message = msg;
