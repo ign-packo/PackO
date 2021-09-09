@@ -1,5 +1,6 @@
 # PackO
-developpement pour le controle et la retouche du mosaiquage.
+
+Outil pour le contrôle et la retouche du mosaïquage, sous licence CECILL-B (voir [LICENSE.md](LICENSE.md)).
 
 3 modules :
 - une API
@@ -89,3 +90,5 @@ Fournir à travers un navigateur web :
 - une consultation des données ortho
 - des outils de retouche du graph de mosaiquage
 
+
+[![IGN](images/logo_ign.png)](https://www.ign.fr)
