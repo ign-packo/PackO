@@ -1,8 +1,6 @@
 /* eslint-disable no-console */
 /* eslint-disable no-underscore-dangle */
-import * as itowns from 'itowns';
 import * as THREE from 'three';
-// import Vue from './Vue';
 
 const status = {
   RAS: 0,
@@ -13,12 +11,12 @@ const status = {
 };
 
 class Saisie {
-  constructor(vue, layer, apiUrl) {
-    this.vue = vue;
-    this.view = vue.view;
+  constructor(branche, layer, apiUrl) {
+    this.branche = branche;
+    this.vue = branche.vue;
+    this.view = this.vue.view;
     this.layer = layer;
     this.apiUrl = apiUrl;
-    // this.branchId = branchId;
 
     this.validClicheSelected = false;
     this.currentStatus = status.RAS;
@@ -26,27 +24,6 @@ class Saisie {
     this.nbVertices = 0;
     this.lastPos = null;
     this.mousePosition = null;
-
-    this.index = {
-      Ortho: 1,
-      Opi: 2,
-      Graph: 0,
-      Contour: 3,
-      Patches: 4,
-    };
-  }
-
-  changeBranchId(branchId) {
-    console.log('changeBranch ->', branchId);
-    this.message = '';
-    this.vue.idBranch = branchId;
-    // Object.keys(this.layer).forEach((element) => {
-    const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
-    listColorLayer.forEach((element) => {
-      const regex = new RegExp(`^${this.apiUrl}\\/[0-9]+\\/`);
-      this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url.replace(regex, `${this.apiUrl}/${this.vue.idBranch}/`);
-    });
-    this.vue.refresh(['ortho', 'graph', 'contour', 'patches', 'vectors']);
   }
 
   pickPoint(event) {
@@ -84,7 +61,7 @@ class Saisie {
       return;
     }
     this.currentStatus = status.RAS;
-    this.message = '';
+    this.vue.message = '';
     const positions = this.currentPolygon.geometry.attributes.position.array;
     const geojson = {
       type: 'FeatureCollection',
@@ -115,7 +92,7 @@ class Saisie {
     this.view.scene.remove(this.currentPolygon);
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
-    this.message = 'calcul en cours';
+    this.vue.message = 'calcul en cours';
     // On post le geojson sur l'API
     fetch(`${this.apiUrl}/${this.vue.idBranch}/patch?`,
       {
@@ -130,7 +107,7 @@ class Saisie {
       if (res.status === 200) {
         this.vue.refresh(['ortho', 'graph', 'contour', 'patches']);
       } else {
-        this.message = "polygon: out of OPI's bounds";
+        this.vue.message = "polygon: out of OPI's bounds";
       }
     });
   }
@@ -144,7 +121,7 @@ class Saisie {
     }
     this.view.controls.setCursor('default', 'auto');
     this.currentStatus = status.RAS;
-    this.message = '';
+    this.vue.message = '';
 
     Object.keys(this.controllers).forEach((key) => {
       if (key !== 'cliche') this.controllers[key].__li.style.backgroundColor = '';
@@ -161,7 +138,7 @@ class Saisie {
       if (this.currentStatus === status.POLYGON) {
         if (this.currentPolygon && (this.nbVertices > 2)) {
           this.currentStatus = status.ENDING;
-          this.message = 'Cliquer pour valider la saisie';
+          this.vue.message = 'Cliquer pour valider la saisie';
           this.view.controls.setCursor('default', 'progress');
 
           const vertices = this.currentPolygon.geometry.attributes.position;
@@ -172,7 +149,7 @@ class Saisie {
           this.currentPolygon.geometry.computeBoundingSphere();
           this.view.notifyChange(this.currentPolygon);
         } else {
-          this.message = 'Pas assez de points';
+          this.vue.message = 'Pas assez de points';
         }
       }
     } else if (e.key === 'Backspace') {
@@ -198,7 +175,7 @@ class Saisie {
     console.log(e.key, ' up');
     if (e.key === 'Shift') {
       if (this.currentStatus === status.ENDING || this.currentStatus === status.POLYGON) {
-        this.message = 'Maj pour terminer';
+        this.vue.message = 'Maj pour terminer';
         if (this.currentPolygon && (this.nbVertices > 0)) {
           // on remet le dernier sommet sur la position de la souris
 
@@ -223,7 +200,7 @@ class Saisie {
     const mousePosition = this.pickPoint(e);
     console.log('Click: ', mousePosition.x, mousePosition.y);
     console.log('currentStatus: ', this.currentStatus);
-    this.message = '';
+    this.vue.message = '';
 
     switch (this.currentStatus) {
       case status.SELECT: {
@@ -231,7 +208,7 @@ class Saisie {
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         this.view.controls.setCursor('default', 'auto');
-        fetch(`${this.apiUrl}/${this.vue.idBranch}/graph?x=${pos.x}&y=${pos.y}`,
+        fetch(`${this.apiUrl}/${this.branche.idBranch}/graph?x=${pos.x}&y=${pos.y}`,
           {
             method: 'GET',
             headers: {
@@ -249,7 +226,7 @@ class Saisie {
               // On modifie la couche OPI
               this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
               this.view.getLayerById('Opi').visible = true;
-              this.vue.refresh(['opi']);
+              this.vue.refresh(['Opi']);
               this.validClicheSelected = true;
             }
             if (res.status === 201) {
@@ -272,7 +249,7 @@ class Saisie {
       }
       case status.POLYGON: {
         // Cas ou l'on est en train de saisir un polygon : on ajoute un point
-        this.message = 'Maj pour terminer';
+        this.vue.message = 'Maj pour terminer';
 
         // Si c'est le premier point, on defini une position de reference (pb de précision)
         if (this.nbVertices === 0) {
@@ -306,63 +283,17 @@ class Saisie {
     this.view.controls.setCursor('default', 'crosshair');
     console.log('"select": En attente de sélection');
     this.currentStatus = status.SELECT;
-    this.message = 'choisir un cliche';
-  }
-
-  createBranch() {
-    this.message = '';
-    const branchName = window.prompt('Choose a new branch name:', '');
-    console.log(branchName);
-    if (branchName === null) return;
-    if (branchName.length === 0) {
-      this.message = 'le nom n\'est pas valide';
-      return;
-    }
-    fetch(`${this.apiUrl}/branch?name=${branchName}`,
-      {
-        method: 'POST',
-      }).then((res) => {
-      if (res.status === 200) {
-        itowns.Fetcher.json(`${this.apiUrl}/branches`).then((branches) => {
-          const branchNames = [];
-          let branchId = null;
-          branches.forEach((element) => {
-            branchNames.push(element.name);
-            if (element.name === branchName) {
-              branchId = element.id;
-            }
-          });
-          this.controllers.branch = this.controllers.branch.options(branchNames)
-            .setValue(branchName);
-          this.controllers.branch.onChange((value) => {
-            console.log('new active branch : ', value);
-            branches.forEach((branch) => {
-              if (branch.name === value) {
-                this.branch = value;
-                // this.idBranch = branch.id;
-                this.changeBranchId(branch.id);
-              }
-            });
-          });
-          this.changeBranchId(branchId);
-        });
-      } else {
-        res.text().then((err) => {
-          console.log(err);
-          this.message = 'le nom n\'est pas valide';
-        });
-      }
-    });
+    this.vue.message = 'choisir un cliche';
   }
 
   polygon() {
     if (this.currentStatus === status.WAITING) return;
     if (!this.validClicheSelected) {
-      this.message = (this.currentStatus === status.MOVE_POINT) ? 'choisir un cliche valide' : 'cliche non valide';
+      this.vue.message = (this.currentStatus === status.MOVE_POINT) ? 'choisir un cliche valide' : 'cliche non valide';
       return;
     }
     if (this.currentPolygon) {
-      this.message = 'saisie déjà en cours';
+      this.vue.message = 'saisie déjà en cours';
       // saisie deja en cours
       return;
     }
@@ -370,7 +301,7 @@ class Saisie {
     this.controllers.polygon.__li.style.backgroundColor = '#FF000055';
     this.view.controls.setCursor('default', 'crosshair');
     console.log("saisie d'un polygon");
-    this.message = "saisie d'un polygon";
+    this.vue.message = "saisie d'un polygon";
     const MAX_POINTS = 500;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
@@ -394,21 +325,22 @@ class Saisie {
   undo() {
     if (this.currentStatus === status.WAITING) return;
     this.cancelcurrentPolygon();
-    this.message = '';
+    this.vue.message = '';
     console.log('undo');
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
-    this.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/${this.vue.idBranch}/patch/undo?`,
+    this.vue.message = 'calcul en cours';
+    fetch(`${this.apiUrl}/${this.branche.idBranch}/patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.vue.refresh(['ortho', 'graph', 'contour', 'patches']);
+        this.vue.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        // this.vue.refresh(['Patches']);
       }
       res.text().then((msg) => {
-        this.message = msg;
+        this.vue.message = msg;
       });
     });
   }
@@ -416,21 +348,21 @@ class Saisie {
   redo() {
     if (this.currentStatus === status.WAITING) return;
     this.cancelcurrentPolygon();
-    this.message = '';
+    this.vue.message = '';
     console.log('redo');
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
-    this.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/${this.vue.idBranch}/patch/redo?`,
+    this.vue.message = 'calcul en cours';
+    fetch(`${this.apiUrl}/${this.branche.idBranch}/patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.vue.refresh(['ortho', 'graph', 'contour', 'patches']);
+        this.vue.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
       }
       res.text().then((msg) => {
-        this.message = msg;
+        this.vue.message = msg;
       });
     });
   }
@@ -442,18 +374,18 @@ class Saisie {
     console.log('clear');
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
-    this.message = 'calcul en cours';
+    this.vue.message = 'calcul en cours';
 
-    fetch(`${this.apiUrl}/${this.vue.idBranch}/patches/clear?`,
+    fetch(`${this.apiUrl}/${this.branche.idBranch}/patches/clear?`,
       {
         method: 'PUT',
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.vue.refresh(['ortho', 'graph', 'contour', 'patches']);
+        this.vue.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
       }
       res.text().then((msg) => {
-        this.message = msg;
+        this.vue.message = msg;
       });
     });
   }
