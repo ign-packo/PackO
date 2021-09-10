@@ -30,30 +30,58 @@ class Saisie {
     this.message = '';
     this.branchId = branchId;
     Object.keys(this.layer).forEach((element) => {
-      const regex = /^.*\/wmts/;
-      this.layer[element].config.source.url = this.layer[element].config.source.url.replace(regex, `${this.apiUrl}/${this.branchId}/wmts`);
+      // const regex = /^.*\/wmts/;
+      const regex = new RegExp(`^${this.apiUrl}\\/[0-9]+\\/`);
+      this.layer[element].config.source.url = this.layer[element].config.source.url.replace(regex, `${this.apiUrl}/${this.branchId}/`);
     });
-    this.refreshView(['ortho', 'graph', 'contour']);
+    this.refreshView(['ortho', 'graph', 'contour', 'patches']);
   }
 
-  refreshView(layers) {
+  async refreshView(layers) {
     // Pour le moment on force le rechargement complet des couches
+    let redrawPatches = false;
     layers.forEach((id) => {
       this.view.removeLayer(this.layer[id].colorLayer.id);
       this.layer[id].config.opacity = this.layer[id].colorLayer.opacity;
-      this.layer[id].colorLayer = new itowns.ColorLayer(this.layer[id].name, this.layer[id].config);
-      this.view.addLayer(this.layer[id].colorLayer);
-      if (id === 'contour') {
-        this.layer[id].colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
-        this.layer[id].colorLayer.effect_parameter = 1.0;
-        this.layer[id].colorLayer.magFilter = 1003;// itowns.THREE.NearestFilter;
-        this.layer[id].colorLayer.minFilter = 1003;// itowns.THREE.NearestFilter;
+
+      // ColorLayer
+      if (id !== 'patches') {
+        this.layer[id].colorLayer = new itowns.ColorLayer(
+          this.layer[id].name,
+          this.layer[id].config,
+        );
+        this.view.addLayer(this.layer[id].colorLayer);
+        if (id === 'contour') {
+          this.layer[id].colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
+          this.layer[id].colorLayer.effect_parameter = 1.0;
+          this.layer[id].colorLayer.magFilter = 1003;// itowns.THREE.NearestFilter;
+          this.layer[id].colorLayer.minFilter = 1003;// itowns.THREE.NearestFilter;
+        }
+      } else {
+        redrawPatches = true;
       }
     });
+    if (redrawPatches) {
+      this.layer.patches.config.opacity = this.layer.patches.colorLayer.opacity;
+
+      const currentPatches = await itowns.Fetcher.json(`${this.apiUrl}/${this.branchId}/patches`);
+      this.layer.patches.config.source = new itowns.FileSource({
+        fetchedData: currentPatches,
+        crs: this.view.camera.crs,
+        parser: itowns.GeoJsonParser.parse,
+      });
+
+      this.layer.patches.colorLayer = new itowns.ColorLayer(
+        this.layer.patches.name,
+        this.layer.patches.config,
+      );
+      this.view.addLayer(this.layer.patches.colorLayer);
+    }
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Ortho', 0);
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Opi', 1);
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Graph', 2);
     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Contour', 3);
+    itowns.ColorLayersOrdering.moveLayerToIndex(this.view, 'Patches', 4);
     this.view.notifyChange();
   }
 
@@ -97,7 +125,7 @@ class Saisie {
     const geojson = {
       type: 'FeatureCollection',
       name: 'annotation',
-      crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
+      crs: { type: 'name', properties: { name: `urn:ogc:def:crs:${this.view.camera.crs.replace(':', '::')}` } },
       features: [
         {
           type: 'Feature',
@@ -136,7 +164,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'contour']);
+        this.refreshView(['ortho', 'graph', 'contour', 'patches']);
       } else {
         this.message = "polygon: out of OPI's bounds";
       }
@@ -346,8 +374,8 @@ class Saisie {
             branches.forEach((branch) => {
               if (branch.name === value) {
                 this.branch = value;
-                this.idBranch = branch.id;
-                this.changeBranchId(this.idBranch);
+                this.branchId = branch.id;
+                this.changeBranchId(this.branchId);
               }
             });
           });
@@ -412,7 +440,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'contour']);
+        this.refreshView(['ortho', 'graph', 'contour', 'patches']);
       }
       res.text().then((msg) => {
         this.message = msg;
@@ -434,7 +462,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'contour']);
+        this.refreshView(['ortho', 'graph', 'contour', 'patches']);
       }
       res.text().then((msg) => {
         this.message = msg;
@@ -457,7 +485,7 @@ class Saisie {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.refreshView(['ortho', 'graph', 'contour']);
+        this.refreshView(['ortho', 'graph', 'contour', 'patches']);
       }
       res.text().then((msg) => {
         this.message = msg;
