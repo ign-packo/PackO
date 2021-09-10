@@ -92,7 +92,7 @@ describe('Patch', () => {
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
-          res.text.should.equal('undo: patch 1 canceled');
+          JSON.parse(res.text).should.equal('undo: patch 1 canceled');
           done();
         });
     });
@@ -102,7 +102,7 @@ describe('Patch', () => {
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(201);
-          res.text.should.equal('nothing to undo');
+          JSON.parse(res.text).should.equal('nothing to undo');
           done();
         });
     });
@@ -114,7 +114,7 @@ describe('Patch', () => {
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
-          res.text.should.equal('redo: patch 1 reapplied');
+          JSON.parse(res.text).should.equal('redo: patch 1 reapplied');
           done();
         });
     });
@@ -124,7 +124,7 @@ describe('Patch', () => {
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(201);
-          res.text.should.equal('nothing to redo');
+          JSON.parse(res.text).should.equal('nothing to redo');
           done();
         });
     });
@@ -136,7 +136,7 @@ describe('Patch', () => {
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(401);
-          res.text.should.equal('unauthorized');
+          JSON.parse(res.text).should.equal('unauthorized');
           done();
         });
     }).timeout(9000);
@@ -166,7 +166,7 @@ describe('Patch', () => {
             .end((err1, res1) => {
               should.not.exist(err1);
               res1.should.have.status(200);
-              res1.text.should.equal('undo: patch 2 canceled');
+              JSON.parse(res1.text).should.equal('undo: patch 2 canceled');
 
               // Pour faire le clear
               chai.request(server)
@@ -174,7 +174,7 @@ describe('Patch', () => {
                 .end((err2, res2) => {
                   should.not.exist(err2);
                   res2.should.have.status(200);
-                  res2.text.should.equal('clear: all patches deleted');
+                  JSON.parse(res2.text).should.equal('clear: all patches deleted');
                   done();
                 });
             });
@@ -195,7 +195,7 @@ describe('Patch', () => {
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(201);
-          res.text.should.equal('nothing to clear');
+          JSON.parse(res.text).should.equal('nothing to clear');
           done();
         });
     });
