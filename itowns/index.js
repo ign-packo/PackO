@@ -169,6 +169,7 @@ async function main() {
       graph: 0.001,
       contour: 0.5,
       opi: 0.5,
+      patches: 1,
     };
 
     const source = {
@@ -229,6 +230,7 @@ async function main() {
       config: {
         transparent: true,
         opacity: opacity.patches,
+        visible: false,
       },
     };
 

@@ -43,6 +43,7 @@ class Saisie {
     layers.forEach((id) => {
       this.view.removeLayer(this.layer[id].colorLayer.id);
       this.layer[id].config.opacity = this.layer[id].colorLayer.opacity;
+      this.layer[id].config.visible = this.layer[id].colorLayer.visible;
 
       // ColorLayer
       if (id !== 'patches') {
@@ -63,6 +64,7 @@ class Saisie {
     });
     if (redrawPatches) {
       this.layer.patches.config.opacity = this.layer.patches.colorLayer.opacity;
+      this.layer.patches.config.visible = this.layer.patches.colorLayer.visible;
 
       const currentPatches = await itowns.Fetcher.json(`${this.apiUrl}/${this.branchId}/patches`);
       this.layer.patches.config.source = new itowns.FileSource({
