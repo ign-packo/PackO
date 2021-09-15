@@ -286,6 +286,7 @@ class Saisie {
               this.controllers.cliche.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
               // On modifie la couche OPI
               this.layer.opi.config.source.url = this.layer.opi.config.source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
+              this.layer.opi.colorLayer.visible = true;
               this.refreshView(['opi']);
               this.validClicheSelected = true;
             }
