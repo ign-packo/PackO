@@ -10,6 +10,20 @@ jobs:
   API:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgis/postgis
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - uses: actions/checkout@v2
 
@@ -44,6 +58,17 @@ jobs:
 
     - name: install
       run: npm install
+
+    - name: initialize DB
+      env:
+        PGHOST: localhost
+        PGPORT: 5432
+        PGUSER: postgres
+        PGPASSWORD: postgres
+        PGDATABASE: packo
+      run: |
+        psql -c "CREATE DATABASE $PGDATABASE"
+        psql -f sql/packo.sql
 
     - name: API test
       env:
