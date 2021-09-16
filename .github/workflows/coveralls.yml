@@ -70,17 +70,6 @@ jobs:
     - name: install
       run: npm install
 
-    - name: initialize DB
-      env:
-        PGHOST: localhost
-        PGPORT: 5432
-        PGUSER: postgres
-        PGPASSWORD: postgres
-        PGDATABASE: packo
-      run: |
-        psql -c "CREATE DATABASE $PGDATABASE"
-        psql -f sql/packo.sql
-
     - name: API test
       env:
         DEBUG:
