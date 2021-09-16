@@ -5,6 +5,7 @@ const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 const branch = require('../middlewares/branch');
 const wmts = require('../middlewares/wmts');
+const pgClient = require('../middlewares/pgClient');
 const returnMsg = require('../middlewares/returnMsg');
 
 // 06-121r3_OGC_Web_Services_Common_Specification_version_1.1.0_with_Corrigendum
@@ -83,8 +84,10 @@ router.get('/:idBranch/wmts', [
     .withMessage(createErrMsg.invalidParameter('J')),
 ],
 validateParams,
+pgClient.open,
 branch.validBranch,
 wmts.wmts,
+pgClient.close,
 returnMsg);
 
 module.exports = router;
