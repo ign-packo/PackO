@@ -177,7 +177,7 @@ describe('Wmts', () => {
           should.not.exist(err);
           res.should.have.status(400);
           const resJson = JSON.parse(res.text);
-          resJson.should.have.property('errors').equal('branch does not exist');
+          resJson.should.have.property('msg').equal('branch does not exist');
           done();
         });
     });
@@ -286,7 +286,7 @@ describe('Wmts', () => {
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
-          res.type.should.be.a('string').equal('text/html');
+          res.type.should.be.a('string').equal('application/xml');
 
           done();
         });
@@ -311,7 +311,7 @@ describe('Wmts', () => {
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(201);
-          res.type.should.be.a('string').equal('text/html');
+          res.type.should.be.a('string').equal('application/xml');
           done();
         });
     });
@@ -336,7 +336,7 @@ describe('Wmts', () => {
           should.not.exist(err);
           res.should.have.status(400);
           const resJson = JSON.parse(res.text);
-          resJson.should.have.property('status').equal('out of bounds');
+          resJson.should.have.property('msg').equal('out of bounds');
 
           done();
         });
