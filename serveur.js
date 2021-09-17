@@ -42,7 +42,6 @@ const { misc, gitVersion } = require('./routes/misc');
 const branch = require('./routes/branch');
 const cache = require('./routes/cache');
 
-
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
   // effet : maj autom apres saisie - OK Chrome/Chromium, Pas OK Firefox
