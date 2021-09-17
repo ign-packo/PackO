@@ -101,7 +101,7 @@ validateParams,
 pgClient.open,
 branch.validBranch,
 patch.clear,
-pgClient.open,
+pgClient.close,
 returnMsg);
 
 module.exports = router;
