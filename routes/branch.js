@@ -9,7 +9,9 @@ const pgClient = require('../middlewares/pgClient');
 const returnMsg = require('../middlewares/returnMsg');
 
 router.get('/branches',
+  pgClient.open,
   branch.getBranches,
+  pgClient.close,
   returnMsg);
 
 router.post('/branch', [
@@ -21,5 +23,16 @@ pgClient.open,
 branch.insertBranch,
 pgClient.close,
 returnMsg);
+
+router.delete('/branch', [
+  query('branchId')
+    .exists().withMessage(createErrMsg.missingParameter('branchId')),
+],
+validateParams,
+pgClient.open,
+branch.deleteBranch,
+pgClient.close,
+returnMsg);
+
 
 module.exports = router;

@@ -121,6 +121,21 @@ paths:
       responses:
         '200':
           description: OK
+    delete:
+      tags:
+        - branch
+      summary: "Destruction d'une branche"
+      description: ""
+      parameters:
+        - in: query
+          name: branchId
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: OK
   '/{branchId}/patch/undo':
     put:
       tags:

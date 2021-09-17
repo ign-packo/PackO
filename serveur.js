@@ -10,6 +10,8 @@ const debugServer = require('debug')('serveur');
 const debug = require('debug');
 const path = require('path');
 const nocache = require('nocache');
+const db = require('./db/db');
+const { Client } = require('pg');
 
 const { argv } = require('yargs')
   .version(false)
@@ -41,6 +43,7 @@ const patch = require('./routes/patch');
 const { misc, gitVersion } = require('./routes/misc');
 const branch = require('./routes/branch');
 const cache = require('./routes/cache');
+
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
@@ -119,9 +122,28 @@ try {
 
   app.use('/itowns', express.static('itowns'));
 
-  module.exports = app.listen(PORT, () => {
-    debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);
+  const client = new Client({
+    user: process.env.PGUSER,
+    host: process.env.PGHOST,
+    database: process.env.PGDATABASE,
+    password: process.env.PGPASSWORD,
+    port: process.env.PGPORT,
   });
+  client.connect().then(() => {
+    db.getIdCacheFromPath(client, global.dir_cache).then((id) => {
+      global.id_cache = id;
+      debug.log('id_cache :', global.id_cache);
+      client.end();
+      app.server = app.listen(PORT, () => {
+        debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);
+        app.emit("appStarted");
+      });
+    })
+  });
+   
+  module.exports = app;
+
 } catch (err) {
   debug.log(err);
 }
+

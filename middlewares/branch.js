@@ -2,42 +2,49 @@ const debug = require('debug')('branch');
 const fs = require('fs');
 const path = require('path');
 const { matchedData } = require('express-validator');
+const db = require('../db/db');
 
-function validBranch(req, _res, next) {
+async function validBranch(req, _res, next) {
   if (req.error) {
     next();
     return;
   }
   const params = matchedData(req);
   const { idBranch } = params;
-  const selectedBranches = req.app.branches.filter((item) => item.id === Number(idBranch));
-  if (selectedBranches.length === 0) {
+
+  let found = false;
+  try {
+    found = await db.isBranchValid(req.client, idBranch, global.idCache);
+  } catch (error) {
+    debug(error);
+  }
+  if (!found) {
     req.error = {
       msg: 'branch does not exist',
       code: 400,
       function: 'validBranch',
     };
-  } else {
-    [req.selectedBranch] = selectedBranches;
   }
   next();
 }
 
-function getBranches(req, _res, next) {
+async function getBranches(req, _res, next) {
   if (req.error) {
     next();
     return;
   }
   debug('~~~get branches~~~');
-  const branchWithoutPatches = [];
-  req.app.branches.forEach((branch) => {
-    branchWithoutPatches.push({ id: branch.id, name: branch.name });
-  });
-  req.result = { json: branchWithoutPatches, code: 200 };
+  let branches;
+  try {
+    branches = await db.getBranches(req.client, global.id_cache);
+  } catch (error) {
+    debug(error);
+  }
+  req.result = { json: branches, code: 200 };
   next();
 }
 
-function insertBranch(req, _res, next) {
+async function insertBranch(req, _res, next) {
   if (req.error) {
     next();
     return;
@@ -45,51 +52,42 @@ function insertBranch(req, _res, next) {
   const params = matchedData(req);
   const { name } = params;
   debug('~~~post branch~~~');
-  // on vérifie si le nom est deja pris
-  let largestId = 0;
-  let ok = true;
-  req.app.branches.forEach((branch) => {
-    largestId = Math.max(largestId, branch.id);
-    if (branch.name === name) {
-      ok = false;
-    }
-  });
-  if (!ok) {
+
+  try {
+    const idBranch = await db.insertBranch(req.client, name, global.id_cache);
+    debug(idBranch);
+    req.result = { json: { name, id: idBranch }, code: 200 };
+  } catch (error) {
+    debug(error);
     req.error = {
       msg: 'A branch with this name already exists',
       code: 406,
       function: 'validBranch',
     };
-  } else {
-    // on crée la nouvelle branche
-    req.app.branches.push({
-      id: largestId + 1,
-      name,
-      activePatches: {
-        type: 'FeatureCollection',
-        name: 'annotation',
-        crs: {
-          type: 'name',
-          properties: {
-            name: 'urn:ogc:def:crs:EPSG::2154',
-          },
-        },
-        features: [],
-      },
-      unactivePatches: {
-        type: 'FeatureCollection',
-        name: 'annotation',
-        crs: {
-          type: 'name',
-          properties: {
-            name: 'urn:ogc:def:crs:EPSG::2154',
-          },
-        },
-        features: [],
-      },
-    });
-    fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
-    req.result = { json: { name, id: largestId + 1 }, code: 200 };
+  }
+  next();
+}
+
+async function deleteBranch(req, _res, next) {
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+  const { branchId } = params;
+  debug('~~~delete branch~~~', branchId);
+
+  try {
+    const branchName = await db.deleteBranch(req.client, branchId, global.id_cache);
+    debug(branchName);
+    req.result = { json: `branche '${branchName}' détruite`, code: 200 };
+  } catch (error) {
+    debug(error);
+    req.error = {
+      msg: `Impossible de détruire la branche : '${branchId}'`,
+      code: 406,
+      function: 'deleteBranch',
+    };
   }
   next();
 }
@@ -98,4 +96,5 @@ module.exports = {
   validBranch,
   getBranches,
   insertBranch,
+  deleteBranch,
 };
