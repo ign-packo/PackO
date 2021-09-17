@@ -33,12 +33,12 @@ async function insertListOpi(pgClient, idCache, listOpi) {
   }
 }
 
-async function isBranchValid(pgClient, idBranch, idCache) {
+async function isBranchValid(pgClient, idBranch) {
     debug('~isBranchValid');
     try {
         const results = await pgClient.query(
-          'SELECT id INTO branches WHERE id_cache=$1 AND id = $2',
-          [idCache, idBranch],
+          'SELECT id FROM branches WHERE id = $1',
+          [idBranch],
         );
         return (results.rowCount === 1);
       } catch (error) {
@@ -110,6 +110,30 @@ async function deleteBranch(pgClient, idBranch, idCache) {
       }
 }
 
+async function getActivePatches(pgClient, idBranch) {
+  try {
+    debug("Recuperation des patchs actifs de la branche : ", idBranch);
+
+    const sql = "SELECT json_build_object('type', 'FeatureCollection', "
+    + "'features', json_agg(ST_AsGeoJSON(t.*)::json)) FROM "
+    + '(SELECT p.*, ARRAY_AGG(s.x) as x, ARRAY_AGG(s.y) as y, ARRAY_AGG(s.z) as z '
+    + 'FROM patches p LEFT JOIN slabs s ON p.id = s.id_patch WHERE p.id_branch = $1 '
+    + 'GROUP BY p.id ORDER BY p.num) as t';
+
+    debug(sql);
+
+    const results = await pgClient.query(
+      sql, [idBranch],
+    );
+    
+    debug(results.rows[0].json_build_object);
+    return results.rows[0].json_build_object;
+  } catch (error) {
+    debug('Error : ', error);
+    throw error;
+  }
+}
+
 
 module.exports = {
     insertCache,
@@ -119,4 +143,5 @@ module.exports = {
     getIdCacheFromPath,
     insertBranch,
     deleteBranch,
+    getActivePatches,
 };

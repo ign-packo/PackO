@@ -14,7 +14,7 @@ async function validBranch(req, _res, next) {
 
   let found = false;
   try {
-    found = await db.isBranchValid(req.client, idBranch, global.idCache);
+    found = await db.isBranchValid(req.client, idBranch);
   } catch (error) {
     debug(error);
   }
