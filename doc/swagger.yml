@@ -6,6 +6,8 @@ servers:
   - url: "http://localhost:8081"
     description: "Serveur de dev"
 tags:
+  - name: cache
+    description: Gestion des caches
   - name: branch
     description: Gestion des branches
   - name: wmts
@@ -23,6 +25,74 @@ paths:
         - version
       summary: "Version git"
       description: ""
+      responses:
+        '200':
+          description: OK
+  '/cache':
+    post:
+      tags:
+        - cache
+      summary: "Import d'un cache à partir d'un overviews.json"
+      description: ""
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+          example: "monCache"
+      requestBody:
+        description: overviews.json
+        required: true
+        content:
+          application/json:
+              schema:
+                type: object
+                properties:
+                  identifier:
+                    type: string
+                    example: "LAMB93_5cm"
+                  crs:
+                    type: object
+                    example:
+                      {
+                        "type":"name",
+                        "properties":{
+                          "name":"urn:ogc:def:crs:EPSG::2154"}}
+                  resolution:
+                    type: integer
+                    example: 0.05
+                  level:
+                    type: object
+                    example:
+                      {
+                        "min": 14,
+                        "max": 21}
+                  tileSize:
+                    type: object
+                    example:
+                      {
+                        "width": 256,
+                        "height": 256}
+                  pathDepth:
+                    type: integer
+                    example: 4
+                  slabSize:
+                    type: object
+                    example:
+                      {
+                        "width": 16,
+                        "height": 16}
+                  list_OPI:
+                    type: object
+                    example:
+                      {
+                        "19FD5606Ax00020_16371": [
+                              126,
+                              222,
+                              76]}
+                  dataSet:
+                    type: object
       responses:
         '200':
           description: OK
