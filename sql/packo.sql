@@ -177,11 +177,11 @@ CREATE TABLE public.slabs (
 ALTER TABLE public.slabs OWNER TO postgres;
 
 --
--- Name: overlaps_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: slabs_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
 ALTER TABLE public.slabs ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME public.overlaps_id_seq
+    SEQUENCE NAME public.slabs_id_seq
     START WITH 0
     INCREMENT BY 1
     MINVALUE 0
