@@ -1,6 +1,6 @@
 const debug = require('debug')('branch');
-const fs = require('fs');
-const path = require('path');
+// const fs = require('fs');
+// const path = require('path');
 const { matchedData } = require('express-validator');
 const db = require('../db/db');
 

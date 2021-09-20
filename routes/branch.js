@@ -34,5 +34,4 @@ branch.deleteBranch,
 pgClient.close,
 returnMsg);
 
-
 module.exports = router;

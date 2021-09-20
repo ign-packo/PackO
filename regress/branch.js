@@ -6,7 +6,7 @@ const should = chai.should();
 const app = require('..');
 
 let branchId = null;
-let branchName = 'test';
+const branchName = 'test';
 
 function setIdBranch(id) {
   console.log('setIdBranch : ', id);
@@ -14,7 +14,7 @@ function setIdBranch(id) {
 }
 
 before((done) => {
-  app.on('appStarted', function() {
+  app.on('appStarted', function () {
     done();
   });
 });

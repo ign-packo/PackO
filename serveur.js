@@ -10,7 +10,6 @@ const debugServer = require('debug')('serveur');
 const debug = require('debug');
 const path = require('path');
 const nocache = require('nocache');
-const db = require('./db/db');
 const { Client } = require('pg');
 
 const { argv } = require('yargs')
@@ -29,6 +28,7 @@ const { argv } = require('yargs')
   })
   .help()
   .alias('help', 'h');
+const db = require('./db/db');
 
 const app = express();
 
@@ -43,7 +43,6 @@ const patch = require('./routes/patch');
 const { misc, gitVersion } = require('./routes/misc');
 const branch = require('./routes/branch');
 const cache = require('./routes/cache');
-
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
@@ -136,14 +135,12 @@ try {
       client.end();
       app.server = app.listen(PORT, () => {
         debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);
-        app.emit("appStarted");
+        app.emit('appStarted');
       });
-    })
+    });
   });
-   
-  module.exports = app;
 
+  module.exports = app;
 } catch (err) {
   debug.log(err);
 }
-
