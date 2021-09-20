@@ -31,6 +31,77 @@ COMMENT ON EXTENSION postgis IS 'PostGIS geometry, geography, and raster spatial
 
 
 --
+-- Name: auto_num_patches_and_delete_unactive(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.auto_num_patches_and_delete_unactive() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$BEGIN
+	DELETE FROM patches 
+	WHERE 
+		id_branch=NEW.id_branch 
+		AND 
+		active=False;
+	NEW.num = (
+		SELECT  
+	CASE WHEN max(num) IS NULL THEN 1
+	ELSE max(num) + 1
+	END next_num
+	FROM patches
+	WHERE 
+		id_branch=NEW.id_branch 
+		AND 
+		active=True
+	);
+	RETURN NEW;
+END;$$;
+
+
+ALTER FUNCTION public.auto_num_patches_and_delete_unactive() OWNER TO postgres;
+
+--
+-- Name: check_before_patch_activation(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.check_before_patch_activation() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+	IF NEW.num > (
+		SELECT min(num) FROM patches
+		WHERE id_branch=NEW.id_branch AND active=False)
+	THEN 
+		RAISE EXCEPTION 'patch activation impossible' USING ERRCODE='20808';
+	END IF;
+	RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.check_before_patch_activation() OWNER TO postgres;
+
+--
+-- Name: check_before_patch_deactivation(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.check_before_patch_deactivation() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+	IF NEW.num < (
+		SELECT max(num) FROM patches
+		WHERE id_branch=NEW.id_branch AND active=True)
+	THEN 
+		RAISE EXCEPTION 'patch desactivation impossible' USING ERRCODE='20808';
+	END IF;
+	RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.check_before_patch_deactivation() OWNER TO postgres;
+
+--
 -- Name: create_orig_branch(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -46,31 +117,6 @@ $$;
 
 
 ALTER FUNCTION public.create_orig_branch() OWNER TO postgres;
-
---
--- Name: suppr_unactive_patches(); Type: FUNCTION; Schema: public; Owner: postgres
---
-
-CREATE FUNCTION public.suppr_unactive_patches() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$BEGIN
-	DELETE FROM patches 
-	WHERE 
-		id_branch=NEW.id_branch 
-		AND 
-		active=False;
-	RETURN NEW;
-END;$$;
-
-
-ALTER FUNCTION public.suppr_unactive_patches() OWNER TO postgres;
-
---
--- Name: FUNCTION suppr_unactive_patches(); Type: COMMENT; Schema: public; Owner: postgres
---
-
-COMMENT ON FUNCTION public.suppr_unactive_patches() IS 'suppression des patchs inactifs de la branche';
-
 
 SET default_tablespace = '';
 
@@ -301,10 +347,10 @@ ALTER TABLE ONLY public.slabs
 
 
 --
--- Name: patches insert; Type: TRIGGER; Schema: public; Owner: postgres
+-- Name: patches auto_num_patches_and_delete_unactive_on_insert; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER insert AFTER INSERT ON public.patches FOR EACH ROW EXECUTE FUNCTION public.suppr_unactive_patches();
+CREATE TRIGGER auto_num_patches_and_delete_unactive_on_insert BEFORE INSERT ON public.patches FOR EACH ROW EXECUTE FUNCTION public.auto_num_patches_and_delete_unactive();
 
 
 --
@@ -312,6 +358,20 @@ CREATE TRIGGER insert AFTER INSERT ON public.patches FOR EACH ROW EXECUTE FUNCTI
 --
 
 CREATE TRIGGER insert_newcache AFTER INSERT ON public.caches FOR EACH ROW EXECUTE FUNCTION public.create_orig_branch();
+
+
+--
+-- Name: patches on_patch_activation; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER on_patch_activation BEFORE UPDATE OF active ON public.patches FOR EACH ROW WHEN ((new.active = true)) EXECUTE FUNCTION public.check_before_patch_activation();
+
+
+--
+-- Name: patches on_patch_deactivation; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER on_patch_deactivation BEFORE UPDATE OF active ON public.patches FOR EACH ROW WHEN ((new.active = false)) EXECUTE FUNCTION public.check_before_patch_deactivation();
 
 
 --
