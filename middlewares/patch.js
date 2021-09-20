@@ -66,11 +66,11 @@ function rename(url, urlOrig) {
 }
 
 async function getPatches(req, _res, next) {
+  debug('~~~GET patches');
   if (req.error) {
     next();
     return;
   }
-  debug('~~~GET patches');
   const params = matchedData(req);
   const { idBranch } = params;
   try {

@@ -5,12 +5,12 @@ chai.use(require('chai-json-schema'));
 const should = chai.should();
 const app = require('..');
 
-let branchId = null;
+let idBranch = null;
 const branchName = 'test';
 
 function setIdBranch(id) {
   console.log('setIdBranch : ', id);
-  branchId = id;
+  idBranch = id;
 }
 
 before((done) => {
@@ -41,7 +41,7 @@ describe('Branch', () => {
 
   describe('PUT /branch', () => {
     describe('add a valid branch', () => {
-      it('should return a branchId', (done) => {
+      it('should return an idBranch', (done) => {
         chai.request(app)
           .post('/branch')
           .query({ name: branchName })
@@ -75,7 +75,7 @@ describe('Branch', () => {
       it('should succeed', (done) => {
         chai.request(app)
           .delete('/branch')
-          .query({ branchId })
+          .query({ idBranch })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(200);
@@ -89,7 +89,7 @@ describe('Branch', () => {
       it('should failed', (done) => {
         chai.request(app)
           .delete('/branch')
-          .query({ branchId: 0 })
+          .query({ idBranch: 0 })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(406);

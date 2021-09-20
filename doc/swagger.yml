@@ -128,7 +128,7 @@ paths:
       description: ""
       parameters:
         - in: query
-          name: branchId
+          name: idBranch
           required: true
           schema:
             type: integer
@@ -136,7 +136,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/{branchId}/patch/undo':
+  '/{idBranch}/patch/undo':
     put:
       tags:
         - patch
@@ -144,7 +144,7 @@ paths:
       description: ""
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -152,7 +152,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/{branchId}/patch/redo':
+  '/{idBranch}/patch/redo':
     put:
       tags:
         - patch
@@ -160,7 +160,7 @@ paths:
       description: ""
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -168,7 +168,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/{branchId}/patches/clear':
+  '/{idBranch}/patches/clear':
     put:
       tags:
         - patch
@@ -176,7 +176,7 @@ paths:
       description: ""
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -184,7 +184,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/{branchId}/patch':
+  '/{idBranch}/patch':
     post:
       tags:
         - patch
@@ -192,7 +192,7 @@ paths:
       description: "Mise a jour du graph de mosaiquage a partir d'un geoJSON"
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -225,7 +225,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/{branchId}/patches':
+  '/{idBranch}/patches':
     get:
       tags:
         - patch
@@ -233,7 +233,7 @@ paths:
       description: ""
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -241,7 +241,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/{branchId}/graph':
+  '/{idBranch}/graph':
     get:
       tags:
         - graph
@@ -249,7 +249,7 @@ paths:
       description: ""
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -270,7 +270,7 @@ paths:
         '200':
           description: OK
 
-  '/{branchId}/wmts':
+  '/{idBranch}/wmts':
     get:
       tags:
         - wmts
@@ -278,7 +278,7 @@ paths:
       description: ""
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:

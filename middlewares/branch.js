@@ -24,16 +24,17 @@ async function validBranch(req, _res, next) {
       code: 400,
       function: 'validBranch',
     };
+    debug('ERROR', req.error);
   }
   next();
 }
 
 async function getBranches(req, _res, next) {
+  debug('~~~get branches~~~');
   if (req.error) {
     next();
     return;
   }
-  debug('~~~get branches~~~');
   let branches;
   try {
     branches = await db.getBranches(req.client, global.id_cache);
@@ -45,13 +46,13 @@ async function getBranches(req, _res, next) {
 }
 
 async function insertBranch(req, _res, next) {
+  debug('~~~post branch~~~');
   if (req.error) {
     next();
     return;
   }
   const params = matchedData(req);
   const { name } = params;
-  debug('~~~post branch~~~');
 
   try {
     const idBranch = await db.insertBranch(req.client, name, global.id_cache);
@@ -74,17 +75,17 @@ async function deleteBranch(req, _res, next) {
     return;
   }
   const params = matchedData(req);
-  const { branchId } = params;
-  debug('~~~delete branch~~~', branchId);
+  const { idBranch } = params;
+  debug('~~~delete branch~~~', idBranch);
 
   try {
-    const branchName = await db.deleteBranch(req.client, branchId, global.id_cache);
+    const branchName = await db.deleteBranch(req.client, idBranch, global.id_cache);
     debug(branchName);
     req.result = { json: `branche '${branchName}' détruite`, code: 200 };
   } catch (error) {
     debug(error);
     req.error = {
-      msg: `Impossible de détruire la branche : '${branchId}'`,
+      msg: `Impossible de détruire la branche : '${idBranch}'`,
       code: 406,
       function: 'deleteBranch',
     };
