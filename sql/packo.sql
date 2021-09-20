@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 13.2
--- Dumped by pg_dump version 13.1
+-- Dumped from database version 13.3
+-- Dumped by pg_dump version 13.3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -31,6 +31,56 @@ COMMENT ON EXTENSION postgis IS 'PostGIS geometry, geography, and raster spatial
 
 
 --
+-- Name: auto_num_patches_and_delete_unactive(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.auto_num_patches_and_delete_unactive() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$BEGIN
+	DELETE FROM patches 
+	WHERE 
+		id_branch=NEW.id_branch 
+		AND 
+		active=False;
+	NEW.num = (
+		SELECT  
+	CASE WHEN max(num) IS NULL THEN 1
+	ELSE max(num) + 1
+	END next_num
+	FROM patches
+	WHERE 
+		id_branch=NEW.id_branch 
+		AND 
+		active=True
+	);
+	RETURN NEW;
+END;$$;
+
+
+ALTER FUNCTION public.auto_num_patches_and_delete_unactive() OWNER TO postgres;
+
+--
+-- Name: check_before_unactive_patch(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.check_before_unactive_patch() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$BEGIN
+	IF NEW.num < (
+		SELECT max(num) FROM patches WHERE
+		id_branch=NEW.id_branch 
+		AND 
+		active=True) THEN
+		RAISE EXCEPTION 'mise a jour impossible'
+		USING ERRCODE='20808';
+		END IF;
+	RETURN NEW;
+END;$$;
+
+
+ALTER FUNCTION public.check_before_unactive_patch() OWNER TO postgres;
+
+--
 -- Name: create_orig_branch(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -46,31 +96,6 @@ $$;
 
 
 ALTER FUNCTION public.create_orig_branch() OWNER TO postgres;
-
---
--- Name: suppr_unactive_patches(); Type: FUNCTION; Schema: public; Owner: postgres
---
-
-CREATE FUNCTION public.suppr_unactive_patches() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$BEGIN
-	DELETE FROM patches 
-	WHERE 
-		id_branch=NEW.id_branch 
-		AND 
-		active=False;
-	RETURN NEW;
-END;$$;
-
-
-ALTER FUNCTION public.suppr_unactive_patches() OWNER TO postgres;
-
---
--- Name: FUNCTION suppr_unactive_patches(); Type: COMMENT; Schema: public; Owner: postgres
---
-
-COMMENT ON FUNCTION public.suppr_unactive_patches() IS 'suppression des patchs inactifs de la branche';
-
 
 SET default_tablespace = '';
 
@@ -301,10 +326,17 @@ ALTER TABLE ONLY public.slabs
 
 
 --
--- Name: patches insert; Type: TRIGGER; Schema: public; Owner: postgres
+-- Name: patches auto_num_patches_and_delete_unactive_on_insert; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER insert AFTER INSERT ON public.patches FOR EACH ROW EXECUTE FUNCTION public.suppr_unactive_patches();
+CREATE TRIGGER auto_num_patches_and_delete_unactive_on_insert BEFORE INSERT ON public.patches FOR EACH ROW EXECUTE FUNCTION public.auto_num_patches_and_delete_unactive();
+
+
+--
+-- Name: patches check_before_unactive_patch; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER check_before_unactive_patch BEFORE UPDATE OF active ON public.patches FOR EACH ROW WHEN ((new.active = false)) EXECUTE FUNCTION public.check_before_unactive_patch();
 
 
 --
