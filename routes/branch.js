@@ -25,14 +25,13 @@ pgClient.close,
 returnMsg);
 
 router.delete('/branch', [
-  query('branchId')
-    .exists().withMessage(createErrMsg.missingParameter('branchId')),
+  query('idBranch')
+    .exists().withMessage(createErrMsg.missingParameter('idBranch')),
 ],
 validateParams,
 pgClient.open,
 branch.deleteBranch,
 pgClient.close,
 returnMsg);
-
 
 module.exports = router;
