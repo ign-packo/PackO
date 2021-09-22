@@ -3,17 +3,17 @@ chai.use(require('chai-http'));
 // chai.use(require('chai-json-schema'));
 
 const should = chai.should();
-const server = require('..');
+const app = require('..');
 
 describe('Miscellanous', () => {
   after((done) => {
-    server.close();
+    app.server.close();
     done();
   });
 
   describe('GET /version', () => {
     it('should return an object with git version', (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/version')
         .end((err, res) => {
           should.not.exist(err);
