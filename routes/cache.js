@@ -19,6 +19,8 @@ router.post('/cache',
   [
     query('name')
       .exists().withMessage(createErrMsg.missingParameter('name')),
+    query('path')
+      .exists().withMessage(createErrMsg.missingParameter('path')),
     body('overviews')
       .exists().withMessage(createErrMsg.missingBody),
     body('overviews.list_OPI')
@@ -33,7 +35,9 @@ router.post('/cache',
 router.delete('/cache',
   [
     query('idCache')
-      .exists().withMessage(createErrMsg.missingParameter('idCache')),
+      .exists().withMessage(createErrMsg.missingParameter('idCache'))
+      .isInt({ min: 0 })
+      .withMessage(createErrMsg.invalidParameter('idCache')),
   ],
   validateParams,
   pgClient.open,

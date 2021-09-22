@@ -24,11 +24,15 @@ async function getCaches(req, _res, next) {
   }
   let caches;
   try {
-    caches = await db.getCaches(req.client, global.id_cache);
+    caches = await db.getCaches(req.client);
   } catch (error) {
     debug(error);
   }
-  req.result = { json: caches, code: 200 };
+  if (this.column) {
+    req.result = { json: caches.map((cache) => cache[this.column]), code: 200 };
+  } else {
+    req.result = { json: caches, code: 200 };
+  }
   next();
 }
 
@@ -39,10 +43,10 @@ async function insertCache(req, _res, next) {
     return;
   }
   const params = matchedData(req);
-  const { name, overviews } = params;
+  const { name, overviews, path } = params;
 
   try {
-    const newCache = await db.insertCache(req.client, name, global.dir_cache);
+    const newCache = await db.insertCache(req.client, name, path);
     const nbOpiInserted = await db.insertListOpi(req.client, newCache.id, overviews.list_OPI);
     if (nbOpiInserted !== Object.keys(overviews.list_OPI).length) {
       throw new Error("erreur dans l'insertion des OPI");
@@ -51,6 +55,7 @@ async function insertCache(req, _res, next) {
       json: {
         id_cache: newCache.id,
         name: newCache.name,
+        path: newCache.path,
         nbOpiInserted,
       },
       code: 200,
