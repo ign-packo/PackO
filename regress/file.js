@@ -3,18 +3,18 @@ chai.use(require('chai-http'));
 // chai.use(require('chai-json-schema'));
 
 const should = chai.should();
-const server = require('..');
+const app = require('..');
 
 describe('Files', () => {
   after((done) => {
-    server.close();
+    app.server.close();
     done();
   });
 
   describe('GET /files/{filetype}', () => {
     describe('filetype = graph', () => {
       it('should return a json file', (done) => {
-        chai.request(server)
+        chai.request(app)
           .get('/json/overviews')
           .end((err, res) => {
             should.not.exist(err);
@@ -30,7 +30,7 @@ describe('Files', () => {
     });
     describe('filetype = test', () => {
       it('should return an error', (done) => {
-        chai.request(server)
+        chai.request(app)
           .get('/json/test')
           .end((err, res) => {
             should.not.exist(err);

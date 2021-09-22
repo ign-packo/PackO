@@ -4,18 +4,18 @@ chai.use(require('chai-json-schema'));
 
 const should = chai.should();
 const GJV = require('geojson-validation');
-const server = require('..');
+const app = require('..');
 
 describe('Patch', () => {
   after((done) => {
-    server.close();
+    app.server.close();
     done();
   });
 
   describe('POST /0/patch', () => {
     describe('body: {}', () => {
       it('should return an error', (done) => {
-        chai.request(server)
+        chai.request(app)
           .post('/0/patch')
           .end((err, res) => {
             should.not.exist(err);
@@ -26,7 +26,7 @@ describe('Patch', () => {
     });
     describe('body: polygon geoJson', () => {
       it('should apply the patch and return the liste of tiles impacted', (done) => {
-        chai.request(server)
+        chai.request(app)
           .post('/0/patch')
           .send({
             type: 'FeatureCollection',
@@ -49,7 +49,7 @@ describe('Patch', () => {
       }).timeout(9000);
       // TODO gestion des polygones Out of bounds
       it("should get an error: 'File(s) missing", (done) => {
-        chai.request(server)
+        chai.request(app)
           .post('/0/patch')
           .send({
             type: 'FeatureCollection',
@@ -72,7 +72,7 @@ describe('Patch', () => {
 
   describe('GET /0/patches', () => {
     it('should return an valid geoJson', (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/0/patches')
         .end((err, res) => {
           should.not.exist(err);
@@ -87,7 +87,7 @@ describe('Patch', () => {
 
   describe('PUT /0/patch/undo', () => {
     it("should return 'undo: patch 1 canceled'", (done) => {
-      chai.request(server)
+      chai.request(app)
         .put('/0/patch/undo')
         .end((err, res) => {
           should.not.exist(err);
@@ -97,7 +97,7 @@ describe('Patch', () => {
         });
     });
     it("should return a warning (code 201): 'nothing to undo'", (done) => {
-      chai.request(server)
+      chai.request(app)
         .put('/0/patch/undo')
         .end((err, res) => {
           should.not.exist(err);
@@ -109,7 +109,7 @@ describe('Patch', () => {
   });
   describe('PUT /0/patch/redo', () => {
     it("should return 'redo: patch 1 reapplied'", (done) => {
-      chai.request(server)
+      chai.request(app)
         .put('/0/patch/redo')
         .end((err, res) => {
           should.not.exist(err);
@@ -119,7 +119,7 @@ describe('Patch', () => {
         });
     });
     it("should return a warning (code 201): 'nothing to redo'", (done) => {
-      chai.request(server)
+      chai.request(app)
         .put('/0/patch/redo')
         .end((err, res) => {
           should.not.exist(err);
@@ -131,7 +131,7 @@ describe('Patch', () => {
   });
   describe('PUT /0/patches/clear', () => {
     it("should return a warning (code 401): 'unauthorized'", (done) => {
-      chai.request(server)
+      chai.request(app)
         .put('/0/patches/clear')
         .end((err, res) => {
           should.not.exist(err);
@@ -142,7 +142,7 @@ describe('Patch', () => {
     }).timeout(9000);
     it("should return 'clear: all patches deleted'", (done) => {
       // Ajout d'un nouveau patch
-      chai.request(server)
+      chai.request(app)
         .post('/0/patch')
         .send({
           type: 'FeatureCollection',
@@ -161,7 +161,7 @@ describe('Patch', () => {
           resJson.should.be.a('array');
 
           // Avant de l'annuler
-          chai.request(server)
+          chai.request(app)
             .put('/0/patch/undo')
             .end((err1, res1) => {
               should.not.exist(err1);
@@ -169,7 +169,7 @@ describe('Patch', () => {
               JSON.parse(res1.text).should.equal('undo: patch 2 canceled');
 
               // Pour faire le clear
-              chai.request(server)
+              chai.request(app)
                 .put('/0/patches/clear?test=true')
                 .end((err2, res2) => {
                   should.not.exist(err2);
@@ -180,7 +180,7 @@ describe('Patch', () => {
             });
         });
 
-      // chai.request(server)
+      // chai.request(app)
       //   .put('/0/patches/clear?test=true')
       //   .end((err, res) => {
       //     should.not.exist(err);
@@ -190,7 +190,7 @@ describe('Patch', () => {
       //   });
     }).timeout(9000);
     it("should return a warning (code 201): 'nothing to clear'", (done) => {
-      chai.request(server)
+      chai.request(app)
         .put('/0/patches/clear?test=true')
         .end((err, res) => {
           should.not.exist(err);

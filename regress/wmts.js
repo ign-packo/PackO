@@ -3,19 +3,19 @@ chai.use(require('chai-http'));
 chai.use(require('chai-json-schema'));
 
 const should = chai.should();
-const server = require('..');
+const app = require('..');
 
 let testBranchId = -1;
 
 describe('Wmts', () => {
   after((done) => {
-    server.close();
+    app.server.close();
     done();
   });
 
   describe('create a test branch', () => {
     it('should return a branchId', (done) => {
-      chai.request(server)
+      chai.request(app)
         .post('/branch')
         .query({ name: 'test wmts' })
         .end((err, res) => {
@@ -31,7 +31,7 @@ describe('Wmts', () => {
 
   describe('GET /0/wmts?SERVICE=OTHER&REQUEST=GetCapabilities', () => {
     it('should return an error', (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/0/wmts')
         .query({ REQUEST: 'GetCapabilities', SERVICE: 'OTHER', VERSION: '1.0.0' })
         .end((err, res) => {
@@ -46,7 +46,7 @@ describe('Wmts', () => {
 
   describe('GET /0/wmts?SERVICE=WMTS&REQUEST=Other', () => {
     it('should return an error', (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/0/wmts')
         .query({ REQUEST: 'Other', SERVICE: 'WMTS', VERSION: '1.0.0' })
         .end((err, res) => {
@@ -62,7 +62,7 @@ describe('Wmts', () => {
   // GetCapabilities
   describe('GetCapabilities', () => {
     it('should return the Capabilities.xml', (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/0/wmts')
         .query({ REQUEST: 'GetCapabilities', SERVICE: 'WMTS', VERSION: '1.0.0' })
         .end((err, res) => {
@@ -78,7 +78,7 @@ describe('Wmts', () => {
   // GetTile
   describe('GetTile', () => {
     it('should return an error', (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/0/wmts')
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/autre', LAYER: 'ortho', STYLE: 'normal',
@@ -93,7 +93,7 @@ describe('Wmts', () => {
     });
 
     it('should return a png image', (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/0/wmts')
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'ortho', STYLE: 'normal',
@@ -108,7 +108,7 @@ describe('Wmts', () => {
     });
 
     it('should return a jpeg image', (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/0/wmts')
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/jpeg', LAYER: 'ortho', STYLE: 'normal',
@@ -123,7 +123,7 @@ describe('Wmts', () => {
     });
 
     it("should return the OPI '19FD5606Ax00020_16371' as png", (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/0/wmts')
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'opi', Name: '19FD5606Ax00020_16371', STYLE: 'normal',
@@ -138,7 +138,7 @@ describe('Wmts', () => {
     });
 
     it('should return the default OPI as png', (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/0/wmts')
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'opi', STYLE: 'normal',
@@ -153,7 +153,7 @@ describe('Wmts', () => {
     });
 
     it('should return the default graph on a non-modified tile', (done) => {
-      chai.request(server)
+      chai.request(app)
         .get(`/${testBranchId}/wmts`)
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'graph', STYLE: 'normal',
@@ -168,7 +168,7 @@ describe('Wmts', () => {
     });
 
     it('should failed as invalid branch', (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/10/wmts')
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'opi', Name: '19FD5606Ax00020_16371', STYLE: 'normal',
@@ -187,7 +187,7 @@ describe('Wmts', () => {
   describe('GetFeatureInfo', () => {
     describe('query: LAYER=other', () => {
       it('should return an error', (done) => {
-        chai.request(server)
+        chai.request(app)
           .get('/0/wmts')
           .query({
             SERVICE: 'WMTS',
@@ -214,7 +214,7 @@ describe('Wmts', () => {
     });
     describe('query: STYLE=other', () => {
       it('should return an error', (done) => {
-        chai.request(server)
+        chai.request(app)
           .get('/0/wmts')
           .query({
             SERVICE: 'WMTS',
@@ -241,7 +241,7 @@ describe('Wmts', () => {
     });
     describe('query: TILEMATRIXSET=OTHER', () => {
       it('should return an error', (done) => {
-        chai.request(server)
+        chai.request(app)
           .get('/0/wmts')
           .query({
             SERVICE: 'WMTS',
@@ -267,7 +267,7 @@ describe('Wmts', () => {
       });
     });
     it('should return an xml', (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/0/wmts')
         .query({
           SERVICE: 'WMTS',
@@ -292,7 +292,7 @@ describe('Wmts', () => {
         });
     });
     it("should return a warning: 'missing'", (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/0/wmts')
         .query({
           SERVICE: 'WMTS',
@@ -316,7 +316,7 @@ describe('Wmts', () => {
         });
     });
     it("should return an error: 'out of bounds'", (done) => {
-      chai.request(server)
+      chai.request(app)
         .get('/0/wmts')
         .query({
           SERVICE: 'WMTS',
