@@ -8,6 +8,12 @@ const cache = require('../middlewares/cache');
 const pgClient = require('../middlewares/pgClient');
 const returnMsg = require('../middlewares/returnMsg');
 
+router.get('/caches',
+  pgClient.open,
+  cache.getCaches,
+  pgClient.close,
+  returnMsg);
+
 router.post('/cache',
   cache.encapBody.bind({ keyName: 'overviews' }),
   [
@@ -21,6 +27,17 @@ router.post('/cache',
   validateParams,
   pgClient.open,
   cache.insertCache,
+  pgClient.close,
+  returnMsg);
+
+router.delete('/cache',
+  [
+    query('idCache')
+      .exists().withMessage(createErrMsg.missingParameter('idCache')),
+  ],
+  validateParams,
+  pgClient.open,
+  cache.deleteCache,
   pgClient.close,
   returnMsg);
 

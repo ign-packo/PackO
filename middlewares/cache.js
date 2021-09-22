@@ -16,15 +16,30 @@ function encapBody(req, _res, next) {
   next();
 }
 
+async function getCaches(req, _res, next) {
+  debug('~~~get caches~~~');
+  if (req.error) {
+    next();
+    return;
+  }
+  let caches;
+  try {
+    caches = await db.getCaches(req.client, global.id_cache);
+  } catch (error) {
+    debug(error);
+  }
+  req.result = { json: caches, code: 200 };
+  next();
+}
+
 async function insertCache(req, _res, next) {
+  debug('~~~insert Cache~~~');
   if (req.error) {
     next();
     return;
   }
   const params = matchedData(req);
   const { name, overviews } = params;
-  debug(name);
-  debug(overviews);
 
   try {
     const newCache = await db.insertCache(req.client, name, global.dir_cache);
@@ -44,14 +59,40 @@ async function insertCache(req, _res, next) {
     debug('Error ', error);
     req.error = {
       msg: error,
-      code: 400,
+      code: 406,
       function: 'insertCache',
     };
   }
   next();
 }
 
+async function deleteCache(req, _res, next) {
+  debug('~~~delete cache~~~');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+  const { idCache } = params;
+
+  try {
+    const cacheName = await db.deleteCache(req.client, idCache);
+    debug(cacheName);
+    req.result = { json: `cache '${cacheName}' détruit`, code: 200 };
+  } catch (error) {
+    debug(error);
+    req.error = {
+      msg: `Impossible de détruire le cache : '${idCache}'`,
+      code: 406,
+      function: 'deleteCache',
+    };
+  }
+  next();
+}
+
 module.exports = {
-  insertCache,
   encapBody,
+  getCaches,
+  insertCache,
+  deleteCache,
 };

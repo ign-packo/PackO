@@ -46,7 +46,7 @@ async function getBranches(req, _res, next) {
 }
 
 async function insertBranch(req, _res, next) {
-  debug('~~~post branch~~~');
+  debug('~~~insert Branch~~~');
   if (req.error) {
     next();
     return;
@@ -70,13 +70,13 @@ async function insertBranch(req, _res, next) {
 }
 
 async function deleteBranch(req, _res, next) {
+  debug('~~~delete branch~~~');
   if (req.error) {
     next();
     return;
   }
   const params = matchedData(req);
   const { idBranch } = params;
-  debug('~~~delete branch~~~', idBranch);
 
   try {
     const branchName = await db.deleteBranch(req.client, idBranch, global.id_cache);

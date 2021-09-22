@@ -6,10 +6,9 @@ const should = chai.should();
 const app = require('..');
 
 let idBranch = null;
-const branchName = 'test';
+const branchName = 'branchRegress';
 
 function setIdBranch(id) {
-  console.log('setIdBranch : ', id);
   idBranch = id;
 }
 
@@ -39,7 +38,7 @@ describe('Branch', () => {
     });
   });
 
-  describe('PUT /branch', () => {
+  describe('POST /branch', () => {
     describe('add a valid branch', () => {
       it('should return an idBranch', (done) => {
         chai.request(app)
@@ -51,7 +50,7 @@ describe('Branch', () => {
             const resJson = JSON.parse(res.text);
             resJson.should.have.property('id');
             setIdBranch(resJson.id);
-            resJson.should.have.property('name').equal('test');
+            resJson.should.have.property('name').equal(branchName);
             done();
           });
       });
@@ -60,7 +59,7 @@ describe('Branch', () => {
       it('should return a error', (done) => {
         chai.request(app)
           .post('/branch')
-          .query({ name: 'test' })
+          .query({ name: branchName })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(406);
@@ -85,7 +84,7 @@ describe('Branch', () => {
           });
       });
     });
-    describe('delete a non valid branch', () => {
+    describe('delete a non existing branch', () => {
       it('should failed', (done) => {
         chai.request(app)
           .delete('/branch')

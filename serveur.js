@@ -33,8 +33,8 @@ const db = require('./db/db');
 const app = express();
 
 debug.log(`API in '${process.env.NODE_ENV}' mode`);
-global.dir_cache = argv.cache ? argv.cache : 'cache';
-debug.log(`using cache directory: ${global.dir_cache}`);
+global.dir_cache = argv.cache ? argv.cache : 'cache_test';
+// debug.log(`using cache directory: ${global.dir_cache}`);
 
 const wmts = require('./routes/wmts');
 const graph = require('./routes/graph');
@@ -128,16 +128,34 @@ try {
     password: process.env.PGPASSWORD,
     port: process.env.PGPORT,
   });
-  client.connect().then(() => {
-    db.getIdCacheFromPath(client, global.dir_cache).then((id) => {
-      global.id_cache = id;
-      debug.log('id_cache :', global.id_cache);
-      client.end();
-      app.server = app.listen(PORT, () => {
-        debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);
-        app.emit('appStarted');
-      });
+  client.connect().then(async () => {
+    const caches = await db.getCaches(client);
+    caches.forEach((cacheMeta) => {
+      if (cacheMeta.path === global.dir_cache) {
+        global.id_cache = cacheMeta.id;
+      }
     });
+    if (global.id_cache === undefined) {
+      debug.log(`WARNING : ${global.dir_cache} non existant`);
+    }
+    debug.log(`using cache directory: ${global.dir_cache} -> id: ${global.id_cache}`);
+
+    client.end();
+    app.server = app.listen(PORT, () => {
+      debug.log(`URL de l'api : ${app.urlApi} \nURL de la documentation swagger : ${app.urlApi}/doc`);
+      app.emit('appStarted');
+    });
+
+    // db.getIdCacheFromPath(client, global.dir_cache).then((id) => {
+    //   global.id_cache = id;
+    //   debug.log('id_cache :', global.id_cache);
+    //   client.end();
+    //   app.server = app.listen(PORT, () => {
+    //     debug.log(`URL de l'api : ${app.urlApi}\n
+    //                URL de la documentation swagger : ${app.urlApi}/doc`);
+    //     app.emit('appStarted');
+    //   });
+    // });
   });
 
   module.exports = app;

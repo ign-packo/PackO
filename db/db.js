@@ -1,6 +1,19 @@
 const debug = require('debug')('db');
 const format = require('pg-format');
 
+async function getCaches(pgClient) {
+  debug('~getCaches');
+  try {
+    const results = await pgClient.query(
+      'SELECT id, name, path FROM caches',
+    );
+    return results.rows;
+  } catch (error) {
+    debug('Error : ', error);
+    throw error;
+  }
+}
+
 async function insertCache(pgClient, name, path) {
   try {
     debug('ajout du cache : ', name, path);
@@ -9,6 +22,23 @@ async function insertCache(pgClient, name, path) {
       [name, path],
     );
     return results.rows[0];
+  } catch (error) {
+    debug('Error : ', error);
+    throw error;
+  }
+}
+
+async function deleteCache(pgClient, idCache) {
+  try {
+    debug("suppression d'un cache : ", idCache);
+    const results = await pgClient.query(
+      'DELETE FROM caches WHERE id=$1 RETURNING name',
+      [idCache],
+    );
+    if (results.rowCount !== 1) {
+      throw new Error(`cache non trouvée '${idCache}'`);
+    }
+    return results.rows[0].name;
   } catch (error) {
     debug('Error : ', error);
     throw error;
@@ -99,7 +129,6 @@ async function deleteBranch(pgClient, idBranch, idCache) {
       "DELETE FROM branches WHERE id_cache=$1 AND id=$2 AND name<>'orig' RETURNING name",
       [idCache, idBranch],
     );
-    debug(results);
     if (results.rowCount !== 1) {
       throw new Error(`branche non trouvée '${idBranch}'`);
     }
@@ -135,7 +164,9 @@ async function getActivePatches(pgClient, idBranch) {
 }
 
 module.exports = {
+  getCaches,
   insertCache,
+  deleteCache,
   insertListOpi,
   isBranchValid,
   getBranches,
