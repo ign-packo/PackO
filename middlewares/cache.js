@@ -49,7 +49,7 @@ async function insertCache(req, _res, next) {
     const newCache = await db.insertCache(req.client, name, path);
     const nbOpiInserted = await db.insertListOpi(req.client, newCache.id, overviews.list_OPI);
     if (nbOpiInserted !== Object.keys(overviews.list_OPI).length) {
-      throw new Error("erreur dans l'insertion des OPI");
+      throw new Error('error when adding OPI in base');
     }
     req.result = {
       json: {
@@ -87,7 +87,7 @@ async function deleteCache(req, _res, next) {
   } catch (error) {
     debug(error);
     req.error = {
-      msg: `Impossible de détruire le cache : '${idCache}'`,
+      msg: `Cache '${idCache}' can't be deleted.`,
       code: 406,
       function: 'deleteCache',
     };
