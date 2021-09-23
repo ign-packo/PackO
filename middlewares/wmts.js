@@ -10,6 +10,7 @@ const xml2js = require('xml2js');
 const proj4 = require('proj4');
 const cog = require('../cog_path');
 const gdalProcessing = require('../gdal_processing');
+const db = require('../db/db');
 
 function wmts(req, _res, next) {
   if (req.error) {
@@ -291,15 +292,14 @@ function wmts(req, _res, next) {
         return;
       }
       gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, parseInt(I, 10), parseInt(J, 10), overviews.tileSize.width, 'graph')
-        .then((out) => {
+        .then(async (out) => {
           debugFeatureInfo(out);
           let resCode = 200;
           /* eslint-disable no-param-reassign */
-          if ((out.color[0] in req.app.cache_mtd)
-            && (out.color[1] in req.app.cache_mtd[out.color[0]])
-            && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-            out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
-          } else {
+          try {
+            const opi = await db.getOPIFromColor(req.client, idBranch, out.color);
+            out.cliche = opi.name;
+          } catch (error) {
             out.cliche = 'missing';
             resCode = 201;
           }

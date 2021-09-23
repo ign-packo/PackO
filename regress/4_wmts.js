@@ -296,33 +296,34 @@ describe('Wmts', () => {
           });
       });
     });
-    describe('query: TILEMATRIXSET=OTHER', () => {
-      it('should return an error', (done) => {
-        chai.request(app)
-          .get(`/${idBranch}/wmts`)
-          .query({
-            SERVICE: 'WMTS',
-            REQUEST: 'GetFeatureInfo',
-            VERSION: '1.0.0',
-            LAYER: 'ortho',
-            STYLE: 'normal',
-            INFOFORMAT: 'application/gml+xml; version=3.1',
-            TILEMATRIXSET: 'Other_Xcm',
-            TILEMATRIX: 21,
-            TILEROW: 34395,
-            TILECOL: 18027,
-            I: 139,
-            J: 102,
-          })
-          .end((err, res) => {
-            should.not.exist(err);
-            res.should.have.status(400);
-            const resJson = JSON.parse(res.text);
-            resJson.should.have.property('status').equal("'Other_Xcm': unsupported TILEMATRIXSET value");
-            done();
-          });
-      });
-    });
+    // describe('query: TILEMATRIXSET=OTHER', () => {
+    //   it('should return an error', (done) => {
+    //     chai.request(app)
+    //       .get(`/${idBranch}/wmts`)
+    //       .query({
+    //         SERVICE: 'WMTS',
+    //         REQUEST: 'GetFeatureInfo',
+    //         VERSION: '1.0.0',
+    //         LAYER: 'ortho',
+    //         STYLE: 'normal',
+    //         INFOFORMAT: 'application/gml+xml; version=3.1',
+    //         TILEMATRIXSET: 'Other_Xcm',
+    //         TILEMATRIX: 21,
+    //         TILEROW: 34395,
+    //         TILECOL: 18027,
+    //         I: 139,
+    //         J: 102,
+    //       })
+    //       .end((err, res) => {
+    //         should.not.exist(err);
+    //         res.should.have.status(400);
+    //         const resJson = JSON.parse(res.text);
+    //         resJson.should.have.property('status')
+    //           .equal("'Other_Xcm': unsupported TILEMATRIXSET value");
+    //         done();
+    //       });
+    //   });
+    // });
     it('should return an xml', (done) => {
       chai.request(app)
         .get(`/${idBranch}/wmts`)
