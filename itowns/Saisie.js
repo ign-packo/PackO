@@ -37,6 +37,18 @@ class Saisie {
     this.refreshView(['ortho', 'graph', 'contour', 'patches']);
   }
 
+  changeCacheId(cacheId) {
+    this.message = '';
+    this.cacheId = cacheId;
+    // To Do: il faut rafraichir la liste des branches
+    // Object.keys(this.layer).forEach((element) => {
+    //   // const regex = /^.*\/wmts/;
+    //   const regex = new RegExp(`^${this.apiUrl}\\/[0-9]+\\/`);
+    //   this.layer[element].config.source.url = this.layer[element].config.source.url.replace(regex, `${this.apiUrl}/${this.branchId}/`);
+    // });
+    // this.refreshView(['ortho', 'graph', 'contour', 'patches']);
+  }
+
   async refreshView(layers) {
     // Pour le moment on force le rechargement complet des couches
     let redrawPatches = false;

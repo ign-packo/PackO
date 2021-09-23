@@ -82,13 +82,18 @@ async function main() {
   });
 
   const caches = await itowns.Fetcher.json(`${apiUrl}/caches`);
-  let idCache = caches[0].id;
-  let cachePath = caches[0].path;
+  const currentCache = caches[0];
+  const cacheNames = [];
+  caches.forEach((element) => {
+    cacheNames.push(element.name);
+  });
 
 
-  const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews?cachePath=${escape(cachePath)}`);
-  const getBranches = itowns.Fetcher.json(`${apiUrl}/branches?idCache=${idCache}`);
+  const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews?cachePath=${escape(currentCache.path)}`);
+  const getBranches = itowns.Fetcher.json(`${apiUrl}/branches?idCache=${currentCache.id}`);
   const branches = await getBranches;
+
+
   const getPatches = itowns.Fetcher.json(`${apiUrl}/${branches[0].id}/patches`);
   const currentPatches = await getPatches;
 
@@ -268,6 +273,8 @@ async function main() {
     saisie.message = '';
     saisie.branch = currentBranch.name;
     saisie.branchId = currentBranch.id;
+    saisie.cache = currentCache.name;
+    saisie.cacheId = currentCache.id;
     saisie.coord = `${xcenter.toFixed(2)},${ycenter.toFixed(2)}`;
     saisie.color = [0, 0, 0];
     saisie.controllers = {};
@@ -282,6 +289,17 @@ async function main() {
     if (process.env.NODE_ENV === 'development') saisie.controllers.clear = menuGlobe.gui.add(saisie, 'clear');
     saisie.controllers.message = menuGlobe.gui.add(saisie, 'message');
     saisie.controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
+    saisie.controllers.cache = menuGlobe.gui.add(saisie, 'cache', cacheNames);
+    saisie.controllers.cache.onChange((value) => {
+      console.log('new active cache : ', value);
+      caches.forEach((cache) => {
+        if (caches.name === value) {
+          saisie.cache = value;
+          saisie.cacheId = cache.id;
+          saisie.changeCacheId(saisie.cacheId);
+        }
+      });
+    });
     saisie.controllers.branch = menuGlobe.gui.add(saisie, 'branch', branchNames);
     saisie.controllers.branch.onChange((value) => {
       console.log('new active branch : ', value);
