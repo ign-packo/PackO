@@ -12,7 +12,6 @@ async function validBranch(req, _res, next) {
   const params = matchedData(req);
   const { idBranch } = params;
 
-  let found = false;
   try {
     req.dir_cache = await db.getCachePath(req.client, idBranch);
   } catch (error) {
@@ -32,7 +31,7 @@ async function getOverviews(req, _res, next) {
     next();
     return;
   }
-  let overviewsFileName = path.join(req.dir_cache,'overviews.json');
+  const overviewsFileName = path.join(req.dir_cache, 'overviews.json');
   fs.readFile(overviewsFileName, (error, data) => {
     if (error) {
       debug(error);
@@ -47,7 +46,6 @@ async function getOverviews(req, _res, next) {
     next();
   });
 }
-
 
 async function getBranches(req, _res, next) {
   debug('~~~get branches~~~');
