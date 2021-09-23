@@ -189,6 +189,79 @@ async function getOPIFromColor(pgClient, idBranch, color) {
   }
 }
 
+async function getOpiId(pgClient, name) {
+  try {
+    debug('Recuperation de l\'id de l\'OPI : ', name);
+
+    const sql = `SELECT id FROM opi WHERE name = '${name}'`;
+
+    debug(sql);
+
+    const results = await pgClient.query(
+      sql,
+    );
+
+    return results.rows[0].id;
+  } catch (error) {
+    debug('Error : ', error);
+    throw error;
+  }
+}
+
+async function insertPatch(pgClient, idBranch, patch, opiId) {
+  try {
+    debug('Ajout d\'un patch dans la branche : ', idBranch);
+
+    const values = [];
+    values.push(patch.properties.patchId, JSON.stringify(patch.geometry), idBranch, 'True', opiId);
+
+    const sql = format("INSERT INTO patches (num, geom, id_branch, active, id_opi) values (%s, ST_GeomFromGeoJSON('%s'), %s, %s, %s) RETURNING id as id_patch", values[0], values[1], values[2], values[3], values[4]);
+
+    debug(sql);
+
+    const results = await pgClient.query(
+      sql,
+    );
+
+    return results.rows[0].id_patch;
+  } catch (error) {
+    debug('Error : ', error);
+    throw error;
+  }
+}
+
+async function insertSlabs(pgClient, id_patch, patch) {
+  try {
+    debug('Ajout des slabs correspondant au patch : ', id_patch);
+
+    // onsole.log(patch)
+
+    console.log(patch.properties.slabs[0]);
+
+    patch.properties.slabs.push(patch.properties.slabs[0]);
+
+    const values = [];
+    patch.properties.slabs.forEach((slab) => {
+      values.push([id_patch, slab.x, slab.y, slab.z]);
+    });
+
+    console.log(values);
+
+    const sql = format('INSERT INTO slabs (id_patch, x, y , z) values (%s)', values.join('),('));
+
+    debug(sql);
+
+    const results = await pgClient.query(
+      sql,
+    );
+
+    return results.rows;
+  } catch (error) {
+    debug('Error : ', error);
+    throw error;
+  }
+}
+
 module.exports = {
   getCaches,
   insertCache,
@@ -201,4 +274,7 @@ module.exports = {
   deleteBranch,
   getActivePatches,
   getOPIFromColor,
+  getOpiId,
+  insertPatch,
+  insertSlabs,
 };

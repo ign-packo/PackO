@@ -177,7 +177,7 @@ function createPatch(slab, geoJson, overviews, dirCache, idBranch) {
   return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => P);
 }
 
-function patch(req, _res, next) {
+async function patch(req, _res, next) {
   if (req.error) {
     next();
     return;
@@ -190,14 +190,17 @@ function patch(req, _res, next) {
   const { idBranch } = params;
 
   let newPatchId = 0;
-  for (let i = 0; i < req.selectedBranch.activePatches.features.length; i += 1) {
-    const id = req.selectedBranch.activePatches.features[i].properties.patchId;
+  const activePatches = await db.getActivePatches(req.client, idBranch);
+  debug(activePatches)
+  for (let i = 0; i < activePatches.length; i += 1) {
+    const id = activePatches.features[i].properties.patchId;
     if (newPatchId < id) newPatchId = id;
   }
 
   newPatchId += 1;
 
   const cogs = getCOGs(geoJson.features, overviews);
+  debug('cogs =',cogs)
   const promisesCreatePatch = [];
   debug('~create patch');
   cogs.forEach((aCog) => {
@@ -230,7 +233,8 @@ function patch(req, _res, next) {
       }));
     });
     debug('', promises.length, 'patchs à appliquer.');
-    Promise.all(promises).then(() => {
+    Promise.all(promises).then(
+    async () => {
       // Tout c'est bien passé
       debug("=> tout c'est bien passé on peut renommer les images");
       patches.forEach((P) => {
@@ -279,17 +283,28 @@ function patch(req, _res, next) {
       });
       // on ajoute ce patch à l'historique
       debug('=> Patch', newPatchId, 'ajouté');
-      req.selectedBranch.activePatches.features = req.selectedBranch.activePatches.features.concat(
-        geoJson.features,
-      );
-      debug('features in activePatches:', req.selectedBranch.activePatches.features.length);
+      debug(geoJson.features);
+      //activePatches.features = activePatches.features.concat(
+      //  geoJson.features,
+      //);
+
+      const opiId = await db.getOpiId(req.client, geoJson.features[0].properties.cliche);
+      const patchId = await db.insertPatch(req.client, idBranch, geoJson.features[0], opiId);
+
+      // ajouter les slabs correspondant au patch dans la table correspondante
+      const result = await db.insertSlabs(req.client, patchId, geoJson.features[0])
+
+
+      //debug('features in activePatches:', activePatches.features.length);
 
       // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
-      req.selectedBranch.unactivePatches.features = [];
-      debug('features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
+      //req.selectedBranch.unactivePatches.features = [];
+     // debug('features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
       // on sauve l'historique (au cas ou l'API devrait etre relancee)
-      fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
-      req.result = { json: slabsModified, code: 200 };
+      //fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
+      //req.result = { json: slabsModified, code: 200 };
+
+      req.result = { json: "patchAdded", code: 200 };
       next();
     }).catch((err) => {
       debug(err);
