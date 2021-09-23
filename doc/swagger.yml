@@ -467,11 +467,11 @@ paths:
             enum:
               - overviews
         - in: query
-          name: path
+          name: cachePath
           required: true
           schema:
             type: string
-          example: "/mon_cache"
+          example: "cache_test"
 
       responses:
         '200':
