@@ -81,9 +81,16 @@ async function main() {
     document.getElementById('spAPIVersion_val').innerText = 'unknown';
   });
 
-  const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews`);
-  const getBranches = itowns.Fetcher.json(`${apiUrl}/branches`);
-  const getPatches = itowns.Fetcher.json(`${apiUrl}/0/patches`);
+  const caches = await itowns.Fetcher.json(`${apiUrl}/caches`);
+  let idCache = caches[0].id;
+  let cachePath = caches[0].path;
+
+
+  const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews?cachePath=${escape(cachePath)}`);
+  const getBranches = itowns.Fetcher.json(`${apiUrl}/branches?idCache=${idCache}`);
+  const branches = await getBranches;
+  const getPatches = itowns.Fetcher.json(`${apiUrl}/${branches[0].id}/patches`);
+  const currentPatches = await getPatches;
 
   try {
     const overviews = await getOverviews;
@@ -179,7 +186,6 @@ async function main() {
       opi: 'opi',
     };
 
-    const branches = await getBranches;
 
     const currentBranch = branches[0];
     const branchNames = [];
@@ -233,8 +239,6 @@ async function main() {
         visible: false,
       },
     };
-
-    const currentPatches = await getPatches;
 
     layer.patches.config.source = new itowns.FileSource({
       fetchedData: currentPatches,
