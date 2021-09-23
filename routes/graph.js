@@ -25,6 +25,7 @@ router.get('/:idBranch/graph', [
 validateParams,
 pgClient.open,
 branch.validBranch,
+branch.getOverviews,
 graph.getGraph,
 pgClient.close,
 returnMsg);
