@@ -18,13 +18,13 @@ async function insertCache(pgClient, name, path) {
   try {
     debug('ajout du cache : ', name, path);
     const results = await pgClient.query(
-      'INSERT INTO caches (name, path) values ($1, $2) RETURNING id, name',
+      'INSERT INTO caches (name, path) values ($1, $2) RETURNING id, name, path',
       [name, path],
     );
     return results.rows[0];
   } catch (error) {
     debug('Error : ', error);
-    throw error;
+    throw error.detail;
   }
 }
 
@@ -80,10 +80,17 @@ async function isBranchValid(pgClient, idBranch) {
 async function getBranches(pgClient, idCache) {
   debug('~getBranches');
   try {
-    const results = await pgClient.query(
-      'SELECT name, id FROM branches WHERE id_cache=$1',
-      [idCache],
-    );
+    let results;
+    if (idCache) {
+      results = await pgClient.query(
+        'SELECT name, id FROM branches WHERE id_cache=$1',
+        [idCache],
+      );
+    } else {
+      results = await pgClient.query(
+        'SELECT name, id FROM branches',
+      );
+    }
     return results.rows;
   } catch (error) {
     debug('Error : ', error);
@@ -122,15 +129,15 @@ async function insertBranch(pgClient, name, idCache) {
   }
 }
 
-async function deleteBranch(pgClient, idBranch, idCache) {
+async function deleteBranch(pgClient, idBranch) {
   try {
     debug("suppression d'une branche : ", idBranch);
     const results = await pgClient.query(
-      "DELETE FROM branches WHERE id_cache=$1 AND id=$2 AND name<>'orig' RETURNING name",
-      [idCache, idBranch],
+      "DELETE FROM branches WHERE id=$1 AND name<>'orig' RETURNING name",
+      [idBranch],
     );
     if (results.rowCount !== 1) {
-      throw new Error(`branche non trouvée '${idBranch}'`);
+      throw new Error(`branche '${idBranch}' non supprimée`);
     }
     return results.rows[0].name;
   } catch (error) {
