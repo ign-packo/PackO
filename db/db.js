@@ -63,14 +63,15 @@ async function insertListOpi(pgClient, idCache, listOpi) {
   }
 }
 
-async function isBranchValid(pgClient, idBranch) {
-  debug('~isBranchValid');
+async function getCachePath(pgClient, idBranch) {
+  debug('~getCachePathValid');
   try {
     const results = await pgClient.query(
-      'SELECT id FROM branches WHERE id = $1',
+      'SELECT c.path FROM branches b, caches c WHERE b.id_cache = c.id AND b.id = $1',
       [idBranch],
     );
-    return (results.rowCount === 1);
+    if (results.rowCount === 1) return results.rows[0].path;
+    throw new Error('idBranch non valide');
   } catch (error) {
     debug('Error : ', error);
     throw error;
@@ -168,7 +169,7 @@ module.exports = {
   insertCache,
   deleteCache,
   insertListOpi,
-  isBranchValid,
+  getCachePath,
   getBranches,
   getIdCacheFromPath,
   insertBranch,
