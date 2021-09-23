@@ -52,10 +52,10 @@ describe('Wmts', () => {
     it('should return a branchId', (done) => {
       chai.request(app)
         .post('/branch')
-        .query({ 
+        .query({
           name: branchName,
           idCache,
-       })
+        })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -138,7 +138,6 @@ describe('Wmts', () => {
         })
         .end((err, res) => {
           should.not.exist(err);
-          console.log(res.text);
           res.should.have.status(200);
           res.type.should.be.a('string').equal('application/octet-stream');
 
@@ -195,7 +194,16 @@ describe('Wmts', () => {
     //   chai.request(app)
     //     .get(`/${testBranchId}/wmts`)
     //     .query({
-    //       REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'graph', STYLE: 'normal',
+    //       REQUEST: 'GetTile',
+    //       SERVICE: 'WMTS',
+    //       VERSION: '1.0.0',
+    //       TILEMATRIXSET: 'LAMB93_5cm',
+    //       TILEMATRIX: 21,
+    //       TILEROW: 34402,
+    //       TILECOL: 18027,
+    //       FORMAT: 'image/png',
+    //       LAYER: 'graph',
+    //       STYLE: 'normal',
     //     })
     //     .end((err, res) => {
     //       should.not.exist(err);
@@ -210,7 +218,17 @@ describe('Wmts', () => {
     //   chai.request(app)
     //     .get('/-1/wmts')
     //     .query({
-    //       REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'opi', Name: '19FD5606Ax00020_16371', STYLE: 'normal',
+    //       REQUEST: 'GetTile',
+    //       SERVICE: 'WMTS',
+    //       VERSION: '1.0.0',
+    //       TILEMATRIXSET: 'LAMB93_5cm',
+    //       TILEMATRIX: 12,
+    //       TILEROW: 0,
+    //       TILECOL: 0,
+    //       FORMAT: 'image/png',
+    //       LAYER: 'opi',
+    //       Name: '19FD5606Ax00020_16371',
+    //       STYLE: 'normal',
     //     })
     //     .end((err, res) => {
     //       should.not.exist(err);
@@ -220,7 +238,6 @@ describe('Wmts', () => {
     //       done();
     //     });
     // });
-
   });
 
   // GetFeatureInfo
@@ -325,7 +342,6 @@ describe('Wmts', () => {
         })
         .end((err, res) => {
           should.not.exist(err);
-          console.log(res.text);
           res.should.have.status(200);
           res.type.should.be.a('string').equal('application/xml');
 
@@ -398,5 +414,4 @@ describe('Wmts', () => {
         });
     });
   });
-
 });
