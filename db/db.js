@@ -171,6 +171,24 @@ async function getActivePatches(pgClient, idBranch) {
   }
 }
 
+async function getOPIFromColor(pgClient, idBranch, color) {
+  try {
+    debug('Recuperation d une OPI de la branche : ', idBranch);
+    const results = await pgClient.query(
+      'SELECT o.name, o.date, o.color FROM opi o, branches b WHERE b.id_cache = o.id_cache AND b.id = $1 AND o.color=$2',
+      [idBranch, color],
+    );
+    debug(results.rows);
+    if (results.rowCount !== 1) {
+      throw new Error(`opi non trouvée '${color}'`);
+    }
+    return results.rows[0];
+  } catch (error) {
+    debug('Error : ', error);
+    throw error;
+  }
+}
+
 module.exports = {
   getCaches,
   insertCache,
@@ -182,4 +200,5 @@ module.exports = {
   insertBranch,
   deleteBranch,
   getActivePatches,
+  getOPIFromColor,
 };
