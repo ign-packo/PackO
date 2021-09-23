@@ -466,6 +466,12 @@ paths:
             type: string
             enum:
               - overviews
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          example: "/mon_cache"
 
       responses:
         '200':
