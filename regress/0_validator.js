@@ -1,6 +1,8 @@
 const chai = require('chai');
 chai.use(require('chai-http'));
 
+chai.should();
+
 const validator = require('../paramValidation/validator');
 
 describe('Validator', () => {
