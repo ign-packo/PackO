@@ -3,9 +3,23 @@ chai.use(require('chai-http'));
 chai.use(require('chai-json-schema'));
 
 const should = chai.should();
+const fs = require('fs');
 const app = require('..');
 
-let testBranchId = -1;
+const overviews = JSON.parse(fs.readFileSync('./cache_test/overviews.json', 'utf8'));
+const cacheName = 'cacheRegress';
+const cachePath = 'cache_test';
+
+let idCache = null;
+function setIdCache(id) {
+  idCache = id;
+}
+
+const branchName = 'wmtsRegress';
+let idBranch = null;
+function setIdBranch(id) {
+  idBranch = id;
+}
 
 describe('Wmts', () => {
   after((done) => {
@@ -13,26 +27,51 @@ describe('Wmts', () => {
     done();
   });
 
-  describe('create a test branch', () => {
-    it('should return a branchId', (done) => {
+  describe('create a test cache', () => {
+    it('should return a cacheId', (done) => {
       chai.request(app)
-        .post('/branch')
-        .query({ name: 'test wmts' })
+        .post('/cache')
+        .query({
+          name: cacheName,
+          path: cachePath,
+        })
+        .send(overviews)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
           const resJson = JSON.parse(res.text);
-          resJson.should.have.property('id');
-          testBranchId = resJson.id;
+          resJson.should.have.property('id_cache');
+          setIdCache(resJson.id_cache);
+          resJson.should.have.property('name').equal(cacheName);
           done();
         });
     });
   });
 
-  describe('GET /0/wmts?SERVICE=OTHER&REQUEST=GetCapabilities', () => {
+  describe('create a test branch', () => {
+    it('should return a branchId', (done) => {
+      chai.request(app)
+        .post('/branch')
+        .query({
+          name: branchName,
+          idCache,
+        })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          const resJson = JSON.parse(res.text);
+          resJson.should.have.property('id');
+          setIdBranch(resJson.id);
+          resJson.should.have.property('name').equal(branchName);
+          done();
+        });
+    });
+  });
+
+  describe('GET /{idBranch}/wmts?SERVICE=OTHER&REQUEST=GetCapabilities', () => {
     it('should return an error', (done) => {
       chai.request(app)
-        .get('/0/wmts')
+        .get(`/${idBranch}/wmts`)
         .query({ REQUEST: 'GetCapabilities', SERVICE: 'OTHER', VERSION: '1.0.0' })
         .end((err, res) => {
           should.not.exist(err);
@@ -44,10 +83,10 @@ describe('Wmts', () => {
     });
   });
 
-  describe('GET /0/wmts?SERVICE=WMTS&REQUEST=Other', () => {
+  describe('GET /{idBranch}/wmts?SERVICE=WMTS&REQUEST=Other', () => {
     it('should return an error', (done) => {
       chai.request(app)
-        .get('/0/wmts')
+        .get(`/${idBranch}/wmts`)
         .query({ REQUEST: 'Other', SERVICE: 'WMTS', VERSION: '1.0.0' })
         .end((err, res) => {
           should.not.exist(err);
@@ -63,13 +102,12 @@ describe('Wmts', () => {
   describe('GetCapabilities', () => {
     it('should return the Capabilities.xml', (done) => {
       chai.request(app)
-        .get('/0/wmts')
+        .get(`/${idBranch}/wmts`)
         .query({ REQUEST: 'GetCapabilities', SERVICE: 'WMTS', VERSION: '1.0.0' })
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
           res.type.should.be.a('string').equal('application/xml');
-
           done();
         });
     });
@@ -79,7 +117,7 @@ describe('Wmts', () => {
   describe('GetTile', () => {
     it('should return an error', (done) => {
       chai.request(app)
-        .get('/0/wmts')
+        .get(`/${idBranch}/wmts`)
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/autre', LAYER: 'ortho', STYLE: 'normal',
         })
@@ -94,7 +132,7 @@ describe('Wmts', () => {
 
     it('should return a png image', (done) => {
       chai.request(app)
-        .get('/0/wmts')
+        .get(`/${idBranch}/wmts`)
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'ortho', STYLE: 'normal',
         })
@@ -109,7 +147,7 @@ describe('Wmts', () => {
 
     it('should return a jpeg image', (done) => {
       chai.request(app)
-        .get('/0/wmts')
+        .get(`/${idBranch}/wmts`)
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/jpeg', LAYER: 'ortho', STYLE: 'normal',
         })
@@ -124,7 +162,7 @@ describe('Wmts', () => {
 
     it("should return the OPI '19FD5606Ax00020_16371' as png", (done) => {
       chai.request(app)
-        .get('/0/wmts')
+        .get(`/${idBranch}/wmts`)
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'opi', Name: '19FD5606Ax00020_16371', STYLE: 'normal',
         })
@@ -139,7 +177,7 @@ describe('Wmts', () => {
 
     it('should return the default OPI as png', (done) => {
       chai.request(app)
-        .get('/0/wmts')
+        .get(`/${idBranch}/wmts`)
         .query({
           REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'opi', STYLE: 'normal',
         })
@@ -152,35 +190,54 @@ describe('Wmts', () => {
         });
     });
 
-    it('should return the default graph on a non-modified tile', (done) => {
-      chai.request(app)
-        .get(`/${testBranchId}/wmts`)
-        .query({
-          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'graph', STYLE: 'normal',
-        })
-        .end((err, res) => {
-          should.not.exist(err);
-          res.should.have.status(200);
-          res.type.should.be.a('string').equal('application/octet-stream');
+    // it('should return the default graph on a non-modified tile', (done) => {
+    //   chai.request(app)
+    //     .get(`/${testBranchId}/wmts`)
+    //     .query({
+    //       REQUEST: 'GetTile',
+    //       SERVICE: 'WMTS',
+    //       VERSION: '1.0.0',
+    //       TILEMATRIXSET: 'LAMB93_5cm',
+    //       TILEMATRIX: 21,
+    //       TILEROW: 34402,
+    //       TILECOL: 18027,
+    //       FORMAT: 'image/png',
+    //       LAYER: 'graph',
+    //       STYLE: 'normal',
+    //     })
+    //     .end((err, res) => {
+    //       should.not.exist(err);
+    //       res.should.have.status(200);
+    //       res.type.should.be.a('string').equal('application/octet-stream');
 
-          done();
-        });
-    });
+    //       done();
+    //     });
+    // });
 
-    it('should failed as invalid branch', (done) => {
-      chai.request(app)
-        .get('/10/wmts')
-        .query({
-          REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'opi', Name: '19FD5606Ax00020_16371', STYLE: 'normal',
-        })
-        .end((err, res) => {
-          should.not.exist(err);
-          res.should.have.status(400);
-          const resJson = JSON.parse(res.text);
-          resJson.should.have.property('msg').equal('branch does not exist');
-          done();
-        });
-    });
+    // it('should failed as invalid branch', (done) => {
+    //   chai.request(app)
+    //     .get('/-1/wmts')
+    //     .query({
+    //       REQUEST: 'GetTile',
+    //       SERVICE: 'WMTS',
+    //       VERSION: '1.0.0',
+    //       TILEMATRIXSET: 'LAMB93_5cm',
+    //       TILEMATRIX: 12,
+    //       TILEROW: 0,
+    //       TILECOL: 0,
+    //       FORMAT: 'image/png',
+    //       LAYER: 'opi',
+    //       Name: '19FD5606Ax00020_16371',
+    //       STYLE: 'normal',
+    //     })
+    //     .end((err, res) => {
+    //       should.not.exist(err);
+    //       res.should.have.status(400);
+    //       const resJson = JSON.parse(res.text);
+    //       resJson.should.have.property('msg').equal('branch does not exist');
+    //       done();
+    //     });
+    // });
   });
 
   // GetFeatureInfo
@@ -188,7 +245,7 @@ describe('Wmts', () => {
     describe('query: LAYER=other', () => {
       it('should return an error', (done) => {
         chai.request(app)
-          .get('/0/wmts')
+          .get(`/${idBranch}/wmts`)
           .query({
             SERVICE: 'WMTS',
             REQUEST: 'GetFeatureInfo',
@@ -215,7 +272,7 @@ describe('Wmts', () => {
     describe('query: STYLE=other', () => {
       it('should return an error', (done) => {
         chai.request(app)
-          .get('/0/wmts')
+          .get(`/${idBranch}/wmts`)
           .query({
             SERVICE: 'WMTS',
             REQUEST: 'GetFeatureInfo',
@@ -242,7 +299,7 @@ describe('Wmts', () => {
     describe('query: TILEMATRIXSET=OTHER', () => {
       it('should return an error', (done) => {
         chai.request(app)
-          .get('/0/wmts')
+          .get(`/${idBranch}/wmts`)
           .query({
             SERVICE: 'WMTS',
             REQUEST: 'GetFeatureInfo',
@@ -268,7 +325,7 @@ describe('Wmts', () => {
     });
     it('should return an xml', (done) => {
       chai.request(app)
-        .get('/0/wmts')
+        .get(`/${idBranch}/wmts`)
         .query({
           SERVICE: 'WMTS',
           REQUEST: 'GetFeatureInfo',
@@ -293,7 +350,7 @@ describe('Wmts', () => {
     });
     it("should return a warning: 'missing'", (done) => {
       chai.request(app)
-        .get('/0/wmts')
+        .get(`/${idBranch}/wmts`)
         .query({
           SERVICE: 'WMTS',
           REQUEST: 'GetFeatureInfo',
@@ -317,7 +374,7 @@ describe('Wmts', () => {
     });
     it("should return an error: 'out of bounds'", (done) => {
       chai.request(app)
-        .get('/0/wmts')
+        .get(`/${idBranch}/wmts`)
         .query({
           SERVICE: 'WMTS',
           REQUEST: 'GetFeatureInfo',
@@ -338,6 +395,21 @@ describe('Wmts', () => {
           const resJson = JSON.parse(res.text);
           resJson.should.have.property('msg').equal('out of bounds');
 
+          done();
+        });
+    });
+  });
+
+  describe('delete the test cache', () => {
+    it('should succeed', (done) => {
+      chai.request(app)
+        .delete('/cache')
+        .query({ idCache })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          const resJson = JSON.parse(res.text);
+          resJson.should.equal(`cache '${cacheName}' détruit`);
           done();
         });
     });

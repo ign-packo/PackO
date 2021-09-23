@@ -1,10 +1,11 @@
 const debug = require('debug')('branch');
-// const fs = require('fs');
-// const path = require('path');
+const fs = require('fs');
+const path = require('path');
 const { matchedData } = require('express-validator');
 const db = require('../db/db');
 
 async function validBranch(req, _res, next) {
+  debug('~~~validBranch~~~');
   if (req.error) {
     next();
     return;
@@ -12,13 +13,10 @@ async function validBranch(req, _res, next) {
   const params = matchedData(req);
   const { idBranch } = params;
 
-  let found = false;
   try {
-    found = await db.isBranchValid(req.client, idBranch);
+    req.dir_cache = await db.getCachePath(req.client, idBranch);
   } catch (error) {
     debug(error);
-  }
-  if (!found) {
     req.error = {
       msg: 'branch does not exist',
       code: 400,
@@ -27,6 +25,27 @@ async function validBranch(req, _res, next) {
     debug('ERROR', req.error);
   }
   next();
+}
+
+async function getOverviews(req, _res, next) {
+  if (req.error) {
+    next();
+    return;
+  }
+  const overviewsFileName = path.join(req.dir_cache, 'overviews.json');
+  fs.readFile(overviewsFileName, (error, data) => {
+    if (error) {
+      debug(error);
+      req.error = {
+        msg: 'overviews does not exist',
+        code: 400,
+        function: 'getOverviews',
+      };
+    } else {
+      req.overviews = JSON.parse(data);
+    }
+    next();
+  });
 }
 
 async function getBranches(req, _res, next) {
@@ -69,7 +88,7 @@ async function insertBranch(req, _res, next) {
     req.error = {
       msg: 'A branch with this name already exists',
       code: 406,
-      function: 'validBranch',
+      function: 'insertBranch',
     };
   }
   next();
@@ -104,4 +123,5 @@ module.exports = {
   getBranches,
   insertBranch,
   deleteBranch,
+  getOverviews,
 };

@@ -63,7 +63,7 @@ router.get('/:idBranch/wmts', [
   query('INFOFORMAT').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('INFOFORMAT')),
   query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
     .exists().withMessage(createErrMsg.missingParameter('TILEMATRIXSET'))
-    .custom((TILEMATRIXSET, { req }) => TILEMATRIXSET === req.app.overviews.identifier)
+    // .custom((TILEMATRIXSET, { req }) => TILEMATRIXSET === req.app.overviews.identifier)
     .withMessage((TILEMATRIXSET) => (`'${TILEMATRIXSET}': unsupported TILEMATRIXSET value`)),
   query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIX')),
   query('TILEROW').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
@@ -86,6 +86,7 @@ router.get('/:idBranch/wmts', [
 validateParams,
 pgClient.open,
 branch.validBranch,
+branch.getOverviews,
 wmts.wmts,
 pgClient.close,
 returnMsg);

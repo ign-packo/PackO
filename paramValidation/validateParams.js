@@ -11,10 +11,8 @@ module.exports = function validateParams(req, res, next) {
     //   errors: result.array({ onlyFirstError: true }),
     // });
     req.error = {
-      msg: {
-        status: result.array({ onlyFirstError: true })[0].msg,
-        errors: result.array({ onlyFirstError: true }),
-      },
+      status: result.array({ onlyFirstError: true })[0].msg,
+      errors: result.array({ onlyFirstError: true }),
       code: 400,
       function: 'insertCache',
     };
