@@ -37,7 +37,7 @@ function getCOGs(features, overviews) {
       }
     });
   });
-  debug('~BBox:', 'Done');
+  debug('~BBox: Done');
 
   const cogs = [];
 
@@ -177,23 +177,23 @@ function createPatch(slab, geoJson, overviews, dirCache, idBranch) {
   return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => P);
 }
 
-async function patch(req, _res, next) {
+async function postPatch(req, _res, next) {
   if (req.error) {
     next();
     return;
   }
   debug('~~~POST patch');
 
-  const { overviews } = req.app;
+  const { overviews } = req;
   const params = matchedData(req);
   const geoJson = params.geoJSON;
   const { idBranch } = params;
 
   let newPatchId = 0;
   const activePatches = await db.getActivePatches(req.client, idBranch);
-  debug(activePatches);
-  for (let i = 0; i < activePatches.length; i += 1) {
-    const id = activePatches.features[i].properties.patchId;
+
+  for (let i = 0; i < activePatches.features.length; i += 1) {
+    const id = activePatches.features[i].properties.num;
     if (newPatchId < id) newPatchId = id;
   }
 
@@ -204,8 +204,9 @@ async function patch(req, _res, next) {
   const promisesCreatePatch = [];
   debug('~create patch');
   cogs.forEach((aCog) => {
-    promisesCreatePatch.push(createPatch(aCog, geoJson, overviews, global.dir_cache, idBranch));
+    promisesCreatePatch.push(createPatch(aCog, geoJson, overviews, req.dir_cache, idBranch));
   });
+  debug('~Promise.all');
   Promise.all(promisesCreatePatch).then((patches) => {
     const promises = [];
     const slabsModified = [];
@@ -217,11 +218,11 @@ async function patch(req, _res, next) {
         return;
       }
       /* eslint-disable no-param-reassign */
-      P.urlGraphOutput = path.join(global.dir_cache,
+      P.urlGraphOutput = path.join(req.dir_cache,
         'graph',
         P.cogPath.dirPath,
         `${idBranch}_${P.cogPath.filename}_${newPatchId}.tif`);
-      P.urlOrthoOutput = path.join(global.dir_cache,
+      P.urlOrthoOutput = path.join(req.dir_cache,
         'ortho', P.cogPath.dirPath,
         `${idBranch}_${P.cogPath.filename}_${newPatchId}.tif`);
       /* eslint-enable no-param-reassign */
@@ -241,7 +242,7 @@ async function patch(req, _res, next) {
           if (P === null) {
             return;
           }
-          const urlHistory = path.join(global.dir_cache,
+          const urlHistory = path.join(req.dir_cache,
             'opi',
             P.cogPath.dirPath,
             `${idBranch}_${P.cogPath.filename}_history.packo`);
@@ -251,9 +252,9 @@ async function patch(req, _res, next) {
             const tabHistory = history.split(';');
             const prevId = tabHistory[tabHistory.length - 2];
 
-            const urlGraphPrev = path.join(global.dir_cache, 'graph', P.cogPath.dirPath,
+            const urlGraphPrev = path.join(req.dir_cache, 'graph', P.cogPath.dirPath,
               `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
-            const urlOrthoPrev = path.join(global.dir_cache, 'ortho', P.cogPath.dirPath,
+            const urlOrthoPrev = path.join(req.dir_cache, 'ortho', P.cogPath.dirPath,
               `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
 
             debug(P.urlGraph);
@@ -283,7 +284,7 @@ async function patch(req, _res, next) {
         });
         // on ajoute ce patch à l'historique
         debug('=> Patch', newPatchId, 'ajouté');
-        debug(geoJson.features);
+        // debug(geoJson.features);
         // activePatches.features = activePatches.features.concat(
         //  geoJson.features,
         // );
@@ -306,7 +307,7 @@ async function patch(req, _res, next) {
         // JSON.stringify(req.app.branches, null, 4));
         // req.result = { json: slabsModified, code: 200 };
 
-        req.result = { json: 'patchAdded', code: 200 };
+        req.result = { json: slabsModified, code: 200 };
         next();
       },
     ).catch((err) => {
@@ -337,7 +338,7 @@ function undo(req, _res, next) {
   debug('~~~PUT patch/undo');
   const params = matchedData(req);
   const { idBranch } = params;
-  const { overviews } = req.app;
+  const { overviews } = req;
   if (req.selectedBranch.activePatches.features.length === 0) {
     debug('rien à annuler');
     req.result = { json: 'nothing to undo', code: 201 };
@@ -599,7 +600,7 @@ function clear(req, _res, next) {
 
 module.exports = {
   getPatches,
-  patch,
+  postPatch,
   undo,
   redo,
   clear,
