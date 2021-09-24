@@ -215,7 +215,7 @@ async function insertPatch(pgClient, idBranch, patch, opiId) {
     const values = [];
     values.push(patch.properties.patchId, JSON.stringify(patch.geometry), idBranch, 'True', opiId);
 
-    const sql = format("INSERT INTO patches (num, geom, id_branch, active, id_opi) values (%s, ST_GeomFromGeoJSON('%s'), %s, %s, %s) RETURNING id as id_patch", values[0], values[1], values[2], values[3], values[4]);
+    const sql = format('INSERT INTO patches (num, geom, id_branch, active, id_opi) values (%s, ST_GeomFromGeoJSON(\'%s\'), %s, %s, %s) RETURNING id as id_patch', values[0], values[1], values[2], values[3], values[4]);
 
     debug(sql);
 
@@ -230,22 +230,16 @@ async function insertPatch(pgClient, idBranch, patch, opiId) {
   }
 }
 
-async function insertSlabs(pgClient, id_patch, patch) {
+async function insertSlabs(pgClient, idPatch, patch) {
   try {
-    debug('Ajout des slabs correspondant au patch : ', id_patch);
-
-    // onsole.log(patch)
-
-    console.log(patch.properties.slabs[0]);
+    debug('Ajout des slabs correspondant au patch : ', idPatch);
 
     patch.properties.slabs.push(patch.properties.slabs[0]);
 
     const values = [];
     patch.properties.slabs.forEach((slab) => {
-      values.push([id_patch, slab.x, slab.y, slab.z]);
+      values.push([idPatch, slab.x, slab.y, slab.z]);
     });
-
-    console.log(values);
 
     const sql = format('INSERT INTO slabs (id_patch, x, y , z) values (%s)', values.join('),('));
 

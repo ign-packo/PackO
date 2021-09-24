@@ -191,7 +191,7 @@ async function patch(req, _res, next) {
 
   let newPatchId = 0;
   const activePatches = await db.getActivePatches(req.client, idBranch);
-  debug(activePatches)
+  debug(activePatches);
   for (let i = 0; i < activePatches.length; i += 1) {
     const id = activePatches.features[i].properties.patchId;
     if (newPatchId < id) newPatchId = id;
@@ -200,7 +200,7 @@ async function patch(req, _res, next) {
   newPatchId += 1;
 
   const cogs = getCOGs(geoJson.features, overviews);
-  debug('cogs =',cogs)
+  debug('cogs =', cogs);
   const promisesCreatePatch = [];
   debug('~create patch');
   cogs.forEach((aCog) => {
@@ -234,79 +234,82 @@ async function patch(req, _res, next) {
     });
     debug('', promises.length, 'patchs à appliquer.');
     Promise.all(promises).then(
-    async () => {
+      async () => {
       // Tout c'est bien passé
-      debug("=> tout c'est bien passé on peut renommer les images");
-      patches.forEach((P) => {
-        if (P === null) {
-          return;
-        }
-        const urlHistory = path.join(global.dir_cache,
-          'opi',
-          P.cogPath.dirPath,
-          `${idBranch}_${P.cogPath.filename}_history.packo`);
-        if (fs.existsSync(urlHistory)) {
-          debug('history existe');
-          const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
-          const tabHistory = history.split(';');
-          const prevId = tabHistory[tabHistory.length - 2];
-
-          const urlGraphPrev = path.join(global.dir_cache, 'graph', P.cogPath.dirPath,
-            `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
-          const urlOrthoPrev = path.join(global.dir_cache, 'ortho', P.cogPath.dirPath,
-            `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
-
-          debug(P.urlGraph);
-          debug(' historique :', history);
-          fs.writeFileSync(`${urlHistory}`, history);
-          // on ne fait un rename que si prevId n'est pas 'orig'
-          if (prevId !== 'orig') {
-            rename(P.urlGraph, urlGraphPrev);
-            rename(P.urlOrtho, urlOrthoPrev);
+        debug("=> tout c'est bien passé on peut renommer les images");
+        patches.forEach((P) => {
+          if (P === null) {
+            return;
           }
-        } else {
-          debug('history n existe pas encore');
-          const history = `orig;${newPatchId}`;
-          fs.writeFileSync(`${urlHistory}`, history);
-          // On a pas besoin de renommer l'image d'origine
-          // qui reste partagée pour toutes les branches
-        }
-        rename(P.urlGraphOutput, P.urlGraph);
-        rename(P.urlOrthoOutput, P.urlOrtho);
-      });
-      // on note le patch Id
-      geoJson.features.forEach((feature) => {
-        /* eslint-disable no-param-reassign */
-        feature.properties.patchId = newPatchId;
-        feature.properties.slabs = slabsModified;
-        /* eslint-enable no-param-reassign */
-      });
-      // on ajoute ce patch à l'historique
-      debug('=> Patch', newPatchId, 'ajouté');
-      debug(geoJson.features);
-      //activePatches.features = activePatches.features.concat(
-      //  geoJson.features,
-      //);
+          const urlHistory = path.join(global.dir_cache,
+            'opi',
+            P.cogPath.dirPath,
+            `${idBranch}_${P.cogPath.filename}_history.packo`);
+          if (fs.existsSync(urlHistory)) {
+            debug('history existe');
+            const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
+            const tabHistory = history.split(';');
+            const prevId = tabHistory[tabHistory.length - 2];
 
-      const opiId = await db.getOpiId(req.client, geoJson.features[0].properties.cliche);
-      const patchId = await db.insertPatch(req.client, idBranch, geoJson.features[0], opiId);
+            const urlGraphPrev = path.join(global.dir_cache, 'graph', P.cogPath.dirPath,
+              `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
+            const urlOrthoPrev = path.join(global.dir_cache, 'ortho', P.cogPath.dirPath,
+              `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
 
-      // ajouter les slabs correspondant au patch dans la table correspondante
-      const result = await db.insertSlabs(req.client, patchId, geoJson.features[0])
+            debug(P.urlGraph);
+            debug(' historique :', history);
+            fs.writeFileSync(`${urlHistory}`, history);
+            // on ne fait un rename que si prevId n'est pas 'orig'
+            if (prevId !== 'orig') {
+              rename(P.urlGraph, urlGraphPrev);
+              rename(P.urlOrtho, urlOrthoPrev);
+            }
+          } else {
+            debug('history n existe pas encore');
+            const history = `orig;${newPatchId}`;
+            fs.writeFileSync(`${urlHistory}`, history);
+            // On a pas besoin de renommer l'image d'origine
+            // qui reste partagée pour toutes les branches
+          }
+          rename(P.urlGraphOutput, P.urlGraph);
+          rename(P.urlOrthoOutput, P.urlOrtho);
+        });
+        // on note le patch Id
+        geoJson.features.forEach((feature) => {
+          /* eslint-disable no-param-reassign */
+          feature.properties.patchId = newPatchId;
+          feature.properties.slabs = slabsModified;
+          /* eslint-enable no-param-reassign */
+        });
+        // on ajoute ce patch à l'historique
+        debug('=> Patch', newPatchId, 'ajouté');
+        debug(geoJson.features);
+        // activePatches.features = activePatches.features.concat(
+        //  geoJson.features,
+        // );
 
+        const opiId = await db.getOpiId(req.client, geoJson.features[0].properties.cliche);
+        const patchId = await db.insertPatch(req.client, idBranch, geoJson.features[0], opiId);
 
-      //debug('features in activePatches:', activePatches.features.length);
+        // ajouter les slabs correspondant au patch dans la table correspondante
+        const result = await db.insertSlabs(req.client, patchId, geoJson.features[0]);
 
-      // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
-      //req.selectedBranch.unactivePatches.features = [];
-     // debug('features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
-      // on sauve l'historique (au cas ou l'API devrait etre relancee)
-      //fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
-      //req.result = { json: slabsModified, code: 200 };
+        debug(result.rowCount);
 
-      req.result = { json: "patchAdded", code: 200 };
-      next();
-    }).catch((err) => {
+        // debug('features in activePatches:', activePatches.features.length);
+
+        // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
+        // req.selectedBranch.unactivePatches.features = [];
+        // debug('features in unactivePatches:',req.selectedBranch.unactivePatches.features.length);
+        // on sauve l'historique (au cas ou l'API devrait etre relancee)
+        // fs.writeFileSync(path.join(global.dir_cache, 'branches.json'),
+        // JSON.stringify(req.app.branches, null, 4));
+        // req.result = { json: slabsModified, code: 200 };
+
+        req.result = { json: 'patchAdded', code: 200 };
+        next();
+      },
+    ).catch((err) => {
       debug(err);
       req.error = {
         msg: err.toString(),
