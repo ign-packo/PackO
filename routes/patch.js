@@ -61,7 +61,8 @@ router.post('/:idBranch/patch',
   validateParams,
   pgClient.open,
   branch.validBranch,
-  patch.patch,
+  branch.getOverviews,
+  patch.postPatch,
   pgClient.close,
   returnMsg);
 
@@ -74,6 +75,7 @@ router.put('/:idBranch/patch/undo', [
 validateParams,
 pgClient.open,
 branch.validBranch,
+branch.getOverviews,
 patch.undo,
 pgClient.close,
 returnMsg);
@@ -87,6 +89,7 @@ router.put('/:idBranch/patch/redo', [
 validateParams,
 pgClient.open,
 branch.validBranch,
+branch.getOverviews,
 patch.redo,
 pgClient.close,
 returnMsg);
@@ -100,6 +103,7 @@ router.put('/:idBranch/patches/clear', [
 validateParams,
 pgClient.open,
 branch.validBranch,
+branch.getOverviews,
 patch.clear,
 pgClient.close,
 returnMsg);

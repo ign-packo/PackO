@@ -5,6 +5,7 @@ const { matchedData } = require('express-validator');
 const db = require('../db/db');
 
 async function validBranch(req, _res, next) {
+  debug('~~~validBranch~~~');
   if (req.error) {
     next();
     return;
