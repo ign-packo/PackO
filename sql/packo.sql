@@ -304,7 +304,7 @@ ALTER TABLE ONLY public.slabs
 -- Name: patches insert; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
-CREATE TRIGGER insert AFTER INSERT ON public.patches FOR EACH ROW EXECUTE FUNCTION public.suppr_unactive_patches();
+CREATE TRIGGER insert BEFORE INSERT ON public.patches FOR EACH ROW EXECUTE FUNCTION public.suppr_unactive_patches();
 
 
 --
