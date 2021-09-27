@@ -28,6 +28,17 @@ paths:
       responses:
         '200':
           description: OK
+
+  '/caches':
+    get:
+      tags:
+        - cache
+      summary: "Récupération de la liste des caches"
+      description: ""
+      responses:
+        '200':
+          description: OK
+
   '/cache':
     post:
       tags:
@@ -96,6 +107,23 @@ paths:
       responses:
         '200':
           description: OK
+
+    delete:
+      tags:
+        - cache
+      summary: "Destruction d'un cache"
+      description: ""
+      parameters:
+        - in: query
+          name: idCache
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: OK
+
   '/branches':
     get:
       tags:
@@ -105,6 +133,7 @@ paths:
       responses:
         '200':
           description: OK
+
   '/branch':
     post:
       tags:
