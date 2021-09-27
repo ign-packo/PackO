@@ -282,7 +282,7 @@ async function postPatch(req, _res, next) {
         // on note le patch Id
         geoJson.features.forEach((feature) => {
           /* eslint-disable no-param-reassign */
-          feature.properties.patchId = newPatchNum;
+          feature.properties.num = newPatchNum;
           feature.properties.slabs = slabsModified;
           /* eslint-enable no-param-reassign */
         });
