@@ -87,7 +87,7 @@ describe('Graph', () => {
     });
   });
 
-  describe('GET /0/graph', () => {
+  describe('GET /{idBranch}/graph', () => {
     describe('query: x=0 & y=0', () => {
       it("should return a 'out of bounds'", (done) => {
         chai.request(app)
