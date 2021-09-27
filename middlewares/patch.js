@@ -6,6 +6,7 @@ const path = require('path');
 const { matchedData } = require('express-validator');
 const cog = require('../cog_path');
 const gdalProcessing = require('../gdal_processing');
+const db = require('../db/db');
 
 // Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
 function encapBody(req, _res, next) {
@@ -64,13 +65,25 @@ function rename(url, urlOrig) {
   fs.renameSync(url, urlOrig);
 }
 
-function getPatches(req, _res, next) {
+async function getPatches(req, _res, next) {
+  debug('~~~GET patches');
   if (req.error) {
     next();
     return;
   }
-  debug('~~~GET patches');
-  req.result = { json: req.selectedBranch.activePatches, code: 200 };
+  const params = matchedData(req);
+  const { idBranch } = params;
+  try {
+    const activePatches = await db.getActivePatches(req.client, idBranch);
+    req.result = { json: activePatches, code: 200 };
+  } catch (error) {
+    debug(error);
+    req.error = {
+      msg: error,
+      code: 406,
+      function: 'getPatches',
+    };
+  }
   next();
 }
 
