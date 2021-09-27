@@ -12,11 +12,12 @@ const status = {
 };
 
 class Saisie {
-  constructor(view, layer, apiUrl, branchId) {
+  constructor(view, layer, apiUrl, branchId, idCache) {
     this.view = view;
     this.layer = layer;
     this.apiUrl = apiUrl;
     this.branchId = branchId;
+    this.idCache = idCache;
 
     this.validClicheSelected = false;
     this.currentStatus = status.RAS;
@@ -356,12 +357,12 @@ class Saisie {
       this.message = 'le nom n\'est pas valide';
       return;
     }
-    fetch(`${this.apiUrl}/branch?name=${branchName}`,
+    fetch(`${this.apiUrl}/branch?name=${branchName}&idCache=${this.idCache}`,
       {
         method: 'POST',
       }).then((res) => {
       if (res.status === 200) {
-        itowns.Fetcher.json(`${this.apiUrl}/branches`).then((branches) => {
+        itowns.Fetcher.json(`${this.apiUrl}/branches?idCache=${this.idCache}`).then((branches) => {
           const branchNames = [];
           let branchId = null;
           branches.forEach((element) => {
