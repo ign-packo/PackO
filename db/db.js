@@ -242,10 +242,11 @@ async function insertPatch(pgClient, idBranch, patch, opiId) {
   try {
     debug('~~insertPatch : ', idBranch);
 
-    const values = [];
-    values.push(patch.properties.patchId, JSON.stringify(patch.geometry), idBranch, 'True', opiId);
-
-    const sql = format('INSERT INTO patches (num, geom, id_branch, active, id_opi) values (%s, ST_GeomFromGeoJSON(\'%s\'), %s, %s, %s) RETURNING id as id_patch', values[0], values[1], values[2], values[3], values[4]);
+    const sql = format('INSERT INTO patches (num, geom, id_branch, id_opi) values (%s, ST_GeomFromGeoJSON(\'%s\'), %s, %s) RETURNING id as id_patch',
+      patch.properties.num,
+      JSON.stringify(patch.geometry),
+      idBranch,
+      opiId);
 
     debug(sql);
 
