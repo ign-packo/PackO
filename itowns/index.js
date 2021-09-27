@@ -72,8 +72,10 @@ async function main() {
   const serverAPI = urlParams.get('serverapi') ? urlParams.get('serverapi') : 'localhost';
   const portAPI = urlParams.get('portapi') ? urlParams.get('portapi') : 8081;
   console.log('serverAPI:', serverAPI, 'portAPI:', portAPI);
-
   const apiUrl = `http://${serverAPI}:${portAPI}`;
+
+  const nameCache = urlParams.get('namecache');
+  // const idCache = urlParams.get('idcache');
 
   itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
     document.getElementById('spAPIVersion_val').innerText = obj.version_git;
@@ -81,9 +83,15 @@ async function main() {
     document.getElementById('spAPIVersion_val').innerText = 'unknown';
   });
 
-  const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews`);
-  const getBranches = itowns.Fetcher.json(`${apiUrl}/branches`);
-  const getPatches = itowns.Fetcher.json(`${apiUrl}/0/patches`);
+  const getCaches = await itowns.Fetcher.json(`${apiUrl}/caches`);
+
+  let [activeCache] = getCaches.filter((cache) => cache.name === nameCache);
+  if (!activeCache) [activeCache] = getCaches;
+  console.log(activeCache);
+
+  const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews?cachePath=${activeCache.path}`);
+  const getBranches = itowns.Fetcher.json(`${apiUrl}/branches?idCache=${activeCache.id}`);
+  // const getPatches = itowns.Fetcher.json(`${apiUrl}/0/patches`);
 
   try {
     const overviews = await getOverviews;
@@ -234,6 +242,7 @@ async function main() {
       },
     };
 
+    const getPatches = itowns.Fetcher.json(`${apiUrl}/${currentBranch.id}/patches`);
     const currentPatches = await getPatches;
 
     layer.patches.config.source = new itowns.FileSource({
@@ -259,7 +268,7 @@ async function main() {
     // Request redraw
     view.notifyChange();
 
-    const saisie = new Saisie(view, layer, apiUrl, currentBranch.id);
+    const saisie = new Saisie(view, layer, apiUrl, currentBranch.id, activeCache.id);
     saisie.cliche = 'unknown';
     saisie.message = '';
     saisie.branch = currentBranch.name;
