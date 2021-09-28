@@ -187,21 +187,27 @@ async function postPatch(req, _res, next) {
   const { overviews } = req;
   const params = matchedData(req);
   const geoJson = params.geoJSON;
+  const { geometry } = geoJson.features[0];
   const { idBranch } = params;
 
-  const activePatches = await db.getActivePatches(req.client, idBranch);
+  // const activePatches = await db.getActivePatches(req.client, idBranch);
 
-  let newPatchNum = 0;
-  for (let i = 0; i < activePatches.features.length; i += 1) {
-    const id = activePatches.features[i].properties.num;
-    if (newPatchNum < id) newPatchNum = id;
-  }
+  // let newPatchNum = 0;
+  // for (let i = 0; i < activePatches.features.length; i += 1) {
+  //   const id = activePatches.features[i].properties.num;
+  //   if (newPatchNum < id) newPatchNum = id;
+  // }
 
-  newPatchNum += 1;
+  // newPatchNum += 1;
 
   // const newPatchNum = Math.max(
   //   ...activePatches.features.map((feature) => feature.properties.num),
   // ) + 1;
+
+  const opiId = await db.getOpiId(req.client, geoJson.features[0].properties.cliche);
+  const patchInserted = await db.insertPatch(req.client, idBranch, geometry, opiId);
+  const patchId = patchInserted.id_patch;
+  const newPatchNum = patchInserted.num;
 
   const cogs = getCOGs(geoJson.features, overviews);
   debug('cogs =', cogs);
@@ -292,9 +298,6 @@ async function postPatch(req, _res, next) {
         // activePatches.features = activePatches.features.concat(
         //  geoJson.features,
         // );
-
-        const opiId = await db.getOpiId(req.client, geoJson.features[0].properties.cliche);
-        const patchId = await db.insertPatch(req.client, idBranch, geoJson.features[0], opiId);
 
         // ajouter les slabs correspondant au patch dans la table correspondante
         const result = await db.insertSlabs(req.client, patchId, geoJson.features[0]);

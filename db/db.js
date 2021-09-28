@@ -238,23 +238,19 @@ async function getOpiId(pgClient, name) {
   }
 }
 
-async function insertPatch(pgClient, idBranch, patch, opiId) {
+async function insertPatch(pgClient, idBranch, geometry, opiId) {
   try {
     debug(`~~insertPatch (idBranch: ${idBranch})`);
 
-    const sql = format('INSERT INTO patches (num, geom, id_branch, id_opi) values (%s, ST_GeomFromGeoJSON(\'%s\'), %s, %s) RETURNING id as id_patch',
-      patch.properties.num,
-      JSON.stringify(patch.geometry),
+    const sql = format('INSERT INTO patches (geom, id_branch, id_opi) values (ST_GeomFromGeoJSON(%L), %s, %s) RETURNING id as id_patch, num',
+      JSON.stringify(geometry),
       idBranch,
       opiId);
-
     debug(sql);
 
-    const results = await pgClient.query(
-      sql,
-    );
+    const results = await pgClient.query(sql);
 
-    return results.rows[0].id_patch;
+    return results.rows[0];
   } catch (error) {
     debug('Error: ', error);
     throw error;
