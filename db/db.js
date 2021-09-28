@@ -79,7 +79,7 @@ async function getCachePath(pgClient, idBranch) {
 }
 
 async function getBranches(pgClient, idCache) {
-  debug('~~getBranches');
+  debug(`~~getBranches (idCache: ${idCache})`);
   try {
     let results;
     if (idCache) {
@@ -176,7 +176,7 @@ async function getActivePatches(pgClient, idBranch) {
 
 async function getUnactivePatches(pgClient, idBranch) {
   try {
-    debug(`~~getActivePatches (idBranch: ${idBranch})`);
+    debug(`~~getUnactivePatches (idBranch: ${idBranch})`);
 
     const sql = "SELECT json_build_object('type', 'FeatureCollection', "
     + "'features', json_agg(ST_AsGeoJSON(t.*)::json)) FROM "
@@ -278,7 +278,7 @@ async function deactivatePatch(pgClient, idPatch) {
 
 async function reactivatePatch(pgClient, idPatch) {
   try {
-    debug(`~~deactivatePatch (idPatch: ${idPatch})`);
+    debug(`~~reactivatePatch (idPatch: ${idPatch})`);
 
     const sql = format('UPDATE patches SET active=True WHERE id=%s', idPatch);
 
@@ -297,7 +297,7 @@ async function reactivatePatch(pgClient, idPatch) {
 
 async function deletePatches(pgClient, idBranch) {
   try {
-    debug(`~~deactivatePatch (idBranch: ${idBranch})`);
+    debug(`~~deletePatches (idBranch: ${idBranch})`);
 
     const sql = format('DELETE FROM patches WHERE id_branch=%s', idBranch);
 
