@@ -1,4 +1,6 @@
 const debug = require('debug')('cache');
+const fs = require('fs');
+const pathMod = require('path');
 const { matchedData } = require('express-validator');
 const db = require('../db/db');
 
@@ -19,6 +21,7 @@ function encapBody(req, _res, next) {
 async function getCaches(req, _res, next) {
   debug('~~~get caches~~~');
   if (req.error) {
+    // Cas ou pgOpen c'est mal passé
     next();
     return;
   }
@@ -36,6 +39,24 @@ async function getCaches(req, _res, next) {
   next();
 }
 
+async function getCachePath(req, _res, next) {
+  debug('~~~getCachePath~~~');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+  const { idBranch } = params;
+
+  try {
+    req.dir_cache = await db.getCachePath(req.client, idBranch);
+  } catch (error) {
+    debug(error);
+    req.error = error;
+  }
+  next();
+}
+
 async function insertCache(req, _res, next) {
   debug('~~~insert Cache~~~');
   if (req.error) {
@@ -49,6 +70,7 @@ async function insertCache(req, _res, next) {
     const newCache = await db.insertCache(req.client, name, path);
     const nbOpiInserted = await db.insertListOpi(req.client, newCache.id, overviews.list_OPI);
     if (nbOpiInserted !== Object.keys(overviews.list_OPI).length) {
+      // TODO test REGRESS
       throw new Error('error when adding OPI in base');
     }
     req.result = {
@@ -62,11 +84,17 @@ async function insertCache(req, _res, next) {
     };
   } catch (error) {
     debug('Error ', error);
-    req.error = {
-      msg: error,
-      code: 406,
-      function: 'insertCache',
-    };
+    if (error.constraint === 'caches_name_key') {
+      req.error = {
+        json: {
+          msg: 'A cache with this name already exists.',
+          function: 'insertCache',
+        },
+        code: 406,
+      };
+    } else {
+      req.error = error;
+    }
   }
   next();
 }
@@ -86,18 +114,37 @@ async function deleteCache(req, _res, next) {
     req.result = { json: `cache '${cacheName}' détruit`, code: 200 };
   } catch (error) {
     debug(error);
-    req.error = {
-      msg: `Cache '${idCache}' can't be deleted.`,
-      code: 406,
-      function: 'deleteCache',
-    };
+    req.error = error;
   }
   next();
+}
+
+async function getOverviews(req, _res, next) {
+  if (req.error) {
+    next();
+    return;
+  }
+  const overviewsFileName = pathMod.join(req.dir_cache, 'overviews.json');
+  fs.readFile(overviewsFileName, (error, data) => {
+    if (error) {
+      debug(error);
+      req.error = {
+        msg: 'overviews does not exist',
+        code: 400,
+        function: 'getOverviews',
+      };
+    } else {
+      req.overviews = JSON.parse(data);
+    }
+    next();
+  });
 }
 
 module.exports = {
   encapBody,
   getCaches,
+  getCachePath,
   insertCache,
   deleteCache,
+  getOverviews,
 };

@@ -24,7 +24,7 @@ async function insertCache(pgClient, name, path) {
     return results.rows[0];
   } catch (error) {
     debug('Error: ', error);
-    throw error.detail;
+    throw error;
   }
 }
 
@@ -35,9 +35,6 @@ async function deleteCache(pgClient, idCache) {
       'DELETE FROM caches WHERE id=$1 RETURNING name',
       [idCache],
     );
-    if (results.rowCount !== 1) {
-      throw new Error(`cache non trouvée '${idCache}'`);
-    }
     return results.rows[0].name;
   } catch (error) {
     debug('Error: ', error);
@@ -70,8 +67,7 @@ async function getCachePath(pgClient, idBranch) {
       'SELECT c.path FROM branches b, caches c WHERE b.id_cache = c.id AND b.id = $1',
       [idBranch],
     );
-    if (results.rowCount === 1) return results.rows[0].path;
-    throw new Error('idBranch non valide');
+    return results.rows[0].path;
   } catch (error) {
     debug('Error: ', error);
     throw error;
@@ -99,22 +95,22 @@ async function getBranches(pgClient, idCache) {
   }
 }
 
-async function getIdCacheFromPath(pgClient, path) {
-  try {
-    debug(`~~getIdCacheFromPath (path: ${path})`);
-    const results = await pgClient.query(
-      'SELECT id FROM caches WHERE path=$1',
-      [path],
-    );
-    if (results.rowCount !== 1) {
-      throw new Error(`cache non trouvé pour le chemin '${path}'`);
-    }
-    return results.rows[0].id;
-  } catch (error) {
-    debug('Error: ', error);
-    throw error;
-  }
-}
+// async function getIdCacheFromPath(pgClient, path) {
+//   try {
+//     debug(`~~getIdCacheFromPath (path: ${path})`);
+//     const results = await pgClient.query(
+//       'SELECT id FROM caches WHERE path=$1',
+//       [path],
+//     );
+//     if (results.rowCount !== 1) {
+//       throw new Error(`cache non trouvé pour le chemin '${path}'`);
+//     }
+//     return results.rows[0].id;
+//   } catch (error) {
+//     debug('Error: ', error);
+//     throw error;
+//   }
+// }
 
 async function insertBranch(pgClient, name, idCache) {
   try {
@@ -137,10 +133,7 @@ async function deleteBranch(pgClient, idBranch) {
       "DELETE FROM branches WHERE id=$1 AND name<>'orig' RETURNING name",
       [idBranch],
     );
-    if (results.rowCount !== 1) {
-      throw new Error(`branche '${idBranch}' non supprimée`);
-    }
-    return results.rows[0].name;
+    return results.rows.length > 0 ? results.rows[0].name : null;
   } catch (error) {
     debug('Error: ', error);
     throw error;
@@ -224,7 +217,6 @@ async function getOpiId(pgClient, name) {
     debug(`~~getOpiId (name: ${name})`);
 
     const sql = `SELECT id FROM opi WHERE name = '${name}'`;
-
     debug(sql);
 
     const results = await pgClient.query(
@@ -262,7 +254,6 @@ async function deactivatePatch(pgClient, idPatch) {
     debug(`~~deactivatePatch (idPatch: ${idPatch})`);
 
     const sql = format('UPDATE patches SET active=False WHERE id=%s', idPatch);
-
     debug(sql);
 
     const results = await pgClient.query(
@@ -281,7 +272,6 @@ async function reactivatePatch(pgClient, idPatch) {
     debug(`~~reactivatePatch (idPatch: ${idPatch})`);
 
     const sql = format('UPDATE patches SET active=True WHERE id=%s', idPatch);
-
     debug(sql);
 
     const results = await pgClient.query(
@@ -300,7 +290,6 @@ async function deletePatches(pgClient, idBranch) {
     debug(`~~deletePatches (idBranch: ${idBranch})`);
 
     const sql = format('DELETE FROM patches WHERE id_branch=%s', idBranch);
-
     debug(sql);
 
     const results = await pgClient.query(
@@ -319,7 +308,6 @@ async function getSlabs(pgClient, idPatch) {
     debug(`~~getSlabs (idPatch: ${idPatch})`);
 
     const sql = format('SELECT id, x, y, z FROM slabs WHERE id_patch=%s', idPatch);
-
     debug(sql);
 
     const results = await pgClient.query(
@@ -343,7 +331,6 @@ async function insertSlabs(pgClient, idPatch, patch) {
     });
 
     const sql = format('INSERT INTO slabs (id_patch, x, y , z) values (%s)', values.join('),('));
-
     debug(sql);
 
     const results = await pgClient.query(
@@ -364,7 +351,7 @@ module.exports = {
   insertListOpi,
   getCachePath,
   getBranches,
-  getIdCacheFromPath,
+  // getIdCacheFromPath,
   insertBranch,
   deleteBranch,
   getActivePatches,

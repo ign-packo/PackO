@@ -284,9 +284,11 @@ function wmts(req, _res, next) {
 
       if (!fs.existsSync(url)) {
         req.error = {
-          msg: 'out of bounds',
+          json: {
+            status: 'out of bounds',
+            localisation: 'GetFeatureInfo',
+          },
           code: 400,
-          function: 'GetFeatureInfo',
         };
         next();
         return;
@@ -324,9 +326,11 @@ function wmts(req, _res, next) {
           next();
         }).catch(() => {
           req.error = {
-            msg: 'out of bounds',
+            json: {
+              status: 'out of bounds',
+              localisation: 'GetFeatureInfo',
+            },
             code: 400,
-            function: 'GetFeatureInfo',
           };
           next();
         });

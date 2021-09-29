@@ -87,14 +87,15 @@ router.post('/cache',
   returnMsg);
 
 router.delete('/cache',
+  pgClient.open,
+  cache.getCaches.bind({ column: 'id' }),
   [
     query('idCache')
       .exists().withMessage(createErrMsg.missingParameter('idCache'))
-      .isInt({ min: 0 })
+      .custom((value, { req }) => req.result.json.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idCache')),
   ],
   validateParams,
-  pgClient.open,
   cache.deleteCache,
   pgClient.close,
   returnMsg);

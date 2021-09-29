@@ -14,7 +14,7 @@ describe('Files', () => {
   });
 
   describe('GET /files/{filetype}', () => {
-    describe('filetype = graph', () => {
+    describe('filetype = overviews', () => {
       it('should return a json file', (done) => {
         chai.request(app)
           .get('/json/overviews')
@@ -32,7 +32,7 @@ describe('Files', () => {
       });
     });
     describe('filetype = test (test.json is not a file)', () => {
-      it('should return an error', (done) => {
+      it('should return an error (Missing file)', (done) => {
         chai.request(app)
           .get('/json/test')
           .query({ cachePath })
@@ -48,7 +48,7 @@ describe('Files', () => {
       });
     });
     describe('filetype = overviews and cachePath = testPath (non valide)', () => {
-      it('should return an error', (done) => {
+      it('should return an error (Missing folder)', (done) => {
         chai.request(app)
           .get('/json/overviews')
           .query({ cachePath: 'testPath' })
@@ -59,6 +59,22 @@ describe('Files', () => {
             res.body.should.be.a('object');
             res.body.should.have.property('status').equal("Le dossier demandé (testPath) n'existe pas");
 
+            done();
+          });
+      });
+    });
+    describe('filetype = other and no cachePath', () => {
+      it('should return an error (Missing folder)', (done) => {
+        chai.request(app)
+          .get('/json/other')
+          .query({})
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(2);
+            resJson[0].should.have.property('status').equal("Le paramètre 'typefile' n'est pas valide.");
+            resJson[1].should.have.property('status').equal("Le paramètre 'cachePath' est requis.");
             done();
           });
       });

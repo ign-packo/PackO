@@ -172,18 +172,22 @@ describe('Graph', () => {
           });
       });
     });
-    // describe('query: x=230747 & y=6759643', () => {
-    //   // branch doesn't exist
-    //   it("should return a 'branch does not exist'", (done) => {
-    //     chai.request(app)
-    //       .get('/12/graph')
-    //       .query({ x: 230747, y: 6759643 })
-    //       .end((err, res) => {
-    //         should.not.exist(err);
-    //         res.should.have.status(400); done();
-    //       });
-    //   });
-    // });
+    describe('query: x=230747 & y=6759643', () => {
+      // branch doesn't exist
+      it("idBranch=99999 => should return a 'branch does not exist'", (done) => {
+        chai.request(app)
+          .get('/99999/graph')
+          .query({ x: 230747, y: 6759643 })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'idBranch' n'est pas valide.");
+            done();
+          });
+      });
+    });
   });
 
   describe('delete the test cache', () => {

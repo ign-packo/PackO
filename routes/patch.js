@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { body, param } = require('express-validator');
 const GJV = require('geojson-validation');
+const cache = require('../middlewares/cache');
 const branch = require('../middlewares/branch');
 const validator = require('../paramValidation/validator');
 const validateParams = require('../paramValidation/validateParams');
@@ -36,76 +37,85 @@ const geoJsonAPatcher = [
     .withMessage(createErrMsg.invalidParameter('properties.cliche')),
 ];
 
-router.get('/:idBranch/patches', [
-  param('idBranch')
-    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-    .isInt({ min: 0 })
-    .withMessage(createErrMsg.invalidParameter('idBranch')),
-],
-validateParams,
-pgClient.open,
-branch.validBranch,
-patch.getPatches,
-pgClient.close,
-returnMsg);
-
-router.post('/:idBranch/patch',
-  patch.encapBody.bind({ keyName: 'geoJSON' }),
+router.get('/:idBranch/patches',
+  pgClient.open,
+  branch.getBranches.bind({ column: 'id' }),
   [
     param('idBranch')
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .isInt({ min: 0 })
+      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .withMessage(createErrMsg.invalidParameter('idBranch')),
+  ],
+  validateParams,
+  cache.getCachePath,
+  patch.getPatches,
+  pgClient.close,
+  returnMsg);
+
+router.post('/:idBranch/patch',
+  patch.encapBody.bind({ keyName: 'geoJSON' }),
+  pgClient.open,
+  branch.getBranches.bind({ column: 'id' }),
+  [
+    param('idBranch')
+      .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+      .custom((value, { req }) => req.result.json.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
     ...geoJsonAPatcher,
   ],
   validateParams,
-  pgClient.open,
-  branch.validBranch,
-  branch.getOverviews,
+  cache.getCachePath,
+  cache.getOverviews,
   patch.postPatch,
   pgClient.close,
   returnMsg);
 
-router.put('/:idBranch/patch/undo', [
-  param('idBranch')
-    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-    .isInt({ min: 0 })
-    .withMessage(createErrMsg.invalidParameter('idBranch')),
-],
-validateParams,
-pgClient.open,
-branch.validBranch,
-branch.getOverviews,
-patch.undo,
-pgClient.close,
-returnMsg);
+router.put('/:idBranch/patch/undo',
+  pgClient.open,
+  branch.getBranches.bind({ column: 'id' }),
+  [
+    param('idBranch')
+      .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .withMessage(createErrMsg.invalidParameter('idBranch')),
+  ],
+  validateParams,
+  cache.getCachePath,
+  cache.getOverviews,
+  patch.undo,
+  pgClient.close,
+  returnMsg);
 
-router.put('/:idBranch/patch/redo', [
-  param('idBranch')
-    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-    .isInt({ min: 0 })
-    .withMessage(createErrMsg.invalidParameter('idBranch')),
-],
-validateParams,
-pgClient.open,
-branch.validBranch,
-branch.getOverviews,
-patch.redo,
-pgClient.close,
-returnMsg);
+router.put('/:idBranch/patch/redo',
+  pgClient.open,
+  branch.getBranches.bind({ column: 'id' }),
+  [
+    param('idBranch')
+      .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .withMessage(createErrMsg.invalidParameter('idBranch')),
+  ],
+  validateParams,
+  cache.getCachePath,
+  cache.getOverviews,
+  patch.redo,
+  pgClient.close,
+  returnMsg);
 
-router.put('/:idBranch/patches/clear', [
-  param('idBranch')
-    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-    .isInt({ min: 0 })
-    .withMessage(createErrMsg.invalidParameter('idBranch')),
-],
-validateParams,
-pgClient.open,
-branch.validBranch,
-branch.getOverviews,
-patch.clear,
-pgClient.close,
-returnMsg);
+router.put('/:idBranch/patches/clear',
+  pgClient.open,
+  branch.getBranches.bind({ column: 'id' }),
+  [
+    param('idBranch')
+      .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .withMessage(createErrMsg.invalidParameter('idBranch')),
+  ],
+  validateParams,
+  cache.getCachePath,
+  cache.getOverviews,
+  patch.clear,
+  pgClient.close,
+  returnMsg);
 
 module.exports = router;
