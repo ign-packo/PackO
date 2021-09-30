@@ -44,7 +44,7 @@
     "proj4": "^2.7.5",
     "pureimage": "^0.2.7",
     "supervisor": "^0.12.0",
-    "swagger-editor-dist": "^3.18.0",
+    "swagger-editor-dist": "^3.18.1",
     "swagger-ui-dist": "^3.52.0",
     "swagger-ui-express": "^4.1.6",
     "xml2js": "^0.4.23",
@@ -54,6 +54,6 @@
   "devDependencies": {
     "eslint": "^7.32.0",
     "eslint-config-airbnb-base": "^14.2.1",
-    "eslint-plugin-import": "^2.24.0"
+    "eslint-plugin-import": "^2.24.2"
   }
 }
