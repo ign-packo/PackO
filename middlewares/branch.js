@@ -10,9 +10,9 @@ async function getBranches(req, _res, next) {
   }
   const params = matchedData(req);
   const { idCache } = params;
-  let branches;
+  // let branches;
   try {
-    branches = await db.getBranches(req.client, idCache);
+    const branches = await db.getBranches(req.client, idCache);
     if (this.column) {
       req.result = { json: branches.map((branch) => branch[this.column]), code: 200 };
     } else {
