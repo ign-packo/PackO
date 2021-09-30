@@ -82,7 +82,7 @@ router.post('/cache',
   ],
   validateParams,
   pgClient.open,
-  cache.insertCache,
+  cache.postCache,
   pgClient.close,
   returnMsg);
 

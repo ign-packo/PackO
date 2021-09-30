@@ -19,7 +19,7 @@ function encapBody(req, _res, next) {
 }
 
 async function getCaches(req, _res, next) {
-  debug('~~~get caches~~~');
+  debug('>>GET caches');
   if (req.error) {
     // Cas ou pgOpen c'est mal passé
     next();
@@ -36,11 +36,12 @@ async function getCaches(req, _res, next) {
   } else {
     req.result = { json: caches, code: 200 };
   }
+  debug('  next>>');
   next();
 }
 
 async function getCachePath(req, _res, next) {
-  debug('~~~getCachePath~~~');
+  debug('>>GET CachePath');
   if (req.error) {
     next();
     return;
@@ -54,11 +55,12 @@ async function getCachePath(req, _res, next) {
     debug(error);
     req.error = error;
   }
+  debug('  next>>');
   next();
 }
 
-async function insertCache(req, _res, next) {
-  debug('~~~insert Cache~~~');
+async function postCache(req, _res, next) {
+  debug('>>POST Cache');
   if (req.error) {
     next();
     return;
@@ -96,11 +98,12 @@ async function insertCache(req, _res, next) {
       req.error = error;
     }
   }
+  debug('  next>>');
   next();
 }
 
 async function deleteCache(req, _res, next) {
-  debug('~~~delete cache~~~');
+  debug('>>DELETE cache');
   if (req.error) {
     next();
     return;
@@ -110,16 +113,17 @@ async function deleteCache(req, _res, next) {
 
   try {
     const cacheName = await db.deleteCache(req.client, idCache);
-    debug(cacheName);
     req.result = { json: `cache '${cacheName}' détruit`, code: 200 };
   } catch (error) {
     debug(error);
     req.error = error;
   }
+  debug('  next>>');
   next();
 }
 
 async function getOverviews(req, _res, next) {
+  debug('>>getOverviews');
   if (req.error) {
     next();
     return;
@@ -136,6 +140,7 @@ async function getOverviews(req, _res, next) {
     } else {
       req.overviews = JSON.parse(data);
     }
+    debug('  next>>');
     next();
   });
 }
@@ -144,7 +149,7 @@ module.exports = {
   encapBody,
   getCaches,
   getCachePath,
-  insertCache,
+  postCache,
   deleteCache,
   getOverviews,
 };

@@ -17,7 +17,7 @@ router.get('/json/:typefile', [
     .exists().withMessage(createErrMsg.missingParameter('cachePath')),
 ], validateParams,
 async (req, res, next) => {
-  debug('~~~getJson~~~');
+  debug('>>GET json/:typefile');
   if (req.error) {
     next();
     return;
@@ -28,7 +28,7 @@ async (req, res, next) => {
     if (!fs.existsSync(cachePath)) {
       const err = new Error();
       err.code = 404;
-      err.msg = {
+      err.json = {
         status: createErrMsg.missingDir(cachePath),
         errors: [{
           localisation: 'GET /json/{filetype}',
@@ -48,7 +48,7 @@ async (req, res, next) => {
     if (!fs.existsSync(filePath)) {
       const err = new Error();
       err.code = 404;
-      err.msg = {
+      err.json = {
         status: createErrMsg.missingFile(`${typefile}.json`),
         errors: [{
           localisation: 'GET /json/{filetype}',
@@ -59,12 +59,16 @@ async (req, res, next) => {
       };
       throw err;
     }
-    debug(' => download');
-    res.status(200).download(filePath);
-  } catch (err) {
-    debug(' => Erreur');
-    res.status(err.code).send(err.msg);
+    req.result = {
+      filePath,
+      code: 200,
+    };
+  } catch (error) {
+    debug('Error ', error);
+    req.error = error;
   }
+  debug('  next>>');
+  next();
 },
 returnMsg);
 

@@ -35,7 +35,7 @@ router.post('/branch',
       .withMessage(createErrMsg.invalidParameter('idCache')),
   ],
   validateParams,
-  branch.insertBranch,
+  branch.postBranch,
   pgClient.close,
   returnMsg);
 
