@@ -35,13 +35,19 @@ async function getBranches(req, _res, next) {
     next();
     return;
   }
+  const params = matchedData(req);
+  const { idCache } = params;
   let branches;
   try {
-    branches = await db.getBranches(req.client, global.id_cache);
+    branches = await db.getBranches(req.client, idCache);
   } catch (error) {
     debug(error);
   }
-  req.result = { json: branches, code: 200 };
+  if (this.column) {
+    req.result = { json: branches.map((branch) => branch[this.column]), code: 200 };
+  } else {
+    req.result = { json: branches, code: 200 };
+  }
   next();
 }
 
@@ -52,10 +58,10 @@ async function insertBranch(req, _res, next) {
     return;
   }
   const params = matchedData(req);
-  const { name } = params;
+  const { name, idCache } = params;
 
   try {
-    const idBranch = await db.insertBranch(req.client, name, global.id_cache);
+    const idBranch = await db.insertBranch(req.client, name, idCache);
     debug(idBranch);
     req.result = { json: { name, id: idBranch }, code: 200 };
   } catch (error) {

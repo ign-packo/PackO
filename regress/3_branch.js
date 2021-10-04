@@ -3,20 +3,24 @@ chai.use(require('chai-http'));
 chai.use(require('chai-json-schema'));
 
 const should = chai.should();
+const fs = require('fs');
+
 const app = require('..');
 
-let idBranch = null;
-const branchName = 'branchRegress';
+const overviews = JSON.parse(fs.readFileSync('./regress/data/regress_overviews.json', 'utf8'));
+const cacheName = 'cacheRegress';
+const cachePath = '/cache_regress';
 
+let idCache = null;
+function setIdCache(id) {
+  idCache = id;
+}
+
+const branchName = 'branchRegress';
+let idBranch = null;
 function setIdBranch(id) {
   idBranch = id;
 }
-
-before((done) => {
-  app.on('appStarted', function () {
-    done();
-  });
-});
 
 describe('Branch', () => {
   after((done) => {
@@ -24,11 +28,44 @@ describe('Branch', () => {
     done();
   });
 
+  describe('create a test cache', () => {
+    it('should return a cacheId', (done) => {
+      chai.request(app)
+        .post('/cache')
+        .query({
+          name: cacheName,
+          path: cachePath,
+        })
+        .send(overviews)
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          const resJson = JSON.parse(res.text);
+          resJson.should.have.property('id_cache');
+          setIdCache(resJson.id_cache);
+          resJson.should.have.property('name').equal(cacheName);
+          done();
+        });
+    });
+  });
+
   describe('GET /branches', () => {
-    describe('query all branches ', () => {
+    describe('query all branches on all caches ', () => {
       it('should return a list of branches', (done) => {
         chai.request(app)
           .get('/branches')
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(200);
+            done();
+          });
+      });
+    });
+    describe('query all branches on a specified cache', () => {
+      it('should return a list of branches', (done) => {
+        chai.request(app)
+          .get('/branches')
+          .query({ idCache })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(200);
@@ -43,7 +80,10 @@ describe('Branch', () => {
       it('should return an idBranch', (done) => {
         chai.request(app)
           .post('/branch')
-          .query({ name: branchName })
+          .query({
+            name: branchName,
+            idCache,
+          })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(200);
@@ -59,7 +99,10 @@ describe('Branch', () => {
       it('should return a error', (done) => {
         chai.request(app)
           .post('/branch')
-          .query({ name: branchName })
+          .query({
+            name: branchName,
+            idCache,
+          })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(406);
@@ -91,10 +134,37 @@ describe('Branch', () => {
           .query({ idBranch: 0 })
           .end((err, res) => {
             should.not.exist(err);
-            res.should.have.status(406);
+            res.should.have.status(400);
             done();
           });
       });
+    });
+    // describe('delete a non destructible branch (orig)', () => {
+    //   it('should failed', (done) => {
+    //     chai.request(app)
+    //       .delete('/branch')
+    //       .query({ idBranch })
+    //       .end((err, res) => {
+    //         should.not.exist(err);
+    //         res.should.have.status(406);
+    //         done();
+    //       });
+    //   });
+    // });
+  });
+
+  describe('delete the test cache', () => {
+    it('should succeed', (done) => {
+      chai.request(app)
+        .delete('/cache')
+        .query({ idCache })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          const resJson = JSON.parse(res.text);
+          resJson.should.equal(`cache '${cacheName}' détruit`);
+          done();
+        });
     });
   });
 });
