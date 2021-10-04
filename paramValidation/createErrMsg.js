@@ -7,4 +7,5 @@ module.exports = {
   invalidBody(param) { return `le body n'est pas un '${param}' valide.`; },
 
   missingFile(file) { return `Le fichier demandé (${file}) n'existe pas`; },
+  missingDir(dir) { return `Le dossier demandé (${dir}) n'existe pas`; },
 };

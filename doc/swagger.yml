@@ -6,6 +6,8 @@ servers:
   - url: "http://localhost:8081"
     description: "Serveur de dev"
 tags:
+  - name: cache
+    description: Gestion des caches
   - name: branch
     description: Gestion des branches
   - name: wmts
@@ -26,15 +28,125 @@ paths:
       responses:
         '200':
           description: OK
+
+  '/caches':
+    get:
+      tags:
+        - cache
+      summary: "Récupération de la liste des caches"
+      description: ""
+      responses:
+        '200':
+          description: OK
+
+  '/cache':
+    post:
+      tags:
+        - cache
+      summary: "Import d'un cache à partir d'un overviews.json"
+      description: ""
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+          example: "monCache"
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          example: "/mon_cache"
+      requestBody:
+        description: overviews.json
+        required: true
+        content:
+          application/json:
+              schema:
+                type: object
+                properties:
+                  identifier:
+                    type: string
+                    example: "LAMB93_5cm"
+                  crs:
+                    type: object
+                    example:
+                      {
+                        "type":"name",
+                        "properties":{
+                          "name":"urn:ogc:def:crs:EPSG::2154"}}
+                  resolution:
+                    type: integer
+                    example: 0.05
+                  level:
+                    type: object
+                    example:
+                      {
+                        "min": 14,
+                        "max": 21}
+                  tileSize:
+                    type: object
+                    example:
+                      {
+                        "width": 256,
+                        "height": 256}
+                  pathDepth:
+                    type: integer
+                    example: 4
+                  slabSize:
+                    type: object
+                    example:
+                      {
+                        "width": 16,
+                        "height": 16}
+                  list_OPI:
+                    type: object
+                    example:
+                      {
+                        "19FD5606Ax00020_16371": [
+                              126,
+                              222,
+                              76]}
+                  dataSet:
+                    type: object
+      responses:
+        '200':
+          description: OK
+
+    delete:
+      tags:
+        - cache
+      summary: "Destruction d'un cache"
+      description: ""
+      parameters:
+        - in: query
+          name: idCache
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: OK
+
   '/branches':
     get:
       tags:
         - branch
       summary: "Récupération de la liste des branches"
       description: ""
+      parameters:
+        - in: query
+          name: idCache
+          required: false
+          schema:
+            type: integer
+          example: 0
       responses:
         '200':
           description: OK
+
   '/branch':
     post:
       tags:
@@ -48,10 +160,31 @@ paths:
           schema:
             type: string
           example: "maBranche"
+        - in: query
+          name: idCache
+          required: true
+          schema:
+            type: integer
+          example: 0
       responses:
         '200':
           description: OK
-  '/{branchId}/patch/undo':
+    delete:
+      tags:
+        - branch
+      summary: "Destruction d'une branche"
+      description: ""
+      parameters:
+        - in: query
+          name: idBranch
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: OK
+  '/{idBranch}/patch/undo':
     put:
       tags:
         - patch
@@ -59,7 +192,7 @@ paths:
       description: ""
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -67,7 +200,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/{branchId}/patch/redo':
+  '/{idBranch}/patch/redo':
     put:
       tags:
         - patch
@@ -75,7 +208,7 @@ paths:
       description: ""
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -83,7 +216,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/{branchId}/patches/clear':
+  '/{idBranch}/patches/clear':
     put:
       tags:
         - patch
@@ -91,7 +224,7 @@ paths:
       description: ""
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -99,7 +232,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/{branchId}/patch':
+  '/{idBranch}/patch':
     post:
       tags:
         - patch
@@ -107,7 +240,7 @@ paths:
       description: "Mise a jour du graph de mosaiquage a partir d'un geoJSON"
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -135,12 +268,12 @@ paths:
                   features:
                     type: object
                     example:
-                      [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [[[230748, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230748, 6759736]]] } } ]
+                      [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [[[230748, 6759653], [230746, 6759653], [230746, 6759651], [230748, 6759651], [230748, 6759653]]] } } ]
 
       responses:
         '200':
           description: OK
-  '/{branchId}/patches':
+  '/{idBranch}/patches':
     get:
       tags:
         - patch
@@ -148,7 +281,7 @@ paths:
       description: ""
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -156,7 +289,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/{branchId}/graph':
+  '/{idBranch}/graph':
     get:
       tags:
         - graph
@@ -164,7 +297,7 @@ paths:
       description: ""
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -185,7 +318,7 @@ paths:
         '200':
           description: OK
 
-  '/{branchId}/wmts':
+  '/{idBranch}/wmts':
     get:
       tags:
         - wmts
@@ -193,7 +326,7 @@ paths:
       description: ""
       parameters:
         - in: path
-          name: branchId
+          name: idBranch
           description: l'identifiant de la branche
           required: true
           schema:
@@ -333,6 +466,12 @@ paths:
             type: string
             enum:
               - overviews
+        - in: query
+          name: cachePath
+          required: true
+          schema:
+            type: string
+          example: "cache_test"
 
       responses:
         '200':

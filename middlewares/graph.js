@@ -4,6 +4,7 @@ const path = require('path');
 const { matchedData } = require('express-validator');
 const cog = require('../cog_path');
 const gdalProcessing = require('../gdal_processing');
+const db = require('../db/db');
 
 function getGraph(req, _res, next) {
   if (req.error) {
@@ -12,7 +13,7 @@ function getGraph(req, _res, next) {
     return;
   }
   debug('~~~GetGraph');
-  const { overviews } = req.app;
+  const { overviews } = req;
   const params = matchedData(req);
   const { x } = params;
   const { y } = params;
@@ -36,10 +37,10 @@ function getGraph(req, _res, next) {
     const cogPath = cog.getTilePath(Tx, Ty, lvlMax, overviews);
     // const url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
     // on commence par cherche la version de la branche
-    let url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${idBranch}_${cogPath.filename}.tif`);
+    let url = path.join(req.dir_cache, 'graph', cogPath.dirPath, `${idBranch}_${cogPath.filename}.tif`);
     // si jamais la version de la branch n'existe pas, il faut prendre la version d'origine
     if (!fs.existsSync(url)) {
-      url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
+      url = path.join(req.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
     }
     debug(url);
     if (!fs.existsSync(url)) {
@@ -47,17 +48,14 @@ function getGraph(req, _res, next) {
       next();
       return;
     }
-    gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, I, J, overviews.tileSize.width, 'graph').then((out) => {
-      debug(req.app.cache_mtd);
-      /* eslint-disable no-param-reassign */
+    gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, I, J, overviews.tileSize.width, 'graph').then(async (out) => {
       if (out.color.some((item) => item !== 0)) {
-        if ((out.color[0] in req.app.cache_mtd)
-          && (out.color[1] in req.app.cache_mtd[out.color[0]])
-          && (out.color[2] in req.app.cache_mtd[out.color[0]][out.color[1]])) {
-          out.cliche = req.app.cache_mtd[out.color[0]][out.color[1]][out.color[2]];
-          debug(JSON.stringify(out));
+        /* eslint-disable no-param-reassign */
+        try {
+          const opi = await db.getOPIFromColor(req.client, idBranch, out.color);
+          out.cliche = opi.name;
           req.result = { json: out, code: 200 };
-        } else {
+        } catch (error) {
           out.cliche = 'not found';
           req.result = { json: out, code: 202 };
         }

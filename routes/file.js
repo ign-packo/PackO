@@ -1,29 +1,49 @@
 const debug = require('debug')('file');
 const router = require('express').Router();
-const { matchedData, param } = require('express-validator');
-const path = require('path');
+const { matchedData, param, query } = require('express-validator');
+const pathMod = require('path');
 const fs = require('fs');
 
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
-
-// Dossier contenant les differents fichiers
-const parentDir = `${global.dir_cache}`;
 
 router.get('/json/:typefile', [
   param('typefile')
     .exists().withMessage(createErrMsg.missingParameter('typefile'))
     .isIn(['overviews', 'test'])
     .withMessage(createErrMsg.invalidParameter('typefile')),
+  query('cachePath')
+    .exists().withMessage(createErrMsg.missingParameter('cachePath')),
 ], validateParams,
-(req, res) => {
+async (req, res, next) => {
   debug('~~~getJson~~~');
+  if (req.error) {
+    next();
+    return;
+  }
   const params = matchedData(req);
-  const { typefile } = params;
-
-  const filePath = path.join(parentDir, `${typefile}.json`);
-
+  const { typefile, cachePath } = params;
   try {
+    if (!fs.existsSync(cachePath)) {
+      const err = new Error();
+      err.code = 404;
+      err.msg = {
+        status: createErrMsg.missingDir(cachePath),
+        errors: [{
+          localisation: 'GET /json/{filetype}',
+          param: 'cachePath',
+          value: cachePath,
+          msg: createErrMsg.missingDir(typefile),
+        }],
+      };
+      throw err;
+    }
+    // debug('ICI', cachePath)
+    // await fs.promises.access(cachePath);
+    // debug('LA', cachePath)
+
+    const filePath = pathMod.join(cachePath, `${typefile}.json`);
+
     if (!fs.existsSync(filePath)) {
       const err = new Error();
       err.code = 404;

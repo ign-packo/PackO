@@ -6,6 +6,7 @@ const validator = require('../paramValidation/validator');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 const patch = require('../middlewares/patch');
+const pgClient = require('../middlewares/pgClient');
 const returnMsg = require('../middlewares/returnMsg');
 
 const geoJsonAPatcher = [
@@ -42,8 +43,10 @@ router.get('/:idBranch/patches', [
     .withMessage(createErrMsg.invalidParameter('idBranch')),
 ],
 validateParams,
+pgClient.open,
 branch.validBranch,
 patch.getPatches,
+pgClient.close,
 returnMsg);
 
 router.post('/:idBranch/patch',
@@ -56,8 +59,11 @@ router.post('/:idBranch/patch',
     ...geoJsonAPatcher,
   ],
   validateParams,
+  pgClient.open,
   branch.validBranch,
-  patch.patch,
+  branch.getOverviews,
+  patch.postPatch,
+  pgClient.close,
   returnMsg);
 
 router.put('/:idBranch/patch/undo', [
@@ -67,8 +73,11 @@ router.put('/:idBranch/patch/undo', [
     .withMessage(createErrMsg.invalidParameter('idBranch')),
 ],
 validateParams,
+pgClient.open,
 branch.validBranch,
+branch.getOverviews,
 patch.undo,
+pgClient.close,
 returnMsg);
 
 router.put('/:idBranch/patch/redo', [
@@ -78,8 +87,11 @@ router.put('/:idBranch/patch/redo', [
     .withMessage(createErrMsg.invalidParameter('idBranch')),
 ],
 validateParams,
+pgClient.open,
 branch.validBranch,
+branch.getOverviews,
 patch.redo,
+pgClient.close,
 returnMsg);
 
 router.put('/:idBranch/patches/clear', [
@@ -89,8 +101,11 @@ router.put('/:idBranch/patches/clear', [
     .withMessage(createErrMsg.invalidParameter('idBranch')),
 ],
 validateParams,
+pgClient.open,
 branch.validBranch,
+branch.getOverviews,
 patch.clear,
+pgClient.close,
 returnMsg);
 
 module.exports = router;

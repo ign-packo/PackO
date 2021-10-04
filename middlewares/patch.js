@@ -6,6 +6,7 @@ const path = require('path');
 const { matchedData } = require('express-validator');
 const cog = require('../cog_path');
 const gdalProcessing = require('../gdal_processing');
+const db = require('../db/db');
 
 // Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
 function encapBody(req, _res, next) {
@@ -36,7 +37,7 @@ function getCOGs(features, overviews) {
       }
     });
   });
-  debug('~BBox:', 'Done');
+  debug('~BBox: Done');
 
   const cogs = [];
 
@@ -64,13 +65,25 @@ function rename(url, urlOrig) {
   fs.renameSync(url, urlOrig);
 }
 
-function getPatches(req, _res, next) {
+async function getPatches(req, _res, next) {
+  debug('~~~GET patches');
   if (req.error) {
     next();
     return;
   }
-  debug('~~~GET patches');
-  req.result = { json: req.selectedBranch.activePatches, code: 200 };
+  const params = matchedData(req);
+  const { idBranch } = params;
+  try {
+    const activePatches = await db.getActivePatches(req.client, idBranch);
+    req.result = { json: activePatches, code: 200 };
+  } catch (error) {
+    debug(error);
+    req.error = {
+      msg: error,
+      code: 406,
+      function: 'getPatches',
+    };
+  }
   next();
 }
 
@@ -164,32 +177,40 @@ function createPatch(slab, geoJson, overviews, dirCache, idBranch) {
   return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => P);
 }
 
-function patch(req, _res, next) {
+async function postPatch(req, _res, next) {
   if (req.error) {
     next();
     return;
   }
   debug('~~~POST patch');
 
-  const { overviews } = req.app;
+  const { overviews } = req;
   const params = matchedData(req);
   const geoJson = params.geoJSON;
   const { idBranch } = params;
 
-  let newPatchId = 0;
-  for (let i = 0; i < req.selectedBranch.activePatches.features.length; i += 1) {
-    const id = req.selectedBranch.activePatches.features[i].properties.patchId;
-    if (newPatchId < id) newPatchId = id;
+  const activePatches = await db.getActivePatches(req.client, idBranch);
+
+  let newPatchNum = 0;
+  for (let i = 0; i < activePatches.features.length; i += 1) {
+    const id = activePatches.features[i].properties.num;
+    if (newPatchNum < id) newPatchNum = id;
   }
 
-  newPatchId += 1;
+  newPatchNum += 1;
+
+  // const newPatchNum = Math.max(
+  //   ...activePatches.features.map((feature) => feature.properties.num),
+  // ) + 1;
 
   const cogs = getCOGs(geoJson.features, overviews);
+  debug('cogs =', cogs);
   const promisesCreatePatch = [];
   debug('~create patch');
   cogs.forEach((aCog) => {
-    promisesCreatePatch.push(createPatch(aCog, geoJson, overviews, global.dir_cache, idBranch));
+    promisesCreatePatch.push(createPatch(aCog, geoJson, overviews, req.dir_cache, idBranch));
   });
+  debug('~Promise.all');
   Promise.all(promisesCreatePatch).then((patches) => {
     const promises = [];
     const slabsModified = [];
@@ -201,13 +222,13 @@ function patch(req, _res, next) {
         return;
       }
       /* eslint-disable no-param-reassign */
-      P.urlGraphOutput = path.join(global.dir_cache,
+      P.urlGraphOutput = path.join(req.dir_cache,
         'graph',
         P.cogPath.dirPath,
-        `${idBranch}_${P.cogPath.filename}_${newPatchId}.tif`);
-      P.urlOrthoOutput = path.join(global.dir_cache,
+        `${idBranch}_${P.cogPath.filename}_${newPatchNum}.tif`);
+      P.urlOrthoOutput = path.join(req.dir_cache,
         'ortho', P.cogPath.dirPath,
-        `${idBranch}_${P.cogPath.filename}_${newPatchId}.tif`);
+        `${idBranch}_${P.cogPath.filename}_${newPatchNum}.tif`);
       /* eslint-enable no-param-reassign */
       slabsModified.push(P.slab);
 
@@ -217,68 +238,83 @@ function patch(req, _res, next) {
       }));
     });
     debug('', promises.length, 'patchs à appliquer.');
-    Promise.all(promises).then(() => {
+    Promise.all(promises).then(
+      async () => {
       // Tout c'est bien passé
-      debug("=> tout c'est bien passé on peut renommer les images");
-      patches.forEach((P) => {
-        if (P === null) {
-          return;
-        }
-        const urlHistory = path.join(global.dir_cache,
-          'opi',
-          P.cogPath.dirPath,
-          `${idBranch}_${P.cogPath.filename}_history.packo`);
-        if (fs.existsSync(urlHistory)) {
-          debug('history existe');
-          const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchId}`;
-          const tabHistory = history.split(';');
-          const prevId = tabHistory[tabHistory.length - 2];
-
-          const urlGraphPrev = path.join(global.dir_cache, 'graph', P.cogPath.dirPath,
-            `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
-          const urlOrthoPrev = path.join(global.dir_cache, 'ortho', P.cogPath.dirPath,
-            `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
-
-          debug(P.urlGraph);
-          debug(' historique :', history);
-          fs.writeFileSync(`${urlHistory}`, history);
-          // on ne fait un rename que si prevId n'est pas 'orig'
-          if (prevId !== 'orig') {
-            rename(P.urlGraph, urlGraphPrev);
-            rename(P.urlOrtho, urlOrthoPrev);
+        debug("=> tout c'est bien passé on peut renommer les images");
+        patches.forEach((P) => {
+          if (P === null) {
+            return;
           }
-        } else {
-          debug('history n existe pas encore');
-          const history = `orig;${newPatchId}`;
-          fs.writeFileSync(`${urlHistory}`, history);
-          // On a pas besoin de renommer l'image d'origine
-          // qui reste partagée pour toutes les branches
-        }
-        rename(P.urlGraphOutput, P.urlGraph);
-        rename(P.urlOrthoOutput, P.urlOrtho);
-      });
-      // on note le patch Id
-      geoJson.features.forEach((feature) => {
-        /* eslint-disable no-param-reassign */
-        feature.properties.patchId = newPatchId;
-        feature.properties.slabs = slabsModified;
-        /* eslint-enable no-param-reassign */
-      });
-      // on ajoute ce patch à l'historique
-      debug('=> Patch', newPatchId, 'ajouté');
-      req.selectedBranch.activePatches.features = req.selectedBranch.activePatches.features.concat(
-        geoJson.features,
-      );
-      debug('features in activePatches:', req.selectedBranch.activePatches.features.length);
+          const urlHistory = path.join(req.dir_cache,
+            'opi',
+            P.cogPath.dirPath,
+            `${idBranch}_${P.cogPath.filename}_history.packo`);
+          if (fs.existsSync(urlHistory)) {
+            debug('history existe');
+            const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchNum}`;
+            const tabHistory = history.split(';');
+            const prevId = tabHistory[tabHistory.length - 2];
 
-      // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
-      req.selectedBranch.unactivePatches.features = [];
-      debug('features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
-      // on sauve l'historique (au cas ou l'API devrait etre relancee)
-      fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
-      req.result = { json: slabsModified, code: 200 };
-      next();
-    }).catch((err) => {
+            const urlGraphPrev = path.join(req.dir_cache, 'graph', P.cogPath.dirPath,
+              `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
+            const urlOrthoPrev = path.join(req.dir_cache, 'ortho', P.cogPath.dirPath,
+              `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
+
+            debug(P.urlGraph);
+            debug(' historique :', history);
+            fs.writeFileSync(`${urlHistory}`, history);
+            // on ne fait un rename que si prevId n'est pas 'orig'
+            if (prevId !== 'orig') {
+              rename(P.urlGraph, urlGraphPrev);
+              rename(P.urlOrtho, urlOrthoPrev);
+            }
+          } else {
+            debug('history n existe pas encore');
+            const history = `orig;${newPatchNum}`;
+            fs.writeFileSync(`${urlHistory}`, history);
+            // On a pas besoin de renommer l'image d'origine
+            // qui reste partagée pour toutes les branches
+          }
+          rename(P.urlGraphOutput, P.urlGraph);
+          rename(P.urlOrthoOutput, P.urlOrtho);
+        });
+        // on note le patch Id
+        geoJson.features.forEach((feature) => {
+          /* eslint-disable no-param-reassign */
+          feature.properties.num = newPatchNum;
+          feature.properties.slabs = slabsModified;
+          /* eslint-enable no-param-reassign */
+        });
+        // on ajoute ce patch à l'historique
+        debug('=> Patch', newPatchNum, 'ajouté');
+        // debug(geoJson.features);
+        // activePatches.features = activePatches.features.concat(
+        //  geoJson.features,
+        // );
+
+        const opiId = await db.getOpiId(req.client, geoJson.features[0].properties.cliche);
+        const patchId = await db.insertPatch(req.client, idBranch, geoJson.features[0], opiId);
+
+        // ajouter les slabs correspondant au patch dans la table correspondante
+        const result = await db.insertSlabs(req.client, patchId, geoJson.features[0]);
+
+        debug(result.rowCount);
+
+        // debug('features in activePatches:', activePatches.features.length);
+
+        // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
+        // req.selectedBranch.unactivePatches.features = [];
+        // debug('features in unactivePatches:',req.selectedBranch.unactivePatches.features.length);
+        // on sauve l'historique (au cas ou l'API devrait etre relancee)
+        // fs.writeFileSync(path.join(global.dir_cache, 'branches.json'),
+        // JSON.stringify(req.app.branches, null, 4));
+        // req.result = { json: slabsModified, code: 200 };
+
+        req.result = { json: slabsModified, code: 200 };
+        next();
+      },
+    ).catch((err) => {
       debug(err);
       req.error = {
         msg: err.toString(),
@@ -298,7 +334,7 @@ function patch(req, _res, next) {
   });
 }
 
-function undo(req, _res, next) {
+async function undo(req, _res, next) {
   if (req.error) {
     next();
     return;
@@ -306,53 +342,72 @@ function undo(req, _res, next) {
   debug('~~~PUT patch/undo');
   const params = matchedData(req);
   const { idBranch } = params;
-  const { overviews } = req.app;
-  if (req.selectedBranch.activePatches.features.length === 0) {
+  const { overviews } = req;
+
+  const activePatches = await db.getActivePatches(req.client, idBranch);
+
+  // if (req.selectedBranch.activePatches.features.length === 0) {
+  if (activePatches.features.length === 0) {
     debug('rien à annuler');
-    req.result = { json: 'nothing to undo', code: 201 };
+    req.result = { json: 'rien à annuler', code: 201 };
     next();
     return;
   }
 
   // trouver le patch a annuler: c'est-à-dire sortir les éléments
   // de req.app.activePatches.features avec patchId == lastPatchId
-  const lastPatchId = req.selectedBranch.activePatches.features[
-    req.selectedBranch.activePatches.features.length - 1]
-    .properties.patchId;
-  debug(`Patch '${lastPatchId}' à annuler.`);
-  const features = [];
-  let index = req.selectedBranch.activePatches.features.length - 1;
-  const slabs = {};
-  while (index >= 0) {
-    const feature = req.selectedBranch.activePatches.features[index];
-    if (feature.properties.patchId === lastPatchId) {
-      features.push(feature);
-      req.selectedBranch.activePatches.features.splice(index, 1);
-      feature.properties.slabs.forEach((item) => {
-        slabs[`${item.x}_${item.y}_${item.z}`] = item;
-      });
-    }
-    index -= 1;
-  }
-  debug(Object.keys(slabs).length, 'dalles impactées');
+  // const lastPatchId = activePatches.features[
+  //   activePatches.features.length - 1]
+  //   .properties.num;
+
+  const lastPatchNum = Math.max(...activePatches.features.map((feature) => feature.properties.num));
+  const lastPatchId = activePatches.features
+    .filter((feature) => feature.properties.num === lastPatchNum)[0].properties.id;
+
+  debug(`Patch '${lastPatchNum}' à annuler.`);
+
+  // const features = [];
+  // let index = activePatches.features.length - 1;
+  // const slabs = {};
+  // while (index >= 0) {
+  //   const feature = activePatches.features[index];
+  //   if (feature.properties.num === lastPatchId) {
+  //     features.push(feature);
+  //     activePatches.features.splice(index, 1);
+  //     feature.properties.slabs.forEach((item) => {
+  //       slabs[`${item.x}_${item.y}_${item.z}`] = item;
+  //     });
+  //   }
+  //   index -= 1;
+  // }
+
+  const slabs = await db.getSlabs(req.client, lastPatchId);
+
+  debug(slabs);
+
+  // debug(Object.keys(slabs).length, 'dalles impactées');
+  debug(slabs.length, 'dalles impactées');
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
   const errors = [];
   const histories = [];
-  Object.values(slabs).forEach((slab, indexSlab) => {
-    debug('slab :', slab);
+  // Object.values(slabs).forEach((slab, indexSlab) => {
+  // slabs.forEach((slab, indexSlab) => {
+  slabs.forEach((slab, indexSlab) => {
+    debug('slab :', slab, indexSlab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
-    const opiDir = path.join(global.dir_cache, 'opi', cogPath.dirPath);
+    const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
 
     // on récupère l'historique de cette tuile
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     const history = fs.readFileSync(`${urlHistory}`).toString().split(';');
     // on vérifie que le lastPatchId est bien le dernier sur cette tuile
-    if (`${history[history.length - 1]}` !== `${lastPatchId}`) {
+    if (`${history[history.length - 1]}` !== `${lastPatchNum}`) {
       debug("erreur d'historique");
-      errors.push(`erreur d'historique sur la tuile ${cogPath}`);
-      debug('erreur : ', history, lastPatchId);
+      errors.push(`error: history on tile ${cogPath}`);
+      debug('erreur : ', history, lastPatchNum);
       // res.status(404).send(`erreur d'historique sur la tuile ${cogPath}`);
     } else {
+      // histories[indexSlab] = history;
       histories[indexSlab] = history;
     }
   });
@@ -365,9 +420,10 @@ function undo(req, _res, next) {
     next();
     return;
   }
-  Object.values(slabs).forEach((slab, indexSlab) => {
+  // Object.values(slabs).forEach((slab, indexSlab) => {
+  slabs.forEach((slab, indexSlab) => {
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
-    const opiDir = path.join(global.dir_cache, 'opi', cogPath.dirPath);
+    const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     // on récupère la version à restaurer
     const history = histories[indexSlab];
@@ -383,8 +439,8 @@ function undo(req, _res, next) {
     fs.writeFileSync(`${urlHistory}`, newHistory);
     debug(` dalle ${slab.z}/${slab.y}/${slab.x} : version ${idSelected} selectionnée`);
     // debug(' version selectionnée pour la tuile :', idSelected);
-    const graphDir = path.join(global.dir_cache, 'graph', cogPath.dirPath);
-    const orthoDir = path.join(global.dir_cache, 'ortho', cogPath.dirPath);
+    const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
+    const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
     // renommer les images pour pointer sur ce numéro de version
     const urlGraph = path.join(graphDir, `${idBranch}_${cogPath.filename}.tif`);
     const urlOrtho = path.join(orthoDir, `${idBranch}_${cogPath.filename}.tif`);
@@ -404,19 +460,25 @@ function undo(req, _res, next) {
     }
   });
 
-  req.selectedBranch.unactivePatches.features = req.selectedBranch.unactivePatches.features.concat(
-    features,
-  );
-  fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
+  const result = await db.deactivatePatch(req.client, lastPatchId);
+
+  debug(result.rowCount);
+
+  // req.selectedBranch.unactivePatches.features = req.selectedBranch.unactivePatches.features
+  //   .concat(
+  //     features,
+  //   );
+  // fs.writeFileSync(path.join(req.dir_cache, 'branches.json'),
+  //   JSON.stringify(req.app.branches, null, 4));
 
   debug('fin du undo');
-  debug('features in activePatches:', req.selectedBranch.activePatches.features.length);
-  debug('features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
-  req.result = { json: `undo: patch ${lastPatchId} canceled`, code: 200 };
+  // debug('features in activePatches:', activePatches.features.length);
+  // debug('features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
+  req.result = { json: `undo: patch ${lastPatchNum} annulé`, code: 200 };
   next();
 }
 
-function redo(req, _res, next) {
+async function redo(req, _res, next) {
   if (req.error) {
     next();
     return;
@@ -424,53 +486,69 @@ function redo(req, _res, next) {
   debug('~~~PUT patch/redo');
   const params = matchedData(req);
   const { idBranch } = params;
-  const { overviews } = req.app;
+  const { overviews } = req;
 
-  if (req.selectedBranch.unactivePatches.features.length === 0) {
+  const unactivePatches = await db.getUnactivePatches(req.client, idBranch);
+
+  // if (req.selectedBranch.unactivePatches.features.length === 0) {
+  if (unactivePatches.features.length === 0) {
     debug('nothing to redo');
-    req.result = { json: 'nothing to redo', code: 201 };
+    req.result = { json: 'rien à réappliquer', code: 201 };
     next();
     return;
   }
   // trouver le patch a refaire: c'est-à-dire sortir les éléments
   // de req.app.unactivePatches.features avec patchId == patchIdRedo
-  const patchIdRedo = req.selectedBranch.unactivePatches.features[
-    req.selectedBranch.unactivePatches.features.length - 1]
-    .properties.patchId;
-  debug('patchIdRedo:', patchIdRedo);
-  const features = [];
-  const slabs = {};
-  let index = req.selectedBranch.unactivePatches.features.length - 1;
-  while (index >= 0) {
-    const feature = req.selectedBranch.unactivePatches.features[index];
-    if (feature.properties.patchId === patchIdRedo) {
-      features.push(feature);
-      feature.properties.slabs.forEach((item) => {
-        slabs[`${item.x}_${item.y}_${item.z}`] = item;
-      });
-      req.selectedBranch.unactivePatches.features.splice(index, 1);
-    }
-    index -= 1;
-  }
-  debug(Object.keys(slabs).length, ' dalles impactées');
+  // const patchIdRedo = req.selectedBranch.unactivePatches.features[
+  //   req.selectedBranch.unactivePatches.features.length - 1]
+  //   .properties.patchId;
+
+  const patchNumRedo = Math.min(
+    ...unactivePatches.features.map((feature) => feature.properties.num),
+  );
+  const patchIdRedo = unactivePatches.features
+    .filter((feature) => feature.properties.num === patchNumRedo)[0].properties.id;
+
+  debug(`Patch '${patchNumRedo}' à réappliquer.`);
+
+  // const features = [];
+  // const slabs = {};
+  // let index = req.selectedBranch.unactivePatches.features.length - 1;
+  // while (index >= 0) {
+  //   const feature = req.selectedBranch.unactivePatches.features[index];
+  //   if (feature.properties.patchId === patchNumRedo) {
+  //     features.push(feature);
+  //     feature.properties.slabs.forEach((item) => {
+  //       slabs[`${item.x}_${item.y}_${item.z}`] = item;
+  //     });
+  //     req.selectedBranch.unactivePatches.features.splice(index, 1);
+  //   }
+  //   index -= 1;
+  // }
+
+  const slabs = await db.getSlabs(req.client, patchIdRedo);
+
+  // debug(Object.keys(slabs).length, ' dalles impactées');
+  debug(slabs.length, 'dalles impactées');
   // pour chaque tuile, renommer les images
-  Object.values(slabs).forEach((slab) => {
+  // Object.values(slabs).forEach((slab) => {
+  slabs.forEach((slab) => {
     debug(slab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
     debug(cogPath);
-    const graphDir = path.join(global.dir_cache, 'graph', cogPath.dirPath);
-    const orthoDir = path.join(global.dir_cache, 'ortho', cogPath.dirPath);
-    const opiDir = path.join(global.dir_cache, 'opi', cogPath.dirPath);
+    const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
+    const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
+    const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
 
     // on met a jour l'historique
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
-    const history = `${fs.readFileSync(`${urlHistory}`)};${patchIdRedo}`;
+    const history = `${fs.readFileSync(`${urlHistory}`)};${patchNumRedo}`;
     const tabHistory = history.split(';');
     const patchIdPrev = tabHistory[tabHistory.length - 2];
     fs.writeFileSync(`${urlHistory}`, history);
     // on verifie si la tuile a été effectivement modifiée par ce patch
-    const urlGraphSelected = path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchIdRedo}.tif`);
-    const urlOrthoSelected = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdRedo}.tif`);
+    const urlGraphSelected = path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchNumRedo}.tif`);
+    const urlOrthoSelected = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchNumRedo}.tif`);
     // renommer les images pour pointer sur ce numéro de version
     const urlGraph = path.join(graphDir, `${idBranch}_${cogPath.filename}.tif`);
     const urlOrtho = path.join(orthoDir, `${idBranch}_${cogPath.filename}.tif`);
@@ -487,19 +565,24 @@ function redo(req, _res, next) {
     rename(urlOrthoSelected, urlOrtho);
   });
   // on remet les features dans req.app.activePatches.features
-  req.selectedBranch.activePatches.features = req.selectedBranch.activePatches.features.concat(
-    features,
-  );
-  fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
+  // req.selectedBranch.activePatches.features = req.selectedBranch.activePatches.features.concat(
+  //   features,
+  // );
+  // fs.writeFileSync(path.join(global.dir_cache, 'branches.json'),
+  //   JSON.stringify(req.app.branches, null, 4));
 
-  debug('features in activePatches:', req.selectedBranch.activePatches.features.length);
-  debug('features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
+  // debug('features in activePatches:', req.selectedBranch.activePatches.features.length);
+  // debug('features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
+
+  const result = await db.reactivatePatch(req.client, patchIdRedo);
+  debug(result.rowCount);
+
   debug('fin du redo');
-  req.result = { json: `redo: patch ${patchIdRedo} reapplied`, code: 200 };
+  req.result = { json: `redo: patch ${patchNumRedo} réappliqué`, code: 200 };
   next();
 }
 
-function clear(req, _res, next) {
+async function clear(req, _res, next) {
   if (req.error) {
     next();
     return;
@@ -507,37 +590,55 @@ function clear(req, _res, next) {
   debug('~~~PUT patches/clear');
   if (!(process.env.NODE_ENV === 'development' || req.query.test === 'true')) {
     debug('unauthorized');
-    req.result = { json: 'unauthorized', code: 401 };
+    req.result = { json: 'non autorisé', code: 401 };
     next();
     return;
   }
   const params = matchedData(req);
   const { idBranch } = params;
-  const { overviews } = req.app;
+  const { overviews } = req;
   gdalProcessing.clearCache();
+
+  const activePatches = await db.getActivePatches(req.client, idBranch);
+
   // pour chaque patch de req.app.activePatches.features
-  if (req.selectedBranch.activePatches.features.length === 0) {
+  if (activePatches.features.length === 0) {
     debug(' nothing to clear');
-    req.result = { json: 'nothing to clear', code: 201 };
+    req.result = { json: 'rien à nettoyer', code: 201 };
     next();
     return;
   }
-  const { features } = req.selectedBranch.activePatches;
-
+  const { features } = activePatches;
   const slabsDico = {};
-  features.forEach((feature) => {
-    feature.properties.slabs.forEach((item) => {
-      slabsDico[`${item.x}_${item.y}_${item.z}`] = item;
+  // features.forEach((feature) => {
+  //   feature.properties.slabs.forEach((item) => {
+  //     slabsDico[`${item.x}_${item.y}_${item.z}`] = item;
+  //   });
+  // });
+  features.forEach((feature, indexFeature) => {
+    feature.properties.x.forEach((item, indexSlab) => {
+      debug(features[indexFeature].properties.y[indexSlab]);
+      const x = item;
+      const y = features[indexFeature].properties.y[indexSlab];
+      const z = features[indexFeature].properties.z[indexSlab];
+      slabsDico[`${item}_${features[indexFeature].properties.y[indexSlab]}_${features[indexFeature].properties.z[indexSlab]}`] = {
+        x,
+        y,
+        z,
+      };
     });
   });
   debug('', Object.keys(slabsDico).length, ' dalles impactées');
+
+  debug(slabsDico);
+
   Object.values(slabsDico).forEach((slab) => {
     debug('clear sur : ', slab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
 
-    const graphDir = path.join(global.dir_cache, 'graph', cogPath.dirPath);
-    const orthoDir = path.join(global.dir_cache, 'ortho', cogPath.dirPath);
-    const opiDir = path.join(global.dir_cache, 'opi', cogPath.dirPath);
+    const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
+    const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
+    const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
 
     const arrayLinkGraph = fs.readdirSync(graphDir).filter((filename) => (filename.startsWith(`${idBranch}_${cogPath.filename}`)));
     // suppression des images intermediaires
@@ -555,20 +656,26 @@ function clear(req, _res, next) {
     fs.unlinkSync(urlHistory);
   });
 
-  req.selectedBranch.activePatches.features = [];
-  req.selectedBranch.unactivePatches.features = [];
-  fs.writeFileSync(path.join(global.dir_cache, 'branches.json'), JSON.stringify(req.app.branches, null, 4));
+  // req.selectedBranch.activePatches.features = [];
+  // req.selectedBranch.unactivePatches.features = [];
+  // fs.writeFileSync(path.join(req.dir_cache, 'branches.json'),
+  //   JSON.stringify(req.app.branches, null, 4));
 
-  debug(' features in activePatches:', req.selectedBranch.activePatches.features.length);
-  debug(' features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
+  // debug(' features in activePatches:', req.selectedBranch.activePatches.features.length);
+  // debug(' features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
+
+  const result = await db.deletePatches(req.client, idBranch);
+
+  debug(result.rowCount);
+
   debug('fin du clear');
-  req.result = { json: 'clear: all patches deleted', code: 200 };
+  req.result = { json: 'clear: tous les patches ont été effacés', code: 200 };
   next();
 }
 
 module.exports = {
   getPatches,
-  patch,
+  postPatch,
   undo,
   redo,
   clear,

@@ -5,6 +5,7 @@ const branch = require('../middlewares/branch');
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
 const graph = require('../middlewares/graph');
+const pgClient = require('../middlewares/pgClient');
 const returnMsg = require('../middlewares/returnMsg');
 
 router.get('/:idBranch/graph', [
@@ -22,8 +23,11 @@ router.get('/:idBranch/graph', [
     .withMessage(createErrMsg.invalidParameter('y')),
 ],
 validateParams,
+pgClient.open,
 branch.validBranch,
+branch.getOverviews,
 graph.getGraph,
+pgClient.close,
 returnMsg);
 
 module.exports = router;
