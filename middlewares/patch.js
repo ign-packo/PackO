@@ -22,20 +22,18 @@ function encapBody(req, _res, next) {
   next();
 }
 
-function getCOGs(features, overviews) {
+function getCOGs(feature, overviews) {
   const BBox = {};
-  features.forEach((feature) => {
-    feature.geometry.coordinates[0].forEach((point) => {
-      if ('xmin' in BBox) {
-        BBox.xmin = Math.min(BBox.xmin, point[0]);
-        BBox.xmax = Math.max(BBox.xmax, point[0]);
-        BBox.ymin = Math.min(BBox.ymin, point[1]);
-        BBox.ymax = Math.max(BBox.ymax, point[1]);
-      } else {
-        [BBox.xmin, BBox.ymin] = point;
-        [BBox.xmax, BBox.ymax] = point;
-      }
-    });
+  feature.geometry.coordinates[0].forEach((point) => {
+    if ('xmin' in BBox) {
+      BBox.xmin = Math.min(BBox.xmin, point[0]);
+      BBox.xmax = Math.max(BBox.xmax, point[0]);
+      BBox.ymin = Math.min(BBox.ymin, point[1]);
+      BBox.ymax = Math.max(BBox.ymax, point[1]);
+    } else {
+      [BBox.xmin, BBox.ymin] = point;
+      [BBox.xmax, BBox.ymax] = point;
+    }
   });
   debug('~BBox: Done');
 
@@ -88,8 +86,8 @@ async function getPatches(req, _res, next) {
 }
 
 // Preparation des masques
-function createPatch(slab, geoJson, overviews, dirCache, idBranch) {
-  debug('createPatch : ', slab);
+function createPatch(slab, feature, color, name, overviews, dirCache, idBranch) {
+  debug('createPatch : ', slab, feature, color, name);
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
   const slabWidth = overviews.tileSize.width * overviews.slabSize.width;
@@ -97,21 +95,18 @@ function createPatch(slab, geoJson, overviews, dirCache, idBranch) {
 
   const resolution = overviews.resolution * 2 ** (overviews.level.max - slab.z);
   const inputRings = [];
-  for (let f = 0; f < geoJson.features.length; f += 1) {
-    const feature = geoJson.features[f];
-    for (let n = 0; n < feature.geometry.coordinates.length; n += 1) {
-      const coordinates = feature.geometry.coordinates[n];
-      const ring = [];
-      for (let i = 0; i < coordinates.length; i += 1) {
-        const point = coordinates[i];
-        const x = Math.round((point[0] - xOrigin - slab.x * slabWidth * resolution)
-              / resolution);
-        const y = Math.round((yOrigin - point[1] - slab.y * slabHeight * resolution)
-              / resolution) + 1;
-        ring.push([x, y]);
-      }
-      inputRings.push(ring);
+  for (let n = 0; n < feature.geometry.coordinates.length; n += 1) {
+    const coordinates = feature.geometry.coordinates[n];
+    const ring = [];
+    for (let i = 0; i < coordinates.length; i += 1) {
+      const point = coordinates[i];
+      const x = Math.round((point[0] - xOrigin - slab.x * slabWidth * resolution)
+            / resolution);
+      const y = Math.round((yOrigin - point[1] - slab.y * slabHeight * resolution)
+            / resolution) + 1;
+      ring.push([x, y]);
     }
+    inputRings.push(ring);
   }
 
   const bbox = [0, 0, slabWidth, slabHeight + 1];
@@ -142,8 +137,7 @@ function createPatch(slab, geoJson, overviews, dirCache, idBranch) {
     ctx.closePath();
     ctx.fill();
   }
-
-  const P = { slab, mask, color: geoJson.features[0].properties.color };
+  const P = { slab, mask, color };
   P.cogPath = cog.getSlabPath(
     P.slab.x,
     P.slab.y,
@@ -155,7 +149,7 @@ function createPatch(slab, geoJson, overviews, dirCache, idBranch) {
   P.urlOrtho = path.join(dirCache, 'ortho', P.cogPath.dirPath,
     `${idBranch}_${P.cogPath.filename}.tif`);
   P.urlOpi = path.join(dirCache, 'opi', P.cogPath.dirPath,
-    `${P.cogPath.filename}_${geoJson.features[0].properties.cliche}.tif`);
+    `${P.cogPath.filename}_${name}.tif`);
   P.urlGraphOrig = path.join(dirCache, 'graph', P.cogPath.dirPath,
     `${P.cogPath.filename}.tif`);
   P.urlOrthoOrig = path.join(dirCache, 'ortho', P.cogPath.dirPath,
@@ -177,19 +171,9 @@ function createPatch(slab, geoJson, overviews, dirCache, idBranch) {
   return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => P);
 }
 
-async function postPatch(req, _res, next) {
-  if (req.error) {
-    next();
-    return;
-  }
-  debug('~~~POST patch');
-
-  const { overviews } = req;
-  const params = matchedData(req);
-  const geoJson = params.geoJSON;
-  const { idBranch } = params;
-
-  const activePatches = await db.getActivePatches(req.client, idBranch);
+async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
+  debug('applyPatch', feature);
+  const activePatches = await db.getActivePatches(pgClient, idBranch);
 
   let newPatchNum = 0;
   for (let i = 0; i < activePatches.features.length; i += 1) {
@@ -198,22 +182,24 @@ async function postPatch(req, _res, next) {
   }
 
   newPatchNum += 1;
-
-  // const newPatchNum = Math.max(
-  //   ...activePatches.features.map((feature) => feature.properties.num),
-  // ) + 1;
-
-  const cogs = getCOGs(geoJson.features, overviews);
+  const cogs = getCOGs(feature, overviews);
   debug('cogs =', cogs);
   const promisesCreatePatch = [];
   debug('~create patch');
   cogs.forEach((aCog) => {
-    promisesCreatePatch.push(createPatch(aCog, geoJson, overviews, req.dir_cache, idBranch));
+    promisesCreatePatch.push(createPatch(aCog,
+      feature,
+      feature.properties.color,
+      feature.properties.cliche,
+      overviews,
+      dirCache,
+      idBranch));
   });
   debug('~Promise.all');
-  Promise.all(promisesCreatePatch).then((patches) => {
+  const slabsModified = [];
+  await Promise.all(promisesCreatePatch).then(async (patches) => {
+    debug('ICI : ', patches);
     const promises = [];
-    const slabsModified = [];
 
     debug('~process patch');
 
@@ -222,11 +208,11 @@ async function postPatch(req, _res, next) {
         return;
       }
       /* eslint-disable no-param-reassign */
-      P.urlGraphOutput = path.join(req.dir_cache,
+      P.urlGraphOutput = path.join(dirCache,
         'graph',
         P.cogPath.dirPath,
         `${idBranch}_${P.cogPath.filename}_${newPatchNum}.tif`);
-      P.urlOrthoOutput = path.join(req.dir_cache,
+      P.urlOrthoOutput = path.join(dirCache,
         'ortho', P.cogPath.dirPath,
         `${idBranch}_${P.cogPath.filename}_${newPatchNum}.tif`);
       /* eslint-enable no-param-reassign */
@@ -238,7 +224,7 @@ async function postPatch(req, _res, next) {
       }));
     });
     debug('', promises.length, 'patchs à appliquer.');
-    Promise.all(promises).then(
+    await Promise.all(promises).then(
       async () => {
       // Tout c'est bien passé
         debug("=> tout c'est bien passé on peut renommer les images");
@@ -246,7 +232,7 @@ async function postPatch(req, _res, next) {
           if (P === null) {
             return;
           }
-          const urlHistory = path.join(req.dir_cache,
+          const urlHistory = path.join(dirCache,
             'opi',
             P.cogPath.dirPath,
             `${idBranch}_${P.cogPath.filename}_history.packo`);
@@ -256,9 +242,9 @@ async function postPatch(req, _res, next) {
             const tabHistory = history.split(';');
             const prevId = tabHistory[tabHistory.length - 2];
 
-            const urlGraphPrev = path.join(req.dir_cache, 'graph', P.cogPath.dirPath,
+            const urlGraphPrev = path.join(dirCache, 'graph', P.cogPath.dirPath,
               `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
-            const urlOrthoPrev = path.join(req.dir_cache, 'ortho', P.cogPath.dirPath,
+            const urlOrthoPrev = path.join(dirCache, 'ortho', P.cogPath.dirPath,
               `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
 
             debug(P.urlGraph);
@@ -280,58 +266,78 @@ async function postPatch(req, _res, next) {
           rename(P.urlOrthoOutput, P.urlOrtho);
         });
         // on note le patch Id
-        geoJson.features.forEach((feature) => {
-          /* eslint-disable no-param-reassign */
-          feature.properties.num = newPatchNum;
-          feature.properties.slabs = slabsModified;
-          /* eslint-enable no-param-reassign */
-        });
+        /* eslint-disable-next-line */
+        feature.properties.num = newPatchNum;
+        /* eslint-disable-next-line */
+        feature.properties.slabs = slabsModified;
         // on ajoute ce patch à l'historique
         debug('=> Patch', newPatchNum, 'ajouté');
-        // debug(geoJson.features);
-        // activePatches.features = activePatches.features.concat(
-        //  geoJson.features,
-        // );
 
-        const opiId = await db.getOpiId(req.client, geoJson.features[0].properties.cliche);
-        const patchId = await db.insertPatch(req.client, idBranch, geoJson.features[0], opiId);
+        const opiId = await db.getOpiId(pgClient, feature.properties.cliche);
+        const patchId = await db.insertPatch(pgClient, idBranch, feature, opiId);
 
         // ajouter les slabs correspondant au patch dans la table correspondante
-        const result = await db.insertSlabs(req.client, patchId, geoJson.features[0]);
+        await db.insertSlabs(pgClient,
+          patchId,
+          feature.properties.slabs);
 
-        debug(result.rowCount);
-
-        // debug('features in activePatches:', activePatches.features.length);
-
-        // on purge les patchs inactifs puisqu'on ne pourra plus les appliquer
-        // req.selectedBranch.unactivePatches.features = [];
-        // debug('features in unactivePatches:',req.selectedBranch.unactivePatches.features.length);
-        // on sauve l'historique (au cas ou l'API devrait etre relancee)
-        // fs.writeFileSync(path.join(global.dir_cache, 'branches.json'),
-        // JSON.stringify(req.app.branches, null, 4));
-        // req.result = { json: slabsModified, code: 200 };
-
-        req.result = { json: slabsModified, code: 200 };
-        next();
+        debug('on retourne les dalles modifiees -- 1 : ', slabsModified);
       },
     ).catch((err) => {
       debug(err);
-      req.error = {
-        msg: err.toString(),
-        code: 400,
-        function: 'patch',
-      };
-      next();
     });
-  }).catch((error) => {
-    debug('on a reçu une erreur : ', error);
+  });
+  debug('Fin de applyPatch');
+  debug('on retourne les dalles modifiees -- 2 : ', slabsModified);
+  return slabsModified;
+}
+
+async function applyPatches(pgClient, overviews, dirCache, idBranch, features) {
+  debug('applyPatches', features);
+
+  /* eslint-disable-next-line */
+  for (const feature of features) {
+    debug('application de ', feature);
+    /* eslint-disable-next-line */
+    await applyPatch(
+      pgClient,
+      overviews,
+      dirCache, idBranch,
+      feature,
+    );
+  }
+  debug('fin de applyPatches');
+}
+
+async function postPatch(req, _res, next) {
+  if (req.error) {
+    next();
+    return;
+  }
+  debug('~~~POST patch');
+
+  const { overviews } = req;
+  const params = matchedData(req);
+  const geoJson = params.geoJSON;
+  const { idBranch } = params;
+
+  try {
+    const slabsModified = await applyPatch(req.client,
+      overviews,
+      req.dir_cache,
+      idBranch,
+      geoJson.features[0]);
+    debug('slabsModified : ', slabsModified);
+    req.result = { json: slabsModified, code: 200 };
+  } catch (error) {
+    debug(error);
     req.error = {
       msg: error.toString(),
       code: 404,
       function: 'patch',
     };
-    next();
-  });
+  }
+  next();
 }
 
 async function undo(req, _res, next) {
@@ -662,6 +668,7 @@ async function clear(req, _res, next) {
 
 module.exports = {
   getPatches,
+  applyPatches,
   postPatch,
   undo,
   redo,

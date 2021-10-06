@@ -11,6 +11,8 @@ const overviews = JSON.parse(fs.readFileSync('./regress/data/regress_overviews.j
 const cacheName = 'cacheRegress';
 const cachePath = '/cache_regress';
 
+// const idInvalidBranch = 9999;
+
 let idCache = null;
 function setIdCache(id) {
   idCache = id;
@@ -21,6 +23,18 @@ let idBranch = null;
 function setIdBranch(id) {
   idBranch = id;
 }
+
+// const branchName2 = 'branchRegress2';
+// let idBranch2 = null;
+// function setIdBranch2(id) {
+//   idBranch2 = id;
+// }
+
+// const branchName3 = 'branchRegress3';
+// let idBranch3 = null;
+// function setIdBranch3(id) {
+//   idBranch3 = id;
+// }
 
 describe('Branch', () => {
   after((done) => {
@@ -112,6 +126,73 @@ describe('Branch', () => {
     });
   });
 
+  // describe('POST /rebase', () => {
+  //   describe('add a second valid branch', () => {
+  //     it('should return an idBranch', (done) => {
+  //       chai.request(app)
+  //         .post('/branch')
+  //         .query({
+  //           name: branchName2,
+  //           idCache,
+  //         })
+  //         .end((err, res) => {
+  //           should.not.exist(err);
+  //           res.should.have.status(200);
+  //           const resJson = JSON.parse(res.text);
+  //           resJson.should.have.property('id');
+  //           setIdBranch2(resJson.id);
+  //           resJson.should.have.property('name').equal(branchName2);
+  //           done();
+  //         });
+  //     });
+  //   });
+  //   describe('rebase two valid branches', () => {
+  //     it('should return an idProcess', (done) => {
+  //       chai.request(app)
+  //         .post(`${idBranch}/rebase`)
+  //         .query({
+  //           name: branchName3,
+  //           idBase: idBranch2,
+  //         })
+  //         .end((err, res) => {
+  //           should.not.exist(err);
+  //           res.should.have.status(200);
+  //           done();
+  //         });
+  //     });
+  //   });
+  //   describe('rebase from a non existing branch', () => {
+  //     it('should failed', (done) => {
+  //       chai.request(app)
+  //         .post(`${idInvalidBranch}/rebase`)
+  //         .query({
+  //           name: branchName3,
+  //           idBase: idBranch2,
+  //         })
+  //         .end((err, res) => {
+  //           should.not.exist(err);
+  //           res.should.have.status(400);
+  //           done();
+  //         });
+  //     });
+  //   });
+  //   describe('rebase on a non existing branch', () => {
+  //     it('should failed', (done) => {
+  //       chai.request(app)
+  //         .post(`${idBranch}/rebase`)
+  //         .query({
+  //           name: branchName3,
+  //           idBase: idInvalidBranch,
+  //         })
+  //         .end((err, res) => {
+  //           should.not.exist(err);
+  //           res.should.have.status(400);
+  //           done();
+  //         });
+  //     });
+  //   });
+  // });
+
   describe('DELETE /branch', () => {
     describe('delete a valid branch', () => {
       it('should succeed', (done) => {
@@ -134,7 +215,7 @@ describe('Branch', () => {
           .query({ idBranch: 0 })
           .end((err, res) => {
             should.not.exist(err);
-            res.should.have.status(400);
+            res.should.have.status(406);
             done();
           });
       });

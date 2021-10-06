@@ -63,19 +63,25 @@ async function insertListOpi(pgClient, idCache, listOpi) {
   }
 }
 
-async function getCachePath(pgClient, idBranch) {
-  debug(`~~getCachePath (idBranch: ${idBranch})`);
+async function getCache(pgClient, idBranch) {
+  debug(`~~getCache (idBranch: ${idBranch})`);
   try {
     const results = await pgClient.query(
-      'SELECT c.path FROM branches b, caches c WHERE b.id_cache = c.id AND b.id = $1',
+      'SELECT c.id, c.path FROM branches b, caches c WHERE b.id_cache = c.id AND b.id = $1',
       [idBranch],
     );
-    if (results.rowCount === 1) return results.rows[0].path;
+    if (results.rowCount === 1) return results.rows[0];
     throw new Error('idBranch non valide');
   } catch (error) {
     debug('Error: ', error);
     throw error;
   }
+}
+
+async function getCachePath(pgClient, idBranch) {
+  debug(`~~getCachePath (idBranch: ${idBranch})`);
+  const c = await getCache(pgClient, idBranch);
+  return c.path;
 }
 
 async function getBranches(pgClient, idCache) {
@@ -341,12 +347,12 @@ async function getSlabs(pgClient, idPatch) {
   }
 }
 
-async function insertSlabs(pgClient, idPatch, patch) {
+async function insertSlabs(pgClient, idPatch, slabs) {
   try {
     debug(`~~insertSlabs (idPatch: ${idPatch})`);
 
     const values = [];
-    patch.properties.slabs.forEach((slab) => {
+    slabs.forEach((slab) => {
       values.push([idPatch, slab.x, slab.y, slab.z]);
     });
 
@@ -387,6 +393,7 @@ module.exports = {
   insertCache,
   deleteCache,
   insertListOpi,
+  getCache,
   getCachePath,
   getBranches,
   getIdCacheFromPath,

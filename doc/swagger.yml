@@ -186,6 +186,34 @@ paths:
       responses:
         '200':
           description: OK
+  '/{idBranch}/rebase':
+    post:
+      tags:
+        - branch
+      summary: "Création d'une nouvelle branche en appliquant les patchs de cette branche sur une autre branche"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+          example: "maNouvelleBranche"
+        - in: query
+          name: idBase
+          required: true
+          schema:
+            type: integer
+          example: 0
+      responses:
+        '200':
+          description: OK
   '/processes':
     get:
       tags:
