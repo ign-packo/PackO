@@ -367,7 +367,7 @@ async function insertSlabs(pgClient, idPatch, patch) {
 
 async function getProcesses(pgClient) {
   try {
-    debug(`~~getProcesses`);
+    debug('~~getProcesses');
 
     const sql = format('SELECT * FROM processes');
     debug(sql);

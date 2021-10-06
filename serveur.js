@@ -41,7 +41,7 @@ const patch = require('./routes/patch');
 const { misc, gitVersion } = require('./routes/misc');
 const branch = require('./routes/branch');
 const cache = require('./routes/cache');
-const processQueue = require('./routes/processqueue');
+const processQueue = require('./routes/processQueue');
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
@@ -78,7 +78,7 @@ try {
   app.use('/', misc);
   app.use('/', branch);
   app.use('/', cache);
-  app.use('/', processQueue);  
+  app.use('/', processQueue);
 
   app.use('/itowns', express.static('itowns'));
 

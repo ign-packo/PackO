@@ -19,5 +19,5 @@ async function getProcesses(req, _res, next) {
 }
 
 module.exports = {
-    getProcesses,
+  getProcesses,
 };
