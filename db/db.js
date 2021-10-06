@@ -365,6 +365,23 @@ async function insertSlabs(pgClient, idPatch, patch) {
   }
 }
 
+async function getProcesses(pgClient) {
+  try {
+    debug(`~~getProcesses`);
+
+    const sql = format('SELECT * FROM processes');
+    debug(sql);
+
+    const results = await pgClient.query(
+      sql,
+    );
+    return results.rows;
+  } catch (error) {
+    debug('Error: ', error);
+    throw error;
+  }
+}
+
 module.exports = {
   getCaches,
   insertCache,
@@ -385,4 +402,5 @@ module.exports = {
   deletePatches,
   getSlabs,
   insertSlabs,
+  getProcesses,
 };

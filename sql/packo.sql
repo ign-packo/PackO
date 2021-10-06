@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 13.2
--- Dumped by pg_dump version 13.1
+-- Dumped from database version 13.3
+-- Dumped by pg_dump version 13.3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -29,6 +29,19 @@ CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
 
 COMMENT ON EXTENSION postgis IS 'PostGIS geometry, geography, and raster spatial types and functions';
 
+
+--
+-- Name: processes_status; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.processes_status AS ENUM (
+    'running',
+    'failed',
+    'succeed'
+);
+
+
+ALTER TYPE public.processes_status OWNER TO postgres;
 
 --
 -- Name: auto_num_patches_and_delete_unactive(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -208,35 +221,6 @@ ALTER TABLE public.opi ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- Name: slabs; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.slabs (
-    id integer NOT NULL,
-    id_patch integer NOT NULL,
-    x integer NOT NULL,
-    y integer NOT NULL,
-    z integer NOT NULL
-);
-
-
-ALTER TABLE public.slabs OWNER TO postgres;
-
---
--- Name: slabs_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-ALTER TABLE public.slabs ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME public.slabs_id_seq
-    START WITH 0
-    INCREMENT BY 1
-    MINVALUE 0
-    NO MAXVALUE
-    CACHE 1
-);
-
-
---
 -- Name: patches; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -258,6 +242,64 @@ ALTER TABLE public.patches OWNER TO postgres;
 
 ALTER TABLE public.patches ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME public.patches_id_seq
+    START WITH 0
+    INCREMENT BY 1
+    MINVALUE 0
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: processes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.processes (
+    id integer NOT NULL,
+    start_date timestamp with time zone NOT NULL,
+    end_date timestamp with time zone,
+    status public.processes_status DEFAULT 'running'::public.processes_status NOT NULL,
+    result character varying
+);
+
+
+ALTER TABLE public.processes OWNER TO postgres;
+
+--
+-- Name: processes_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.processes ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.processes_id_seq
+    START WITH 0
+    INCREMENT BY 1
+    MINVALUE 0
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: slabs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.slabs (
+    id integer NOT NULL,
+    id_patch integer NOT NULL,
+    x integer NOT NULL,
+    y integer NOT NULL,
+    z integer NOT NULL
+);
+
+
+ALTER TABLE public.slabs OWNER TO postgres;
+
+--
+-- Name: slabs_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.slabs ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.slabs_id_seq
     START WITH 0
     INCREMENT BY 1
     MINVALUE 0

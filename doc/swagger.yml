@@ -18,6 +18,8 @@ tags:
     description: Modification du graphe de mosaïquage
   - name: file
     description: Récupération de fichiers
+  - name: process
+    description: Gestion des processus longs (donc asynchrones)
 paths:
   '/version':
     get:
@@ -181,6 +183,31 @@ paths:
           schema:
             type: integer
           example: 1
+      responses:
+        '200':
+          description: OK
+  '/processes':
+    get:
+      tags:
+        - process
+      summary: "Récupération la liste des traitements longs"
+      description: ""
+      responses:
+        '200':
+          description: OK
+  '/process/{id}':
+    get:
+      tags:
+        - process
+      summary: "Récupération de l'état d'un traitement long"
+      description: ""
+      parameters:
+      - in: path
+        name: id
+        description: l'identifiant du traitement
+        required: true
+        schema:
+          type: integer
       responses:
         '200':
           description: OK
