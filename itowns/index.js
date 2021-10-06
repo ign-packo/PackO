@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 /* global setupLoadingScreen, GuiTools */
 import * as itowns from 'itowns';
+import * as THREE from 'three';
 import Saisie from './Saisie';
 
 // Global itowns pour GuiTools -> peut être améliorer
@@ -173,6 +174,33 @@ async function main() {
     const menuGlobe = new GuiTools('menuDiv', view);
     menuGlobe.gui.width = 300;
 
+    // Patch pour ajouter la modification de l'epaisseur des contours dans le menu
+    menuGlobe.addImageryLayerGUI = function addImageryLayerGUI(layer) {
+      /* eslint-disable no-param-reassign */
+      if (this.colorGui.hasFolder(layer.id)) { return; }
+      this.colorGui.show();
+      const folder = this.colorGui.addFolder(layer.id);
+      folder.add({ visible: layer.visible }, 'visible').onChange(((value) => {
+        layer.visible = value;
+        this.view.notifyChange(layer);
+      }));
+      folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0).onChange(((value) => {
+        layer.opacity = value;
+        this.view.notifyChange(layer);
+      }));
+      folder.add({ frozen: layer.frozen }, 'frozen').onChange(((value) => {
+        layer.frozen = value;
+        this.view.notifyChange(layer);
+      }));
+      if (layer.effect_parameter) {
+        folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
+          layer.effect_parameter = value;
+          this.view.notifyChange(layer);
+        }));
+      }
+      /* eslint-enable no-param-reassign */
+    };
+
     const opacity = {
       ortho: 1,
       graph: 0.001,
@@ -222,11 +250,12 @@ async function main() {
       if (id === 'contour') {
         layer[id].colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
         layer[id].colorLayer.effect_parameter = 1.0;
-        layer[id].colorLayer.magFilter = 1003;// itowns.THREE.NearestFilter;
-        layer[id].colorLayer.minFilter = 1003;// itowns.THREE.NearestFilter;
+        layer[id].colorLayer.magFilter = THREE.NearestFilter;
+        layer[id].colorLayer.minFilter = THREE.NearestFilter;
       }
       view.addLayer(layer[id].colorLayer);// .then(menuGlobe.addLayerGUI.bind(menuGlobe));
     });
+    console.log(menuGlobe);
     itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Ortho', 0);
     itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Opi', 1);
     itowns.ColorLayersOrdering.moveLayerToIndex(view, 'Graph', 2);

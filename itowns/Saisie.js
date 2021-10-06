@@ -45,6 +45,9 @@ class Saisie {
       this.view.removeLayer(this.layer[id].colorLayer.id);
       this.layer[id].config.opacity = this.layer[id].colorLayer.opacity;
       this.layer[id].config.visible = this.layer[id].colorLayer.visible;
+      if (this.layer[id].colorLayer.effect_parameter) {
+        this.layer[id].config.effect_parameter = this.layer[id].colorLayer.effect_parameter;
+      }
 
       // ColorLayer
       if (id !== 'patches') {
@@ -55,7 +58,7 @@ class Saisie {
         this.view.addLayer(this.layer[id].colorLayer);
         if (id === 'contour') {
           this.layer[id].colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
-          this.layer[id].colorLayer.effect_parameter = 1.0;
+          this.layer[id].colorLayer.effect_parameter = this.layer[id].config.effect_parameter;
           this.layer[id].colorLayer.magFilter = 1003;// itowns.THREE.NearestFilter;
           this.layer[id].colorLayer.minFilter = 1003;// itowns.THREE.NearestFilter;
         }
