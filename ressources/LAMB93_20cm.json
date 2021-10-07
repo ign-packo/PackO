@@ -13,7 +13,7 @@
 	},
 	"resolution": 0.20,
 	"level": {
-		"min": 12,
+		"min": 10,
 		"max": 19
 	},
 	"tileSize": {
