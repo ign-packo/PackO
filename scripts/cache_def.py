@@ -411,7 +411,7 @@ def create_ortho_and_graph_1arg(arg):
     overviews = arg['overviews']
 
     if arg['advancement'] != 0:
-        print("█", end='', flush=True)
+        print("%", end='', flush=True)
 
     # on cree le graphe et l'ortho
     img_ortho = create_blank_slab(overviews, arg['slab'],
