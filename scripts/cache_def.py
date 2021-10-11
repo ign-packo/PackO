@@ -54,10 +54,10 @@ def get_slabbox(input_filename, overviews, slab_change):
             = min(tile_limits['LowerCorner'][1],
                   overviews['dataSet']['boundingBox']['LowerCorner'][1])
         overviews['dataSet']['boundingBox']['UpperCorner'][0]\
-            = max(tile_limits['LowerCorner'][0],
+            = max(tile_limits['UpperCorner'][0],
                   overviews['dataSet']['boundingBox']['UpperCorner'][0])
         overviews['dataSet']['boundingBox']['UpperCorner'][1]\
-            = max(tile_limits['LowerCorner'][1],
+            = max(tile_limits['UpperCorner'][1],
                   overviews['dataSet']['boundingBox']['UpperCorner'][1])
 
     for slab_z in range(overviews['dataSet']['level']['min'],
