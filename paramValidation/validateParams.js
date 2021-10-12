@@ -2,21 +2,21 @@ const debug = require('debug')('validateParams');
 const { validationResult } = require('express-validator');
 
 module.exports = function validateParams(req, res, next) {
+  if (req.error) {
+    next();
+    return;
+  }
   debug('~~~validateParams~~~');
-  const result = validationResult(req);
-
-  if (!result.isEmpty()) {
-    // return res.status(400).json({
-    //   status: result.array({ onlyFirstError: true })[0].msg,
-    //   errors: result.array({ onlyFirstError: true }),
-    // });
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
     req.error = {
-      status: result.array({ onlyFirstError: true })[0].msg,
-      errors: result.array({ onlyFirstError: true }),
+      json: errors.array().map((error) => ({
+        status: error.msg,
+        error,
+      })),
       code: 400,
-      function: 'insertCache',
     };
   }
   debug('~~~next~~~');
-  return next();
+  next();
 };
