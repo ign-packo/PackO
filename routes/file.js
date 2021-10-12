@@ -6,10 +6,11 @@ const fs = require('fs');
 
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
+const returnMsg = require('../middlewares/returnMsg');
 
 router.get('/json/:typefile', [
   param('typefile')
-    .exists().withMessage(createErrMsg.missingParameter('typefile'))
+    // .exists().withMessage(createErrMsg.missingParameter('typefile'))
     .isIn(['overviews', 'test'])
     .withMessage(createErrMsg.invalidParameter('typefile')),
   query('cachePath')
@@ -64,6 +65,7 @@ async (req, res, next) => {
     debug(' => Erreur');
     res.status(err.code).send(err.msg);
   }
-});
+},
+returnMsg);
 
 module.exports = router;
