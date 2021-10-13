@@ -5,7 +5,7 @@ async function getCaches(pgClient) {
   debug('~~getCaches');
   try {
     const results = await pgClient.query(
-      'SELECT id, name, path FROM caches',
+      'SELECT id, name, path FROM caches ORDER BY id ASC',
     );
     return results.rows;
   } catch (error) {
@@ -84,7 +84,7 @@ async function getBranches(pgClient, idCache) {
     let results;
     if (idCache) {
       results = await pgClient.query(
-        'SELECT name, id FROM branches WHERE id_cache=$1',
+        'SELECT name, id FROM branches WHERE id_cache=$1 ORDER BY id ASC',
         [idCache],
       );
     } else {
