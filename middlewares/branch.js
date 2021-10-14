@@ -111,7 +111,7 @@ async function deleteBranch(req, _res, next) {
     debug(error);
     req.error = {
       msg: `Branch '${idBranch}' can't be deleted`,
-      code: 406,
+      code: 400,
       function: 'deleteBranch',
     };
   }

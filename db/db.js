@@ -152,11 +152,13 @@ async function getActivePatches(pgClient, idBranch) {
     debug(`~~getActivePatches (idBranch: ${idBranch})`);
 
     const sql = "SELECT json_build_object('type', 'FeatureCollection', "
-    + "'features', json_agg(ST_AsGeoJSON(t.*)::json)) FROM "
-    + '(SELECT p.*, ARRAY_AGG(s.x) as x, ARRAY_AGG(s.y) as y, ARRAY_AGG(s.z) as z '
+    + "'features', json_agg(ST_AsGeoJSON(s.*)::json)) FROM "
+    + '(SELECT t.*, o.name as cliche, o.color FROM '
+    + '(SELECT p.*, ARRAY_AGG(ARRAY[s.x, s.y, s.z]) as slabs '
     + 'FROM patches p LEFT JOIN slabs s ON p.id = s.id_patch WHERE p.id_branch = $1 '
     + 'AND p.active=True '
-    + 'GROUP BY p.id ORDER BY p.num) as t';
+    + 'GROUP BY p.id ORDER BY p.num) as t, opi o '
+    + 'WHERE t.id_opi = o.id) as s';
 
     debug(sql);
 
@@ -179,11 +181,13 @@ async function getUnactivePatches(pgClient, idBranch) {
     debug(`~~getActivePatches (idBranch: ${idBranch})`);
 
     const sql = "SELECT json_build_object('type', 'FeatureCollection', "
-    + "'features', json_agg(ST_AsGeoJSON(t.*)::json)) FROM "
-    + '(SELECT p.*, ARRAY_AGG(s.x) as x, ARRAY_AGG(s.y) as y, ARRAY_AGG(s.z) as z '
+    + "'features', json_agg(ST_AsGeoJSON(s.*)::json)) FROM "
+    + '(SELECT t.*, o.name as cliche, o.color FROM '
+    + '(SELECT p.*, ARRAY_AGG(ARRAY[s.x, s.y, s.z]) as slabs '
     + 'FROM patches p LEFT JOIN slabs s ON p.id = s.id_patch WHERE p.id_branch = $1 '
     + 'AND p.active=False '
-    + 'GROUP BY p.id ORDER BY p.num) as t';
+    + 'GROUP BY p.id ORDER BY p.num) as t, opi o '
+    + 'WHERE t.id_opi = o.id) as s';
 
     debug(sql);
 
