@@ -5,6 +5,7 @@ const { matchedData } = require('express-validator');
 const db = require('../db/db');
 const cog = require('../cog_path');
 const patch = require('./patch');
+const pgClient = require('./pgClient');
 
 async function validBranch(req, _res, next) {
   debug('~~~validBranch~~~');
@@ -131,18 +132,20 @@ async function rebase(req, _res, next) {
   const { name } = params;
   const { idBase } = params;
   debug(idBranch, name, idBase);
+  let idNewBranch = null;
+  let cache = null;
 
   // On commence par creer une copie de la branche
   // avec le bon nom et un nouvel id
   try {
     // on récupére le cache correspondant aux deux branches
-    const cache = await db.getCache(req.client, idBranch);
+    cache = await db.getCache(req.client, idBranch);
     const cacheBase = await db.getCache(req.client, idBase);
     if (cache.id !== cacheBase.id) {
       throw new Error('error rebase on two different caches');
     }
     // creation de la nouvelle branche
-    const idNewBranch = await db.insertBranch(req.client, name, cache.id);
+    idNewBranch = await db.insertBranch(req.client, name, cache.id);
     debug('nouvelle branche : ', idNewBranch);
     // reprise des corrections de la base dans cette nouvelle branche
     const patches = await db.getActivePatches(req.client, idBase);
@@ -217,15 +220,6 @@ async function rebase(req, _res, next) {
       const result = await db.insertSlabs(req.client, idNewPatch, slabs);
       debug(idNewPatch);
     }
-    // on applique les patchs de idBranch dans cette nouvelle branche
-    const patches2 = await db.getActivePatches(req.client, idBranch);
-    debug('patches2 : ', patches2);
-    await patch.applyPatches(req.client,
-      req.overviews,
-      cache.path,
-      idNewBranch,
-      patches2.features);
-    req.result = { json: { name, id: idNewBranch }, code: 200 };
   } catch (error) {
     debug(error);
     req.error = {
@@ -234,7 +228,32 @@ async function rebase(req, _res, next) {
       function: 'rebase',
     };
   }
+  // on applique les patchs de idBranch dans cette nouvelle branche
+  // Comme cela peut-être long
+  // il faut créer un processus
+  const idProcess = await db.createProcess(req.client);
+  // on retourne l'identifiant de la branche, son nom et l'identifiant et du processus
+  req.result = { json: { name, id: idNewBranch, idProcess }, code: 200 };
   next();
+  // a partir de d'ici c'est non bloquant
+  // on ne peut plus utiliser req.client puisque cette connexion sera fermée
+  const client = pgClient.openTransaction();
+  let transactionError = null;
+  try {
+    const patches = await db.getActivePatches(client, idBranch);
+    debug('patches : ', patches);
+    await patch.applyPatches(client,
+      req.overviews,
+      cache.path,
+      idNewBranch,
+      patches.features);
+    await db.finishProcess(client, 'succeed', idProcess, JSON.stringify({ name, id: idNewBranch }));
+  } catch (error) {
+    debug(error);
+    transactionError = error;
+    await db.finishProcess(client, 'failed', idProcess, JSON.stringify(transactionError));
+  }
+  pgClient.closeTransaction(client, transactionError);
 }
 
 module.exports = {
