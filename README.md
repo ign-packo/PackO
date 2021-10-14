@@ -42,7 +42,9 @@ npm run build
 npm run build-dev
 ``` 
 
-Ensuite on peut lancer l'API, la doc et l'interface web en spécifiant un port (par défaut le service sera lancé sur le port 8081):
+Ensuite on peut lancer l'API, la doc et l'interface web en spécifiant un port (par défaut le service sera lancé sur le port 8081). Il est possible de le lancer en mode **simple** avec une seule instance ou en mode **cluster** avec plusieurs instances pour exploiter plusieurs coeurs sur le serveur.
+
+Le mode **simple**:
 
 - en mode production
 ```shell
@@ -53,7 +55,60 @@ npm start -- -p [port]
 npm start-dev -- -p [port]
 ```
 
-L'interface web est alors accesible à l'adresse :  http://[serveur]:[port]/itowns/?serverapi=[serveur]&portapi=[port]&namecache=[namecache]
+Le mode **cluster**:
+
+Dans ce mode, on utilise le module **[PM2](https://pm2.keymetrics.io/)** pour piloter le lancement de plusieurs instances de l'API et la répartition du traitement des requêtes entre ces différentes instances. Cela permet donc d'avoir un serveur plus réactif et rapide, même lorsqu'il y a des requêtes longues et/ou plusieurs utilisateurs.
+
+Dans ce cas, on décrit la configuration (nombre de coeurs, variable d'environement, etc...) dans un fichier **ecosystem.config.js**. Un exemple de fichier de configuration est inclus dans le dossier **ressources**  du projet. Si on le copie à la racine, il permet de lancer un cluster nommé **packo** qui exploite par défaut tous les coeurs de la machine.
+
+Comme dans le cas d'un **npm run start** l'application utilisera les variables d'environnement du système pour connaitre l'adresse du serveur PostGis, l'utilisateur, le mot de passe et le nom de la base (PGHOST, PGUSER, PGPASSWORD, PGDATABASE).
+
+Pour définir le port utilisé par l'API, il faut éditer le paramètre **args** dans le fichier **ecosystem.config.js**: dans l'exemple qui est fourni dans le dossier **ressources** on utilise le port 8081:
+
+````
+module.exports = {
+  apps: [{
+    name: 'packo',
+    script: 'serveur.js',
+    args: '-p 8081',
+    instances: 'max',
+    exec_mode: 'cluster',
+    env: {
+      NODE_ENV: 'production',
+    },
+    env_development: {
+      NODE_ENV: 'development',
+    }
+  }],
+};
+````
+
+
+Pour choisir si on travaille en mode **production** ou en mode **development** (qui autorise la route **clear**), on peut spécifier l'environement à utiliser dans le ligne de commande.
+
+Par exemple, on peut:
+
+- lancer les instances de l'API en mode **production** (le mode par défaut) avec la commande:
+```
+npx pm2 start
+````
+
+- lancer les instances de l'API en mode **development** avec la commande:
+```
+npx pm2 start --env development
+````
+
+- suivre l'état et l'utilisation de ces instances avec la commande:
+```
+npx pm2 monit
+````
+
+- arrêter toutes les instances avec la commande:
+```
+npx pm2 delete packo
+```
+
+Dans les deux cas (mode **simpe** ou **multi coeurs**), l'interface web est alors accesible à l'adresse :  http://[serveur]:[port]/itowns/?serverapi=[serveur]&portapi=[port]&namecache=[namecache]
 
 par défaut:
 
