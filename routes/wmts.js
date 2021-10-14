@@ -74,7 +74,12 @@ router.get('/:idBranch/wmts',
       .exists().withMessage(createErrMsg.missingParameter('TILEMATRIXSET'))
       .custom((TILEMATRIXSET, { req }) => TILEMATRIXSET === req.overviews.identifier)
       .withMessage((TILEMATRIXSET) => (`'${TILEMATRIXSET}': unsupported TILEMATRIXSET value`)),
-    query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('TILEMATRIX')),
+    query('TILEMATRIX').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
+      .exists().withMessage(createErrMsg.missingParameter('TILEMATRIX'))
+      // .isInt({ min: 0 })
+      .custom((TILEMATRIX, { req }) => (TILEMATRIX >= Number(req.overviews.dataSet.level.min)
+        && TILEMATRIX <= Number(req.overviews.dataSet.level.max)))
+      .withMessage(createErrMsg.invalidParameter('TILEMATRIX')),
     query('TILEROW').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
       .exists().withMessage(createErrMsg.missingParameter('TILEROW'))
       .isInt({ min: 0 })
