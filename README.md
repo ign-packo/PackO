@@ -192,5 +192,25 @@ Cette route prend en paramètre:
 - le chemin du dossier contenant les COG créé par le script **create_cache** et correspondant au cache à importer (ex: "cache_test"): soit en absolu, soit en relatif par rapport au dossier de lancement de l'API
 - le contenu du fichier **overviews.json** du cache à importer (celui qui a été créé par le script python et qui est à la racine du dossier contenant le cache à importer)
 
+## Export raster
+
+Une fois les contrôles et retouches effectués, il est possible d'exporter l'ortho résultante à l'aide de commandes gdal en utilisant le flux WMTS proposé par l'API.
+
+Pour cela il faut:
+
+1. identifier l'identifiant de la branche que l'on souhaite exporter. Pour cela on peut demander à l'API la liste des branches en utilisant l'url: 
+http://[serveur]:[port]/branches
+
+2. générer un descripteur XML gdal avec la commande **gdal_translate** en indiquant l'identifiant de la branche et la couche souhaitée (ortho ou graph):
+````
+gdal_translate "WMTS:http://[serveur]:[port]/[idBranch]/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0,layer=ortho" ortho.xml -of WMTS
+gdal_translate "WMTS:http://[serveur]:[port]/[idBranch]/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0,layer=graph" graph.xml -of WMTS
+`````
+3. utiliser n'importe quelle commande gdal pour faire un export à partir du descripteur ainsi obtenu:
+````
+gdal_translate -of Jpeg ortho.xml ortho.jpg
+````
+
+
 
 [![IGN](images/logo_ign.png)](https://www.ign.fr)
