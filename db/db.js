@@ -5,7 +5,7 @@ async function getCaches(pgClient) {
   debug('~~getCaches');
   try {
     const results = await pgClient.query(
-      'SELECT id, name, path FROM caches',
+      'SELECT id, name, path FROM caches ORDER BY id ASC',
     );
     return results.rows;
   } catch (error) {
@@ -24,7 +24,7 @@ async function insertCache(pgClient, name, path) {
     return results.rows[0];
   } catch (error) {
     debug('Error: ', error);
-    throw error.detail;
+    throw error;
   }
 }
 
@@ -35,9 +35,6 @@ async function deleteCache(pgClient, idCache) {
       'DELETE FROM caches WHERE id=$1 RETURNING name',
       [idCache],
     );
-    if (results.rowCount !== 1) {
-      throw new Error(`cache non trouvée '${idCache}'`);
-    }
     return results.rows[0].name;
   } catch (error) {
     debug('Error: ', error);
@@ -70,8 +67,7 @@ async function getCachePath(pgClient, idBranch) {
       'SELECT c.path FROM branches b, caches c WHERE b.id_cache = c.id AND b.id = $1',
       [idBranch],
     );
-    if (results.rowCount === 1) return results.rows[0].path;
-    throw new Error('idBranch non valide');
+    return results.rows[0].path;
   } catch (error) {
     debug('Error: ', error);
     throw error;
@@ -79,12 +75,12 @@ async function getCachePath(pgClient, idBranch) {
 }
 
 async function getBranches(pgClient, idCache) {
-  debug('~~getBranches');
+  debug(`~~getBranches (idCache: ${idCache})`);
   try {
     let results;
     if (idCache) {
       results = await pgClient.query(
-        'SELECT name, id FROM branches WHERE id_cache=$1',
+        'SELECT name, id FROM branches WHERE id_cache=$1 ORDER BY id ASC',
         [idCache],
       );
     } else {
@@ -99,22 +95,22 @@ async function getBranches(pgClient, idCache) {
   }
 }
 
-async function getIdCacheFromPath(pgClient, path) {
-  try {
-    debug(`~~getIdCacheFromPath (path: ${path})`);
-    const results = await pgClient.query(
-      'SELECT id FROM caches WHERE path=$1',
-      [path],
-    );
-    if (results.rowCount !== 1) {
-      throw new Error(`cache non trouvé pour le chemin '${path}'`);
-    }
-    return results.rows[0].id;
-  } catch (error) {
-    debug('Error: ', error);
-    throw error;
-  }
-}
+// async function getIdCacheFromPath(pgClient, path) {
+//   try {
+//     debug(`~~getIdCacheFromPath (path: ${path})`);
+//     const results = await pgClient.query(
+//       'SELECT id FROM caches WHERE path=$1',
+//       [path],
+//     );
+//     if (results.rowCount !== 1) {
+//       throw new Error(`cache non trouvé pour le chemin '${path}'`);
+//     }
+//     return results.rows[0].id;
+//   } catch (error) {
+//     debug('Error: ', error);
+//     throw error;
+//   }
+// }
 
 async function insertBranch(pgClient, name, idCache) {
   try {
@@ -137,10 +133,7 @@ async function deleteBranch(pgClient, idBranch) {
       "DELETE FROM branches WHERE id=$1 AND name<>'orig' RETURNING name",
       [idBranch],
     );
-    if (results.rowCount !== 1) {
-      throw new Error(`branche '${idBranch}' non supprimée`);
-    }
-    return results.rows[0].name;
+    return results.rows.length > 0 ? results.rows[0].name : null;
   } catch (error) {
     debug('Error: ', error);
     throw error;
@@ -176,7 +169,7 @@ async function getActivePatches(pgClient, idBranch) {
 
 async function getUnactivePatches(pgClient, idBranch) {
   try {
-    debug(`~~getActivePatches (idBranch: ${idBranch})`);
+    debug(`~~getUnactivePatches (idBranch: ${idBranch})`);
 
     const sql = "SELECT json_build_object('type', 'FeatureCollection', "
     + "'features', json_agg(ST_AsGeoJSON(t.*)::json)) FROM "
@@ -224,7 +217,6 @@ async function getOpiId(pgClient, name) {
     debug(`~~getOpiId (name: ${name})`);
 
     const sql = `SELECT id FROM opi WHERE name = '${name}'`;
-
     debug(sql);
 
     const results = await pgClient.query(
@@ -238,23 +230,19 @@ async function getOpiId(pgClient, name) {
   }
 }
 
-async function insertPatch(pgClient, idBranch, patch, opiId) {
+async function insertPatch(pgClient, idBranch, geometry, opiId) {
   try {
     debug(`~~insertPatch (idBranch: ${idBranch})`);
 
-    const sql = format('INSERT INTO patches (num, geom, id_branch, id_opi) values (%s, ST_GeomFromGeoJSON(\'%s\'), %s, %s) RETURNING id as id_patch',
-      patch.properties.num,
-      JSON.stringify(patch.geometry),
+    const sql = format('INSERT INTO patches (geom, id_branch, id_opi) values (ST_GeomFromGeoJSON(%L), %s, %s) RETURNING id as id_patch, num',
+      JSON.stringify(geometry),
       idBranch,
       opiId);
-
     debug(sql);
 
-    const results = await pgClient.query(
-      sql,
-    );
+    const results = await pgClient.query(sql);
 
-    return results.rows[0].id_patch;
+    return results.rows[0];
   } catch (error) {
     debug('Error: ', error);
     throw error;
@@ -266,7 +254,6 @@ async function deactivatePatch(pgClient, idPatch) {
     debug(`~~deactivatePatch (idPatch: ${idPatch})`);
 
     const sql = format('UPDATE patches SET active=False WHERE id=%s', idPatch);
-
     debug(sql);
 
     const results = await pgClient.query(
@@ -282,10 +269,9 @@ async function deactivatePatch(pgClient, idPatch) {
 
 async function reactivatePatch(pgClient, idPatch) {
   try {
-    debug(`~~deactivatePatch (idPatch: ${idPatch})`);
+    debug(`~~reactivatePatch (idPatch: ${idPatch})`);
 
     const sql = format('UPDATE patches SET active=True WHERE id=%s', idPatch);
-
     debug(sql);
 
     const results = await pgClient.query(
@@ -301,10 +287,9 @@ async function reactivatePatch(pgClient, idPatch) {
 
 async function deletePatches(pgClient, idBranch) {
   try {
-    debug(`~~deactivatePatch (idBranch: ${idBranch})`);
+    debug(`~~deletePatches (idBranch: ${idBranch})`);
 
     const sql = format('DELETE FROM patches WHERE id_branch=%s', idBranch);
-
     debug(sql);
 
     const results = await pgClient.query(
@@ -323,7 +308,6 @@ async function getSlabs(pgClient, idPatch) {
     debug(`~~getSlabs (idPatch: ${idPatch})`);
 
     const sql = format('SELECT id, x, y, z FROM slabs WHERE id_patch=%s', idPatch);
-
     debug(sql);
 
     const results = await pgClient.query(
@@ -347,7 +331,6 @@ async function insertSlabs(pgClient, idPatch, patch) {
     });
 
     const sql = format('INSERT INTO slabs (id_patch, x, y , z) values (%s)', values.join('),('));
-
     debug(sql);
 
     const results = await pgClient.query(
@@ -368,7 +351,7 @@ module.exports = {
   insertListOpi,
   getCachePath,
   getBranches,
-  getIdCacheFromPath,
+  // getIdCacheFromPath,
   insertBranch,
   deleteBranch,
   getActivePatches,

@@ -17,9 +17,9 @@ function setIdCache(id) {
 }
 
 const branchName = 'branchRegress';
-let idBranch = null;
-function setIdBranch(id) {
-  idBranch = id;
+const idBranch = {};
+function setIdBranch(type, id) {
+  idBranch[type] = id;
 }
 
 describe('Branch', () => {
@@ -57,18 +57,36 @@ describe('Branch', () => {
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(200);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array');
             done();
           });
       });
     });
     describe('query all branches on a specified cache', () => {
-      it('should return a list of branches', (done) => {
+      it(`on ${cacheName} => should return a list of branches`, (done) => {
         chai.request(app)
           .get('/branches')
           .query({ idCache })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(200);
+            const resJson = JSON.parse(res.text);
+            resJson[0].should.have.property('name').equal('orig');
+            setIdBranch('orig', resJson[0].id);
+            done();
+          });
+      });
+      it('(idCache = 99999) => should return a error', (done) => {
+        chai.request(app)
+          .get('/branches')
+          .query({ idCache: 99999 })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'idCache' n'est pas valide.");
             done();
           });
       });
@@ -76,7 +94,7 @@ describe('Branch', () => {
   });
 
   describe('POST /branch', () => {
-    describe('add a valid branch', () => {
+    describe('post a valid branch', () => {
       it('should return an idBranch', (done) => {
         chai.request(app)
           .post('/branch')
@@ -89,13 +107,29 @@ describe('Branch', () => {
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
             resJson.should.have.property('id');
-            setIdBranch(resJson.id);
+            setIdBranch('newBranch', resJson.id);
             resJson.should.have.property('name').equal(branchName);
             done();
           });
       });
+      it(' on a non valid cache => should return an error', (done) => {
+        chai.request(app)
+          .post('/branch')
+          .query({
+            name: branchName,
+            idCache: 99999,
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'idCache' n'est pas valide.");
+            done();
+          });
+      });
     });
-    describe('add a non valid branch', () => {
+    describe('post a branch already added', () => {
       it('should return a error', (done) => {
         chai.request(app)
           .post('/branch')
@@ -106,6 +140,9 @@ describe('Branch', () => {
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(406);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('object');
+            resJson.should.have.property('msg').equal('A branch with this name already exists.');
             done();
           });
       });
@@ -117,7 +154,7 @@ describe('Branch', () => {
       it('should succeed', (done) => {
         chai.request(app)
           .delete('/branch')
-          .query({ idBranch })
+          .query({ idBranch: idBranch.newBranch })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(200);
@@ -131,26 +168,31 @@ describe('Branch', () => {
       it('should failed', (done) => {
         chai.request(app)
           .delete('/branch')
-          .query({ idBranch: 0 })
+          .query({ idBranch: 99999 })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'idBranch' n'est pas valide.");
             done();
           });
       });
     });
-    // describe('delete a non destructible branch (orig)', () => {
-    //   it('should failed', (done) => {
-    //     chai.request(app)
-    //       .delete('/branch')
-    //       .query({ idBranch })
-    //       .end((err, res) => {
-    //         should.not.exist(err);
-    //         res.should.have.status(406);
-    //         done();
-    //       });
-    //   });
-    // });
+    describe('delete a non destructible branch (orig)', () => {
+      it('should failed', (done) => {
+        chai.request(app)
+          .delete('/branch')
+          .query({ idBranch: idBranch.orig })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(406);
+            const resJson = JSON.parse(res.text);
+            resJson.should.have.property('msg').equal(`Branch '${idBranch.orig}' can't be deleted.`);
+            done();
+          });
+      });
+    });
   });
 
   describe('delete the test cache', () => {

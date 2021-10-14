@@ -77,6 +77,9 @@ describe('Patch', () => {
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(5);
+            resJson[0].should.have.property('status').equal('Un body non vide est requis.');
             done();
           });
       });
@@ -166,7 +169,7 @@ describe('Patch', () => {
   });
 
   describe('PUT /{idBranch}/patch/undo', () => {
-    it("should return 'undo: patch 1 canceled'", (done) => {
+    it("should return 'undo: patch 1 annulé'", (done) => {
       chai.request(app)
         .put(`/${idBranch}/patch/undo`)
         .end((err, res) => {
@@ -176,7 +179,7 @@ describe('Patch', () => {
           done();
         });
     });
-    it("should return a warning (code 201): 'nothing to undo'", (done) => {
+    it("should return a warning (code 201): 'rien à annuler'", (done) => {
       chai.request(app)
         .put(`/${idBranch}/patch/undo`)
         .end((err, res) => {
@@ -186,10 +189,22 @@ describe('Patch', () => {
           done();
         });
     });
+    it('idBranch=99999 => should return an error', (done) => {
+      chai.request(app)
+        .put('/99999/patch/undo')
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(400);
+          const resJson = JSON.parse(res.text);
+          resJson.should.be.an('array').to.have.lengthOf(1);
+          resJson[0].should.have.property('status').equal("Le paramètre 'idBranch' n'est pas valide.");
+          done();
+        });
+    });
   });
 
   describe('PUT /{idBranch}/patch/redo', () => {
-    it("should return 'redo: patch 1 reapplied'", (done) => {
+    it("should return 'redo: patch 1 réappliqué'", (done) => {
       chai.request(app)
         .put(`/${idBranch}/patch/redo`)
         .end((err, res) => {
@@ -199,13 +214,65 @@ describe('Patch', () => {
           done();
         });
     });
-    it("should return a warning (code 201): 'nothing to redo'", (done) => {
+    it("should return a warning (code 201): 'rien à réappliquer'", (done) => {
       chai.request(app)
         .put(`/${idBranch}/patch/redo`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(201);
           JSON.parse(res.text).should.equal('rien à réappliquer');
+          done();
+        });
+    });
+    it("should return 'redo: patch 2 réappliqué'", (done) => {
+      // Ajout d'un nouveau patch
+      chai.request(app)
+        .post(`/${idBranch}/patch`)
+        .send({
+          type: 'FeatureCollection',
+          crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
+          features: [
+            {
+              type: 'Feature',
+              properties: { color: [58, 149, 47], cliche: '19FD5606Ax00020_16371' },
+              geometry: { type: 'Polygon', coordinates: [[[230748, 6759646], [230752, 6759646], [230752, 6759644], [230748, 6759644], [230748, 6759646]]] },
+            }],
+        })
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(200);
+          const resJson = JSON.parse(res.text);
+          resJson.should.be.a('array');
+
+          // Avant de l'annuler
+          chai.request(app)
+            .put(`/${idBranch}/patch/undo`)
+            .end((err1, res1) => {
+              should.not.exist(err1);
+              res1.should.have.status(200);
+              JSON.parse(res1.text).should.equal('undo: patch 2 annulé');
+
+              // Pour refaire un redo
+              chai.request(app)
+                .put(`/${idBranch}/patch/redo`)
+                .end((err2, res2) => {
+                  should.not.exist(err2);
+                  res2.should.have.status(200);
+                  JSON.parse(res2.text).should.equal('redo: patch 2 réappliqué');
+                  done();
+                });
+            });
+        });
+    }).timeout(9000);
+    it('idBranch=99999 => should return an error', (done) => {
+      chai.request(app)
+        .put('/99999/patch/redo')
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(400);
+          const resJson = JSON.parse(res.text);
+          resJson.should.be.an('array').to.have.lengthOf(1);
+          resJson[0].should.have.property('status').equal("Le paramètre 'idBranch' n'est pas valide.");
           done();
         });
     });
@@ -248,7 +315,7 @@ describe('Patch', () => {
             .end((err1, res1) => {
               should.not.exist(err1);
               res1.should.have.status(200);
-              JSON.parse(res1.text).should.equal('undo: patch 2 annulé');
+              JSON.parse(res1.text).should.equal('undo: patch 3 annulé');
 
               // Pour faire le clear
               chai.request(app)
@@ -278,6 +345,18 @@ describe('Patch', () => {
           should.not.exist(err);
           res.should.have.status(201);
           JSON.parse(res.text).should.equal('rien à nettoyer');
+          done();
+        });
+    });
+    it('idBranch=99999 => should return an error', (done) => {
+      chai.request(app)
+        .put('/99999/patches/clear?test=true')
+        .end((err, res) => {
+          should.not.exist(err);
+          res.should.have.status(400);
+          const resJson = JSON.parse(res.text);
+          resJson.should.be.an('array').to.have.lengthOf(1);
+          resJson[0].should.have.property('status').equal("Le paramètre 'idBranch' n'est pas valide.");
           done();
         });
     });

@@ -5,8 +5,8 @@
   "main": "serveur.js",
   "scripts": {
     "lint": "eslint .",
-    "test": "c8 -r text mocha regress --cache cache_test",
-    "test-coveralls": "c8 -r lcov --report-dir=coverage mocha regress --cache cache_regress",
+    "test": "c8 -r text mocha regress",
+    "test-coveralls": "c8 -r lcov --report-dir=coverage mocha regress",
     "build-dev": "cd itowns && npm install && npm run build-dev",
     "start-dev": "cross-env NODE_ENV=development node serveur.js",
     "build": "cd itowns && npm install && npm run build",

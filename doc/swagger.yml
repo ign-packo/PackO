@@ -71,11 +71,24 @@ paths:
                     example: "LAMB93_5cm"
                   crs:
                     type: object
-                    example:
-                      {
-                        "type":"name",
-                        "properties":{
-                          "name":"urn:ogc:def:crs:EPSG::2154"}}
+                    properties:
+                      type:
+                        type: string
+                        example: "EPSG"
+                      code:
+                        type: integer
+                        example: 2154
+                      boundingBox:
+                        type: object
+                        example:
+                          {
+                            "xmin": 0,
+                            "xmax": 1200000,
+                            "ymin": 6090000,
+                            "ymax": 7200000}
+                      proj4Definition:
+                        type: string
+                        example: "+proj=lcc +lat_1=49 +lat_2=44 +lat_0=46.5 +lon_0=3 +x_0=700000 +y_0=6600000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
                   resolution:
                     type: integer
                     example: 0.05
@@ -110,6 +123,19 @@ paths:
                               76]}
                   dataSet:
                     type: object
+                    properties:
+                      boundingBox:
+                        type: object
+                        example:
+                          {
+                            "LowerCorner": [
+                                230745.6,
+                                6759641.6],
+                            "UpperCorner": [
+                                230758.4,
+                                6759654.4]}
+                      limits:
+                        type: object
       responses:
         '200':
           description: OK

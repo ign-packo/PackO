@@ -30,6 +30,8 @@ describe('Cache', () => {
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(200);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array');
             done();
           });
       });
@@ -69,6 +71,29 @@ describe('Cache', () => {
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(406);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('object');
+            resJson.should.have.property('msg').equal('A cache with this name already exists.');
+            done();
+          });
+      });
+    });
+    describe('insert an overviews.json', () => {
+      it(' list_OPI = [] => should return an error', (done) => {
+        delete overviews.list_OPI;
+        chai.request(app)
+          .post('/cache')
+          .query({
+            name: cacheName,
+            path: cachePath,
+          })
+          .send(overviews)
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'list_OPI' est requis.");
             done();
           });
       });
@@ -97,7 +122,10 @@ describe('Cache', () => {
           .query({ idCache })
           .end((err, res) => {
             should.not.exist(err);
-            res.should.have.status(406);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'idCache' n'est pas valide.");
             done();
           });
       });
