@@ -18,8 +18,11 @@ def read_args():
         "-o", "--output", help="output folder (default : .)", default="."
     )
     parser.add_argument(
-        "-b", "--branch", help="branch of cache to use as source (default: master)",
-        default="master"
+        "-b", "--branch", help="id of branch of cache to use as source (default: 0)",
+        default=0
+    )
+    parser.add_argument(
+        "-p", "--patches", required=True, help="file containing patches on the branch to export"
     )
     parser.add_argument(
         "-v", "--verbose", help="verbose (default: 0)", type=int, default=0
@@ -55,34 +58,26 @@ fileOverviews.close()
 pathDepth = overviews['pathDepth']
 level = overviews['level']['max']
 
-
-# on veut recuperer les informations la branche a partir de laquelle on veut vectoriser le graphe
-fileData = open(os.path.join(args.input, "branches.json"))
-data = json.load(fileData)
-fileData.close()
-
 # valeur par defaut pour verifier l'existance de la branche desiree apres recherche
-id_branch = -1
+id_branch = args.branch
 
-for item in data:
-    if item['name'] == args.branch:
-        id_branch = item['id']
-
-if id_branch == -1:
-    raise SystemExit("La branche "+args.branch+ " n'existe pas dans ce cache.")
-
-# on recupere les patches dans notre branche
-patches = data[id_branch]['activePatches']['features']
+# on recupere les infos concernant les patches dans le json en entree
+filePatches = open(args.patches)
+patchesData = json.load(filePatches)
+filePatches.close()
+patches = patchesData['features']
 
 listPatches = list()
 for patch in patches:
-    slabs = patch['properties']['slabs']
-    x = slabs[0]['x']
-    y = slabs[0]['y']
+    if patch['properties']['active'] is True:
+        slabs = patch['properties']['slabs']
+        for slab in slabs:
+            x = slab[0]
+            y = slab[1]
 
-    slab_path = get_slab_path(int(x), int(y), int(pathDepth))
-    tile_path = os.path.join(args.input, "graph", str(level), slab_path[1:])
-    listPatches.append(os.path.normpath(tile_path+".tif"))
+            slab_path = get_slab_path(int(x), int(y), int(pathDepth))
+            tile_path = os.path.join(args.input, "graph", str(level), slab_path[1:])
+            listPatches.append(os.path.normpath(tile_path+".tif"))
 
 graph_dir = os.path.join(args.input, "graph", str(level))
 
@@ -118,7 +113,9 @@ f_out.close()
 
 # on construit un vrt a partir de la liste des images recuperee precedemment
 cmd_buildvrt = (
-    "gdalbuildvrt" + " -input_file_list "
+    "gdalbuildvrt"
+    + " -a_srs EPSG:2154"
+    + " -input_file_list "
     + path_out + ".txt "
     + path_out + ".vrt"
 )
