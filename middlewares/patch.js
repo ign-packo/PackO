@@ -613,22 +613,9 @@ async function clear(req, _res, next) {
   }
   const { features } = activePatches;
   const slabsDico = {};
-  // features.forEach((feature) => {
-  //   feature.properties.slabs.forEach((item) => {
-  //     slabsDico[`${item.x}_${item.y}_${item.z}`] = item;
-  //   });
-  // });
-  features.forEach((feature, indexFeature) => {
-    feature.properties.x.forEach((item, indexSlab) => {
-      debug(features[indexFeature].properties.y[indexSlab]);
-      const x = item;
-      const y = features[indexFeature].properties.y[indexSlab];
-      const z = features[indexFeature].properties.z[indexSlab];
-      slabsDico[`${item}_${features[indexFeature].properties.y[indexSlab]}_${features[indexFeature].properties.z[indexSlab]}`] = {
-        x,
-        y,
-        z,
-      };
+  features.forEach((feature) => {
+    feature.properties.slabs.forEach((slab) => {
+      slabsDico[JSON.stringify(slab)] = { x: slab[0], y: slab[1], z: slab[2] };
     });
   });
   debug('', Object.keys(slabsDico).length, ' dalles impactées');
