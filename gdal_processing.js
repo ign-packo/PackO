@@ -166,6 +166,7 @@ function processPatchAsync(patch, blocSize) {
         debug('creation des images en memoire...');
         const graphMem = gdal.open('graph', 'w', 'MEM', dsGraph.rasterSize.x, dsGraph.rasterSize.y, 3);
         graphMem.geoTransform = dsGraph.geoTransform;
+        graphMem.srs = dsGraph.srs;
         graphMem.bands.get(1).pixels.write(0, 0,
           dsGraph.rasterSize.x, dsGraph.rasterSize.y, bands[0]);
         graphMem.bands.get(2).pixels.write(0, 0,
@@ -174,6 +175,7 @@ function processPatchAsync(patch, blocSize) {
           dsGraph.rasterSize.x, dsGraph.rasterSize.y, bands[2]);
         const orthoMem = gdal.open('ortho', 'w', 'MEM', dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, 3);
         orthoMem.geoTransform = dsOrtho.geoTransform;
+        orthoMem.srs = dsOrtho.srs;
         orthoMem.bands.get(1).pixels.write(0, 0,
           dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[6]);
         orthoMem.bands.get(2).pixels.write(0, 0,
