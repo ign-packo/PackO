@@ -94,7 +94,7 @@ class Editing {
     this.view.controls.setCursor('default', 'wait');
     this.vue.message = 'calcul en cours';
     // On post le geojson sur l'API
-    fetch(`${this.apiUrl}/${this.branche.idBranch}/patch?`,
+    fetch(`${this.apiUrl}/${this.branche.active.id}/patch?`,
       {
         method: 'POST',
         headers: {
@@ -124,7 +124,7 @@ class Editing {
     this.vue.message = '';
 
     Object.keys(this.controllers).forEach((key) => {
-      if (key !== 'cliche') this.controllers[key].__li.style.backgroundColor = '';
+      if (key !== 'cliche' && this.controllers[key]) this.controllers[key].__li.style.backgroundColor = '';
     });
   }
 
@@ -137,8 +137,13 @@ class Editing {
     } else if (e.key === 'Shift') {
       if (this.currentStatus === status.POLYGON) {
         if (this.currentPolygon && (this.nbVertices > 2)) {
-          this.currentStatus = status.ENDING;
-          this.vue.message = 'Cliquer pour valider la saisie';
+          if (this.branche.active.name !== 'orig') {
+            this.currentStatus = status.ENDING;
+            this.vue.message = 'Cliquer pour valider la saisie';
+          } else {
+            this.vue.message = 'Changer de branche pour continuer';
+          }
+
           this.view.controls.setCursor('default', 'progress');
 
           const vertices = this.currentPolygon.geometry.attributes.position;
@@ -208,7 +213,7 @@ class Editing {
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         this.view.controls.setCursor('default', 'auto');
-        fetch(`${this.apiUrl}/${this.branche.idBranch}/graph?x=${pos.x}&y=${pos.y}`,
+        fetch(`${this.apiUrl}/${this.branche.active.id}/graph?x=${pos.x}&y=${pos.y}`,
           {
             method: 'GET',
             headers: {
@@ -226,7 +231,6 @@ class Editing {
               // On modifie la couche OPI
               this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
               this.view.getLayerById('Opi').visible = true;
-              // this.vue.refresh(['Opi']);
               this.vue.refresh(this.branche.layers);
               this.validClicheSelected = true;
             }
@@ -249,24 +253,28 @@ class Editing {
         break;
       }
       case status.POLYGON: {
-        // Cas ou l'on est en train de saisir un polygon : on ajoute un point
-        this.vue.message = 'Maj pour terminer';
+        if (this.branche.active.name !== 'orig') {
+          // Cas ou l'on est en train de saisir un polygon : on ajoute un point
+          this.vue.message = 'Maj pour terminer';
 
-        // Si c'est le premier point, on defini une position de reference (pb de précision)
-        if (this.nbVertices === 0) {
-          this.currentPolygon.position.x = Math.floor(mousePosition.x);
-          this.currentPolygon.position.y = Math.floor(mousePosition.y);
-          this.currentPolygon.position.z = Math.floor(mousePosition.z);
-          this.currentPolygon.updateMatrixWorld();
+          // Si c'est le premier point, on defini une position de reference (pb de précision)
+          if (this.nbVertices === 0) {
+            this.currentPolygon.position.x = Math.floor(mousePosition.x);
+            this.currentPolygon.position.y = Math.floor(mousePosition.y);
+            this.currentPolygon.position.z = Math.floor(mousePosition.z);
+            this.currentPolygon.updateMatrixWorld();
 
-          // on ajoute ce premier point dans vertices
-          const vertices = this.currentPolygon.geometry.attributes.position;
-          const newPoint = new THREE.Vector3();
-          newPoint.subVectors(mousePosition, this.currentPolygon.position);
-          vertices.set(newPoint.toArray(), 3 * this.nbVertices);
-          vertices.needsUpdate = true;
+            // on ajoute ce premier point dans vertices
+            const vertices = this.currentPolygon.geometry.attributes.position;
+            const newPoint = new THREE.Vector3();
+            newPoint.subVectors(mousePosition, this.currentPolygon.position);
+            vertices.set(newPoint.toArray(), 3 * this.nbVertices);
+            vertices.needsUpdate = true;
+          }
+          this.nbVertices += 1;
+        } else {
+          this.vue.message = 'Changer de branche pour continuer';
         }
-        this.nbVertices += 1;
         break;
       }
       case status.ENDING:
@@ -331,13 +339,12 @@ class Editing {
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
     this.vue.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/${this.branche.idBranch}/patch/undo?`,
+    fetch(`${this.apiUrl}/${this.branche.active.id}/patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        // this.vue.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
         this.vue.refresh(this.branche.layers);
       }
       res.text().then((msg) => {
@@ -354,13 +361,12 @@ class Editing {
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
     this.vue.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/${this.branche.idBranch}/patch/redo?`,
+    fetch(`${this.apiUrl}/${this.branche.active.id}/patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        // this.vue.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
         this.vue.refresh(this.branche.layers);
       }
       res.text().then((msg) => {
@@ -378,13 +384,12 @@ class Editing {
     this.view.controls.setCursor('default', 'wait');
     this.vue.message = 'calcul en cours';
 
-    fetch(`${this.apiUrl}/${this.branche.idBranch}/patches/clear?`,
+    fetch(`${this.apiUrl}/${this.branche.active.id}/patches/clear?`,
       {
         method: 'PUT',
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        // this.vue.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
         this.vue.refresh(this.branche.layers);
       }
       res.text().then((msg) => {

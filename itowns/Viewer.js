@@ -43,7 +43,7 @@ class Viewer {
     this.crs = {};
     this.overview = {};
     this.view = null;
-    // this.menuGlobe = null;
+    this.menuGlobe = null;
     this.layer = {};
 
     this.xcenter = 0;
@@ -152,7 +152,6 @@ class Viewer {
       }
     });
 
-    // Object.keys(layerList).forEach((layerName) => {
     layerNames.forEach((layerName) => {
       const layer = {};
       layer.config = {};
@@ -161,7 +160,6 @@ class Viewer {
         const {
           opacity, transparent, style, visible,
         } = this.view.getLayerById(layerName);
-        console.log(this.view.getLayerById(layerName));
         let { source } = this.view.getLayerById(layerName);
         if (source.isVectorSource) {
           source = new itowns.FileSource({
@@ -213,7 +211,6 @@ class Viewer {
           layer.config,
         );
 
-        // if (layerName === 'Opi') layer.colorLayer.visible = false;
         layer.colorLayer.visible = layerList[layerName].visible;
         if (layerName === 'Contour') {
           layer.colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
@@ -246,10 +243,6 @@ class Viewer {
     // FORMAT
     const _GEOJSON = 'geojson';
     const _SHP = 'shapefile';
-
-    // MODE
-    // const _COLOR = 10;
-    // const _GEOMETRY = 11;
 
     const extensionsMap = [];
     extensionsMap.geojson = {
@@ -294,7 +287,6 @@ class Viewer {
     console.log(ListFile);
 
     let data = {};
-    // let resData;
     // Read each file
     for (let i = 0; i < files.length; i += 1) {
       const file = files[i];

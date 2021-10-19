@@ -4,6 +4,7 @@ import * as itowns from 'itowns';
 import Viewer from './Viewer';
 import Editing from './Editing';
 import Branch from './Branch';
+import Controleur from './Controleur';
 
 // Global itowns pour GuiTools -> peut être améliorer
 global.itowns = itowns;
@@ -110,19 +111,12 @@ async function main() {
     const branche = new Branch(apiUrl, viewer);
     // try {
 
-    // vue.branches = await getBranches;
-    // vue.branches.forEach((element) => {
-    //   vue.branchNames.push(element.name);
-    // });
+    const { view } = vue;
     branche.list = await getBranches;
-    branche.list.forEach((branch) => {
-      branche.names.push(branch.name);
-    });
 
-    branche.idBranch = branche.list[0].id;
+    [branche.active] = branche.list;
 
-    // vue.drawLayers(branche.layers, getVectorList, overviews, menuGlobe, apiUrl);
-    const getVectorList = itowns.Fetcher.json(`${apiUrl}/${branche.idBranch}/vectors`);
+    const getVectorList = itowns.Fetcher.json(`${apiUrl}/${branche.active.id}/vectors`);
     branche.vectorList = await getVectorList;
 
     branche.setLayers();
@@ -131,44 +125,38 @@ async function main() {
     const { view } = viewer;
     // const { layer } = viewer;
 
-    // const saisie = new Saisie(vue, layer, apiUrl, currentBranch.id);
     const saisie = new Editing(branche, viewer.layer, apiUrl);
     saisie.cliche = 'unknown';
-    saisie.message = '';
-    // saisie.idBranch = vue.currentBranch.id;
     saisie.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
     saisie.color = [0, 0, 0];
-    saisie.controllers = {};
-    saisie.controllers.select = viewer.menuGlobe.gui.add(saisie, 'select');
-    saisie.controllers.cliche = viewer.menuGlobe.gui.add(saisie, 'cliche');
-    saisie.controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
-    saisie.controllers.coord = viewer.menuGlobe.gui.add(saisie, 'coord');
-    saisie.controllers.coord.listen();// .domElement.parentElement.style.pointerEvents = 'none';
-    saisie.controllers.polygon = viewer.menuGlobe.gui.add(saisie, 'polygon');
-    saisie.controllers.undo = viewer.menuGlobe.gui.add(saisie, 'undo');
-    saisie.controllers.redo = viewer.menuGlobe.gui.add(saisie, 'redo');
-    if (process.env.NODE_ENV === 'development') saisie.controllers.clear = viewer.menuGlobe.gui.add(saisie, 'clear');
-    viewer.message = '';
-    viewer.controllers = {};
-    viewer.controllers.message = viewer.menuGlobe.gui.add(viewer, 'message');
-    viewer.controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
-    branche.controllers = {};
-    // branche.branch = branche.list[branche.idBranch].name;
-    branche.branch = branche.list[0].name;
-    branche.controllers.branch = viewer.menuGlobe.gui.add(branche, 'branch', branche.names);
-    branche.controllers.branch.onChange((value) => {
-      console.log('new active branch : ', value);
-      branche.list.forEach((branch) => {
-        if (branch.name === value) {
-          branche.branch = value;
-          // saisie.idBranch = branch.id;
-          branche.changeBranchId(branch.id);
-        }
-      });
-    });
-    branche.controllers.createBranch = viewer.menuGlobe.gui.add(branche, 'createBranch');
 
-    // try {
+    const controllers = new Controleur(viewer.menuGlobe, saisie);
+
+    controllers.select = viewer.menuGlobe.gui.add(saisie, 'select');
+    controllers.cliche = viewer.menuGlobe.gui.add(saisie, 'cliche');
+    controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
+    viewer.message = '';
+    controllers.coord = viewer.menuGlobe.gui.add(saisie, 'coord');
+    controllers.coord.listen();
+    controllers.message = viewer.menuGlobe.gui.add(viewer, 'message');
+    controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
+    branche.branch = branche.active.name;
+    controllers.branch = viewer.menuGlobe.gui.add(branche, 'branch', branche.list.map((branch) => branch.name));
+    controllers.branch.onChange((name) => {
+      console.log('choosed branch: ', name);
+      branche.active = {
+        name,
+        id: branche.list.filter((elem) => elem.name === name)[0].id,
+      };
+      branche.changeBranch();
+      controllers.setSaisieController(name);
+    });
+    controllers.createBranch = viewer.menuGlobe.gui.add(branche, 'createBranch');
+    saisie.controllers = {
+      select: controllers.select,
+      cliche: controllers.cliche,
+      polygon: controllers.polygon,
+    };
     viewerDiv.focus();
 
     // Listen to drag and drop actions
@@ -194,6 +182,22 @@ async function main() {
       branche.saveLayer(event.name, event.data, event.style);
     });
 
+    view.addEventListener('branch-created', () => {
+      console.log('-> New branch created');
+      controllers.setSaisieController();
+      controllers.branch = controllers.branch.options(branche.list.map((branch) => branch.name))
+        .setValue(branche.active.name);
+      controllers.branch.onChange((name) => {
+        console.log('choosed branch: ', name);
+        branche.active = {
+          name,
+          id: branche.list.filter((elem) => elem.name === name)[0].id,
+        };
+        branche.changeBranch();
+        controllers.setSaisieController(name);
+      });
+    });
+
     viewerDiv.addEventListener('mousemove', (ev) => {
       ev.preventDefault();
       saisie.mousemove(ev);
@@ -212,7 +216,7 @@ async function main() {
       }
     });
 
-    saisie.controllers.coord.onChange(() => {
+    controllers.coord.onChange(() => {
       if (!checkCoordString(saisie.coord)) {
         saisie.message = 'Coordonnees non valides';
       } else {
@@ -221,7 +225,7 @@ async function main() {
       return false;
     });
 
-    saisie.controllers.coord.onFinishChange(() => {
+    controllers.coord.onFinishChange(() => {
       const coords = checkCoordString(saisie.coord);
       if (coords) {
         itowns.CameraUtils.transformCameraToLookAtTarget(
