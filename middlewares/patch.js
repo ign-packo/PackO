@@ -66,7 +66,7 @@ function rename(url, urlOrig) {
 }
 
 async function getPatches(req, _res, next) {
-  debug('~~~GET patches');
+  debug('>>GET patches');
   if (req.error) {
     next();
     return;
@@ -84,12 +84,13 @@ async function getPatches(req, _res, next) {
       function: 'getPatches',
     };
   }
+  debug('  next>>');
   next();
 }
 
 // Preparation des masques
 function createPatch(slab, geoJson, overviews, dirCache, idBranch) {
-  debug('createPatch : ', slab);
+  debug('~~createPatch : ', slab);
   const xOrigin = overviews.crs.boundingBox.xmin;
   const yOrigin = overviews.crs.boundingBox.ymax;
   const slabWidth = overviews.tileSize.width * overviews.slabSize.width;
@@ -178,12 +179,11 @@ function createPatch(slab, geoJson, overviews, dirCache, idBranch) {
 }
 
 async function postPatch(req, _res, next) {
+  debug('>>POST patch');
   if (req.error) {
     next();
     return;
   }
-  debug('~~~POST patch');
-
   const { overviews } = req;
   const params = matchedData(req);
   const geoJson = params.geoJSON;
@@ -338,11 +338,11 @@ async function postPatch(req, _res, next) {
 }
 
 async function undo(req, _res, next) {
+  debug('>>PUT patch/undo');
   if (req.error) {
     next();
     return;
   }
-  debug('~~~PUT patch/undo');
   const params = matchedData(req);
   const { idBranch } = params;
   const { overviews } = req;
@@ -478,15 +478,16 @@ async function undo(req, _res, next) {
   // debug('features in activePatches:', activePatches.features.length);
   // debug('features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
   req.result = { json: `undo: patch ${lastPatchNum} annulé`, code: 200 };
+  debug('  next>>');
   next();
 }
 
 async function redo(req, _res, next) {
+  debug('>>PUT patch/redo');
   if (req.error) {
     next();
     return;
   }
-  debug('~~~PUT patch/redo');
   const params = matchedData(req);
   const { idBranch } = params;
   const { overviews } = req;
@@ -582,15 +583,16 @@ async function redo(req, _res, next) {
 
   debug('fin du redo');
   req.result = { json: `redo: patch ${patchNumRedo} réappliqué`, code: 200 };
+  debug('  next>>');
   next();
 }
 
 async function clear(req, _res, next) {
+  debug('>>PUT patches/clear');
   if (req.error) {
     next();
     return;
   }
-  debug('~~~PUT patches/clear');
   if (!(process.env.NODE_ENV === 'development' || req.query.test === 'true')) {
     debug('unauthorized');
     req.result = { json: 'non autorisé', code: 401 };
@@ -660,6 +662,7 @@ async function clear(req, _res, next) {
 
   debug('fin du clear');
   req.result = { json: 'clear: tous les patches ont été effacés', code: 200 };
+  debug('  next>>');
   next();
 }
 

@@ -123,6 +123,28 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: auto_num_layers(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.auto_num_layers() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$BEGIN
+	NEW.num = (
+		SELECT  
+	CASE WHEN max(num) IS NULL THEN 1
+	ELSE max(num) + 1
+	END next_num
+	FROM layers
+	WHERE 
+		id_branch=NEW.id_branch 
+	);
+	RETURN NEW;
+END;$$;
+
+
+ALTER FUNCTION public.auto_num_layers() OWNER TO postgres;
+
+--
 -- Name: branches; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -267,6 +289,93 @@ ALTER TABLE public.patches ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
+-- Name: layers; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.layers (
+    id integer NOT NULL,
+    name character varying NOT NULL,
+    num integer NOT NULL,
+    crs character varying NOT NULL,
+    id_branch integer NOT NULL,
+    id_style integer NOT NULL
+);
+
+
+ALTER TABLE public.layers OWNER TO postgres;
+
+--
+-- Name: layers_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.layers ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.layers_id_seq
+    START WITH 0
+    INCREMENT BY 1
+    MINVALUE 0
+    NO MAXVALUE
+    CACHE 1
+);
+
+--
+-- Name: features; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.features (
+    id integer NOT NULL,
+    geom public.geometry NOT NULL,
+    properties character varying,
+    id_layer integer NOT NULL
+);
+
+
+ALTER TABLE public.features OWNER TO postgres;
+
+--
+-- Name: features_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.features ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.features_id_seq
+    START WITH 0
+    INCREMENT BY 1
+    MINVALUE 0
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+--
+-- Name: styles; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.styles (
+    id integer NOT NULL,
+    name character varying NOT NULL,
+    opacity integer NOT NULL,
+    visibility boolean NOT NULL,
+    style_itowns character varying NOT NULL
+);
+
+
+ALTER TABLE public.styles OWNER TO postgres;
+
+--
+-- Name: styles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.styles ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.styles_id_seq
+    START WITH 0
+    INCREMENT BY 1
+    MINVALUE 0
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: branches branches_name_id_cache_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -347,6 +456,54 @@ ALTER TABLE ONLY public.slabs
 
 
 --
+-- Name: layers layers_name_id_branch_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.layers
+    ADD CONSTRAINT layers_name_id_branch_key UNIQUE (name, id_branch);
+
+
+--
+-- Name: layers layers_num_id_branch_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.layers
+    ADD CONSTRAINT layers_num_id_branch_key UNIQUE (num, id_branch);
+
+
+--
+-- Name: layers layers_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.layers
+    ADD CONSTRAINT layers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: features features_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.features
+    ADD CONSTRAINT features_pkey PRIMARY KEY (id);
+
+
+----
+-- Name: styles styles_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.styles
+    ADD CONSTRAINT styles_name UNIQUE (name);
+
+
+--
+-- Name: styles styles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.styles
+    ADD CONSTRAINT styles_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: patches auto_num_patches_and_delete_unactive_on_insert; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -375,6 +532,13 @@ CREATE TRIGGER on_patch_deactivation BEFORE UPDATE OF active ON public.patches F
 
 
 --
+-- Name: layers auto_num_layers; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER auto_num_layers BEFORE INSERT ON public.layers FOR EACH ROW EXECUTE FUNCTION public.auto_num_layers();
+
+
+----
 -- Name: branches branches_id_cache_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -412,6 +576,30 @@ ALTER TABLE ONLY public.patches
 
 ALTER TABLE ONLY public.slabs
     ADD CONSTRAINT slabs_id_patch_fkey FOREIGN KEY (id_patch) REFERENCES public.patches(id) ON DELETE CASCADE NOT VALID;
+
+
+--
+-- Name: layers layers_id_branch_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.layers
+    ADD CONSTRAINT layers_id_branch_fkey FOREIGN KEY (id_branch) REFERENCES public.branches(id) ON DELETE CASCADE NOT VALID;
+
+
+--
+-- Name: layers layers_id_style_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.layers
+    ADD CONSTRAINT layers_id_style_fkey FOREIGN KEY (id_style) REFERENCES public.styles(id) NOT VALID;
+
+
+--
+-- Name: features features_id_layer_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgresn
+--
+
+ALTER TABLE ONLY public.features
+    ADD CONSTRAINT features_id_layer_fkey FOREIGN KEY (id_layer) REFERENCES public.layers(id) ON DELETE CASCADE NOT VALID;
 
 
 --

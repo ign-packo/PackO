@@ -3,16 +3,16 @@ const { matchedData } = require('express-validator');
 const db = require('../db/db');
 
 async function getBranches(req, _res, next) {
-  debug('~~~get branches~~~');
+  debug('>>GET branches');
   if (req.error) {
     next();
     return;
   }
   const params = matchedData(req);
   const { idCache } = params;
-  let branches;
+  // let branches;
   try {
-    branches = await db.getBranches(req.client, idCache);
+    const branches = await db.getBranches(req.client, idCache);
     if (this.column) {
       req.result = { json: branches.map((branch) => branch[this.column]), code: 200 };
     } else {
@@ -22,11 +22,12 @@ async function getBranches(req, _res, next) {
     debug(error);
     req.error = error;
   }
+  debug('  next>>');
   next();
 }
 
-async function insertBranch(req, _res, next) {
-  debug('~~~insert Branch~~~');
+async function postBranch(req, _res, next) {
+  debug('>>POST Branch');
   if (req.error) {
     next();
     return;
@@ -36,7 +37,6 @@ async function insertBranch(req, _res, next) {
 
   try {
     const idBranch = await db.insertBranch(req.client, name, idCache);
-    debug(idBranch);
     req.result = { json: { name, id: idBranch }, code: 200 };
   } catch (error) {
     debug(error);
@@ -52,11 +52,12 @@ async function insertBranch(req, _res, next) {
       req.error = error;
     }
   }
+  debug('  next>>');
   next();
 }
 
 async function deleteBranch(req, _res, next) {
-  debug('~~~delete branch~~~');
+  debug('>>DELETE branch');
   if (req.error) {
     next();
     return;
@@ -65,8 +66,7 @@ async function deleteBranch(req, _res, next) {
   const { idBranch } = params;
 
   try {
-    const branchName = await db.deleteBranch(req.client, idBranch, global.id_cache);
-    debug(branchName);
+    const branchName = await db.deleteBranch(req.client, idBranch);
     if (branchName === null) {
       req.error = {
         json: {
@@ -82,11 +82,12 @@ async function deleteBranch(req, _res, next) {
     debug(error);
     req.error = error;
   }
+  debug('  next>>');
   next();
 }
 
 module.exports = {
   getBranches,
-  insertBranch,
+  postBranch,
   deleteBranch,
 };

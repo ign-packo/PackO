@@ -15,10 +15,13 @@ tags:
   - name: graph
     description: Requête sur le graph de mosaïquage
   - name: patch
-    description: Modification du graphe de mosaïquage
+    description: Gestion des patches
+  - name: vector
+    description: Gestion des couches vecteurs annexes
   - name: file
     description: Récupération de fichiers
 paths:
+# VERSION
   '/version':
     get:
       tags:
@@ -29,6 +32,7 @@ paths:
         '200':
           description: OK
 
+# CACHE
   '/caches':
     get:
       tags:
@@ -156,6 +160,7 @@ paths:
         '200':
           description: OK
 
+# BRANCH
   '/branches':
     get:
       tags:
@@ -195,6 +200,7 @@ paths:
       responses:
         '200':
           description: OK
+
     delete:
       tags:
         - branch
@@ -210,11 +216,43 @@ paths:
       responses:
         '200':
           description: OK
-  '/{idBranch}/patch/undo':
-    put:
+
+# GRAPH
+  '/{idBranch}/graph':
+    get:
+      tags:
+        - graph
+      summary: "Récupération de l'identifiant du cliché"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: x
+          required: true
+          schema:
+            type: string
+          example: 230975.8
+        - in: query
+          name: y
+          required: true
+          schema:
+            type: string
+          example: 6759518.1
+      responses:
+        '200':
+          description: OK
+          
+# PATCH
+  '/{idBranch}/patches':
+    get:
       tags:
         - patch
-      summary: "Annulation de la dernière modification"
+      summary: "Récupération de tous les patchs de correction"
       description: ""
       parameters:
         - in: path
@@ -226,38 +264,7 @@ paths:
       responses:
         '200':
           description: OK
-  '/{idBranch}/patch/redo':
-    put:
-      tags:
-        - patch
-      summary: "Reprise en compte de la dernière modification annulée"
-      description: ""
-      parameters:
-        - in: path
-          name: idBranch
-          description: l'identifiant de la branche
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: OK
-  '/{idBranch}/patches/clear':
-    put:
-      tags:
-        - patch
-      summary: "Annulation de toutes les modifications"
-      description: ""
-      parameters:
-        - in: path
-          name: idBranch
-          description: l'identifiant de la branche
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: OK
+
   '/{idBranch}/patch':
     post:
       tags:
@@ -299,11 +306,12 @@ paths:
       responses:
         '200':
           description: OK
-  '/{idBranch}/patches':
-    get:
+
+  '/{idBranch}/patch/undo':
+    put:
       tags:
         - patch
-      summary: "Récupération de tous les patchs de correction"
+      summary: "Annulation de la dernière modification"
       description: ""
       parameters:
         - in: path
@@ -312,38 +320,142 @@ paths:
           required: true
           schema:
             type: integer
-      responses:
-        '200':
-          description: OK
-  '/{idBranch}/graph':
-    get:
-      tags:
-        - graph
-      summary: "Récupération de l'identifiant du cliche"
-      description: ""
-      parameters:
-        - in: path
-          name: idBranch
-          description: l'identifiant de la branche
-          required: true
-          schema:
-            type: integer
-        - in: query
-          name: x
-          required: true
-          schema:
-            type: string
-          example: 230975.8
-        - in: query
-          name: y
-          required: true
-          schema:
-            type: string
-          example: 6759518.1
       responses:
         '200':
           description: OK
 
+  '/{idBranch}/patch/redo':
+    put:
+      tags:
+        - patch
+      summary: "Reprise en compte de la dernière modification annulée"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+
+  '/{idBranch}/patches/clear':
+    put:
+      tags:
+        - patch
+      summary: "Annulation de toutes les modifications"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+
+# VECTOR
+  '/{idBranch}/vectors':
+    get:
+      tags:
+        - vector
+      summary: "Récupération de tous les vecteurs annexes d'une branche"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+
+  '/{idBranch}/vector':
+    get:
+      tags:
+        - vector
+      summary: "Récupération d'un vecteur annexe specifique sur une branche"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: idVector
+          description: l'identifiant du vecteur
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+  # '/{idBranch}/vector':
+    post:
+      tags:
+        - vector
+      summary: "Ajout d'un vecteur annexe en base"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        description: couche vecteur annexe à ajouter (json issu de itowns)
+        required: true
+        content:
+          application/json:
+              schema:
+                type: object
+                properties:
+                  metadonnees:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        example: 'vector_example'
+                      style:
+                        type: object
+                        example: {"fill": {"color": "#76cda7", "opacity": 0.7}, "icon": {}, "text": {}, "zoom": {}, "point": {}, "stroke": {"color": "#76cda7"}}
+                      crs:
+                        type: string
+                        example: 'EPSG:2154'
+                  data:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - FeatureCollection
+                      crs:
+                        type: object
+                        example:
+                          {
+                            "type":"name",
+                            "properties":{
+                              "name":"urn:ogc:def:crs:EPSG::2154"}}
+
+                      features:
+                        type: object
+                        example:
+                          [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [[[230748, 6759653], [230746, 6759653], [230746, 6759651], [230748, 6759651], [230748, 6759653]]] } } ]
+
+      responses:
+        '200':
+          description: OK
+
+# WMTS
   '/{idBranch}/wmts':
     get:
       tags:
@@ -478,6 +590,7 @@ paths:
         '200':
           description: OK
 
+# FILE
   '/json/{filetype}':
     get:
       tags:

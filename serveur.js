@@ -1,7 +1,7 @@
 // const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
+// const bodyParser = require('body-parser');
 const os = require('os');
 
 const swaggerUi = require('swagger-ui-express');
@@ -41,6 +41,7 @@ const patch = require('./routes/patch');
 const { misc, gitVersion } = require('./routes/misc');
 const branch = require('./routes/branch');
 const cache = require('./routes/cache');
+const vector = require('./routes/vector');
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
@@ -52,7 +53,7 @@ try {
   app.urlApi = `http://${SERVER}:${PORT}`;
 
   app.use(cors());
-  app.use(bodyParser.json());
+  app.use(express.json({ limit: '50mb' }));
 
   app.use((req, res, next) => {
     debugServer(req.method, ' ', req.path, ' ', req.query.REQUEST || '');
@@ -77,6 +78,7 @@ try {
   app.use('/', misc);
   app.use('/', branch);
   app.use('/', cache);
+  app.use('/', vector);
 
   app.use('/itowns', express.static('itowns'));
 
