@@ -51,17 +51,17 @@ function getTile(url, x, y, z, blocSize, cacheKey) {
 
   const { ds } = cache[cacheKey];
   debug('fichier ouvert ');
-  if (z > ds.bands.get(1).overviews.count()) {
-    const error = new Error();
-    error.msg = {
-      status: `niveau de zoom ${z} non dispo sur ${url}!`,
-      errors: [{
-        localisation: 'getTile',
-        msg: `niveau de zoom ${z} non dispo sur ${url}!`,
-      }],
-    };
-    throw error;
-  }
+  // if (z > ds.bands.get(1).overviews.count()) {
+  //   const error = new Error();
+  //   error.msg = {
+  //     status: `niveau de zoom ${z} non dispo sur ${url}!`,
+  //     errors: [{
+  //       localisation: 'getTile',
+  //       msg: `niveau de zoom ${z} non dispo sur ${url}!`,
+  //     }],
+  //   };
+  //   throw error;
+  // }
   const bandR = z === 0 ? ds.bands.get(1) : ds.bands.get(1).overviews.get(z - 1);
   const bandG = z === 0 ? ds.bands.get(2) : ds.bands.get(2).overviews.get(z - 1);
   const bandB = z === 0 ? ds.bands.get(3) : ds.bands.get(3).overviews.get(z - 1);

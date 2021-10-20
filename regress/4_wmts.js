@@ -143,7 +143,6 @@ describe('Wmts', () => {
           should.not.exist(err);
           res.should.have.status(200);
           res.type.should.be.a('string').equal('application/octet-stream');
-
           done();
         });
     });
@@ -158,7 +157,6 @@ describe('Wmts', () => {
           should.not.exist(err);
           res.should.have.status(200);
           res.type.should.be.a('string').equal('application/octet-stream');
-
           done();
         });
     });
@@ -173,7 +171,6 @@ describe('Wmts', () => {
           should.not.exist(err);
           res.should.have.status(200);
           res.type.should.be.a('string').equal('application/octet-stream');
-
           done();
         });
     });
@@ -188,7 +185,6 @@ describe('Wmts', () => {
           should.not.exist(err);
           res.should.have.status(200);
           res.type.should.be.a('string').equal('application/octet-stream');
-
           done();
         });
     });
@@ -330,7 +326,7 @@ describe('Wmts', () => {
           });
       });
     });
-    it('should return an xml', (done) => {
+    it('should succeed (return an xml)', (done) => {
       chai.request(app)
         .get(`/${idBranch}/wmts`)
         .query({
@@ -354,6 +350,34 @@ describe('Wmts', () => {
 
           done();
         });
+    });
+    describe('query: TILEMATRIX={out of limit}', () => {
+      it('should return an error', (done) => {
+        chai.request(app)
+          .get(`/${idBranch}/wmts`)
+          .query({
+            SERVICE: 'WMTS',
+            REQUEST: 'GetFeatureInfo',
+            VERSION: '1.0.0',
+            LAYER: 'ortho',
+            STYLE: 'normal',
+            INFOFORMAT: 'application/gml+xml; version=3.1',
+            TILEMATRIXSET: 'LAMB93_5cm',
+            TILEMATRIX: 25,
+            TILEROW: 34402,
+            TILECOL: 18027,
+            I: 139,
+            J: 102,
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'TILEMATRIX' n'est pas valide.");
+            done();
+          });
+      });
     });
     it("should return a warning: 'missing'", (done) => {
       chai.request(app)

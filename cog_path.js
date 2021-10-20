@@ -56,18 +56,19 @@ function getTilePath(X, Y, Z, overviews) {
   //   throw error;
   // }
 
-  if (Z < overviews.dataSet.level.min) {
-    debug('Niveau de zoom non dispo');
-    const error = new Error();
-    error.msg = {
-      status: 'zoom non dispo',
-      errors: [{
-        localisation: 'getPath',
-        msg: 'zoom non dispo',
-      }],
-    };
-    throw error;
-  }
+  // //// TEST NON Utile => fais au niveau de la route wmts
+  // if (Z < overviews.dataSet.level.min) {
+  //   debug('Niveau de zoom non dispo');
+  //   const error = new Error();
+  //   error.msg = {
+  //     status: 'zoom non dispo',
+  //     errors: [{
+  //       localisation: 'getPath',
+  //       msg: 'zoom non dispo',
+  //     }],
+  //   };
+  //   throw error;
+  // }
 
   const slabX = (X * factor) / nbTiles;
   const slabY = (Y * factor) / nbTiles;
