@@ -1,11 +1,11 @@
-class Controleur {
-  constructor(menuGlobe, saisie) {
+class Controller {
+  constructor(menuGlobe, editing) {
     this.controllers = {};
     this.menuGlobe = menuGlobe;
-    this.saisie = saisie;
+    this.editing = editing;
   }
 
-  setSaisieController(name) {
+  setEditingController(name) {
     if (this.controllers.polygon) {
       this.controllers.polygon.remove();
       delete this.controllers.polygon;
@@ -23,12 +23,12 @@ class Controleur {
       delete this.controllers.clear;
     }
     if (name !== 'orig') {
-      this.controllers.polygon = this.menuGlobe.gui.add(this.saisie, 'polygon');
-      this.saisie.controllers.polygon = this.controllers.polygon;
-      this.controllers.undo = this.menuGlobe.gui.add(this.saisie, 'undo');
-      this.controllers.redo = this.menuGlobe.gui.add(this.saisie, 'redo');
-      if (process.env.NODE_ENV === 'development') this.controllers.clear = this.menuGlobe.gui.add(this.saisie, 'clear');
+      this.controllers.polygon = this.menuGlobe.gui.add(this.editing, 'polygon');
+      this.editing.controllers.polygon = this.controllers.polygon;
+      this.controllers.undo = this.menuGlobe.gui.add(this.editing, 'undo');
+      this.controllers.redo = this.menuGlobe.gui.add(this.editing, 'redo');
+      if (process.env.NODE_ENV === 'development') this.controllers.clear = this.menuGlobe.gui.add(this.editing, 'clear');
     }
   }
 }
-export default Controleur;
+export default Controller;

@@ -4,7 +4,7 @@ import * as itowns from 'itowns';
 import Viewer from './Viewer';
 import Editing from './Editing';
 import Branch from './Branch';
-import Controleur from './Controleur';
+import Controller from './Controller';
 
 // Global itowns pour GuiTools -> peut être améliorer
 global.itowns = itowns;
@@ -48,7 +48,6 @@ async function main() {
   const apiUrl = `http://${serverAPI}:${portAPI}`;
 
   const nameCache = urlParams.get('namecache');
-  // const idCache = urlParams.get('idcache');
 
   itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
     document.getElementById('spAPIVersion_val').innerText = obj.version_git;
@@ -70,7 +69,6 @@ async function main() {
 
     const viewerDiv = document.getElementById('viewerDiv');
     const viewer = new Viewer(viewerDiv);
-    // vue.apiUrl = apiUrl;
 
     const overviews = await getOverviews;
 
@@ -79,7 +77,6 @@ async function main() {
 
     viewer.view.isDebugMode = true;
     viewer.menuGlobe = new GuiTools('menuDiv', viewer.view);
-    // const { menuGlobe } = vue;
     viewer.menuGlobe.gui.width = 300;
 
     // Patch pour ajouter la modification de l'epaisseur des contours dans le menu
@@ -108,51 +105,45 @@ async function main() {
       }
     /* eslint-enable no-param-reassign */
     };
-    const branche = new Branch(apiUrl, viewer);
-    // try {
+    const branch = new Branch(apiUrl, viewer);
+    branch.list = await getBranches;
 
-    const { view } = vue;
-    branche.list = await getBranches;
+    [branch.active] = branch.list;
 
-    [branche.active] = branche.list;
+    const getVectorList = itowns.Fetcher.json(`${apiUrl}/${branch.active.id}/vectors`);
+    branch.vectorList = await getVectorList;
 
-    const getVectorList = itowns.Fetcher.json(`${apiUrl}/${branche.active.id}/vectors`);
-    branche.vectorList = await getVectorList;
+    branch.setLayers();
+    viewer.refresh(branch.layers);
 
-    branche.setLayers();
-    viewer.refresh(branche.layers);
+    const editing = new Editing(branch, viewer.layer, apiUrl);
+    editing.cliche = 'unknown';
+    editing.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
+    editing.color = [0, 0, 0];
 
-    const { view } = viewer;
-    // const { layer } = viewer;
+    const controllers = new Controller(viewer.menuGlobe, editing);
 
-    const saisie = new Editing(branche, viewer.layer, apiUrl);
-    saisie.cliche = 'unknown';
-    saisie.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
-    saisie.color = [0, 0, 0];
-
-    const controllers = new Controleur(viewer.menuGlobe, saisie);
-
-    controllers.select = viewer.menuGlobe.gui.add(saisie, 'select');
-    controllers.cliche = viewer.menuGlobe.gui.add(saisie, 'cliche');
+    controllers.select = viewer.menuGlobe.gui.add(editing, 'select');
+    controllers.cliche = viewer.menuGlobe.gui.add(editing, 'cliche');
     controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
     viewer.message = '';
-    controllers.coord = viewer.menuGlobe.gui.add(saisie, 'coord');
+    controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord');
     controllers.coord.listen();
     controllers.message = viewer.menuGlobe.gui.add(viewer, 'message');
     controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
-    branche.branch = branche.active.name;
-    controllers.branch = viewer.menuGlobe.gui.add(branche, 'branch', branche.list.map((branch) => branch.name));
+    branch.branch = branch.active.name;
+    controllers.branch = viewer.menuGlobe.gui.add(branch, 'branch', branch.list.map((elem) => elem.name));
     controllers.branch.onChange((name) => {
       console.log('choosed branch: ', name);
-      branche.active = {
+      branch.active = {
         name,
-        id: branche.list.filter((elem) => elem.name === name)[0].id,
+        id: branch.list.filter((elem) => elem.name === name)[0].id,
       };
-      branche.changeBranch();
-      controllers.setSaisieController(name);
+      branch.changeBranch();
+      controllers.setEditingController(name);
     });
-    controllers.createBranch = viewer.menuGlobe.gui.add(branche, 'createBranch');
-    saisie.controllers = {
+    controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch');
+    editing.controllers = {
       select: controllers.select,
       cliche: controllers.cliche,
       polygon: controllers.polygon,
@@ -166,6 +157,7 @@ async function main() {
     document.addEventListener('drop', (e) => { viewer.addDnDFiles(e, e.dataTransfer.files); }, false);
     document.addEventListener('paste', (e) => { viewer.addDnDFiles(e, e.clipboardData.files); }, false);
 
+    const { view } = viewer;
     view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
       console.info('-> View initialized');
       updateScaleWidget(view, viewer.resolution);
@@ -179,33 +171,33 @@ async function main() {
 
     view.addEventListener('file-dropped', (event) => {
       console.log('-> A file had been dropped');
-      branche.saveLayer(event.name, event.data, event.style);
+      branch.saveLayer(event.name, event.data, event.style);
     });
 
     view.addEventListener('branch-created', () => {
       console.log('-> New branch created');
-      controllers.setSaisieController();
-      controllers.branch = controllers.branch.options(branche.list.map((branch) => branch.name))
-        .setValue(branche.active.name);
+      controllers.setEditingController();
+      controllers.branch = controllers.branch.options(branch.list.map((elem) => elem.name))
+        .setValue(branch.active.name);
       controllers.branch.onChange((name) => {
         console.log('choosed branch: ', name);
-        branche.active = {
+        branch.active = {
           name,
-          id: branche.list.filter((elem) => elem.name === name)[0].id,
+          id: branch.list.filter((elem) => elem.name === name)[0].id,
         };
-        branche.changeBranch();
-        controllers.setSaisieController(name);
+        branch.changeBranch();
+        controllers.setEditingController(name);
       });
     });
 
     viewerDiv.addEventListener('mousemove', (ev) => {
       ev.preventDefault();
-      saisie.mousemove(ev);
+      editing.mousemove(ev);
       return false;
     }, false);
     viewerDiv.addEventListener('click', (ev) => {
       ev.preventDefault();
-      saisie.click(ev);
+      editing.click(ev);
       return false;
     }, false);
     viewerDiv.addEventListener('mousedown', (ev) => {
@@ -217,16 +209,16 @@ async function main() {
     });
 
     controllers.coord.onChange(() => {
-      if (!checkCoordString(saisie.coord)) {
-        saisie.message = 'Coordonnees non valides';
+      if (!checkCoordString(editing.coord)) {
+        editing.message = 'Coordonnees non valides';
       } else {
-        saisie.message = '';
+        editing.message = '';
       }
       return false;
     });
 
     controllers.coord.onFinishChange(() => {
-      const coords = checkCoordString(saisie.coord);
+      const coords = checkCoordString(editing.coord);
       if (coords) {
         itowns.CameraUtils.transformCameraToLookAtTarget(
           view,
@@ -237,16 +229,16 @@ async function main() {
           },
         );
       }
-      saisie.message = '';
+      editing.message = '';
       return false;
     });
 
     window.addEventListener('keydown', (ev) => {
-      saisie.keydown(ev);
+      editing.keydown(ev);
       return false;
     });
     window.addEventListener('keyup', (ev) => {
-      saisie.keyup(ev);
+      editing.keyup(ev);
       return false;
     });
     // });
@@ -292,7 +284,6 @@ async function main() {
     });
   } catch (err) {
     console.log(err);
-    // console.log(`${err.name}: ${err.message}`);
     if (`${err.name}: ${err.message}` === 'TypeError: Failed to fetch') {
       const newApiUrl = window.prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl);
       const apiUrlSplit = newApiUrl.split('/')[2].split(':');

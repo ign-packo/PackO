@@ -36,9 +36,7 @@ else {
 
 class Viewer {
   constructor(viewerDiv) {
-    // this.view = view;
     this.viewerDiv = viewerDiv;
-    // this.apiUrl = apiUrl;
 
     this.crs = {};
     this.overview = {};
@@ -58,7 +56,6 @@ class Viewer {
       Contour: 3,
       Patches: 4,
     };
-    // this.vectorList = [];
   }
 
   createView(overviews, idCache) {
@@ -120,7 +117,7 @@ class Viewer {
     // avec le view.getPixelsToMeters() d'iTowns
     this.resolLvMax = resolution * 2 ** (overviews.level.max - levelMax - 1) - 0.01;
     this.resolLvMin = resolution * 2 ** (overviews.level.max - levelMin) + 0.01;
-    console.log('resol min/max : ', this.resolLvMin, this.resolLvMax);
+    // console.log('resol min/max : ', this.resolLvMin, this.resolLvMax);
     // Instanciate PlanarView*
     const zoomFactor = 2;// customizable
 
@@ -219,7 +216,6 @@ class Viewer {
           layer.colorLayer.minFilter = THREE.NearestFilter;
         }
         this.view.addLayer(layer.colorLayer);
-        // .then(this.menuGlobe.addLayerGUI.bind(this.menuGlobe));
         if (!this.index[layer.name]) this.index[layer.name] = Object.keys(this.index).length + 1;
       }
     });

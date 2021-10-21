@@ -22,10 +22,10 @@ function readCRS(json) {
 }
 
 class Branch {
-  constructor(apiUrl, vue) {
+  constructor(apiUrl, viewer) {
     this.apiUrl = apiUrl;
-    this.vue = vue;
-    this.view = vue.view;
+    this.viewer = viewer;
+    this.view = viewer.view;
 
     this.layers = {};
     this.vectorList = {};
@@ -39,35 +39,35 @@ class Branch {
       Ortho: {
         type: 'raster',
         url: `${this.apiUrl}/${this.active.id}/wmts`,
-        crs: this.vue.crs,
+        crs: this.viewer.crs,
         opacity: 1,
         visible: true,
       },
       Graph: {
         type: 'raster',
         url: `${this.apiUrl}/${this.active.id}/wmts`,
-        crs: this.vue.crs,
+        crs: this.viewer.crs,
         opacity: 1,
         visible: true,
       },
       Contour: {
         type: 'raster',
         url: `${this.apiUrl}/${this.active.id}/wmts`,
-        crs: this.vue.crs,
+        crs: this.viewer.crs,
         opacity: 0.5,
         visible: true,
       },
       Opi: {
         type: 'raster',
         url: `${this.apiUrl}/${this.active.id}/wmts`,
-        crs: this.vue.crs,
+        crs: this.viewer.crs,
         opacity: 0.5,
         visible: false,
       },
       Patches: {
         type: 'vector',
         url: `${this.apiUrl}/${this.active.id}/patches`,
-        crs: this.vue.crs,
+        crs: this.viewer.crs,
         opacity: 1,
         visible: false,
         style: {
@@ -93,8 +93,8 @@ class Branch {
 
   async changeBranch() {
     console.log('changeBranch -> name:', this.active.name, 'id:', this.active.id);
-    this.vue.message = '';
-    const listColorLayer = this.vue.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
+    this.viewer.message = '';
+    const listColorLayer = this.viewer.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
     listColorLayer.forEach((element) => {
       const regex = new RegExp(`^${this.apiUrl}\\/[0-9]+\\/`);
       this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url.replace(regex, `${this.apiUrl}/${this.active.id}/`);
@@ -102,24 +102,24 @@ class Branch {
     const getVectorList = itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
     this.vectorList = await getVectorList;
     this.setLayers();
-    this.vue.refresh(this.layers);
+    this.viewer.refresh(this.layers);
   }
 
   createBranch() {
-    this.vue.message = '';
+    this.viewer.message = '';
     const branchName = window.prompt('Choose a new branch name:', '');
     console.log(branchName);
     if (branchName === null) return;
     if (branchName.length === 0) {
-      this.vue.message = 'le nom n\'est pas valide';
+      this.viewer.message = 'le nom n\'est pas valide';
       return;
     }
-    fetch(`${this.apiUrl}/branch?name=${branchName}&idCache=${this.vue.idCache}`,
+    fetch(`${this.apiUrl}/branch?name=${branchName}&idCache=${this.viewer.idCache}`,
       {
         method: 'POST',
       }).then((res) => {
       if (res.status === 200) {
-        itowns.Fetcher.json(`${this.apiUrl}/branches?idCache=${this.vue.idCache}`).then((branches) => {
+        itowns.Fetcher.json(`${this.apiUrl}/branches?idCache=${this.viewer.idCache}`).then((branches) => {
           this.list = branches;
           this.active.name = branchName;
           this.active.id = this.list.filter((branch) => branch.name === branchName)[0].id;
@@ -131,7 +131,7 @@ class Branch {
       } else {
         res.text().then((err) => {
           console.log(err);
-          this.vue.message = 'le nom n\'est pas valide';
+          this.viewer.message = 'le nom n\'est pas valide';
         });
       }
     });

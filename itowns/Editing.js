@@ -11,10 +11,10 @@ const status = {
 };
 
 class Editing {
-  constructor(branche, layer, apiUrl) {
-    this.branche = branche;
-    this.vue = branche.vue;
-    this.view = this.vue.view;
+  constructor(branch, layer, apiUrl) {
+    this.branch = branch;
+    this.viewer = branch.viewer;
+    this.view = this.viewer.view;
     this.layer = layer;
     this.apiUrl = apiUrl;
 
@@ -61,7 +61,7 @@ class Editing {
       return;
     }
     this.currentStatus = status.RAS;
-    this.vue.message = '';
+    this.viewer.message = '';
     const positions = this.currentPolygon.geometry.attributes.position.array;
     const geojson = {
       type: 'FeatureCollection',
@@ -92,9 +92,9 @@ class Editing {
     this.view.scene.remove(this.currentPolygon);
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
-    this.vue.message = 'calcul en cours';
+    this.viewer.message = 'calcul en cours';
     // On post le geojson sur l'API
-    fetch(`${this.apiUrl}/${this.branche.active.id}/patch?`,
+    fetch(`${this.apiUrl}/${this.branch.active.id}/patch?`,
       {
         method: 'POST',
         headers: {
@@ -105,9 +105,9 @@ class Editing {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.vue.refresh(this.branche.layers);
+        this.viewer.refresh(this.branch.layers);
       } else {
-        this.vue.message = "polygon: out of OPI's bounds";
+        this.viewer.message = "polygon: out of OPI's bounds";
       }
     });
   }
@@ -121,7 +121,7 @@ class Editing {
     }
     this.view.controls.setCursor('default', 'auto');
     this.currentStatus = status.RAS;
-    this.vue.message = '';
+    this.viewer.message = '';
 
     Object.keys(this.controllers).forEach((key) => {
       if (key !== 'cliche' && this.controllers[key]) this.controllers[key].__li.style.backgroundColor = '';
@@ -137,11 +137,11 @@ class Editing {
     } else if (e.key === 'Shift') {
       if (this.currentStatus === status.POLYGON) {
         if (this.currentPolygon && (this.nbVertices > 2)) {
-          if (this.branche.active.name !== 'orig') {
+          if (this.branch.active.name !== 'orig') {
             this.currentStatus = status.ENDING;
-            this.vue.message = 'Cliquer pour valider la saisie';
+            this.viewer.message = 'Cliquer pour valider la saisie';
           } else {
-            this.vue.message = 'Changer de branche pour continuer';
+            this.viewer.message = 'Changer de branche pour continuer';
           }
 
           this.view.controls.setCursor('default', 'progress');
@@ -154,7 +154,7 @@ class Editing {
           this.currentPolygon.geometry.computeBoundingSphere();
           this.view.notifyChange(this.currentPolygon);
         } else {
-          this.vue.message = 'Pas assez de points';
+          this.viewer.message = 'Pas assez de points';
         }
       }
     } else if (e.key === 'Backspace') {
@@ -180,7 +180,7 @@ class Editing {
     console.log(e.key, ' up');
     if (e.key === 'Shift') {
       if (this.currentStatus === status.ENDING || this.currentStatus === status.POLYGON) {
-        this.vue.message = 'Maj pour terminer';
+        this.viewer.message = 'Maj pour terminer';
         if (this.currentPolygon && (this.nbVertices > 0)) {
           // on remet le dernier sommet sur la position de la souris
 
@@ -205,7 +205,7 @@ class Editing {
     const mousePosition = this.pickPoint(e);
     console.log('Click: ', mousePosition.x, mousePosition.y);
     console.log('currentStatus: ', this.currentStatus);
-    this.vue.message = '';
+    this.viewer.message = '';
 
     switch (this.currentStatus) {
       case status.SELECT: {
@@ -213,7 +213,7 @@ class Editing {
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         this.view.controls.setCursor('default', 'auto');
-        fetch(`${this.apiUrl}/${this.branche.active.id}/graph?x=${pos.x}&y=${pos.y}`,
+        fetch(`${this.apiUrl}/${this.branch.active.id}/graph?x=${pos.x}&y=${pos.y}`,
           {
             method: 'GET',
             headers: {
@@ -231,7 +231,7 @@ class Editing {
               // On modifie la couche OPI
               this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
               this.view.getLayerById('Opi').visible = true;
-              this.vue.refresh(this.branche.layers);
+              this.viewer.refresh(this.branch.layers);
               this.validClicheSelected = true;
             }
             if (res.status === 201) {
@@ -253,9 +253,9 @@ class Editing {
         break;
       }
       case status.POLYGON: {
-        if (this.branche.active.name !== 'orig') {
+        if (this.branch.active.name !== 'orig') {
           // Cas ou l'on est en train de saisir un polygon : on ajoute un point
-          this.vue.message = 'Maj pour terminer';
+          this.viewer.message = 'Maj pour terminer';
 
           // Si c'est le premier point, on defini une position de reference (pb de précision)
           if (this.nbVertices === 0) {
@@ -273,7 +273,7 @@ class Editing {
           }
           this.nbVertices += 1;
         } else {
-          this.vue.message = 'Changer de branche pour continuer';
+          this.viewer.message = 'Changer de branche pour continuer';
         }
         break;
       }
@@ -292,17 +292,17 @@ class Editing {
     this.view.controls.setCursor('default', 'crosshair');
     console.log('"select": En attente de sélection');
     this.currentStatus = status.SELECT;
-    this.vue.message = 'choisir un cliche';
+    this.viewer.message = 'choisir un cliche';
   }
 
   polygon() {
     if (this.currentStatus === status.WAITING) return;
     if (!this.validClicheSelected) {
-      this.vue.message = (this.currentStatus === status.MOVE_POINT) ? 'choisir un cliche valide' : 'cliche non valide';
+      this.viewer.message = (this.currentStatus === status.MOVE_POINT) ? 'choisir un cliche valide' : 'cliche non valide';
       return;
     }
     if (this.currentPolygon) {
-      this.vue.message = 'saisie déjà en cours';
+      this.viewer.message = 'saisie déjà en cours';
       // saisie deja en cours
       return;
     }
@@ -310,7 +310,7 @@ class Editing {
     this.controllers.polygon.__li.style.backgroundColor = '#FF000055';
     this.view.controls.setCursor('default', 'crosshair');
     console.log("saisie d'un polygon");
-    this.vue.message = "saisie d'un polygon";
+    this.viewer.message = "saisie d'un polygon";
     const MAX_POINTS = 500;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
@@ -334,21 +334,21 @@ class Editing {
   undo() {
     if (this.currentStatus === status.WAITING) return;
     this.cancelcurrentPolygon();
-    this.vue.message = '';
+    this.viewer.message = '';
     console.log('undo');
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
-    this.vue.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/${this.branche.active.id}/patch/undo?`,
+    this.viewer.message = 'calcul en cours';
+    fetch(`${this.apiUrl}/${this.branch.active.id}/patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.vue.refresh(this.branche.layers);
+        this.viewer.refresh(this.branch.layers);
       }
       res.text().then((msg) => {
-        this.vue.message = msg;
+        this.viewer.message = msg;
       });
     });
   }
@@ -356,21 +356,21 @@ class Editing {
   redo() {
     if (this.currentStatus === status.WAITING) return;
     this.cancelcurrentPolygon();
-    this.vue.message = '';
+    this.viewer.message = '';
     console.log('redo');
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
-    this.vue.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/${this.branche.active.id}/patch/redo?`,
+    this.viewer.message = 'calcul en cours';
+    fetch(`${this.apiUrl}/${this.branch.active.id}/patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.vue.refresh(this.branche.layers);
+        this.viewer.refresh(this.branch.layers);
       }
       res.text().then((msg) => {
-        this.vue.message = msg;
+        this.viewer.message = msg;
       });
     });
   }
@@ -382,18 +382,18 @@ class Editing {
     console.log('clear');
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
-    this.vue.message = 'calcul en cours';
+    this.viewer.message = 'calcul en cours';
 
-    fetch(`${this.apiUrl}/${this.branche.active.id}/patches/clear?`,
+    fetch(`${this.apiUrl}/${this.branch.active.id}/patches/clear?`,
       {
         method: 'PUT',
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.vue.refresh(this.branche.layers);
+        this.viewer.refresh(this.branch.layers);
       }
       res.text().then((msg) => {
-        this.vue.message = msg;
+        this.viewer.message = msg;
       });
     });
   }
