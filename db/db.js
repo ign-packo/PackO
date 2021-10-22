@@ -1,6 +1,21 @@
 const debug = require('debug')('db');
 const format = require('pg-format');
 
+async function beginTransaction(pgClient) {
+  debug('BEGIN');
+  await pgClient.query('BEGIN');
+}
+
+async function endTransaction(pgClient, succeed) {
+  if (succeed) {
+    debug('COMMIT');
+    await pgClient.query('COMMIT');
+  } else {
+    debug('ROLLBACK');
+    await pgClient.query('ROLLBACK');
+  }
+}
+
 async function getCaches(pgClient) {
   debug('    ~~getCaches');
   try {
@@ -54,6 +69,21 @@ async function insertListOpi(pgClient, idCache, listOpi) {
     const sqlRequest = format('INSERT INTO opi (id_cache, name, color) VALUES %L', values);
     const results = await pgClient.query(sqlRequest);
     return results.rowCount;
+  } catch (error) {
+    debug('Error: ', error);
+    throw error;
+  }
+}
+
+async function getCache(pgClient, idBranch) {
+  debug(`~~getCache (idBranch: ${idBranch})`);
+  try {
+    const results = await pgClient.query(
+      'SELECT c.id, c.path FROM branches b, caches c WHERE b.id_cache = c.id AND b.id = $1',
+      [idBranch],
+    );
+    if (results.rowCount === 1) return results.rows[0];
+    throw new Error('idBranch non valide');
   } catch (error) {
     debug('Error: ', error);
     throw error;
@@ -325,12 +355,12 @@ async function getSlabs(pgClient, idPatch) {
   }
 }
 
-async function insertSlabs(pgClient, idPatch, patch) {
+async function insertSlabs(pgClient, idPatch, slabs) {
   try {
     debug(`    ~~insertSlabs (idPatch: ${idPatch})`);
 
     const values = [];
-    patch.properties.slabs.forEach((slab) => {
+    slabs.forEach((slab) => {
       values.push([idPatch, slab.x, slab.y, slab.z]);
     });
 
@@ -517,11 +547,11 @@ async function createProcess(pgClient) {
   }
 }
 
-async function finishProcess(pgClient, idProcess, status, result) {
+async function finishProcess(pgClient, status, idProcess, result) {
   try {
     debug('~~finishProcess');
 
-    const sql = format('UPDATE processes SET end_date=NOW(), status=%s, result=%s WHERE id=%s', status, result, idProcess);
+    const sql = format('UPDATE processes SET end_date=NOW(), status=%L, result=%L WHERE id=%L', status, result, idProcess);
     debug(sql);
 
     await pgClient.query(
@@ -534,7 +564,10 @@ async function finishProcess(pgClient, idProcess, status, result) {
 }
 
 module.exports = {
+  beginTransaction,
+  endTransaction,
   getCaches,
+  getCache,
   insertCache,
   deleteCache,
   insertListOpi,

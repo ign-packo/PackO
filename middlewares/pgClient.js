@@ -1,5 +1,6 @@
 const debug = require('debug')('pgClient');
 const { Client } = require('pg');
+const db = require('../db/db');
 
 /*
  * middleware pour la création et la libération des connexions postgresql
@@ -16,7 +17,7 @@ async function open(req, res, next) {
       port: process.env.PGPORT,
     });
     await req.client.connect();
-    await req.client.query('BEGIN');
+    await db.beginTransaction(req.client);
     debug('transaction ouverte');
     next();
   } catch (error) {
@@ -30,16 +31,10 @@ async function open(req, res, next) {
   }
 }
 
-async function close(req, res, next) {
+async function close(req, _res, next) {
   debug('close pg connection...');
   try {
-    if (req.error) {
-      debug('rollback');
-      await req.client.query('ROLLBACK');
-    } else {
-      debug('commit');
-      await req.client.query('COMMIT');
-    }
+    await db.endTransaction(req.client, !(req.error));
   } catch (error) {
     req.error = {
       msg: error.toString(),
