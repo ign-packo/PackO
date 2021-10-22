@@ -1,6 +1,21 @@
 const debug = require('debug')('db');
 const format = require('pg-format');
 
+async function beginTransaction(pgClient) {
+  debug('BEGIN');
+  await pgClient.query('BEGIN');
+}
+
+async function endTransaction(pgClient, succeed) {
+  if (succeed) {
+    debug('COMMIT');
+    await pgClient.query('COMMIT');
+  } else {
+    debug('ROLLBACK');
+    await pgClient.query('ROLLBACK');
+  }
+}
+
 async function getCaches(pgClient) {
   debug('    ~~getCaches');
   try {
@@ -54,6 +69,21 @@ async function insertListOpi(pgClient, idCache, listOpi) {
     const sqlRequest = format('INSERT INTO opi (id_cache, name, color) VALUES %L', values);
     const results = await pgClient.query(sqlRequest);
     return results.rowCount;
+  } catch (error) {
+    debug('Error: ', error);
+    throw error;
+  }
+}
+
+async function getCache(pgClient, idBranch) {
+  debug(`~~getCache (idBranch: ${idBranch})`);
+  try {
+    const results = await pgClient.query(
+      'SELECT c.id, c.path FROM branches b, caches c WHERE b.id_cache = c.id AND b.id = $1',
+      [idBranch],
+    );
+    if (results.rowCount === 1) return results.rows[0];
+    throw new Error('idBranch non valide');
   } catch (error) {
     debug('Error: ', error);
     throw error;
@@ -199,39 +229,28 @@ async function getUnactivePatches(pgClient, idBranch) {
 }
 
 async function getOPIFromColor(pgClient, idBranch, color) {
-  try {
-    debug(`    ~~getOPIFromColor (idBranch: ${idBranch})`);
-    const results = await pgClient.query(
-      'SELECT o.name, o.date, o.color FROM opi o, branches b WHERE b.id_cache = o.id_cache AND b.id = $1 AND o.color=$2',
-      [idBranch, color],
-    );
-    debug(results.rows);
-    if (results.rowCount !== 1) {
-      throw new Error(`opi non trouvée '${color}'`);
-    }
-    return results.rows[0];
-  } catch (error) {
-    debug('Error: ', error);
-    throw error;
+  debug(`    ~~getOPIFromColor (idBranch: ${idBranch})`);
+  const results = await pgClient.query(
+    'SELECT o.name, o.date, o.color, o.id FROM opi o, branches b WHERE b.id_cache = o.id_cache AND b.id = $1 AND o.color=$2',
+    [idBranch, color],
+  );
+  debug(results.rows);
+  if (results.rowCount !== 1) {
+    throw new Error(`on a trouvé ${results.rowCount} opi pour la couleur '${color}'`);
   }
 }
 
-async function getOpiId(pgClient, name) {
-  try {
-    debug(`    ~~getOpiId (name: ${name})`);
-
-    const sql = `SELECT id FROM opi WHERE name = '${name}'`;
-    debug(sql);
-
-    const results = await pgClient.query(
-      sql,
-    );
-
-    return results.rows[0].id;
-  } catch (error) {
-    debug('Error: ', error);
-    throw error;
+async function getOPIFromName(pgClient, idBranch, name) {
+  debug(`    ~~getOpiId (name: ${name})`);
+  const results = await pgClient.query(
+    'SELECT o.name, o.date, o.color, o.id FROM opi o, branches b WHERE b.id_cache = o.id_cache AND b.id = $1 AND o.name=$2',
+    [idBranch, name],
+  );
+  debug(results.rows);
+  if (results.rowCount !== 1) {
+    throw new Error(`on a trouvé ${results.rowCount} opi pour le nom '${name}'`);
   }
+  return results.rows[0];
 }
 
 async function insertPatch(pgClient, idBranch, geometry, opiId) {
@@ -325,12 +344,12 @@ async function getSlabs(pgClient, idPatch) {
   }
 }
 
-async function insertSlabs(pgClient, idPatch, patch) {
+async function insertSlabs(pgClient, idPatch, slabs) {
   try {
     debug(`    ~~insertSlabs (idPatch: ${idPatch})`);
 
     const values = [];
-    patch.properties.slabs.forEach((slab) => {
+    slabs.forEach((slab) => {
       values.push([idPatch, slab.x, slab.y, slab.z]);
     });
 
@@ -517,11 +536,11 @@ async function createProcess(pgClient) {
   }
 }
 
-async function finishProcess(pgClient, idProcess, status, result) {
+async function finishProcess(pgClient, status, idProcess, result) {
   try {
     debug('~~finishProcess');
 
-    const sql = format('UPDATE processes SET end_date=NOW(), status=%s, result=%s WHERE id=%s', status, result, idProcess);
+    const sql = format('UPDATE processes SET end_date=NOW(), status=%L, result=%L WHERE id=%L', status, result, idProcess);
     debug(sql);
 
     await pgClient.query(
@@ -534,7 +553,10 @@ async function finishProcess(pgClient, idProcess, status, result) {
 }
 
 module.exports = {
+  beginTransaction,
+  endTransaction,
   getCaches,
+  getCache,
   insertCache,
   deleteCache,
   insertListOpi,
@@ -546,7 +568,7 @@ module.exports = {
   getActivePatches,
   getUnactivePatches,
   getOPIFromColor,
-  getOpiId,
+  getOPIFromName,
   insertPatch,
   deactivatePatch,
   reactivatePatch,
