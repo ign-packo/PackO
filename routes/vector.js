@@ -26,11 +26,14 @@ function encapBody(req, res, next) {
 const vectorToSave = [
   body('json.data')
     .exists().withMessage(createErrMsg.missingParameter('data'))
+    .if(body('json.data').exists())
     .custom(GJV.isGeoJSONObject)
     .withMessage(createErrMsg.invalidBody('objet GeoJSON'))
+    .if(body('json.data').exists())
     .custom(GJV.isFeatureCollection)
     .withMessage(createErrMsg.invalidBody('featureCollection')),
   body('json.data.type')
+    .if(body('json.data').exists())
     .exists().withMessage(createErrMsg.missingParameter('data.type'))
     .isIn(['FeatureCollection'])
     .withMessage(createErrMsg.invalidParameter('data.type')),
@@ -55,31 +58,23 @@ router.get('/:idBranch/vectors',
   branch.getBranches.bind({ column: 'id' }),
   [
     param('idBranch')
-      .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+      // .exists().withMessage(createErrMsg.missingParameter('idBranch'))
       .custom((value, { req }) => req.result.json.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
   ],
   validateParams,
-  cache.getCachePath,
   vector.getVectors,
   pgClient.close,
   returnMsg);
 
-router.get('/:idBranch/vector',
+router.get('/vector',
   pgClient.open,
-  branch.getBranches.bind({ column: 'id' }),
-  param('idBranch')
-    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-    .custom((value, { req }) => req.result.json.includes(Number(value)))
-    .withMessage(createErrMsg.invalidParameter('idBranch')),
-  validateParams,
   vector.getVectors.bind({ column: 'id' }),
   query('idVector')
     .exists().withMessage(createErrMsg.missingParameter('idVector'))
     .custom((value, { req }) => req.result.json.includes(Number(value)))
     .withMessage(createErrMsg.invalidParameter('idVector')),
   validateParams,
-  cache.getCachePath,
   vector.getVector,
   pgClient.close,
   returnMsg);
@@ -89,18 +84,39 @@ router.post('/:idBranch/vector', encapBody.bind({ keyName: 'json' }),
   branch.getBranches.bind({ column: 'id' }),
   [
     param('idBranch')
-      .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+      // .exists().withMessage(createErrMsg.missingParameter('idBranch'))
       .custom((value, { req }) => req.result.json.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
     body('json')
       .exists().withMessage(createErrMsg.missingBody),
-    body('json'.metadonnees)
+    body('json.metadonnees')
       .exists().withMessage(createErrMsg.missingParameter('metadonnees')),
+    body('json.metadonnees.name')
+      .if(body('json.metadonnees').exists())
+      .exists().withMessage(createErrMsg.missingParameter('metadonnees.name')),
+    body('json.metadonnees.crs')
+      .if(body('json.metadonnees').exists())
+      .exists().withMessage(createErrMsg.missingParameter('metadonnees.crs')),
+    body('json.metadonnees.style')
+      .if(body('json.metadonnees').exists())
+      .exists().withMessage(createErrMsg.missingParameter('metadonnees.style')),
     ...vectorToSave,
   ],
   validateParams,
   cache.getCachePath,
   vector.postVector,
+  pgClient.close,
+  returnMsg);
+
+router.delete('/vector',
+  pgClient.open,
+  vector.getVectors.bind({ column: 'id' }),
+  query('idVector')
+    .exists().withMessage(createErrMsg.missingParameter('idVector'))
+    .custom((value, { req }) => req.result.json.includes(Number(value)))
+    .withMessage(createErrMsg.invalidParameter('idVector')),
+  validateParams,
+  vector.deleteVector,
   pgClient.close,
   returnMsg);
 

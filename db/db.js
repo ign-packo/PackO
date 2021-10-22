@@ -349,10 +349,12 @@ async function insertSlabs(pgClient, idPatch, patch) {
 }
 
 async function getLayers(pgClient, idBranch) {
+  debug(`    ~~getLayers (idBranch: ${idBranch})`);
   try {
-    debug(`    ~~getLayers (idBranch: ${idBranch})`);
-
-    const sql = format('SELECT layers.id, layers.name, num, crs, style_itowns, opacity, visibility FROM layers, styles WHERE id_Branch=%s AND layers.id_style=styles.id', idBranch);
+    const sql = format(
+      'SELECT layers.id, layers.name, num, crs, style_itowns, opacity, visibility FROM layers, styles WHERE layers.id_style=styles.id %s',
+      idBranch !== undefined ? `AND id_Branch=${idBranch}` : '',
+    );
     debug('      ', sql);
 
     const results = await pgClient.query(
@@ -366,10 +368,9 @@ async function getLayers(pgClient, idBranch) {
   }
 }
 
-async function getLayer(pgClient, idBranch, idVector) {
+async function getLayer(pgClient, idVector) {
+  debug(`    ~~getLayer (idVector: ${idVector})`);
   try {
-    debug(`    ~~getLayer (idBranch: ${idBranch})`);
-
     const sql = format(
       "SELECT json_build_object('type', 'FeatureCollection', 'features', json_agg(ST_AsGeoJSON(t.*)::json)) as geojson "
       + 'FROM'
@@ -398,11 +399,9 @@ async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
     debug(`    ~~insertLayer (idBranch: ${idBranch})`);
     // metadonnees.opacity = 1;
     // metadonnees.visibility = true;
+    let results;
     /// ////////////////////
     // TODO gestion des STYLES
-    /// //////////////////
-
-    let results;
 
     const sqlInsertStyle = format('INSERT INTO styles (name, opacity, visibility, style_itowns) '
                                 + 'VALUES (%L, %s, %L, %L) '
@@ -414,6 +413,9 @@ async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
 
     debug('      ', sqlInsertStyle);
     results = await pgClient.query(sqlInsertStyle);
+
+    // end STYLE
+    /// /////////////////
 
     const sqlInsertLayer = format('INSERT INTO layers (name, crs, id_branch, id_style) '
       + 'VALUES (%L, %L, %s, %s) '
@@ -451,6 +453,36 @@ async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
   }
 }
 
+async function deleteLayer(pgClient, idVector) {
+  debug(`~~deleteLayer (idVector: ${idVector})`);
+  try {
+    const sqlDelLayer = format(
+      'DELETE FROM layers USING branches '
+    + 'WHERE layers.id_branch=branches.id AND layers.id=%s '
+    + 'RETURNING layers.name, id_branch, branches.name as branch_name',
+      idVector,
+    );
+    debug(sqlDelLayer);
+    const results = await pgClient.query(sqlDelLayer);
+
+    /// ////////////////////
+    // TODO gestion des STYLES
+
+    const sqlDelStyle = format('DELETE FROM styles WHERE name=%L RETURNING name',
+      `${results.rows[0].name}_${results.rows[0].id_branch}`);
+    debug(sqlDelStyle);
+    await pgClient.query(sqlDelStyle);
+
+    // end STYLE
+    /// /////////////////
+
+    return results.rows[0];
+  } catch (error) {
+    debug('Error: ', error);
+    throw error;
+  }
+}
+
 module.exports = {
   getCaches,
   insertCache,
@@ -474,4 +506,5 @@ module.exports = {
   getLayers,
   getLayer,
   insertLayer,
+  deleteLayer,
 };

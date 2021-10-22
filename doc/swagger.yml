@@ -363,7 +363,7 @@ paths:
     get:
       tags:
         - vector
-      summary: "Récupération de tous les vecteurs annexes d'une branche"
+      summary: "Récupération des métadonnées de tous les vecteurs annexes d'une branche"
       description: ""
       parameters:
         - in: path
@@ -377,28 +377,6 @@ paths:
           description: OK
 
   '/{idBranch}/vector':
-    get:
-      tags:
-        - vector
-      summary: "Récupération d'un vecteur annexe specifique sur une branche"
-      description: ""
-      parameters:
-        - in: path
-          name: idBranch
-          description: l'identifiant de la branche
-          required: true
-          schema:
-            type: integer
-        - in: query
-          name: idVector
-          description: l'identifiant du vecteur
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: OK
-  # '/{idBranch}/vector':
     post:
       tags:
         - vector
@@ -451,6 +429,39 @@ paths:
                         example:
                           [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [[[230748, 6759653], [230746, 6759653], [230746, 6759651], [230748, 6759651], [230748, 6759653]]] } } ]
 
+      responses:
+        '200':
+          description: OK
+
+  '/vector':
+    get:
+      tags:
+        - vector
+      summary: "Récupération d'un vecteur annexe donné"
+      description: ""
+      parameters:
+        - in: query
+          name: idVector
+          description: l'identifiant du vecteur
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+
+    delete:
+      tags:
+        - vector
+      summary: "Destruction d'un vecteur donné"
+      description: ""
+      parameters:
+        - in: query
+          name: idVector
+          description: l'identifiant du vecteur annexe à detruire
+          required: true
+          schema:
+            type: integer
       responses:
         '200':
           description: OK

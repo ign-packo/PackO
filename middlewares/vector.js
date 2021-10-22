@@ -39,9 +39,9 @@ async function getVector(req, _res, next) {
     return;
   }
   const params = matchedData(req);
-  const { idBranch, idVector } = params;
+  const { idVector } = params;
   try {
-    const vector = await db.getLayer(req.client, idBranch, idVector);
+    const vector = await db.getLayer(req.client, idVector);
 
     req.result = { json: vector, code: 200 };
   } catch (error) {
@@ -112,8 +112,29 @@ async function postVector(req, _res, next) {
   next();
 }
 
+async function deleteVector(req, _res, next) {
+  debug('>>DELETE vector');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+  const { idVector } = params;
+
+  try {
+    const vector = await db.deleteLayer(req.client, idVector);
+    req.result = { json: `vecteur '${vector.name}' détruit (sur la branche '${vector.branch_name}')`, code: 200 };
+  } catch (error) {
+    debug(error);
+    req.error = error;
+  }
+  debug('  next>>');
+  next();
+}
+
 module.exports = {
   getVectors,
   getVector,
   postVector,
+  deleteVector,
 };

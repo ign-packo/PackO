@@ -24,6 +24,7 @@ function setIdBranch(id) {
 
 const vector = JSON.parse(fs.readFileSync('./regress/data/vector.json', 'utf8'));
 let idVector = null;
+const vectorName = vector.metadonnees.name;
 function setIdVector(id) {
   idVector = id;
 }
@@ -114,7 +115,7 @@ describe('Vector', () => {
             should.not.exist(err);
             res.should.have.status(400);
             const resJson = JSON.parse(res.text);
-            resJson.should.be.an('array').to.have.lengthOf(4);
+            resJson.should.be.an('array').to.have.lengthOf(3);
             resJson[0].should.have.property('status').equal('Un body non vide est requis.');
             done();
           });
@@ -151,11 +152,11 @@ describe('Vector', () => {
       });
     });
   });
-  describe('GET /{idBranch}/vector', () => {
-    describe('idBranch = branchVectorRegress}', () => {
+  describe('GET/vector', () => {
+    describe('idVector = id New Vector', () => {
       it('should return an empty list of vectors', (done) => {
         chai.request(app)
-          .get(`/${idBranch}/vector`)
+          .get('/vector')
           .query({ idVector })
           .end((err, res) => {
             should.not.exist(err);
@@ -167,17 +168,48 @@ describe('Vector', () => {
           });
       });
     });
-    describe('idBranch = 99999}', () => {
+    describe('idVector = 99999}', () => {
       it('should failed', (done) => {
         chai.request(app)
-          .get('/99999/vector')
+          .get('/vector')
+          .query({ idVector: 99999 })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'idVector' n'est pas valide.");
+            done();
+          });
+      });
+    });
+  });
+  describe('DELETE/vector', () => {
+    describe('Vector valid: vector_example', () => {
+      it('should succeed', (done) => {
+        chai.request(app)
+          .delete('/vector')
+          .query({ idVector })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(200);
+            const resJson = JSON.parse(res.text);
+            resJson.should.equal(`vecteur '${vectorName}' détruit (sur la branche '${branchName}')`);
+            done();
+          });
+      });
+    });
+    describe('Vector non valid', () => {
+      it('should succeed', (done) => {
+        chai.request(app)
+          .delete('/vector')
           .query({ idVector })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(400);
             const resJson = JSON.parse(res.text);
             resJson.should.be.an('array').to.have.lengthOf(1);
-            resJson[0].should.have.property('status').equal("Le paramètre 'idBranch' n'est pas valide.");
+            resJson[0].should.have.property('status').equal("Le paramètre 'idVector' n'est pas valide.");
             done();
           });
       });

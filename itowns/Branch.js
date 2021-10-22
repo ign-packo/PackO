@@ -98,7 +98,7 @@ class Branch {
     this.vectorList.forEach((vector) => {
       this.layers[vector.name] = {
         type: 'vector',
-        url: `${this.apiUrl}/${this.idBranch}/vector?idVector=${vector.id}`,
+        url: `${this.apiUrl}/vector?idVector=${vector.id}`,
         crs: vector.crs,
         opacity: 1,
         // style: vector.config.style,
@@ -210,7 +210,7 @@ class Branch {
         res.json().then((json) => {
           this.layers[name] = {
             type: 'vector',
-            url: `${this.apiUrl}/${this.idBranch}/vector?idVector=${json.id}`,
+            url: `${this.apiUrl}/vector?idVector=${json.id}`,
             crs: readCRS(geojson),
             opacity: 1,
             style,
