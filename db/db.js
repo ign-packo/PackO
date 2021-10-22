@@ -483,6 +483,56 @@ async function deleteLayer(pgClient, idVector) {
   }
 }
 
+async function getProcesses(pgClient) {
+  try {
+    debug('~~getProcesses');
+
+    const sql = format('SELECT * FROM processes');
+    debug(sql);
+
+    const results = await pgClient.query(
+      sql,
+    );
+    return results.rows;
+  } catch (error) {
+    debug('Error: ', error);
+    throw error;
+  }
+}
+
+async function createProcess(pgClient) {
+  try {
+    debug('~~createProcess');
+
+    const sql = format('INSERT INTO processes (start_date) VALUES (NOW()) RETURNING id');
+    debug(sql);
+
+    const results = await pgClient.query(
+      sql,
+    );
+    return results.rows[0].id;
+  } catch (error) {
+    debug('Error: ', error);
+    throw error;
+  }
+}
+
+async function finishProcess(pgClient, idProcess, status, result) {
+  try {
+    debug('~~finishProcess');
+
+    const sql = format('UPDATE processes SET end_date=NOW(), status=%s, result=%s WHERE id=%s', status, result, idProcess);
+    debug(sql);
+
+    await pgClient.query(
+      sql,
+    );
+  } catch (error) {
+    debug('Error: ', error);
+    throw error;
+  }
+}
+
 module.exports = {
   getCaches,
   insertCache,
@@ -507,4 +557,7 @@ module.exports = {
   getLayer,
   insertLayer,
   deleteLayer,
+  getProcesses,
+  createProcess,
+  finishProcess,
 };
