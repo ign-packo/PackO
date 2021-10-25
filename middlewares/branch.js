@@ -94,7 +94,7 @@ async function deleteBranch(req, _res, next) {
 async function rebase(req, res, next) {
   debug('~~~rebase branch~~~');
   if (req.error) {
-    await pgClient.close(req, res);
+    await pgClient.close(req, res, () => {});
     next();
     return;
   }
