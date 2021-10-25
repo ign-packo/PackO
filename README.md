@@ -247,6 +247,34 @@ Cette route prend en paramètre:
 - le chemin du dossier contenant les COG créé par le script **create_cache** et correspondant au cache à importer (ex: "cache_test"): soit en absolu, soit en relatif par rapport au dossier de lancement de l'API
 - le contenu du fichier **overviews.json** du cache à importer (celui qui a été créé par le script python et qui est à la racine du dossier contenant le cache à importer)
 
+## Travailler à plusieurs sur un chantier
+
+Il ne faut jamais travailler à plusieurs en même temps sur la même branche. Pour l'instant aucune vérification n'est faite au niveau de PackO et cela va conduire à des incohérences (un mécanisme de protection sera ajouté dès que possible).
+
+Pour travailler à plusieurs sur un chantier: chaque personne doit créer une branche et travailler uniquement dans cette branche.
+
+Lorsque le travail est terminé, on peut rassembler les branches pour obtenir le résultat complet. Le principe, se base sur la notion de **rebase** de **git**: on choisit une branche (**B1**) et on demande à faire un **rebase** sur une autre branche (**B2**) en lui donnant un nouveau nom.
+
+En pratique, PackO va effectuer les opérations suivantes:
+
+- création de la nouvelle branche avec le nom choisi
+- copie des patchs de **B2** dans cette nouvelle branche: c'est rapide puisque l'historique et les résultats d'application de patch sont simplement copiés
+- une fois que cette copie est prête: l'utilisateur reçoit une réponse avec l'Id de la nouvelle branche et l'Id du processus long pour suivre l'avancement du **rebase**
+- PackO va ensuite appliquer tous les patchs de **B1** sur cette nouvelle branche. Cela va prendre du temps puisqu'il faut rejouer chaque patch un par un dans l'ordre.
+- Lorsque les traitements sont terminés, le processus est mis à jour avec la date de fin et son status est passé à **succeed**
+
+Il n'y a pas d'interface pour faire le **rebase** depuis iTowns, il faut utiliser la doc: 
+````
+http://[serveur]:[port]/doc/#/branch/post__idBranch__rebase 
+````
+pour lancer la commande et 
+`````
+http://[serveur]:[port]/doc/#/process/get_process__id_
+`````
+pour suivre l'avancement du traitement.
+
+Attention: si les deux branches ont modifié les mêmes zones de l'ortho le résultat peut-être imprévisible puisqu'on applique d'abord les patchs de la branche de base (**B2**), puis ceux de la branche **B1**. Un mécanisme d'alerte sera ajouté dès que possible pour signaler ces cas et permettre à un opérateur de les controler efficacement. En attendant, il est recommandé de définir la zone à traiter pour chaque opérateur et de gérer les cas limites globalement en fin de chantier. 
+
 ## Export raster
 
 Une fois les contrôles et retouches effectués, il est possible d'exporter l'ortho résultante à l'aide de commandes gdal en utilisant le flux WMTS proposé par l'API.
