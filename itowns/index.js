@@ -122,6 +122,7 @@ async function main() {
     editing.color = [0, 0, 0];
 
     const controllers = new Controller(viewer.menuGlobe, editing);
+    controllers.setLayerGUI(branch);
 
     controllers.select = viewer.menuGlobe.gui.add(editing, 'select');
     controllers.cliche = viewer.menuGlobe.gui.add(editing, 'cliche');
@@ -133,14 +134,17 @@ async function main() {
     controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
     branch.branch = branch.active.name;
     controllers.branch = viewer.menuGlobe.gui.add(branch, 'branch', branch.list.map((elem) => elem.name));
-    controllers.branch.onChange((name) => {
+
+    // ICI
+    controllers.branch.onChange(async (name) => {
       console.log('choosed branch: ', name);
       branch.active = {
         name,
         id: branch.list.filter((elem) => elem.name === name)[0].id,
       };
-      branch.changeBranch();
       controllers.setEditingController(name);
+      await branch.changeBranch();
+      controllers.setLayerGUI(branch);
     });
     controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch');
     editing.controllers = {
@@ -169,24 +173,36 @@ async function main() {
       }
     });
 
-    view.addEventListener('file-dropped', (event) => {
+    const layersTable = document.getElementById('layersTable');
+
+    view.addEventListener('file-dropped', async (event) => {
       console.log('-> A file had been dropped');
-      branch.saveLayer(event.name, event.data, event.style);
+      await branch.saveLayer(event.name, event.data, event.style);
+      controllers.setLayerGUI(branch);
+      // const ligne = layersTable.insertRow(-1);
+      // const colonne1 = ligne.insertCell(0);
+      // colonne1.innerHTML = event.name;
+      // const colonne2 = ligne.insertCell(1);
+      // colonne2.innerHTML = event.style.fill.color;
+      // const colonne3 = ligne.insertCell(2);
+      // colonne3.innerHTML = `<button id=suppLayer layerid=${layerID}>X</button>`;
     });
 
     view.addEventListener('branch-created', () => {
       console.log('-> New branch created');
       controllers.setEditingController();
+      controllers.setLayerGUI(branch);
       controllers.branch = controllers.branch.options(branch.list.map((elem) => elem.name))
         .setValue(branch.active.name);
-      controllers.branch.onChange((name) => {
+      controllers.branch.onChange(async (name) => {
         console.log('choosed branch: ', name);
         branch.active = {
           name,
           id: branch.list.filter((elem) => elem.name === name)[0].id,
         };
-        branch.changeBranch();
         controllers.setEditingController(name);
+        await branch.changeBranch();
+        controllers.setLayerGUI(branch);
       });
     });
 
@@ -281,6 +297,25 @@ async function main() {
     helpContent.style.visibility = 'hidden';
     document.getElementById('help').addEventListener('click', () => {
       helpContent.style.visibility = (helpContent.style.visibility === 'hidden') ? 'visible' : 'hidden';
+    });
+
+    const layersGUI = document.getElementById('layersGUI');
+    layersGUI.style.visibility = 'hidden';
+    document.getElementById('layers').addEventListener('click', () => {
+      layersGUI.style.visibility = (layersGUI.style.visibility === 'hidden') ? 'visible' : 'hidden';
+    });
+
+    layersTable.addEventListener('click', (e) => {
+      if (e.target.id === 'suppLayer') {
+        const layerId = Number(e.target.getAttribute('layerid'));
+        const layerName = branch.vectorList.filter((elem) => elem.id === layerId)[0].name;
+
+        branch.deleteLayer(layerId);
+        layersTable.deleteRow(e.target.parentNode.parentNode.rowIndex);
+        view.removeLayer(layerName);
+        viewer.menuGlobe.removeLayersGUI(layerName);
+        delete viewer.index[layerName];
+      }
     });
   } catch (err) {
     console.log(err);

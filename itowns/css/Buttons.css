@@ -93,3 +93,18 @@
     background-size: 30px 150px;
     visibility: hidden;
 }
+
+#layersGUI {
+    position: absolute;
+    top: 60px;
+    right: 65px;
+    transition: all ease-out .1s;
+    z-index: 10;
+    background-color: #FFF;
+    border-radius: 5px;
+    padding: 10px;
+    line-height: 0.01;
+    box-shadow: 0 0 5px #000;
+    background-size: 30px 150px;
+    visibility: hidden;
+}

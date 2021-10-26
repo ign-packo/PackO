@@ -17,6 +17,7 @@
     </div>
     <div class="top-buttons">
         <button type="button" id="help" class="itowns-control" title="Aide"><strong>?</strong></button>
+        <button type="button" id="layers" class="itowns-control" title="Layers" style="visibility: hidden"><strong>L</strong></button>
     </div>
     <div class="down-buttons">
         <button type="button" id="recenterBtn" class="itowns-control zoom-button" title="Recentrer"></button>
@@ -25,7 +26,10 @@
     </div>
 
     <div id="help-content">
-        <p><strong>API : </strong><span id="spAPIVersion_val">???</span>
+        <p><strong>API : </strong><span id="spAPIVersion_val"></span>
+    </div>
+    <div id="layersGUI">
+        <table id="layersTable"></table>
     </div>
     <div id="divScale">
         <span id="spanScaleWidget"> Scale </span>

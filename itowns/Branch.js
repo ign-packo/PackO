@@ -137,7 +137,8 @@ class Branch {
     });
   }
 
-  saveLayer(name, geojson, style) {
+  saveLayer2(name, geojson, style) {
+    const crs = readCRS(geojson);
     fetch(`${this.apiUrl}/${this.active.id}/vector`,
       {
         method: 'POST',
@@ -149,11 +150,11 @@ class Branch {
           metadonnees: {
             name,
             style,
-            crs: readCRS(geojson),
+            crs,
           },
           data: geojson,
         }),
-      }).then(async (res) => {
+      }).then((res) => {
       if (res.status === 200) {
         // this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.idBranch}/vectors`);
         // this.setLayers();
@@ -161,15 +162,88 @@ class Branch {
           this.layers[name] = {
             type: 'vector',
             url: `${this.apiUrl}/vector?idVector=${json.id}`,
-            crs: readCRS(geojson),
+            crs,
             opacity: 1,
             style,
             visible: true,
           };
+          this.vectorList.push({
+            id: json.id,
+            name,
+            crs,
+            // num:
+            // opacity:
+            style_itowns: style,
+            // visibility:
+          });
           console.log(`-> Layer '${name}' saved`);
         });
       } else {
         console.log(`-> Error Serveur: Layer '${name}' NOT saved`);
+      }
+    });
+  }
+
+  async saveLayer(name, geojson, style) {
+    const crs = readCRS(geojson);
+    const res = await fetch(`${this.apiUrl}/${this.active.id}/vector`,
+      {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          metadonnees: {
+            name,
+            style,
+            crs,
+          },
+          data: geojson,
+        }),
+      });// .then((res) => {
+    if (res.status === 200) {
+      // this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.idBranch}/vectors`);
+      // this.setLayers();
+      const json = await res.json();// .then((json) => {
+      this.layers[name] = {
+        type: 'vector',
+        url: `${this.apiUrl}/vector?idVector=${json.id}`,
+        crs,
+        opacity: 1,
+        style,
+        visible: true,
+      };
+      this.vectorList.push({
+        id: json.id,
+        name,
+        crs,
+        // num:
+        // opacity:
+        style_itowns: JSON.stringify(style),
+        // visibility:
+      });
+      console.log(`-> Layer '${name}' saved`);
+      // });
+    } else {
+      console.log(`-> Error Serveur: Layer '${name}' NOT saved`);
+    }
+    // });
+  }
+
+  deleteLayer(id) {
+    fetch(`${this.apiUrl}/vector?idVector=${id}`,
+      {
+        method: 'DELETE',
+      }).then(async (res) => {
+      console.log(res.text);
+      if (res.status === 200) {
+        const layer = this.vectorList.filter((elem) => elem.id === id)[0];
+        const index = this.vectorList.indexOf(layer);
+        this.vectorList.splice(index, 1);
+        console.log(`-> Layer '${id}' deleted`);
+      } else {
+        console.log(`-> Error Serveur: Layer '${id}' NOT deleted`);
       }
     });
   }
