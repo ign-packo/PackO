@@ -7,7 +7,7 @@ import argparse
 import json
 from cache_def import get_slab_path
 import platform
-
+import time
 
 def read_args():
     """Gestion des arguments"""
@@ -49,6 +49,14 @@ print("Working directory: '" + os.getcwd() + "'")
 args.input = os.path.relpath(args.input, args.output)
 print("Updated input path relative to working dir: '" + args.input + "'")
 
+
+# check if input dir exists
+if not os.path.exists(args.input):
+    raise SystemExit("Directory " + args.input + " does not exist.")
+
+tStart = time.perf_counter()
+
+tStartPrep = time.perf_counter()
 
 # lecture du fichier overviews pour recuperer les infos du cache
 fileOverviews = open(os.path.join(args.input, "overviews.json"))
@@ -111,6 +119,10 @@ for tile in listTiles:
 
 f_out.close()
 
+tEndPrep = time.perf_counter()
+
+tStartVrt1 = time.perf_counter()
+
 # on construit un vrt a partir de la liste des images recuperee precedemment
 cmd_buildvrt = (
     "gdalbuildvrt"
@@ -121,6 +133,10 @@ cmd_buildvrt = (
 print(cmd_buildvrt)
 os.system(cmd_buildvrt)
 
+tEndVrt1 = time.perf_counter()
+
+tStartVrt2 = time.perf_counter()
+
 # on construit un 2ème vrt à partir du premier (pour avoir la bonne structure avec les bons paramètres)
 cmd_buildvrt2 = (
     'gdalbuildvrt '
@@ -129,6 +145,8 @@ cmd_buildvrt2 = (
 )
 print(cmd_buildvrt2)
 os.system(cmd_buildvrt2)
+
+tEndVrt2 = time.perf_counter()
 
 with open(path_out + '_2.vrt', 'r') as f:
     lines = f.readlines()
@@ -162,6 +180,8 @@ script = "gdal_polygonize.py"
 if platform.system() == "Windows":
     script = script.split('.')[0]+".bat"
 
+tStartPolygonise = time.perf_counter()
+
 # on vectorise le graphe à partir du vrt
 cmd_polygonize = (
     script + ' '
@@ -172,6 +192,8 @@ cmd_polygonize = (
 print(cmd_polygonize)
 os.system(cmd_polygonize)
 
+tEndPolygonise = time.perf_counter()
+
 print('Nettoyage des fichiers temporaires...')
 if os.exists(path_out + '.txt'):
     os.remove(path_out + '.txt')
@@ -180,4 +202,13 @@ if os.exists(path_out + '_1.vrt'):
 if os.exists(path_out + '_2.vrt'):
     os.remove(path_out + '_2.vrt')
 
-print('Fin')
+print('Fin\n')
+
+tEnd = time.perf_counter()
+
+#temps de calcul des differentes etapes
+print('Temps de preparation du calcul :'+str(tEndPrep-tStartPrep))
+print('Temps de calcul VRT1 :'+str(tEndVrt1-tStartVrt1))
+print('Temps de calcul VRT2 :'+str(tEndVrt2-tStartVrt2))
+print('Temps de calcul polygonise :'+str(tEndPolygonise-tStartPolygonise))
+print('Temps global du calcul :'+str(tEnd-tStart))
