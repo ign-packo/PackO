@@ -76,10 +76,10 @@ for patch in patches:
             y = slab[1]
 
             slab_path = get_slab_path(int(x), int(y), int(pathDepth))
-            tile_path = os.path.join(args.input, "graph", str(level), slab_path[1:])
-            listPatches.append(os.path.normpath(tile_path+".tif"))
+            tile_path = os.path.join(args.input, 'graph', str(level), slab_path[1:])
+            listPatches.append(os.path.normpath(tile_path+'.tif'))
 
-graph_dir = os.path.join(args.input, "graph", str(level))
+graph_dir = os.path.join(args.input, 'graph', str(level))
 
 # on parcourt le repertoire graph du cache pour recuperer l'ensemble des images de graphe
 listTiles = list()
@@ -99,13 +99,13 @@ for tile in listTiles:
     if len(filename) > 2:  # cas des tuiles avec retouche
         continue
     if tile in listPatches:
-        print("il y a eu retouche")
+        print('Il y a eu retouche')
         # dans ce cas il faut ajouter la tuile index_branche + tilename a la liste
         #path + index + "_" + basename.tif
-        tilePath = os.path.join(os.path.dirname(tile), str(id_branch)+"_"+os.path.basename(tile))
+        tilePath = os.path.join(os.path.dirname(tile), str(id_branch)+'_'+os.path.basename(tile))
         f_out.write(tilePath+'\n')
     else:
-        print("pas de retouche")
+        print('Pas de retouche')
         # on ajoute la tuile d'origine dans la liste pour creer le vrt
         f_out.write(tile+'\n')
 
@@ -114,13 +114,49 @@ f_out.close()
 # on construit un vrt a partir de la liste des images recuperee precedemment
 cmd_buildvrt = (
     "gdalbuildvrt"
-    + " -a_srs EPSG:2154"
     + " -input_file_list "
     + path_out + ".txt "
-    + path_out + ".vrt"
+    + path_out + "_1.vrt"
 )
 print(cmd_buildvrt)
 os.system(cmd_buildvrt)
+
+# on construit un 2ème vrt à partir du premier (pour avoir la bonne structure avec les bons paramètres)
+cmd_buildvrt2 = (
+    'gdalbuildvrt '
+    + path_out + '_2.vrt '
+    + path_out + '_1.vrt'
+)
+print(cmd_buildvrt2)
+os.system(cmd_buildvrt2)
+
+with open(path_out + '_2.vrt', 'r') as f:
+    lines = f.readlines()
+with open(path_out + '.vrt', 'w') as f:
+    for line in lines:
+        # on ecrit le code python au bon endroit dans le VRT
+        if 'band="1"' in line:
+            f.write('\t<VRTRasterBand dataType="Int32" band="1" subClass="VRTDerivedRasterBand">\n')
+            f.write('\t<PixelFunctionType>color_to_int32</PixelFunctionType>\n')
+            f.write('\t<PixelFunctionLanguage>Python</PixelFunctionLanguage>\n')
+            f.write('\t<PixelFunctionCode>\n')
+            f.write('<![CDATA[\n')
+            f.write('import numpy as np\n')
+            f.write('def color_to_int32(in_ar, out_ar, xoff, yoff, xsize, ysize, raster_xsize, raster_ysize, buf_radius, gt, **kwargs):\n')
+            f.write('\tout_ar[:] = in_ar[0] + 256 * in_ar[1] + 256 * 256 * in_ar[2]\n')
+            f.write(']]>\n')
+            f.write('\t</PixelFunctionCode>\n')
+        elif 'band="2"' in line:
+            print('Skipping line '+line)
+        elif 'band="3"' in line:
+            print('Skipping line '+line)
+        elif '</VRTRaster' in line:
+            print('Skipping line '+line)
+        elif '<OverviewList' in line:
+            f.write('\t</VRTRasterBand>\n')
+            f.write(line)
+        else:
+            f.write(line)
 
 script = "gdal_polygonize.py"
 if platform.system() == "Windows":
@@ -128,10 +164,20 @@ if platform.system() == "Windows":
 
 # on vectorise le graphe à partir du vrt
 cmd_polygonize = (
-    script + " "
-    + path_out + ".vrt "
-    + path_out + ".geojson"
+    script + ' '
+    + os.path.relpath(path_out + '.vrt') + ' '
+    + path_out + '.geojson'
     + ' -f "Geojson"'
 )
 print(cmd_polygonize)
 os.system(cmd_polygonize)
+
+print('Nettoyage des fichiers temporaires...')
+if os.exists(path_out + '.txt'):
+    os.remove(path_out + '.txt')
+if os.exists(path_out + '_1.vrt'):
+    os.remove(path_out + '_1.vrt')
+if os.exists(path_out + '_2.vrt'):
+    os.remove(path_out + '_2.vrt')
+
+print('Fin')
