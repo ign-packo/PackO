@@ -1,5 +1,6 @@
 const debug = require('debug')('branch');
 const fs = require('fs');
+const turf = require('@turf/turf');
 const path = require('path');
 const { matchedData } = require('express-validator');
 const db = require('../db/db');
@@ -105,6 +106,7 @@ async function rebase(req, res, next) {
   debug(idBranch, name, idBase);
   let idNewBranch = null;
   let cache = null;
+  const polygonsBase = [];
 
   // On commence par creer une copie de la branche
   // avec le bon nom et un nouvel id
@@ -122,6 +124,9 @@ async function rebase(req, res, next) {
     const patches = await db.getActivePatches(req.client, idBase);
     let selectedSlabs = new Set();
     patches.features.forEach(async (feature) => {
+      // on construit un polygon turf pour préparer les alertes
+      polygonsBase.push(turf.polygon(feature.geometry.coordinates));
+
       // on ajoute les dalles dans la liste des dalles impactées
       feature.properties.slabs.forEach((slab) => {
         selectedSlabs.add(JSON.stringify(slab));
@@ -217,6 +222,22 @@ async function rebase(req, res, next) {
   try {
     const patches = await db.getActivePatches(req.client, idBranch);
     debug('patches : ', patches);
+    // On cherche les zones de recouvrement entre les patchs des deux branches
+    // pour créer des alertes
+    patches.features.forEach((p) => {
+      // On cherche les intersections avec patchesBase
+      // pour détecter les zones à alerter
+      // utilisation du module turf (http://turfjs.org/docs/#intersect)
+      // les patchs sont normalement des polygones simple
+      // donc on peut faire un dissolve sur les poly de base
+      // pour faire une seule intersection par patch
+      // on construit un polygon turf pour préparer les alertes
+      const polygon = turf.polygon(p.geometry.coordinates);
+      polygonsBase.forEach((polygonBase) => {
+        const intersection = turf.intersect(polygon, polygonBase);
+        if (intersection) debug('attention, on a une zone de conflit ici : ', JSON.stringify(intersection));
+      });
+    });
     await patch.applyPatches(req.client,
       req.overviews,
       cache.path,
