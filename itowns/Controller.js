@@ -66,7 +66,9 @@ class Controller {
     const colonne2 = ligne.insertCell(1);
     colonne2.innerHTML = JSON.parse(layer.style_itowns).fill.color;
     const colonne3 = ligne.insertCell(2);
-    colonne3.innerHTML = `<button id=suppLayer layerid=${layer.id}>X</button>`;
+    colonne3.innerHTML = `<input type=radio name=alert id=alertLayer layerid=${layer.id}>`;
+    const colonne4 = ligne.insertCell(3);
+    colonne4.innerHTML = `<button id=suppLayer layerid=${layer.id}>X</button>`;
   }
 }
 export default Controller;
