@@ -46,7 +46,11 @@ except FileExistsError:
 os.chdir(args.output)
 print("Working directory: '" + os.getcwd() + "'")
 # redefine input directory
-args.input = os.path.relpath(args.input, args.output)
+try:
+    args.input = os.path.relpath(args.input, start=args.output)
+except ValueError:
+    print("No relative path, absolute path is used instead")
+    args.input = os.path.abspath(args.input)
 print("Updated input path relative to working dir: '" + args.input + "'")
 
 
