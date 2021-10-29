@@ -11,11 +11,11 @@ const status = {
 };
 
 class Editing {
-  constructor(branch, layer, apiUrl) {
+  constructor(branch, apiUrl) {
     this.branch = branch;
     this.viewer = branch.viewer;
     this.view = this.viewer.view;
-    this.layer = layer;
+    // this.layer = layer;
     this.apiUrl = apiUrl;
 
     this.validClicheSelected = false;
@@ -236,10 +236,10 @@ class Editing {
             }
             if (res.status === 201) {
               console.log('out of bounds');
-              this.layer.opi.colorLayer.visible = false;
+              this.view.getLayerById('Opi').visible = false;
               this.validClicheSelected = false;
               this.controllers.cliche.__li.style.backgroundColor = '';
-              this.view.notifyChange(this.layer.opi.colorLayer, true);
+              this.view.notifyChange(this.view.getLayerById('Opi').opi.colorLayer, true);
             }
             if (res.status === 202) {
               console.log('Server Error');

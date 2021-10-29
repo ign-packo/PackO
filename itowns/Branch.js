@@ -87,6 +87,7 @@ class Branch {
         opacity: 1,
         style: JSON.parse(vector.style_itowns),
         visible: true,
+        id: vector.id,
       };
     });
   }
@@ -137,7 +138,7 @@ class Branch {
     });
   }
 
-  saveLayer2(name, geojson, style) {
+  saveLayerOld(name, geojson, style) {
     const crs = readCRS(geojson);
     fetch(`${this.apiUrl}/${this.active.id}/vector`,
       {
@@ -213,6 +214,7 @@ class Branch {
         opacity: 1,
         style,
         visible: true,
+        id: json.id,
       };
       this.vectorList.push({
         id: json.id,
@@ -246,6 +248,17 @@ class Branch {
         console.log(`-> Error Serveur: Layer '${id}' NOT deleted`);
       }
     });
+  }
+
+  deleteVectorLayer(layer) {
+    // if (!layer) return
+    console.log(layer.id)
+    console.log(layer.vectorId)
+    console.log("deleteVectorLayer")
+    this.deleteLayer(layerId);
+    this.view.removeLayer(layerName);
+    this.viewer.menuGlobe.removeLayersGUI(layerName);
+    delete this.viewer.layerIndex[layerName];
   }
 }
 export default Branch;
