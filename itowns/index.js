@@ -95,12 +95,23 @@ async function main() {
     viewer.menuGlobe = new GuiTools('menuDiv', viewer.view);
     viewer.menuGlobe.gui.width = 300;
 
+    viewer.menuGlobe.colorGui.show();
+    viewer.menuGlobe.colorGui.open();
+    viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Vector Annexes');
+    viewer.menuGlobe.vectorGui.open();
+
+    const branch = new Branch(apiUrl, viewer);
+
     // Patch pour ajouter la modification de l'epaisseur des contours dans le menu
     viewer.menuGlobe.addImageryLayerGUI = function addImageryLayerGUI(layer) {
     /* eslint-disable no-param-reassign */
-      if (this.colorGui.hasFolder(layer.id)) { return; }
-      this.colorGui.show();
-      const folder = this.colorGui.addFolder(layer.id);
+      let typeGui = 'colorGui';
+      if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layer.id)) {
+        typeGui = 'vectorGui';
+      }
+      if (this[typeGui].hasFolder(layer.id)) { return; }
+
+      const folder = this[typeGui].addFolder(layer.id);
       folder.add({ visible: layer.visible }, 'visible').onChange(((value) => {
         layer.visible = value;
         this.view.notifyChange(layer);
@@ -109,19 +120,34 @@ async function main() {
         layer.opacity = value;
         this.view.notifyChange(layer);
       }));
-      folder.add({ frozen: layer.frozen }, 'frozen').onChange(((value) => {
-        layer.frozen = value;
-        this.view.notifyChange(layer);
-      }));
+      // folder.add({ frozen: layer.frozen }, 'frozen').onChange(((value) => {
+      //   layer.frozen = value;
+      //   // this.view.notifyChange(layer);
+      // }));
       if (layer.effect_parameter) {
         folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
           layer.effect_parameter = value;
           this.view.notifyChange(layer);
         }));
       }
+      if (typeGui === 'vectorGui') {
+        folder.add(branch, 'deleteVectorLayer').name('delete').onChange(() => {
+          branch.deleteVectorLayer(layer);
+          this.view.notifyChange(layer);
+        });
+      }
     /* eslint-enable no-param-reassign */
     };
-    const branch = new Branch(apiUrl, viewer);
+
+    viewer.menuGlobe.removeLayersGUI = function removeLayersGUI(nameLayer) {
+      if (this.colorGui.hasFolder(nameLayer)) {
+        this.colorGui.removeFolder(nameLayer);
+      } else {
+        this.vectorGui.removeFolder(nameLayer);
+      }
+    };
+
+    // const branch = new Branch(apiUrl, viewer);
     branch.list = await getBranches;
 
     [branch.active] = branch.list;
@@ -185,9 +211,10 @@ async function main() {
       }
     });
 
-    view.addEventListener('file-dropped', (event) => {
+    view.addEventListener('file-dropped', async (event) => {
       console.log('-> A file had been dropped');
-      branch.saveLayer(event.name, event.data, event.style);
+      await branch.saveLayer(event.name, event.data, event.style);
+      view.getLayerById(event.name).vectorId = branch.layers[event.name].id;
     });
 
     view.addEventListener('branch-created', () => {

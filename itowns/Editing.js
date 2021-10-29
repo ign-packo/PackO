@@ -250,7 +250,7 @@ class Editing {
               this.view.getLayerById('Opi').visible = false;
               this.validClicheSelected = false;
               this.controllers.cliche.__li.style.backgroundColor = '';
-              this.view.notifyChange(this.branch.layers.Opi, true);
+              this.view.notifyChange(this.view.getLayerById('Opi'), true);
             }
             if (res.status === 202) {
               console.log('Server Error');
