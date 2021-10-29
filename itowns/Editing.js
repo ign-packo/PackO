@@ -1,6 +1,8 @@
 /* eslint-disable no-console */
 /* eslint-disable no-underscore-dangle */
 import * as THREE from 'three';
+// alerts
+import * as itowns from 'itowns';
 
 const status = {
   RAS: 0,
@@ -129,6 +131,102 @@ class Editing {
     });
   }
 
+  // Highlighing selected features
+  highlightSelectedFeature(featureCollec, featureGeometry, type) {
+    this.featureSelectedGeom = featureGeometry;
+    this.type = type;
+    // console.log(this.featureSelectedGeom);
+    const layerFeatureSelected = this.viewer.view.getLayerById('selectedFeature');
+    if (layerFeatureSelected) {
+      this.viewer.view.removeLayer('selectedFeature');
+    }
+    const layerTest = this.viewer.view.getLayerById(this.alertLayerName);
+    // const featureCollec = await layerTest.source.loadData(undefined, layerTest);
+    const newFeatureCollec = new itowns.FeatureCollection(layerTest);
+
+    // const featureGeometry = featureTemp.geometry;
+    // const featureGeometry = fc.features[0].geometries[this.featureIndex];
+
+    const feature = featureCollec.requestFeatureByType(type);
+    const newFeature = newFeatureCollec.requestFeatureByType(type);
+    const newFeatureGeometry = newFeature.bindNewGeometry();
+
+    const coord = new itowns.Coordinates(newFeatureCollec.crs, 0, 0, 0);
+
+    const vector = new THREE.Vector2();
+    const vector3 = new THREE.Vector3();
+    const { count, offset } = featureGeometry.indices[0];
+
+    newFeatureGeometry.startSubGeometry(count, newFeature);
+    const { vertices } = feature;
+    for (let v = offset * 2; v < (offset + count) * 2; v += 2) {
+      vector.fromArray(vertices, v);
+      vector3.copy(vector).setZ(0).applyMatrix4(featureCollec.matrixWorld);
+      coord.x = vector3.x;
+      coord.y = vector3.y;
+      newFeatureGeometry.pushCoordinates(coord, newFeature);
+    }
+
+    newFeatureGeometry.updateExtent();
+
+    const newColorLayer = new itowns.ColorLayer('selectedFeature', {
+      // Use a FileSource to load a single file once
+      source: new itowns.FileSource({
+        features: newFeatureCollec,
+      }),
+      transparent: true,
+      opacity: 0.7,
+      // zoom: { min: 10 },
+      style: new itowns.Style({
+        // fill: {
+        //   color: '#bbffbb',
+        // },
+        stroke: {
+          color: 'yellow',
+          width: 5,
+        },
+        point: {
+          color: '#66666600',
+          radius: 5,
+          line: 'yellow',
+          width: 5,
+        },
+      }),
+    });
+
+    this.viewer.view.addLayer(newColorLayer);
+    this.checked = this.featureSelectedGeom.properties.status;
+    this.controllers.checked.updateDisplay();
+    this.viewer.comment = this.featureSelectedGeom.properties.comment;
+    this.controllers.comment.updateDisplay();
+  }
+
+  // alerts
+  async centerOnAlertFeature() {
+    const layerTest = this.viewer.view.getLayerById(this.alertLayerName);
+    const fc = await layerTest.source.loadData(undefined, layerTest);
+    if (this.featureIndex === fc.features[0].geometries.length) this.featureIndex = 0;
+    if (this.featureIndex === -1) this.featureIndex = fc.features[0].geometries.length - 1;
+
+    // Center on Feature
+    const coordcenter = fc.features[0].geometries[this.featureIndex].extent.clone()
+      .applyMatrix4(fc.matrixWorld).center();
+
+    itowns.CameraUtils.transformCameraToLookAtTarget(
+      this.viewer.view,
+      this.viewer.view.camera.camera3D,
+      {
+        coord: new itowns.Coordinates(this.viewer.crs, coordcenter.x, coordcenter.y),
+        heading: 0,
+      },
+    );
+    this.viewer.centerCamera(coordcenter.x, coordcenter.y);
+
+    this.highlightSelectedFeature(fc,
+      fc.features[0].geometries[this.featureIndex],
+      fc.features[0].type);
+  }
+
   keydown(e) {
     if (this.currentStatus === status.WAITING) return;
     console.log(e.key, ' down');
@@ -140,6 +238,12 @@ class Editing {
         this.controllers.cliche.__li.style.backgroundColor = '';
         this.view.getLayerById('Opi').visible = false;
         this.view.notifyChange(this.view.getLayerById('Opi'), true);
+      } else if (this.alertLayerName && e.key === 'ArrowLeft') {
+        this.featureIndex -= 1;
+        this.centerOnAlertFeature();
+      } else if (this.alertLayerName && e.key === 'ArrowRight') {
+        this.featureIndex += 1;
+        this.centerOnAlertFeature();
       }
       return;
     }
