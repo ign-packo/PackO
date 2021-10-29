@@ -34,6 +34,17 @@ else {
 }
 `);
 
+function coloringAlerts(properties) {
+  if (properties.status === false) {
+    // return color.set(0x5555ff);
+    return '#ff5555';
+  }
+  if (properties.status === true) {
+    return '#3cd25f';
+  }
+  return 'eeeeee';
+}
+
 class Viewer {
   constructor(viewerDiv) {
     this.viewerDiv = viewerDiv;
@@ -55,6 +66,7 @@ class Viewer {
       Contour: 3,
       Patches: 4,
     };
+    this.oldStyle = {};
   }
 
   createView(overviews, idCache) {
@@ -136,6 +148,17 @@ class Viewer {
     });
   }
 
+  centerCamera(coordX, coordY) {
+    itowns.CameraUtils.transformCameraToLookAtTarget(
+      this.view,
+      this.view.camera.camera3D,
+      {
+        coord: new itowns.Coordinates(this.crs, coordX, coordY),
+        heading: 0,
+      },
+    );
+  }
+
   refresh(layerList, changeBranch = false) {
     const layerNames = Array.isArray(layerList) ? layerList : Object.keys(layerList);
     let listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
@@ -158,8 +181,9 @@ class Viewer {
       if (this.view.getLayerById(layerName)) {
         // la couche existe avant le refresh
         const {
-          opacity, transparent, style, visible,
+          opacity, transparent, visible,
         } = this.view.getLayerById(layerName);
+        let { style } = this.view.getLayerById(layerName);
         let { source } = this.view.getLayerById(layerName);
         if (source.isVectorSource) {
           source = new itowns.FileSource({
@@ -168,6 +192,16 @@ class Viewer {
             crs: source.crs,
             parser: itowns.GeoJsonParser.parse,
           });
+          if (this.oldStyle[layerName]) {
+            style = this.oldStyle[layerName];
+          }
+          if (layerName === this.alertLayerName) {
+            this.oldStyle[layerName] = style.clone();
+            // eslint-disable-next-line no-param-reassign
+            style.fill.color = coloringAlerts;
+            // eslint-disable-next-line no-param-reassign
+            style.point.color = coloringAlerts;
+          }
         }
         this.view.removeLayer(layerName);
         layer.colorLayer = new itowns.ColorLayer(layerName,
@@ -206,6 +240,13 @@ class Viewer {
             crs: layerList[layerName].crs,
             parser: itowns.GeoJsonParser.parse,
           });
+
+          // if (layerName === this.alertLayerName) {
+          //   // eslint-disable-next-line no-param-reassign
+          //   layerList[layerName].style.fill.color = coloringAlerts;
+          //   // eslint-disable-next-line no-param-reassign
+          //   layerList[layerName].style.point.color = coloringAlerts;
+          // }
           layer.config.style = new itowns.Style(layerList[layerName].style);
         }
         layer.config.opacity = layerList[layerName].opacity;
@@ -214,6 +255,10 @@ class Viewer {
           layer.config,
         );
 
+        if (layerName === 'Patch') {
+          layer.buildExtent = false;
+        }
+
         layer.colorLayer.visible = layerList[layerName].visible;
         if (layerName === 'Contour') {
           layer.colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
@@ -221,7 +266,17 @@ class Viewer {
           layer.colorLayer.magFilter = THREE.NearestFilter;
           layer.colorLayer.minFilter = THREE.NearestFilter;
         }
+
+        // if (layerList[layerName].type === 'vector') {
+        //   this.view.addLayer(layer.colorLayer)
+        //     .then(
+        //       (layerT) => global.FeatureToolTip.addLayer(layerT, { filterAllProperties: false }),
+        //     );
+        // } else {
+        //   this.view.addLayer(layer.colorLayer);
+        // }
         this.view.addLayer(layer.colorLayer);
+
         if (this.layerIndex[layerName] === undefined) {
           this.layerIndex[layerName] = Math.max(...Object.values(this.layerIndex)) + 1;
         }
@@ -234,7 +289,12 @@ class Viewer {
     // Layer ordering
     listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
     listColorLayer.forEach((layerId) => {
-      itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, this.layerIndex[layerId]);
+      if (this.layerIndex[layerId] === undefined) {
+        const extrIndex = Math.max(...Object.values(this.layerIndex)) + 1;
+        itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, extrIndex);
+      } else {
+        itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, this.layerIndex[layerId]);
+      }
     });
   }
 
@@ -316,7 +376,7 @@ class Viewer {
 
       const fileReader = new FileReader();
       const _view = this.view;
-      const _index = this.layerIndex;
+      // const _index = this.layerIndex;
       // eslint-disable-next-line no-loop-func
       fileReader.onload = function onload(e) {
         const dataLoaded = e.target.result;
@@ -354,10 +414,11 @@ class Viewer {
             },
           };
 
-          itowns.GeoJsonParser.parse(resData, options).then((features) => {
-            const source = new itowns.FileSource({
-              features,
-            });
+          // itowns.GeoJsonParser.parse(resData, options).then((features) => {
+          itowns.GeoJsonParser.parse(resData, options).then(() => {
+            // const source = new itowns.FileSource({
+            //   features,
+            // });
 
             const randomColor = Math.round(Math.random() * 0xffffff);
 
@@ -371,21 +432,24 @@ class Viewer {
               },
               point: {
                 color: `#${randomColor.toString(16)}`,
+                radius: 5,
               },
             };
-            const layer = new itowns.ColorLayer(layerName, {
-              transparent: true,
-              style: new itowns.Style(style),
-              source,
-            });
+            // const layer = new itowns.ColorLayer(layerName, {
+            //   transparent: true,
+            //   style: new itowns.Style(style),
+            //   source,
+            // });
 
-            _view.addLayer(layer);
+            // _view.addLayer(layer);
 
-            console.log(`-> Layer '${layer.id}' added`);
+            // console.log(`-> Layer '${layer.id}' added`);
 
-            _index[layer.id] = Object.keys(_index).length;
-            itowns.ColorLayersOrdering.moveLayerToIndex(_view,
-              layer.id, _index[layer.id]);
+            // _index[layer.id] = Object.keys(_index).length;
+            // itowns.ColorLayersOrdering.moveLayerToIndex(_view,
+            //   layer.id, _index[layer.id]);
+
+            console.log(`-> Layer '${layerName}' dropped`);
 
             _view.dispatchEvent({
               type: 'file-dropped',

@@ -30,5 +30,15 @@ class Controller {
       if (process.env.NODE_ENV === 'development') this.controllers.clear = this.menuGlobe.gui.add(this.editing, 'clear');
     }
   }
+
+  refreshDropBox(list) {
+    let innerHTML = '';
+    list.forEach((element) => {
+      innerHTML += `<option value='${element}'>${element}</option>`;
+    });
+    this.alert.domElement.children[0].innerHTML = innerHTML;
+    // this.editing.alert = value;
+    this.alert.updateDisplay();
+  }
 }
 export default Controller;

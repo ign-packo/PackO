@@ -75,6 +75,12 @@ class Branch {
             color: 'Yellow',
             width: 2,
           },
+          point: {
+            color: 'Yellow',
+          },
+          fill: {
+            color: 'Yellow',
+          },
         },
       },
     };
@@ -115,27 +121,31 @@ class Branch {
       this.viewer.message = 'le nom n\'est pas valide';
       return;
     }
-    fetch(`${this.apiUrl}/branch?name=${branchName}&idCache=${this.viewer.idCache}`,
+    this.addBranch(branchName);
+  }
+
+  async addBranch(branchName) {
+    const res = await fetch(`${this.apiUrl}/branch?name=${branchName}&idCache=${this.viewer.idCache}`,
       {
         method: 'POST',
-      }).then((res) => {
-      if (res.status === 200) {
-        itowns.Fetcher.json(`${this.apiUrl}/branches?idCache=${this.viewer.idCache}`).then((branches) => {
-          this.list = branches;
-          this.active.name = branchName;
-          this.active.id = this.list.filter((branch) => branch.name === branchName)[0].id;
-          this.changeBranch();
-          this.view.dispatchEvent({
-            type: 'branch-created',
-          });
-        });
-      } else {
-        res.text().then((err) => {
-          console.log(err);
-          this.viewer.message = 'le nom n\'est pas valide';
-        });
-      }
-    });
+      });// .then((res) => {
+    if (res.status === 200) {
+      const branches = await itowns.Fetcher.json(`${this.apiUrl}/branches?idCache=${this.viewer.idCache}`);// .then((branches) => {
+      this.list = branches;
+      this.active.name = branchName;
+      this.active.id = this.list.filter((branch) => branch.name === branchName)[0].id;
+      await this.changeBranch();
+      this.view.dispatchEvent({
+        type: 'branch-created',
+      });
+      // });
+    } else {
+      res.text().then((err) => {
+        console.log(err);
+        this.viewer.message = 'le nom n\'est pas valide';
+      });
+    }
+    // });
   }
 
   async saveLayer(name, geojson, style) {
@@ -157,19 +167,20 @@ class Branch {
         }),
       });
     if (res.status === 200) {
-      // this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.idBranch}/vectors`);
-      // this.setLayers();
-      const json = await res.json();
-      this.layers[name] = {
-        type: 'vector',
-        url: `${this.apiUrl}/vector?idVector=${json.id}`,
-        crs,
-        opacity: 1,
-        style,
-        visible: true,
-        id: json.id,
-      };
+      this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
+      this.setLayers();
+      // const json = await res.json();
+      // this.layers[name] = {
+      //   type: 'vector',
+      //   url: `${this.apiUrl}/vector?idVector=${json.id}`,
+      //   crs,
+      //   opacity: 1,
+      //   style,
+      //   visible: true,
+      //   id: json.id,
+      // };
       console.log(`-> Layer '${name}' saved`);
+      this.viewer.refresh(this.layers);
     } else {
       console.log(`-> Error Serveur: Layer '${name}' NOT saved`);
     }
@@ -179,11 +190,12 @@ class Branch {
     fetch(`${this.apiUrl}/vector?idVector=${id}`,
       {
         method: 'DELETE',
-      }).then(async (res) => {
+      }).then((res) => {
       if (res.status === 200) {
         const layer = this.vectorList.filter((elem) => elem.id === id)[0];
         const index = this.vectorList.indexOf(layer);
         this.vectorList.splice(index, 1);
+        delete this.layers[layer.name];
         console.log(`-> Layer '${id}' deleted`);
       } else {
         console.log(`-> Error Serveur: Layer '${id}' NOT deleted`);
