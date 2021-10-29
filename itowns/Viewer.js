@@ -36,14 +36,12 @@ else {
 
 class Viewer {
   constructor(viewerDiv) {
-    // this.view = view;
     this.viewerDiv = viewerDiv;
-    // this.apiUrl = apiUrl;
 
     this.crs = {};
     this.overview = {};
     this.view = null;
-    // this.menuGlobe = null;
+    this.menuGlobe = null;
     this.layer = {};
 
     this.xcenter = 0;
@@ -58,7 +56,6 @@ class Viewer {
       Contour: 3,
       Patches: 4,
     };
-    // this.vectorList = [];
   }
 
   createView(overviews, idCache) {
@@ -120,7 +117,7 @@ class Viewer {
     // avec le view.getPixelsToMeters() d'iTowns
     this.resolLvMax = resolution * 2 ** (overviews.level.max - levelMax - 1) - 0.01;
     this.resolLvMin = resolution * 2 ** (overviews.level.max - levelMin) + 0.01;
-    console.log('resol min/max : ', this.resolLvMin, this.resolLvMax);
+    // console.log('resol min/max : ', this.resolLvMin, this.resolLvMax);
     // Instanciate PlanarView*
     const zoomFactor = 2;// customizable
 
@@ -152,7 +149,6 @@ class Viewer {
       }
     });
 
-    // Object.keys(layerList).forEach((layerName) => {
     layerNames.forEach((layerName) => {
       const layer = {};
       layer.config = {};
@@ -161,7 +157,6 @@ class Viewer {
         const {
           opacity, transparent, style, visible,
         } = this.view.getLayerById(layerName);
-        console.log(this.view.getLayerById(layerName));
         let { source } = this.view.getLayerById(layerName);
         if (source.isVectorSource) {
           source = new itowns.FileSource({
@@ -213,7 +208,6 @@ class Viewer {
           layer.config,
         );
 
-        // if (layerName === 'Opi') layer.colorLayer.visible = false;
         layer.colorLayer.visible = layerList[layerName].visible;
         if (layerName === 'Contour') {
           layer.colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
@@ -222,7 +216,6 @@ class Viewer {
           layer.colorLayer.minFilter = THREE.NearestFilter;
         }
         this.view.addLayer(layer.colorLayer);
-        // .then(this.menuGlobe.addLayerGUI.bind(this.menuGlobe));
         if (!this.index[layer.name]) this.index[layer.name] = Object.keys(this.index).length + 1;
       }
     });
@@ -246,10 +239,6 @@ class Viewer {
     // FORMAT
     const _GEOJSON = 'geojson';
     const _SHP = 'shapefile';
-
-    // MODE
-    // const _COLOR = 10;
-    // const _GEOMETRY = 11;
 
     const extensionsMap = [];
     extensionsMap.geojson = {
@@ -294,7 +283,6 @@ class Viewer {
     console.log(ListFile);
 
     let data = {};
-    // let resData;
     // Read each file
     for (let i = 0; i < files.length; i += 1) {
       const file = files[i];
