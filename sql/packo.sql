@@ -52,7 +52,8 @@ CREATE TABLE public.processes (
     start_date timestamp with time zone NOT NULL,
     end_date timestamp with time zone,
     status public.processes_status DEFAULT 'running'::public.processes_status NOT NULL,
-    result character varying
+    result character varying,
+    description character varying
 );
 
 

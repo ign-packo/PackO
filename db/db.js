@@ -404,12 +404,11 @@ async function getProcesses(pgClient) {
   return results.rows;
 }
 
-async function createProcess(pgClient) {
+async function createProcess(pgClient, description) {
   debug('~~createProcess');
 
-  const sql = format('INSERT INTO processes (start_date) VALUES (NOW()) RETURNING id');
+  const sql = format('INSERT INTO processes (start_date, description) VALUES (NOW(), %L) RETURNING id', description);
   debug(sql);
-
   const results = await pgClient.query(
     sql,
   );

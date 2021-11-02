@@ -210,7 +210,8 @@ async function rebase(req, res, next) {
   // on applique les patchs de idBranch dans cette nouvelle branche
   // Comme cela peut-être long
   // il faut créer un processus
-  const idProcess = await db.createProcess(req.client);
+  const idProcess = await db.createProcess(req.client,
+    `base: ${idBase} + branch: ${idBranch} -> ${idNewBranch} (${name})`);
   // On fait un commit pour la première partie du rebase et on ouvre une transaction pour la suite
   await db.endTransaction(req.client, !(req.error));
   await db.beginTransaction(req.client);
