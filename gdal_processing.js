@@ -51,17 +51,6 @@ function getTile(url, x, y, z, blocSize, cacheKey) {
 
   const { ds } = cache[cacheKey];
   debug('fichier ouvert ');
-  // if (z > ds.bands.get(1).overviews.count()) {
-  //   const error = new Error();
-  //   error.msg = {
-  //     status: `niveau de zoom ${z} non dispo sur ${url}!`,
-  //     errors: [{
-  //       localisation: 'getTile',
-  //       msg: `niveau de zoom ${z} non dispo sur ${url}!`,
-  //     }],
-  //   };
-  //   throw error;
-  // }
   const bandR = z === 0 ? ds.bands.get(1) : ds.bands.get(1).overviews.get(z - 1);
   const bandG = z === 0 ? ds.bands.get(2) : ds.bands.get(2).overviews.get(z - 1);
   const bandB = z === 0 ? ds.bands.get(3) : ds.bands.get(3).overviews.get(z - 1);
@@ -166,6 +155,7 @@ function processPatchAsync(patch, blocSize) {
         debug('creation des images en memoire...');
         const graphMem = gdal.open('graph', 'w', 'MEM', dsGraph.rasterSize.x, dsGraph.rasterSize.y, 3);
         graphMem.geoTransform = dsGraph.geoTransform;
+        graphMem.srs = dsGraph.srs;
         graphMem.bands.get(1).pixels.write(0, 0,
           dsGraph.rasterSize.x, dsGraph.rasterSize.y, bands[0]);
         graphMem.bands.get(2).pixels.write(0, 0,
@@ -174,6 +164,7 @@ function processPatchAsync(patch, blocSize) {
           dsGraph.rasterSize.x, dsGraph.rasterSize.y, bands[2]);
         const orthoMem = gdal.open('ortho', 'w', 'MEM', dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, 3);
         orthoMem.geoTransform = dsOrtho.geoTransform;
+        orthoMem.srs = dsOrtho.srs;
         orthoMem.bands.get(1).pixels.write(0, 0,
           dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[6]);
         orthoMem.bands.get(2).pixels.write(0, 0,
