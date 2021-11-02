@@ -31,6 +31,48 @@ COMMENT ON EXTENSION postgis IS 'PostGIS geometry, geography, and raster spatial
 
 
 --
+-- Name: processes_status; Type: TYPE; Schema: public; Owner: postgres
+--
+
+CREATE TYPE public.processes_status AS ENUM (
+    'running',
+    'failed',
+    'succeed'
+);
+
+
+ALTER TYPE public.processes_status OWNER TO postgres;
+
+--
+-- Name: processes; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.processes (
+    id integer NOT NULL,
+    start_date timestamp with time zone NOT NULL,
+    end_date timestamp with time zone,
+    status public.processes_status DEFAULT 'running'::public.processes_status NOT NULL,
+    result character varying,
+    description character varying
+);
+
+
+ALTER TABLE public.processes OWNER TO postgres;
+
+--
+-- Name: processes_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.processes ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.processes_id_seq
+    START WITH 0
+    INCREMENT BY 1
+    MINVALUE 0
+    NO MAXVALUE
+    CACHE 1
+);
+
+--
 -- Name: auto_num_patches_and_delete_unactive(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -501,6 +543,14 @@ ALTER TABLE ONLY public.styles
 
 ALTER TABLE ONLY public.styles
     ADD CONSTRAINT styles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: caches processes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.processes
+    ADD CONSTRAINT processes_pkey PRIMARY KEY (id);
 
 
 --

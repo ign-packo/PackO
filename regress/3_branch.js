@@ -9,7 +9,7 @@ const app = require('..');
 
 const overviews = JSON.parse(fs.readFileSync('./regress/data/regress_overviews.json', 'utf8'));
 const cacheName = 'cacheRegress';
-const cachePath = '/cache_regress';
+const cachePath = 'cache_regress';
 
 let idCache = null;
 function setIdCache(id) {
@@ -143,6 +143,61 @@ describe('Branch', () => {
             const resJson = JSON.parse(res.text);
             resJson.should.be.an('object');
             resJson.should.have.property('msg').equal('A branch with this name already exists.');
+            done();
+          });
+      });
+    });
+  });
+
+  describe('POST /{idBranch}/rebase', () => {
+    describe('rebase valid branches', () => {
+      it('should succeed', (done) => {
+        const idB = idBranch.orig;
+        chai.request(app)
+          .post(`/${idB}/rebase`)
+          .query({
+            name: 'rebase',
+            idBase: idBranch.newBranch,
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            const resJson = JSON.parse(res.text);
+            resJson.should.have.property('name').equal('rebase');
+            resJson.should.have.property('id');
+            resJson.should.have.property('idProcess');
+            // on vérifie que le idProcess est accessible
+            const { idProcess } = resJson;
+            chai.request(app)
+              .get(`/process/${idProcess}`)
+              .end((err2, res2) => {
+                should.not.exist(err);
+                res.should.have.status(200);
+                const resJson2 = JSON.parse(res2.text);
+                resJson2.should.have.property('id').equal(idProcess);
+                resJson2.should.have.property('start_date');
+                resJson2.should.have.property('end_date');
+                resJson2.should.have.property('status');
+                resJson2.should.have.property('result');
+                done();
+              });
+          });
+      });
+    });
+    describe('rebase non valid branches', () => {
+      it('should succeed', (done) => {
+        const idB = 99999;
+        chai.request(app)
+          .post(`/${idB}/rebase`)
+          .query({
+            name: 'rebase',
+            idBase: 99999,
+          })
+          .end((err, res) => {
+            should.not.exist(err);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(2);
+            resJson[0].should.have.property('status').equal("Le paramètre 'idBase' n'est pas valide.");
+            resJson[1].should.have.property('status').equal("Le paramètre 'idBranch' n'est pas valide.");
             done();
           });
       });

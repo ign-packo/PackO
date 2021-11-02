@@ -20,6 +20,8 @@ tags:
     description: Gestion des couches vecteurs annexes
   - name: file
     description: Récupération de fichiers
+  - name: process
+    description: Gestion des processus longs (donc asynchrones)
 paths:
 # VERSION
   '/version':
@@ -213,6 +215,36 @@ paths:
           schema:
             type: integer
           example: 1
+      responses:
+        '200':
+          description: OK
+  
+  '/{idBranch}/rebase':
+    post:
+      tags:
+        - branch
+      summary: "Création d'une nouvelle branche en appliquant les patchs de cette branche sur une autre branche"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+          example: "maNouvelleBranche"
+        - in: query
+          name: idBase
+          description: l'identifiant de la branche à utiliser comme base
+          required: true
+          schema:
+            type: integer
+          example: 0
       responses:
         '200':
           description: OK
@@ -623,6 +655,33 @@ paths:
             type: string
           example: "cache_test"
 
+      responses:
+        '200':
+          description: OK
+
+# PROCESSES
+  '/processes':
+    get:
+      tags:
+        - process
+      summary: "Récupération la liste des traitements longs"
+      description: ""
+      responses:
+        '200':
+          description: OK
+  '/process/{id}':
+    get:
+      tags:
+        - process
+      summary: "Récupération de l'état d'un traitement long"
+      description: ""
+      parameters:
+      - in: path
+        name: id
+        description: l'identifiant du traitement
+        required: true
+        schema:
+          type: integer
       responses:
         '200':
           description: OK

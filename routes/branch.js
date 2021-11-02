@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { query } = require('express-validator');
+const { query, param } = require('express-validator');
 
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
@@ -51,6 +51,27 @@ router.delete('/branch',
   validateParams,
   branch.deleteBranch,
   pgClient.close,
+  returnMsg);
+
+router.post('/:idBranch/rebase',
+  pgClient.open,
+  branch.getBranches.bind({ column: 'id' }),
+  [
+    query('name')
+      .exists().withMessage(createErrMsg.missingParameter('name')),
+    query('idBase')
+      .exists().withMessage(createErrMsg.missingParameter('idBase'))
+      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .withMessage(createErrMsg.invalidParameter('idBase')),
+    param('idBranch')
+      .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .withMessage(createErrMsg.invalidParameter('idBranch')),
+  ],
+  validateParams,
+  cache.getCachePath,
+  cache.getOverviews,
+  branch.rebase,
   returnMsg);
 
 module.exports = router;
