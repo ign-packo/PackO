@@ -1,6 +1,6 @@
 const debug = require('debug')('patch');
 const fs = require('fs');
-const PImage = require('pureimage');
+const canvas = require('canvas');
 const turf = require('@turf/turf');
 const path = require('path');
 const { matchedData } = require('express-validator');
@@ -124,7 +124,7 @@ function createPatch(slab, feature, color, name, overviews, dirCache, idBranch) 
   debug('on calcule un masque : ', slab);
   // Il y a parfois un bug sur le dessin du premier pixel
   // on cree donc un masque une ligne de plus
-  const mask = PImage.make(slabWidth, slabHeight + 1);
+  const mask = canvas.createCanvas(slabWidth, slabHeight + 1);
   const ctx = mask.getContext('2d');
   ctx.fillStyle = '#FFFFFF';
   for (let n = 0; n < rings.length; n += 1) {
@@ -138,6 +138,8 @@ function createPatch(slab, feature, color, name, overviews, dirCache, idBranch) 
     ctx.closePath();
     ctx.fill();
   }
+
+  mask.data = mask.toBuffer('raw');
 
   const P = { slab, mask, color };
   P.cogPath = cog.getSlabPath(
