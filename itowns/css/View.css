@@ -97,7 +97,7 @@ body {
     display: block;
     position: absolute;
     right: 135px;
-    bottom: 20;
+    bottom: 50;
     text-align: center;
     width: 204px;
     height: 37px;
@@ -128,6 +128,22 @@ body {
 }
 
 #spanZoomWidget {
+    display: block;
+    text-align: center;
+    background-image: linear-gradient(rgba(200, 200, 200, 0.3), rgba(200, 200, 200, 0.3));
+    width: 100px;
+    height: 18px;
+    color: black;
+    font-family: 'Open Sans', sans-serif;
+    font-size: 16px;
+    margin: 0 auto;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+#spanGraphVisibleWidget {
     display: block;
     text-align: center;
     background-image: linear-gradient(rgba(200, 200, 200, 0.3), rgba(200, 200, 200, 0.3));

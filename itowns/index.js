@@ -22,6 +22,11 @@ function updateScaleWidget(view, resolution) {
     distance *= 100;
     unit = 'cm';
   }
+  if (dezoom >= 32) {
+    document.getElementById('spanGraphVisible').innerHTML = '<p style="color:#FF0000";>Graphe Non Visible</p>';
+  } else {
+    document.getElementById('spanGraphVisible').innerHTML = '<p style="color:#00FF00";>Graphe Visible</p>';
+  }
   document.getElementById('spanZoomWidget').innerHTML = dezoom <= 1 ? `zoom: ${1 / dezoom}` : `zoom: 1/${dezoom}`;
   document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
 }
