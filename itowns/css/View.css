@@ -97,7 +97,7 @@ body {
     display: block;
     position: absolute;
     right: 135px;
-    bottom: 50;
+    bottom: 40;
     text-align: center;
     width: 204px;
     height: 37px;
@@ -107,56 +107,35 @@ body {
     user-select: none;
 }
 
-#spanScaleWidget {
+.scaleWidget {
     display: block;
-    /* position: absolute;
-    right: 135px;
-    bottom: 20; */
-    border: 2px solid black;
-    border-top: none;
-    text-align: center;
     background-image: linear-gradient(rgba(200, 200, 200, 0.3), rgba(200, 200, 200, 0.3));
-    width: 200px;
-    height: 18px;
-    color: black;
-    font-family: 'Open Sans', sans-serif;
-    font-size: 16px;
+    margin: 0 auto;
     -moz-user-select: none;
     -webkit-user-select: none;
     -ms-user-select: none;
     user-select: none;
+}
+
+#spanScaleWidget {
+    border: 3px dashed black;
+    border-top: none;
+    width: 200px;
+    height: 18px;
 }
 
 #spanZoomWidget {
-    display: block;
-    text-align: center;
-    background-image: linear-gradient(rgba(200, 200, 200, 0.3), rgba(200, 200, 200, 0.3));
     width: 100px;
     height: 18px;
-    color: black;
-    font-family: 'Open Sans', sans-serif;
-    font-size: 16px;
-    margin: 0 auto;
-    -moz-user-select: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
 }
 
-#spanGraphVisibleWidget {
-    display: block;
-    text-align: center;
-    background-image: linear-gradient(rgba(200, 200, 200, 0.3), rgba(200, 200, 200, 0.3));
-    width: 100px;
-    height: 18px;
-    color: black;
-    font-family: 'Open Sans', sans-serif;
-    font-size: 16px;
-    margin: 0 auto;
-    -moz-user-select: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+#spanGraphVisibWidget {
+    visibility: hidden;
+}
+
+#spanGraphVisibWidget.not_displayed {
+    color:#FF0000;
+    visibility: visible;
 }
 
 .tooltip {
