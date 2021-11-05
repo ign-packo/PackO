@@ -1,6 +1,6 @@
 const debug = require('debug')('patch');
 const fs = require('fs');
-const PImage = require('pureimage');
+const canvas = require('canvas');
 const turf = require('@turf/turf');
 const path = require('path');
 const { matchedData } = require('express-validator');
@@ -104,13 +104,13 @@ function createPatch(slab, feature, color, name, overviews, dirCache, idBranch) 
       const x = Math.round((point[0] - xOrigin - slab.x * slabWidth * resolution)
             / resolution);
       const y = Math.round((yOrigin - point[1] - slab.y * slabHeight * resolution)
-            / resolution) + 1;
+            / resolution);
       ring.push([x, y]);
     }
     inputRings.push(ring);
   }
 
-  const bbox = [0, 0, slabWidth, slabHeight + 1];
+  const bbox = [0, 0, slabWidth, slabHeight];
   const poly = turf.polygon(inputRings);
   const clipped = turf.bboxClip(poly, bbox);
   const rings = clipped.geometry.coordinates;
@@ -122,9 +122,7 @@ function createPatch(slab, feature, color, name, overviews, dirCache, idBranch) 
 
   // La BBox et le polygone s'intersectent
   debug('on calcule un masque : ', slab);
-  // Il y a parfois un bug sur le dessin du premier pixel
-  // on cree donc un masque une ligne de plus
-  const mask = PImage.make(slabWidth, slabHeight + 1);
+  const mask = canvas.createCanvas(slabWidth, slabHeight);
   const ctx = mask.getContext('2d');
   ctx.fillStyle = '#FFFFFF';
   for (let n = 0; n < rings.length; n += 1) {
@@ -138,6 +136,8 @@ function createPatch(slab, feature, color, name, overviews, dirCache, idBranch) 
     ctx.closePath();
     ctx.fill();
   }
+
+  mask.data = mask.toBuffer('raw');
 
   const P = { slab, mask, color };
   P.cogPath = cog.getSlabPath(
