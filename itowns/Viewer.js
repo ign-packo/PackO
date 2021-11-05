@@ -191,7 +191,9 @@ class Viewer {
             format: 'image/png',
             name: layerName !== 'Contour' ? layerName.toLowerCase() : 'graph',
             tileMatrixSet: this.overviews.identifier,
-            tileMatrixSetLimits: this.overviews.dataSet.limits,
+            tileMatrixSetLimits:
+              (layerName === 'Contour') || (layerName === 'Graph')
+                ? this.overviews.dataSet.limitsForGraph : this.overviews.dataSet.limits,
           });
         } else if (layerList[layerName].type === 'vector') {
           layer.config.source = new itowns.FileSource({
