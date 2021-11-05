@@ -97,7 +97,7 @@ async function main() {
 
     viewer.menuGlobe.colorGui.show();
     viewer.menuGlobe.colorGui.open();
-    viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Vector Annexes');
+    viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Extra Layers');
     viewer.menuGlobe.vectorGui.open();
 
     const branch = new Branch(apiUrl, viewer);

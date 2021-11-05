@@ -137,7 +137,7 @@ class Editing {
         this.cliche = 'unknown';
         this.controllers.cliche.__li.style.backgroundColor = '';
         this.view.getLayerById('Opi').visible = false;
-        this.view.notifyChange(this.branch.layers.Opi, true);
+        this.view.notifyChange(this.view.getLayerById('Opi'), true);
       }
       return;
     }

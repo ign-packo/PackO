@@ -136,17 +136,20 @@ class Viewer {
     });
   }
 
-  refresh(layerList) {
+  refresh(layerList, changeBranch = false) {
     const layerNames = Array.isArray(layerList) ? layerList : Object.keys(layerList);
-    // Clean up of all the extra layers
     let listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
-    listColorLayer.forEach((layerName) => {
-      if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layerName)) {
-        this.view.removeLayer(layerName);
-        this.menuGlobe.removeLayersGUI(layerName);
-        delete this.layerIndex[layerName];
-      }
-    });
+
+    if (changeBranch) {
+      // Clean up of all the extra layers
+      listColorLayer.forEach((layerName) => {
+        if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layerName)) {
+          this.view.removeLayer(layerName);
+          this.menuGlobe.removeLayersGUI(layerName);
+          delete this.layerIndex[layerName];
+        }
+      });
+    }
 
     layerNames.forEach((layerName) => {
       const layer = {};
@@ -220,7 +223,7 @@ class Viewer {
         }
         this.view.addLayer(layer.colorLayer);
         if (this.layerIndex[layerName] === undefined) {
-          this.layerIndex[layerName] = Object.keys(this.layerIndex).length;
+          this.layerIndex[layerName] = Math.max(...Object.values(this.layerIndex)) + 1;
         }
       }
       if (layerList[layerName].id) {
@@ -366,10 +369,13 @@ class Viewer {
               stroke: {
                 color: `#${randomColor.toString(16)}`,
               },
+              point: {
+                color: `#${randomColor.toString(16)}`,
+              },
             };
             const layer = new itowns.ColorLayer(layerName, {
               transparent: true,
-              style,
+              style: new itowns.Style(style),
               source,
             });
 

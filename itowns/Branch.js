@@ -103,7 +103,7 @@ class Branch {
     const getVectorList = itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
     this.vectorList = await getVectorList;
     this.setLayers();
-    this.viewer.refresh(this.layers);
+    this.viewer.refresh(this.layers, true);
   }
 
   createBranch() {
