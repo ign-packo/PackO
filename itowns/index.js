@@ -72,6 +72,19 @@ async function main() {
 
     const overviews = await getOverviews;
 
+    // on ajoute les dataset.limits pour les layers graph/contour
+    // avec uniquement les niveaux correspondants au COG mis à jour par les patchs
+    // c'est-a-dire un seul niveau de COG
+    // on a donc besoin de connaitre le nombre de niveaux inclus dans un COG
+    const slabSize = Math.min(overviews.slabSize.width, overviews.slabSize.height);
+    const nbSubLevelsPerCOG = Math.floor(Math.log2(slabSize));
+    overviews.dataSet.limitsForGraph = {};
+    // on copie les limites des (nbSubLevelsPerCOG + 1) derniers niveaux
+    for (let l = overviews.dataSet.level.max - nbSubLevelsPerCOG;
+      l <= overviews.dataSet.level.max; l += 1) {
+      overviews.dataSet.limitsForGraph[l] = overviews.dataSet.limits[l];
+    }
+
     viewer.createView(overviews, activeCache.id);
     setupLoadingScreen(viewerDiv, viewer.view);
 
