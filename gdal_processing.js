@@ -139,9 +139,8 @@ function processPatchAsync(patch, blocSize) {
         debug('... fin chargement');
         debug('application du patch...');
         bands[0].forEach((_element, index) => {
-          // Attention, il y a une ligne de decalage dans la masque
           /* eslint-disable no-param-reassign */
-          if (mask.data[mask.width * 4 + 4 * index] > 0) {
+          if (mask.data[4 * index] > 0) {
             [bands[0][index],
               bands[1][index],
               bands[2][index]] = patch.color;
