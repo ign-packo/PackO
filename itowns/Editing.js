@@ -11,11 +11,10 @@ const status = {
 };
 
 class Editing {
-  constructor(branch, layer, apiUrl) {
+  constructor(branch, apiUrl) {
     this.branch = branch;
     this.viewer = branch.viewer;
     this.view = this.viewer.view;
-    this.layer = layer;
     this.apiUrl = apiUrl;
 
     this.validClicheSelected = false;
@@ -131,6 +130,17 @@ class Editing {
   keydown(e) {
     if (this.currentStatus === status.WAITING) return;
     console.log(e.key, ' down');
+    if (this.currentStatus === status.RAS) {
+      // L'utilisateur demande à déselectionner l'OPI
+      if (this.validClicheSelected && (e.key === 'Escape')) {
+        this.validClicheSelected = false;
+        this.cliche = 'unknown';
+        this.controllers.cliche.__li.style.backgroundColor = '';
+        this.view.getLayerById('Opi').visible = false;
+        this.view.notifyChange(this.branch.layers.Opi, true);
+      }
+      return;
+    }
     if (e.key === 'Escape') {
       this.view.controls.setCursor('default', 'auto');
       this.cancelcurrentPolygon();
@@ -236,10 +246,11 @@ class Editing {
             }
             if (res.status === 201) {
               console.log('out of bounds');
-              this.layer.opi.colorLayer.visible = false;
+              this.cliche = 'unknown';
+              this.view.getLayerById('Opi').visible = false;
               this.validClicheSelected = false;
               this.controllers.cliche.__li.style.backgroundColor = '';
-              this.view.notifyChange(this.layer.opi.colorLayer, true);
+              this.view.notifyChange(this.branch.layers.Opi, true);
             }
             if (res.status === 202) {
               console.log('Server Error');
