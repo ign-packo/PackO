@@ -87,6 +87,7 @@ class Branch {
         opacity: 1,
         style: JSON.parse(vector.style_itowns),
         visible: true,
+        id: vector.id,
       };
     });
   }
@@ -102,7 +103,7 @@ class Branch {
     const getVectorList = itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
     this.vectorList = await getVectorList;
     this.setLayers();
-    this.viewer.refresh(this.layers);
+    this.viewer.refresh(this.layers, true);
   }
 
   createBranch() {
@@ -137,8 +138,9 @@ class Branch {
     });
   }
 
-  saveLayer(name, geojson, style) {
-    fetch(`${this.apiUrl}/${this.active.id}/vector`,
+  async saveLayer(name, geojson, style) {
+    const crs = readCRS(geojson);
+    const res = await fetch(`${this.apiUrl}/${this.active.id}/vector`,
       {
         method: 'POST',
         headers: {
@@ -149,29 +151,52 @@ class Branch {
           metadonnees: {
             name,
             style,
-            crs: readCRS(geojson),
+            crs,
           },
           data: geojson,
         }),
+      });
+    if (res.status === 200) {
+      // this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.idBranch}/vectors`);
+      // this.setLayers();
+      const json = await res.json();
+      this.layers[name] = {
+        type: 'vector',
+        url: `${this.apiUrl}/vector?idVector=${json.id}`,
+        crs,
+        opacity: 1,
+        style,
+        visible: true,
+        id: json.id,
+      };
+      console.log(`-> Layer '${name}' saved`);
+    } else {
+      console.log(`-> Error Serveur: Layer '${name}' NOT saved`);
+    }
+  }
+
+  deleteLayer(id) {
+    fetch(`${this.apiUrl}/vector?idVector=${id}`,
+      {
+        method: 'DELETE',
       }).then(async (res) => {
       if (res.status === 200) {
-        // this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.idBranch}/vectors`);
-        // this.setLayers();
-        res.json().then((json) => {
-          this.layers[name] = {
-            type: 'vector',
-            url: `${this.apiUrl}/vector?idVector=${json.id}`,
-            crs: readCRS(geojson),
-            opacity: 1,
-            style,
-            visible: true,
-          };
-          console.log(`-> Layer '${name}' saved`);
-        });
+        const layer = this.vectorList.filter((elem) => elem.id === id)[0];
+        const index = this.vectorList.indexOf(layer);
+        this.vectorList.splice(index, 1);
+        console.log(`-> Layer '${id}' deleted`);
       } else {
-        console.log(`-> Error Serveur: Layer '${name}' NOT saved`);
+        console.log(`-> Error Serveur: Layer '${id}' NOT deleted`);
       }
     });
+  }
+
+  deleteVectorLayer(layer) {
+    if (!layer) return;
+    this.deleteLayer(layer.vectorId);
+    this.view.removeLayer(layer.id);
+    this.viewer.menuGlobe.removeLayersGUI(layer.id);
+    delete this.viewer.layerIndex[layer.id];
   }
 }
 export default Branch;

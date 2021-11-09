@@ -42,14 +42,13 @@ class Viewer {
     this.overview = {};
     this.view = null;
     this.menuGlobe = null;
-    this.layer = {};
 
     this.xcenter = 0;
     this.ycenter = 0;
     this.resolution = 0;
     this.resolLvMax = 0;
     this.resolLvMin = 0;
-    this.index = {
+    this.layerIndex = {
       Ortho: 1,
       Opi: 2,
       Graph: 0,
@@ -137,23 +136,27 @@ class Viewer {
     });
   }
 
-  refresh(layerList) {
+  refresh(layerList, changeBranch = false) {
     const layerNames = Array.isArray(layerList) ? layerList : Object.keys(layerList);
-    // Clean up of all the extra layers
     let listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
-    listColorLayer.forEach((layerName) => {
-      if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layerName)) {
-        this.view.removeLayer(layerName);
-        this.menuGlobe.removeLayersGUI(layerName);
-        delete this.index[layerName];
-      }
-    });
+
+    if (changeBranch) {
+      // Clean up of all the extra layers
+      listColorLayer.forEach((layerName) => {
+        if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layerName)) {
+          this.view.removeLayer(layerName);
+          this.menuGlobe.removeLayersGUI(layerName);
+          delete this.layerIndex[layerName];
+        }
+      });
+    }
 
     layerNames.forEach((layerName) => {
       const layer = {};
       layer.config = {};
 
       if (this.view.getLayerById(layerName)) {
+        // la couche existe avant le refresh
         const {
           opacity, transparent, style, visible,
         } = this.view.getLayerById(layerName);
@@ -184,6 +187,7 @@ class Viewer {
         layer.colorLayer.visible = visible;
         this.view.addLayer(layer.colorLayer);
       } else {
+        // nouvelle couche
         if (layerList[layerName].type === 'raster') {
           layer.config.source = new itowns.WMTSSource({
             url: layerList[layerName].url,
@@ -218,14 +222,19 @@ class Viewer {
           layer.colorLayer.minFilter = THREE.NearestFilter;
         }
         this.view.addLayer(layer.colorLayer);
-        if (!this.index[layer.name]) this.index[layer.name] = Object.keys(this.index).length + 1;
+        if (this.layerIndex[layerName] === undefined) {
+          this.layerIndex[layerName] = Math.max(...Object.values(this.layerIndex)) + 1;
+        }
+      }
+      if (layerList[layerName].id) {
+        layer.colorLayer.vectorId = layerList[layerName].id;
       }
     });
 
     // Layer ordering
     listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
     listColorLayer.forEach((layerId) => {
-      itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, this.index[layerId]);
+      itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, this.layerIndex[layerId]);
     });
   }
 
@@ -307,7 +316,7 @@ class Viewer {
 
       const fileReader = new FileReader();
       const _view = this.view;
-      const _index = this.index;
+      const _index = this.layerIndex;
       // eslint-disable-next-line no-loop-func
       fileReader.onload = function onload(e) {
         const dataLoaded = e.target.result;
@@ -360,10 +369,13 @@ class Viewer {
               stroke: {
                 color: `#${randomColor.toString(16)}`,
               },
+              point: {
+                color: `#${randomColor.toString(16)}`,
+              },
             };
             const layer = new itowns.ColorLayer(layerName, {
               transparent: true,
-              style,
+              style: new itowns.Style(style),
               source,
             });
 
