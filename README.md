@@ -301,7 +301,7 @@ Le script **vectorise_graphe.py** permet de faire un export vectoriel d'un graph
 
 Pour le bon fonctionnement du script, il est impératif de mettre la variable d'environnement **GDAL_VRT_ENABLE_PYTHON** à **YES** avant de le lancer.
 ````
-usage: vectorise_graph.py [-h] -i INPUT [-o OUTPUT] [-b BRANCH] -p PATCHES [-v VERBOSE]
+usage: vectorise_graph.py [-h] -i INPUT [-o OUTPUT] [-b BRANCH] -p PATCHES [-t TILESIZE] [-v VERBOSE]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -313,21 +313,23 @@ optional arguments:
                         id of branch of cache to use as source (default: 0)
   -p PATCHES, --patches PATCHES
                         file containing patches on the branch to export
+  -t TILESIZE, --tilesize TILESIZE
+                        tile size for vectorising graph tiles (default: 100000)
   -v VERBOSE, --verbose VERBOSE
                         verbose (default: 0)
 ````
+
+A l'heure actuelle, il faut utiliser des chemins absolus pour que le script fonctionne correctement.
 
 Il est nécessaire de recourir à l'API pour récupérer deux de ces informations :
 - l'id de la branche à partir de laquelle on souhaite exporter le graphe vecteur
 - et le résultat de la route GET /{idBranch}/patches sur celle-ci (au format json)
 
-Le résultat de l'export est au format GeoJson.
+Le résultat de l'export est au format GeoPackage.
 
 #### Spécificité pour exécuter ce script sous Windows
 L'environnement recommandé pour avoir accès à gdal_polygonize est par le moyen de QGis.
 
 Pour que le script puisse avoir accès à cet exécutable, il faut initialiser l'environnement QGis via le script inclus. Ce script est à l'emplacement : **{QGis_DIR}\bin\o4w_env.bat**
-
-A l'heure actuelle, ce script ne fonctionne que sur des jeux de données relativement petits. Des évolutions sont en cours pour pallier à ce problème.
 
 [![IGN](images/logo_ign.png)](https://www.ign.fr)
