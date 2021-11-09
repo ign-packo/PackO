@@ -132,7 +132,7 @@ async function main() {
     branch.setLayers();
     viewer.refresh(branch.layers);
 
-    const editing = new Editing(branch, viewer.layer, apiUrl);
+    const editing = new Editing(branch, apiUrl);
     editing.cliche = 'unknown';
     editing.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
     editing.color = [0, 0, 0];
