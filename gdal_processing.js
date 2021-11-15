@@ -53,10 +53,14 @@ function getTile(url, x, y, z, blocSize, cacheKey, bands) {
 
   const { ds } = cache[cacheKey];
   debug('fichier ouvert ');
+
+  const bandR = z === 0 ? ds.bands.get(b[0] + 1) : ds.bands.get(b[0] + 1).overviews.get(z - 1);
+  const bandG = z === 0 ? ds.bands.get(b[1] + 1) : ds.bands.get(b[1] + 1).overviews.get(z - 1);
+  const bandB = z === 0 ? ds.bands.get(b[2] + 1) : ds.bands.get(b[2] + 1).overviews.get(z - 1);
   const inputBands = [
-    z === 0 ? ds.bands.get(b[0] + 1) : ds.bands.get(b[0] + 1).overviews.get(z - 1),
-    z === 0 ? ds.bands.get(b[1] + 1) : ds.bands.get(b[1] + 1).overviews.get(z - 1),
-    z === 0 ? ds.bands.get(b[2] + 1) : ds.bands.get(b[2] + 1).overviews.get(z - 1),
+    bandR.pixels.readBlock(x, y),
+    bandG.pixels.readBlock(x, y),
+    bandB.pixels.readBlock(x, y),
   ];
   return new Promise((res, rej) => {
     try {
@@ -126,17 +130,23 @@ function processPatchAsync(patch, blocSize) {
       const dsOpi = dsArray[1];
       const dsOrtho = dsArray[2];
       debug('chargement...');
-      Promise.all([
+      const promises = [
         dsGraph.bands.get(1).pixels.readAsync(0, 0, dsGraph.rasterSize.x, dsGraph.rasterSize.y),
         dsGraph.bands.get(2).pixels.readAsync(0, 0, dsGraph.rasterSize.x, dsGraph.rasterSize.y),
         dsGraph.bands.get(3).pixels.readAsync(0, 0, dsGraph.rasterSize.x, dsGraph.rasterSize.y),
-        dsOpi.bands.get(1).pixels.readAsync(0, 0, dsOpi.rasterSize.x, dsOpi.rasterSize.y),
-        dsOpi.bands.get(2).pixels.readAsync(0, 0, dsOpi.rasterSize.x, dsOpi.rasterSize.y),
-        dsOpi.bands.get(3).pixels.readAsync(0, 0, dsOpi.rasterSize.x, dsOpi.rasterSize.y),
-        dsOrtho.bands.get(1).pixels.readAsync(0, 0, dsOrtho.rasterSize.x, dsOrtho.rasterSize.y),
-        dsOrtho.bands.get(2).pixels.readAsync(0, 0, dsOrtho.rasterSize.x, dsOrtho.rasterSize.y),
-        dsOrtho.bands.get(3).pixels.readAsync(0, 0, dsOrtho.rasterSize.x, dsOrtho.rasterSize.y),
-      ]).then((bands) => {
+      ];
+      for (let i = 1; i <= dsOpi.bands.count(); i += 1) {
+        promises.push(
+          dsOpi.bands.get(i).pixels.readAsync(0, 0, dsOpi.rasterSize.x, dsOpi.rasterSize.y),
+        );
+      }
+      for (let i = 1; i <= dsOrtho.bands.count(); i += 1) {
+        promises.push(
+          dsOrtho.bands.get(i).pixels.readAsync(0, 0, dsOrtho.rasterSize.x, dsOrtho.rasterSize.y),
+        );
+      }
+
+      Promise.all(promises).then((bands) => {
         debug('... fin chargement');
         debug('application du patch...');
         bands[0].forEach((_element, index) => {
@@ -145,9 +155,25 @@ function processPatchAsync(patch, blocSize) {
             [bands[0][index],
               bands[1][index],
               bands[2][index]] = patch.color;
-            [bands[6][index],
-              bands[7][index],
-              bands[8][index]] = [bands[3][index], bands[4][index], bands[5][index]];
+            if (bands.length === 11) {
+              [bands[7][index],
+                bands[8][index],
+                bands[9][index],
+                bands[10][index]] = [
+                bands[3][index],
+                bands[4][index],
+                bands[5][index],
+                bands[6][index],
+              ];
+            } else {
+              [bands[6][index],
+                bands[7][index],
+                bands[8][index]] = [
+                bands[3][index],
+                bands[4][index],
+                bands[5][index],
+              ];
+            }
           }
           /* eslint-enable no-param-reassign */
         });
@@ -162,15 +188,27 @@ function processPatchAsync(patch, blocSize) {
           dsGraph.rasterSize.x, dsGraph.rasterSize.y, bands[1]);
         graphMem.bands.get(3).pixels.write(0, 0,
           dsGraph.rasterSize.x, dsGraph.rasterSize.y, bands[2]);
-        const orthoMem = gdal.open('ortho', 'w', 'MEM', dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, 3);
+        const orthoMem = gdal.open('ortho', 'w', 'MEM', dsOrtho.rasterSize.x,
+          dsOrtho.rasterSize.y, dsOrtho.bands.count());
         orthoMem.geoTransform = dsOrtho.geoTransform;
         orthoMem.srs = dsOrtho.srs;
-        orthoMem.bands.get(1).pixels.write(0, 0,
-          dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[6]);
-        orthoMem.bands.get(2).pixels.write(0, 0,
-          dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[7]);
-        orthoMem.bands.get(3).pixels.write(0, 0,
-          dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[8]);
+        if (orthoMem.bands.count() === 4) {
+          orthoMem.bands.get(1).pixels.write(0, 0,
+            dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[7]);
+          orthoMem.bands.get(2).pixels.write(0, 0,
+            dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[8]);
+          orthoMem.bands.get(3).pixels.write(0, 0,
+            dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[9]);
+          orthoMem.bands.get(4).pixels.write(0, 0,
+            dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[10]);
+        } else {
+          orthoMem.bands.get(1).pixels.write(0, 0,
+            dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[6]);
+          orthoMem.bands.get(2).pixels.write(0, 0,
+            dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[7]);
+          orthoMem.bands.get(3).pixels.write(0, 0,
+            dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[8]);
+        }
         debug('... fin creation des images en memoire');
         debug('creation des COGs ...');
 
