@@ -565,6 +565,9 @@ paths:
             type: string
             enum:
               - normal
+              - RVB
+              - IRC
+              - IR
 #              - default
             example: normal  # example of a parameter value
         - in: query

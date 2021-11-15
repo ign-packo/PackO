@@ -26,10 +26,12 @@ function clearCache() {
  * @param {int} z - niveau de zoom dans l'image (0 : pleine resolution)
  * @param {*} blocSize - taille des tuiles
  * @param {*} cacheKey - clé utilisée pour gérer le cache des images
+ * @param {*} bands - tableau des canaux à exporter (par défaut [0, 1, 2])
  * @returns
  */
-function getTile(url, x, y, z, blocSize, cacheKey) {
+function getTile(url, x, y, z, blocSize, cacheKey, bands) {
   debug('~~~getTile : ', url, x, y, z, blocSize, cacheKey);
+  const b = bands || [0, 1, 2];
   if (!fs.existsSync(url)) {
     debug('default');
     if (DEFAULT_IMAGE === null) {
@@ -51,13 +53,10 @@ function getTile(url, x, y, z, blocSize, cacheKey) {
 
   const { ds } = cache[cacheKey];
   debug('fichier ouvert ');
-  const bandR = z === 0 ? ds.bands.get(1) : ds.bands.get(1).overviews.get(z - 1);
-  const bandG = z === 0 ? ds.bands.get(2) : ds.bands.get(2).overviews.get(z - 1);
-  const bandB = z === 0 ? ds.bands.get(3) : ds.bands.get(3).overviews.get(z - 1);
-  const bands = [
-    bandR.pixels.readBlock(x, y),
-    bandG.pixels.readBlock(x, y),
-    bandB.pixels.readBlock(x, y),
+  const inputBands = [
+    z === 0 ? ds.bands.get(b[0] + 1) : ds.bands.get(b[0] + 1).overviews.get(z - 1),
+    z === 0 ? ds.bands.get(b[1] + 1) : ds.bands.get(b[1] + 1).overviews.get(z - 1),
+    z === 0 ? ds.bands.get(b[2] + 1) : ds.bands.get(b[2] + 1).overviews.get(z - 1),
   ];
   return new Promise((res, rej) => {
     try {
@@ -65,9 +64,9 @@ function getTile(url, x, y, z, blocSize, cacheKey) {
       new Jimp(blocSize, blocSize, (err, image) => {
         /* eslint-disable no-param-reassign */
         image.scan(0, 0, image.bitmap.width, image.bitmap.height, (_x, _y, idx) => {
-          image.bitmap.data[idx] = bands[0][idx / 4];
-          image.bitmap.data[idx + 1] = bands[1][idx / 4];
-          image.bitmap.data[idx + 2] = bands[2][idx / 4];
+          image.bitmap.data[idx] = inputBands[0][idx / 4];
+          image.bitmap.data[idx + 1] = inputBands[1][idx / 4];
+          image.bitmap.data[idx + 2] = inputBands[2][idx / 4];
           image.bitmap.data[idx + 3] = 255;
         });
         res(image);
@@ -79,8 +78,10 @@ function getTile(url, x, y, z, blocSize, cacheKey) {
   });
 }
 
-function getTileEncoded(url, x, y, z, mime, blocSize, cacheKey) {
-  return getTile(url, x, y, z, blocSize, cacheKey).then((image) => image.getBufferAsync(mime));
+function getTileEncoded(url, x, y, z, mime, blocSize, cacheKey, bands) {
+  return getTile(url, x, y, z, blocSize, cacheKey, bands).then(
+    (image) => image.getBufferAsync(mime),
+  );
 }
 
 function getPixel(url, x, y, z, col, lig, blocSize, cacheKey) {
