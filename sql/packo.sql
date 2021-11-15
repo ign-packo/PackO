@@ -388,6 +388,33 @@ ALTER TABLE public.features ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
+-- Name: feature_ctrs; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.feature_ctrs (
+    id integer NOT NULL,
+    status boolean,
+    comment character varying,
+    id_feature integer NOT NULL
+);
+
+
+ALTER TABLE public.feature_ctrs OWNER TO postgres;
+
+--
+-- Name: feature_ctrs_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+ALTER TABLE public.feature_ctrs ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.feature_ctrs_id_seq
+    START WITH 0
+    INCREMENT BY 1
+    MINVALUE 0
+    NO MAXVALUE
+    CACHE 1
+);
+
+
 --
 -- Name: styles; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -529,7 +556,23 @@ ALTER TABLE ONLY public.features
     ADD CONSTRAINT features_pkey PRIMARY KEY (id);
 
 
-----
+--
+-- Name: feature_ctrs feature_ctrs_id_feature_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.feature_ctrs
+    ADD CONSTRAINT feature_ctrs_id_feature_key UNIQUE (id_feature);
+
+
+--
+-- Name: feature_ctrs feature_ctrs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.feature_ctrs
+    ADD CONSTRAINT feature_ctrs_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: styles styles_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -650,6 +693,14 @@ ALTER TABLE ONLY public.layers
 
 ALTER TABLE ONLY public.features
     ADD CONSTRAINT features_id_layer_fkey FOREIGN KEY (id_layer) REFERENCES public.layers(id) ON DELETE CASCADE NOT VALID;
+
+
+--
+-- Name: feature_ctrs feature_ctrs_id_feature_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.feature_ctrs
+    ADD CONSTRAINT feature_ctrs_id_feature_fkey FOREIGN KEY (id_feature) REFERENCES public.features(id) ON DELETE CASCADE NOT VALID;
 
 
 --
