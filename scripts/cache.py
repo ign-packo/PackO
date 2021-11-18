@@ -21,7 +21,7 @@ conn_string = "PG:host="\
     + host + " dbname=" + database\
     + " user=" + user + " password=" + password
 
-NB_BANDS = 3
+# NB_BANDS = 3
 cpu_dispo = multiprocessing.cpu_count()
 
 
@@ -29,9 +29,12 @@ def read_args(update):
     """Gestion des arguments"""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input",
-                        required=True,
-                        help="input OPI pattern")
+    parser.add_argument("-R", "--rgb",
+                        help="input RGB OPI pattern")
+
+    parser.add_argument("-I", "--ir",
+                        help="input IR OPI pattern")
+
     parser.add_argument("-c", "--cache",
                         help="cache directory (default: cache)",
                         type=str,
@@ -75,8 +78,14 @@ def read_args(update):
     if args.verbose > 1:
         print("\nArguments: ", args)
 
-    if os.path.isdir(args.input):
-        raise SystemExit("create_cache.py: error: invalid pattern: " + args.input)
+    if (args.rgb is not None) and os.path.isdir(args.rgb):
+        raise SystemExit("create_cache.py: error: invalid pattern: " + args.rgb)
+
+    if (args.ir is not None) and os.path.isdir(args.ir):
+        raise SystemExit("create_cache.py: error: invalid pattern: " + args.ir)
+
+    if (args.rgb is None) and (args.ir is None):
+        raise SystemExit("create_cache.py: error: no input data")
 
     if update is False:
         if os.path.isdir(args.cache):
@@ -171,25 +180,42 @@ def generate(update):
     spatial_ref.ImportFromEPSG(overviews_dict['crs']['code'])
     spatial_ref_wkt = spatial_ref.ExportToWkt()
 
-    list_filename = glob.glob(args.input)
+    list_filename_rgb = []
+    list_filename_ir = []
+    nb_files = 0
+    with_rgb = False
+    with_ir = False
+    if args.rgb:
+        list_filename_rgb = glob.glob(args.rgb)
+        nb_files = len(list_filename_rgb)
+        with_rgb = True
+    if args.ir:
+        list_filename_ir = glob.glob(args.ir)
+        nb_files = max(nb_files, len(list_filename_ir))
+        with_ir = True
 
-    if len(list_filename) == 0:
+    if nb_files == 0:
         raise SystemExit("WARNING: Empty input folder: nothing to add in cache")
 
+    if with_rgb and with_ir:
+        if len(list_filename_rgb) != len(list_filename_ir):
+            raise SystemExit("ERROR: different rgb and ir OPI number")
+
     tps0 = time.perf_counter()
-    print("\n ", len(list_filename), " image(s) à traiter (", cpu_util, " cpu)", sep="")
+    print("\n ", nb_files, " image(s) à traiter (", cpu_util, " cpu)", sep="")
 
     try:
         # Decoupage des images et calcul de l'emprise globale
         print("Découpe des images :")
         print(" Préparation")
 
-        args_cut_image, opi_duplicate, change = cache.prep_tiling(list_filename,
+        args_cut_image, opi_duplicate, change = cache.prep_tiling(list_filename_rgb,
+                                                                  list_filename_ir,
                                                                   args.cache,
                                                                   overviews_dict,
                                                                   color_dict,
                                                                   {
-                                                                    'nbBands': NB_BANDS,
+                                                                    # 'nbBands': NB_BANDS,
                                                                     'spatialRef': spatial_ref_wkt
                                                                   },
                                                                   args.verbose,
@@ -198,12 +224,12 @@ def generate(update):
         print(" Découpage")
 
         # cas où il y a moins d'images à traiter que de cpu aloué(s)
-        if (cpu_util > len(list_filename)):
-            nb_thread = len(list_filename)
+        if cpu_util > nb_files:
+            nb_thread = nb_files
         else:
             nb_thread = cpu_util
 
-        if (nb_thread > 1):
+        if nb_thread > 1:
             pool = multiprocessing.Pool(nb_thread)
             pool.map(cache.cut_image_1arg, args_cut_image)
 
@@ -234,7 +260,7 @@ def generate(update):
                                                                     'table': args.table
                                                                  },
                                                                  {
-                                                                    'nbBands': NB_BANDS,
+                                                                    # 'nbBands': NB_BANDS,
                                                                     'spatialRef': spatial_ref_wkt
                                                                  },
                                                                  change)
@@ -253,7 +279,7 @@ def generate(update):
         batchSize = cpu_util * 100
         for numBatch in range(0, len(args_create_ortho_and_graph), batchSize):
             argument = args_create_ortho_and_graph[numBatch:numBatch + batchSize]
-            if (cpu_util > 1):
+            if cpu_util > 1:
                 pool = multiprocessing.Pool(cpu_util)
                 pool.map(cache.create_ortho_and_graph_1arg, argument)
 
@@ -276,9 +302,9 @@ def generate(update):
         tpsf = time.perf_counter()
 
         print("\n",
-              len(list_filename) - len(opi_duplicate),
+              nb_files - len(opi_duplicate),
               "/",
-              len(list_filename), "OPI(s) ajoutée(s)", end='')
+              nb_files, "OPI(s) ajoutée(s)", end='')
 
         if args.verbose > 0:
             print(" in", tpsf - tps0)
