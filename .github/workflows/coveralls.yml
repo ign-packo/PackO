@@ -64,13 +64,29 @@ jobs:
         pip install numpy
         pip install --global-option=build_ext --global-option="-I/usr/include/gdal" GDAL==`gdal-config --version`
 
-    - name: create cache
+    - name: create cache RGB
       run: |
-        python scripts/create_cache.py -i "regress/data/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress -g "regress/data/regress_graphe.gpkg" -t graphe
+        python scripts/create_cache.py -R "regress/data/RGB/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress_RGB -g "regress/data/regress_graphe.gpkg" -t graphe
 
-    - name: update cache
+    - name: update cache RGB
       run: |
-        python scripts/update_cache.py -i "regress/data/update/*.tif" -c cache_regress -g "regress/data/regress_graphe.gpkg" -t graphe
+        python scripts/update_cache.py -R "regress/data/update/RGB/*.tif" -c cache_regress_RGB -g "regress/data/regress_graphe.gpkg" -t graphe
+
+    - name: create cache RGBIR
+      run: |
+        python scripts/create_cache.py -R "regress/data/RGB/*.tif" -I "regress/data/IR/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress_RGBIR -g "regress/data/regress_graphe.gpkg" -t graphe
+
+    - name: update cache RGBIR
+      run: |
+        python scripts/update_cache.py -R "regress/data/update/RGB/*.tif" -I "regress/data/update/IR/*.tif" -c cache_regress_RGBIR -g "regress/data/regress_graphe.gpkg" -t graphe
+
+    - name: create cache IR
+      run: |
+        python scripts/create_cache.py -I "regress/data/IR/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress -g "regress/data/regress_graphe.gpkg" -t graphe
+
+    - name: update cache IR
+      run: |
+        python scripts/update_cache.py -I "regress/data/update/IR/*.tif" -c cache_regress -g "regress/data/regress_graphe.gpkg" -t graphe
 
     - name: install
       run: npm install
