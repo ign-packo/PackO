@@ -498,6 +498,53 @@ paths:
         '200':
           description: OK
 
+# Alerts
+  '/alert/{idFeature}?status={status}':
+    put:
+      tags:
+        - vector
+      summary: "Modification de l'attribut 'status' d'une feature donnée"
+      description: ""
+      parameters:
+        - in: path
+          name: idFeature
+          description: l'identifiant de la feature à modifier
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: status
+          description: nouvelle valeur
+          required: true
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: OK
+
+  '/alert/{idFeature}?comment={comment}':
+    put:
+      tags:
+        - vector
+      summary: "Modification de l'attribut 'comment' d'une feature donnée"
+      description: ""
+      parameters:
+        - in: path
+          name: idFeature
+          description: l'identifiant de la feature à modifier
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: comment
+          description: nouvelle valeur
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+
 # WMTS
   '/{idBranch}/wmts':
     get:
