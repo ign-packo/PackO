@@ -176,7 +176,10 @@ class Editing {
       }),
       transparent: true,
       opacity: 0.7,
-      // zoom: { min: 10 },
+      zoom: {
+        min: this.viewer.zoomMin,
+        max: this.viewer.overviews.dataSet.level.max,
+      },
       style: new itowns.Style({
         // fill: {
         //   color: '#bbffbb',

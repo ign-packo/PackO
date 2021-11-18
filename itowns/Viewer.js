@@ -210,6 +210,10 @@ class Viewer {
             transparent,
             opacity,
             style,
+            zoom: {
+              min: source.isVectorSource ? this.zoomMin : this.overviews.dataSet.level.min,
+              max: this.overviews.dataSet.level.max,
+            },
           });
 
         if (layerName === 'Contour') {
@@ -248,6 +252,7 @@ class Viewer {
           //   layerList[layerName].style.point.color = coloringAlerts;
           // }
           layer.config.style = new itowns.Style(layerList[layerName].style);
+          layer.config.zoom = { min: this.zoomMin, max: this.overviews.dataSet.level.max };
         }
         layer.config.opacity = layerList[layerName].opacity;
         layer.colorLayer = new itowns.ColorLayer(
