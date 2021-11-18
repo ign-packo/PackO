@@ -440,22 +440,33 @@ def create_blank_slab(overviews, slab, nb_bands, spatial_ref):
     return target_ds
 
 
-def update_graph_and_ortho(filename, gdal_img, color, nb_bands):
+def update_graph_and_ortho(filename_rgb, filename_ir, gdal_img, color):
     """Apply mask"""
-    opi = gdal.Open(filename)
-    for i in range(nb_bands):
-        opi_i = opi.GetRasterBand(i + 1).ReadAsArray()
-        opi_i[(gdal_img['mask'] == 0)] = 0
-
-        ortho_i = gdal_img['ortho'].GetRasterBand(i + 1).ReadAsArray()
-
-        ortho_i[(gdal_img['mask'] != 0)] = 0
-        gdal_img['ortho'].GetRasterBand(i + 1).WriteArray(np.add(opi_i, ortho_i))
-
+    for i in range(3):
         graph_i = gdal_img['graph'].GetRasterBand(i + 1).ReadAsArray()
 
         graph_i[(gdal_img['mask'] != 0)] = color[i]
         gdal_img['graph'].GetRasterBand(i + 1).WriteArray(graph_i)
+    if filename_rgb:
+        opi = gdal.Open(filename_rgb)
+        for i in range(3):
+            opi_i = opi.GetRasterBand(i + 1).ReadAsArray()
+            opi_i[(gdal_img['mask'] == 0)] = 0
+
+            ortho_i = gdal_img['ortho_rgb'].GetRasterBand(i + 1).ReadAsArray()
+
+            ortho_i[(gdal_img['mask'] != 0)] = 0
+            gdal_img['ortho_rgb'].GetRasterBand(i + 1).WriteArray(np.add(opi_i, ortho_i))
+    if filename_ir:
+        opi = gdal.Open(filename_ir)
+        for i in range(1):
+            opi_i = opi.GetRasterBand(i + 1).ReadAsArray()
+            opi_i[(gdal_img['mask'] == 0)] = 0
+
+            ortho_i = gdal_img['ortho_ir'].GetRasterBand(i + 1).ReadAsArray()
+
+            ortho_i[(gdal_img['mask'] != 0)] = 0
+            gdal_img['ortho_ir'].GetRasterBand(i + 1).WriteArray(np.add(opi_i, ortho_i))
 
 
 def create_ortho_and_graph_1arg(arg):
@@ -467,8 +478,9 @@ def create_ortho_and_graph_1arg(arg):
         print("%", end='', flush=True)
 
     # on cree le graphe et l'ortho
-    with_rgb = overviews["list_OPI"][0]['with_rgb']
-    with_ir = overviews["list_OPI"][0]['with_ir']
+    first_opi = list(overviews["list_OPI"].values())[0]
+    with_rgb = first_opi['with_rgb']
+    with_ir = first_opi['with_ir']
     img_ortho_rgb = None
     if with_rgb:
         img_ortho_rgb = create_blank_slab(overviews, arg['slab'],
@@ -490,7 +502,14 @@ def create_ortho_and_graph_1arg(arg):
     for filename in glob.glob(slab_opi_root + '*.tif'):
         stem = Path(filename).stem[3:]
         if stem in overviews["list_OPI"]:
-            color = overviews["list_OPI"]["color"][stem]
+            color = overviews["list_OPI"][stem]["color"]
+            filename_rgb = filename
+            filename_ir = None
+            if not with_rgb:
+                filename_ir = filename
+                filename_rgb = None
+            elif with_ir:
+                filename_ir =filename.replace('.', 'i.')
 
             # on cree une image mono canal pour la tuile
             mask = create_blank_slab(overviews, arg['slab'], 1, arg['gdalOption']['spatialRef'])
@@ -515,7 +534,8 @@ def create_ortho_and_graph_1arg(arg):
             val_max = np.amax(img_mask)
             if val_max > 0:
                 is_empty = False
-                update_graph_and_ortho(filename,
+                update_graph_and_ortho(filename_rgb,
+                                       filename_ir,
                                        {'ortho_rgb': img_ortho_rgb,
                                         'ortho_ir': img_ortho_ir,
                                         'graph': img_graph,
