@@ -180,14 +180,24 @@ def generate(update):
     spatial_ref.ImportFromEPSG(overviews_dict['crs']['code'])
     spatial_ref_wkt = spatial_ref.ExportToWkt()
 
-    list_filename_rgb = glob.glob(args.rgb)
-    list_filename_ir = glob.glob(args.ir)
-    nb_files = max(len(list_filename_rgb), len(list_filename_ir))
+    list_filename_rgb = []
+    list_filename_ir = []
+    nb_files = 0
+    with_rgb = False
+    with_ir = False
+    if args.rgb:
+        list_filename_rgb = glob.glob(args.rgb)
+        nb_files = len(list_filename_rgb)
+        with_rgb = True
+    if args.ir:
+        list_filename_ir = glob.glob(args.ir)
+        nb_files = max(nb_files, len(list_filename_ir))
+        with_ir = True
 
     if nb_files == 0:
         raise SystemExit("WARNING: Empty input folder: nothing to add in cache")
 
-    if (len(list_filename_rgb) != 0) and (len(list_filename_ir) != 0):
+    if with_rgb and with_ir:
         if len(list_filename_rgb) != len(list_filename_ir):
             raise SystemExit("ERROR: different rgb and ir OPI number")
 
