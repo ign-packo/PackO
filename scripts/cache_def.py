@@ -177,23 +177,59 @@ def new_color(image, color_dict):
     return [int(color_str[0]), int(color_str[1]), int(color_str[2])]
 
 
-def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option, verbose, reprocess):
+def prep_tiling(list_filename_rgb,
+                list_filename_ir,
+                dir_cache,
+                overviews,
+                color_dict,
+                gdal_option,
+                verbose,
+                reprocess):
     """Preparation for tiling images according to overviews file"""
     opi_already_calculated = []
     args_cut_image = []
     change = {}
 
+    list_filename = list_filename_rgb
+    with_rgb = (len(list_filename_rgb) > 0)
+    with_ir = (len(list_filename_ir) > 0)
+    if len(list_filename_rgb) == 0:
+        list_filename = list_filename_ir
+
     for filename in list_filename:
         print('  image :', filename)
+        # Si on a du rgb (avec ou sans IR) opi = 19FD5606Ax00020_16371
+        # Si on a que de l'IR, opi = 19FD5606A_ix00020_16371
         opi = Path(filename).stem
+
         if not reprocess and opi in overviews['list_OPI'].keys():
             print('   -> déjà calculée')
             opi_already_calculated.append(opi)
         else:
+            filename_rgb = ''
+            filename_ir = ''
+            opi_ir = opi
+            opi_rgb = opi
+            if with_rgb:
+                filename_rgb = filename
+                opi_ir = opi.replace('x', '_ix')
+                if with_ir:
+                    for name in list_filename_ir:
+                        ir = Path(name).stem
+                        if ir == opi_ir:
+                            filename_ir = name
+                    if not filename_ir:
+                        raise SystemExit("ERROR: " + opi_ir + " not found")
+            else:
+                opi_rgb = opi_ir.replace('_ix', 'x')
+                filename_ir = filename
+
             args_cut_image.append({
                 'opi': {
-                    'path': filename,
-                    'name': opi
+                    'rgb': filename_rgb,
+                    'ir': filename_ir,
+                    'name_rgb': opi_rgb,
+                    'name_ir': opi_ir
                 },
                 'overviews': overviews,
                 'slabBox': get_slabbox(filename, overviews, change),
@@ -203,7 +239,11 @@ def prep_tiling(list_filename, dir_cache, overviews, color_dict, gdal_option, ve
             })
 
             # on ajoute l'OPI traitée à la liste (avec sa couleur)
-            overviews["list_OPI"][opi] = new_color(opi, color_dict)
+            overviews["list_OPI"][opi] = {
+                'color': new_color(opi, color_dict),
+                'with_rgb': with_rgb,
+                'with_ir': with_ir
+            }
 
     return args_cut_image, opi_already_calculated, change
 
@@ -224,13 +264,12 @@ def assert_square(obj):
         raise ValueError("Object is not square!")
 
 
-def cut_opi_1tile(opi, opi_name, dst_root, slab, gdal_option):
+def cut_opi_1tile(opi, opi_name, dst_root, slab, nb_bands, gdal_option):
     """Cut and resample a specified image at a given level"""
-
     target_ds = gdal.GetDriverByName('MEM').Create('',
                                                    slab['size']['width'],
                                                    slab['size']['height'],
-                                                   gdal_option['nbBands'],
+                                                   nb_bands,
                                                    gdal.GDT_Byte)
     target_ds.SetGeoTransform((slab['origin']['x'],
                                slab['resolution'],
@@ -260,7 +299,12 @@ def cut_opi_1tile(opi, opi_name, dst_root, slab, gdal_option):
 def cut_image_1arg(arg):
     """Cut a given image in all corresponding tiles for all levels"""
     overviews = arg['overviews']
-    input_image = gdal.Open(arg['opi']['path'])
+    input_image_rgb = None
+    if arg['opi']['rgb']:
+        input_image_rgb = gdal.Open(arg['opi']['rgb'])
+    input_image_ir = None
+    if arg['opi']['ir']:
+        input_image_ir = gdal.Open(arg['opi']['ir'])
     slabbox = arg['slabBox']
 
     # seulement pour lmax
@@ -270,7 +314,7 @@ def cut_image_1arg(arg):
         tps1_actif = time.process_time()
         tps1 = time.perf_counter()
         if arg['verbose'] == 0:
-            print('  (', arg['opi']['name'], ') level : ', level, sep="")
+            print('  (', arg['opi']['name_rgb'], ') level : ', level, sep="")
 
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
 
@@ -303,16 +347,25 @@ def cut_image_1arg(arg):
                 # si necessaire, on cree le dossier
                 Path(slab_root[:-2]).mkdir(parents=True, exist_ok=True)
 
-                cut_opi_1tile(input_image,
-                              arg['opi']['name'],
-                              slab_root,
-                              slab_param,
-                              arg['gdalOption'])
+                if input_image_rgb:
+                    cut_opi_1tile(input_image_rgb,
+                                  arg['opi']['name_rgb'],
+                                  slab_root,
+                                  slab_param,
+                                  3,
+                                  arg['gdalOption'])
+                if input_image_ir:
+                    cut_opi_1tile(input_image_ir,
+                                  arg['opi']['name_ir'],
+                                  slab_root,
+                                  slab_param,
+                                  1,
+                                  arg['gdalOption'])
 
         tps2_actif = time.process_time()
         tps2 = time.perf_counter()
         if arg['verbose'] > 0:
-            print('  (', arg['opi']['name'], ') level : ', level, ' in ', tps2 - tps1,
+            print('  (', arg['opi']['name_rgb'], ') level : ', level, ' in ', tps2 - tps1,
                   ' (', tps2_actif - tps1_actif, ')', sep="")
 
 
@@ -387,22 +440,33 @@ def create_blank_slab(overviews, slab, nb_bands, spatial_ref):
     return target_ds
 
 
-def update_graph_and_ortho(filename, gdal_img, color, nb_bands):
+def update_graph_and_ortho(filename_rgb, filename_ir, gdal_img, color):
     """Apply mask"""
-    opi = gdal.Open(filename)
-    for i in range(nb_bands):
-        opi_i = opi.GetRasterBand(i + 1).ReadAsArray()
-        opi_i[(gdal_img['mask'] == 0)] = 0
-
-        ortho_i = gdal_img['ortho'].GetRasterBand(i + 1).ReadAsArray()
-
-        ortho_i[(gdal_img['mask'] != 0)] = 0
-        gdal_img['ortho'].GetRasterBand(i + 1).WriteArray(np.add(opi_i, ortho_i))
-
+    for i in range(3):
         graph_i = gdal_img['graph'].GetRasterBand(i + 1).ReadAsArray()
 
         graph_i[(gdal_img['mask'] != 0)] = color[i]
         gdal_img['graph'].GetRasterBand(i + 1).WriteArray(graph_i)
+    if filename_rgb:
+        opi = gdal.Open(filename_rgb)
+        for i in range(3):
+            opi_i = opi.GetRasterBand(i + 1).ReadAsArray()
+            opi_i[(gdal_img['mask'] == 0)] = 0
+
+            ortho_i = gdal_img['ortho_rgb'].GetRasterBand(i + 1).ReadAsArray()
+
+            ortho_i[(gdal_img['mask'] != 0)] = 0
+            gdal_img['ortho_rgb'].GetRasterBand(i + 1).WriteArray(np.add(opi_i, ortho_i))
+    if filename_ir:
+        opi = gdal.Open(filename_ir)
+        for i in range(1):
+            opi_i = opi.GetRasterBand(i + 1).ReadAsArray()
+            opi_i[(gdal_img['mask'] == 0)] = 0
+
+            ortho_i = gdal_img['ortho_ir'].GetRasterBand(i + 1).ReadAsArray()
+
+            ortho_i[(gdal_img['mask'] != 0)] = 0
+            gdal_img['ortho_ir'].GetRasterBand(i + 1).WriteArray(np.add(opi_i, ortho_i))
 
 
 def create_ortho_and_graph_1arg(arg):
@@ -414,21 +478,38 @@ def create_ortho_and_graph_1arg(arg):
         print("%", end='', flush=True)
 
     # on cree le graphe et l'ortho
-    img_ortho = create_blank_slab(overviews, arg['slab'],
-                                  arg['gdalOption']['nbBands'], arg['gdalOption']['spatialRef'])
+    first_opi = list(overviews["list_OPI"].values())[0]
+    with_rgb = first_opi['with_rgb']
+    with_ir = first_opi['with_ir']
+    img_ortho_rgb = None
+    if with_rgb:
+        img_ortho_rgb = create_blank_slab(overviews, arg['slab'],
+                                          3, arg['gdalOption']['spatialRef'])
+    img_ortho_ir = None
+    if with_ir:
+        img_ortho_ir = create_blank_slab(overviews, arg['slab'],
+                                         1, arg['gdalOption']['spatialRef'])
     img_graph = create_blank_slab(overviews, arg['slab'],
-                                  arg['gdalOption']['nbBands'], arg['gdalOption']['spatialRef'])
+                                  3, arg['gdalOption']['spatialRef'])
 
     slab_path = get_slab_path(arg['slab']['x'], arg['slab']['y'], overviews['pathDepth'])
     slab_opi_root = arg['cache'] + '/opi/' + str(arg['slab']['level']) + '/' + slab_path
-    slab_ortho = arg['cache'] + '/ortho/' + str(arg['slab']['level']) + '/' + slab_path + '.tif'
+    slab_ortho_rgb = arg['cache'] + '/ortho/' + str(arg['slab']['level']) + '/' + slab_path + '.tif'
+    slab_ortho_ir = arg['cache'] + '/ortho/' + str(arg['slab']['level']) + '/' + slab_path + 'i.tif'
     slab_graph = arg['cache'] + '/graph/' + str(arg['slab']['level']) + '/' + slab_path + '.tif'
     is_empty = False
 
     for filename in glob.glob(slab_opi_root + '*.tif'):
         stem = Path(filename).stem[3:]
         if stem in overviews["list_OPI"]:
-            color = overviews["list_OPI"][stem]
+            color = overviews["list_OPI"][stem]["color"]
+            filename_rgb = filename
+            filename_ir = None
+            if not with_rgb:
+                filename_ir = filename
+                filename_rgb = None
+            elif with_ir:
+                filename_ir = filename.replace('x', '_ix')
 
             # on cree une image mono canal pour la tuile
             mask = create_blank_slab(overviews, arg['slab'], 1, arg['gdalOption']['spatialRef'])
@@ -437,37 +518,63 @@ def create_ortho_and_graph_1arg(arg):
             db_graph = gdal.OpenEx(arg['dbOption']['connString'], gdal.OF_VECTOR)
             # requete sql adaptee pour marcher avec des nomenclatures du type
             # 20FD1325x00001_02165 ou OPI_20FD1325x00001_02165
+            # gdal.Rasterize(mask,
+            #                db_graph,
+            #                SQLStatement='select geom from '
+            #                + arg['dbOption']['table']
+            #                + ' where cliche like \'%' + stem[-20:] + '%\'')
+            # attention, le graph contient peut-etre des reférences aux images RGB
+            # alors que les fichiers sont peut-être des IR
+            stem_cleaned1 = stem.replace("OPI_", "")
+            stem_cleaned2 = stem.replace("OPI_", "").replace("_ix", "x")
             gdal.Rasterize(mask,
                            db_graph,
                            SQLStatement='select geom from '
                            + arg['dbOption']['table']
-                           + ' where cliche like \'%' + stem[-20:] + '%\'')
+                           + ' where cliche like \'%' + stem_cleaned1 + '%\''
+                           + ' or cliche like \'%' + stem_cleaned2 + '%\'')
             img_mask = mask.GetRasterBand(1).ReadAsArray()
             # si mask est vide, on ne fait rien
             val_max = np.amax(img_mask)
             if val_max > 0:
                 is_empty = False
-                update_graph_and_ortho(filename,
-                                       {'ortho': img_ortho, 'graph': img_graph, 'mask': img_mask},
-                                       color,
-                                       arg['gdalOption']['nbBands'])
+                update_graph_and_ortho(filename_rgb,
+                                       filename_ir,
+                                       {'ortho_rgb': img_ortho_rgb,
+                                        'ortho_ir': img_ortho_ir,
+                                        'graph': img_graph,
+                                        'mask': img_mask},
+                                       color)
 
     if not is_empty:
         # si necessaire on cree les dossiers de tuile pour le graph et l'ortho
         Path(slab_graph).parent.mkdir(parents=True, exist_ok=True)
-        Path(slab_ortho).parent.mkdir(parents=True, exist_ok=True)
+        Path(slab_ortho_rgb).parent.mkdir(parents=True, exist_ok=True)
+        Path(slab_ortho_ir).parent.mkdir(parents=True, exist_ok=True)
         # pylint: disable=unused-variable
         assert_square(overviews['tileSize'])
-        dst_ortho = COG_DRIVER.CreateCopy(slab_ortho, img_ortho,
-                                          options=["BLOCKSIZE="
-                                                   + str(overviews['tileSize']['width']),
-                                                   "COMPRESS=JPEG", "LEVEL=90"])
+
+        if img_ortho_rgb:
+            dst_ortho_rgb = COG_DRIVER.CreateCopy(slab_ortho_rgb, img_ortho_rgb,
+                                                  options=["BLOCKSIZE="
+                                                           + str(overviews['tileSize']['width']),
+                                                           "COMPRESS=JPEG", "LEVEL=90"])
+            dst_ortho_rgb = None  # noqa: F841
+        if img_ortho_ir:
+            dst_ortho_ir = COG_DRIVER.CreateCopy(slab_ortho_ir, img_ortho_ir,
+                                                 options=["BLOCKSIZE="
+                                                          + str(overviews['tileSize']['width']),
+                                                          "COMPRESS=JPEG", "LEVEL=90"])
+            dst_ortho_ir = None  # noqa: F841
         dst_graph = COG_DRIVER.CreateCopy(slab_graph, img_graph,
                                           options=["BLOCKSIZE="
                                                    + str(overviews['tileSize']['width']),
                                                    "COMPRESS=LZW"])
-        dst_ortho = None  # noqa: F841
+
         dst_graph = None  # noqa: F841
         # pylint: enable=unused-variable
-    img_ortho = None
+    if img_ortho_rgb:
+        img_ortho_rgb = None
+    if img_ortho_ir:
+        img_ortho_ir = None
     img_graph = None
