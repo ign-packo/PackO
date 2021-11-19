@@ -1,44 +1,60 @@
+/* eslint no-underscore-dangle: ["error", { "allow": [__controllers, __li, __select] }] */
+function getController(gui, name) {
+  let controller = null;
+  const controllers = gui.__controllers;
+  for (let i = 0; i < controllers.length; i += 1) {
+    const c = controllers[i];
+    if (c.property === name || c.name === name) {
+      controller = c;
+      break;
+    }
+  }
+  return controller;
+}
+
 class Controller {
   constructor(menuGlobe, editing) {
     this.controllers = {};
     this.menuGlobe = menuGlobe;
     this.editing = editing;
+    this.viewer = this.editing.viewer;
   }
 
-  setEditingController(name) {
-    if (this.controllers.polygon) {
-      this.controllers.polygon.remove();
-      delete this.controllers.polygon;
-    }
-    if (this.controllers.undo) {
-      this.controllers.undo.remove();
-      delete this.controllers.undo;
-    }
-    if (this.controllers.redo) {
-      this.controllers.redo.remove();
-      delete this.controllers.redo;
-    }
-    if (this.controllers.clear) {
-      this.controllers.clear.remove();
-      delete this.controllers.clear;
-    }
-    if (name !== 'orig') {
-      this.controllers.polygon = this.menuGlobe.gui.add(this.editing, 'polygon');
-      this.editing.controllers.polygon = this.controllers.polygon;
-      this.controllers.undo = this.menuGlobe.gui.add(this.editing, 'undo');
-      this.controllers.redo = this.menuGlobe.gui.add(this.editing, 'redo');
-      if (process.env.NODE_ENV === 'development') this.controllers.clear = this.menuGlobe.gui.add(this.editing, 'clear');
-    }
+  setEditingController() {
+    const brancheName = this.editing.branch.active.name;
+    this[brancheName !== 'orig' ? 'setVisible' : 'hide'](['polygon', 'undo', 'redo']);
+    if (process.env.NODE_ENV === 'development') this[brancheName !== 'orig' ? 'setVisible' : 'hide']('clear');
   }
 
-  refreshDropBox(list) {
+  refreshDropBox(dropBoxName, list) {
     let innerHTML = '';
     list.forEach((element) => {
       innerHTML += `<option value='${element}'>${element}</option>`;
     });
-    this.alert.domElement.children[0].innerHTML = innerHTML;
+    this[dropBoxName].domElement.children[0].innerHTML = innerHTML;
     // this.editing.alert = value;
-    this.alert.updateDisplay();
+    this[dropBoxName].updateDisplay();
+  }
+
+  resetAlerts() {
+    delete this.editing.alertLayerName;
+    delete this.viewer.alertLayerName;
+    this.alert.__select.options.selectedIndex = -1;
+    this.hide(['nbChecked', 'checked', 'comment']);
+  }
+
+  setVisible(controllerName) {
+    const controllers = (typeof controllerName === 'string' || controllerName instanceof String) ? [controllerName] : controllerName;
+    controllers.forEach((controller) => {
+      getController(this.viewer.menuGlobe.gui, controller).__li.style.display = '';
+    });
+  }
+
+  hide(controllerName) {
+    const controllers = (typeof controllerName === 'string' || controllerName instanceof String) ? [controllerName] : controllerName;
+    controllers.forEach((controller) => {
+      getController(this.viewer.menuGlobe.gui, controller).__li.style.display = 'none';
+    });
   }
 }
 export default Controller;

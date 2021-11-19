@@ -1,4 +1,3 @@
-/* eslint-disable no-underscore-dangle */
 /* eslint-disable no-console */
 /* global setupLoadingScreen, GuiTools */
 import * as itowns from 'itowns';
@@ -38,30 +37,6 @@ function checkCoordString(coordStr) {
     return [parseFloat(rgxCatch[1]), parseFloat(rgxCatch[2])];
   }
   return null;
-}
-
-// function centerToCoordinate(viewer, x, y) {
-//   itowns.CameraUtils.transformCameraToLookAtTarget(
-//     viewer.view,
-//     viewer.view.camera.camera3D,
-//     {
-//       coord: new itowns.Coordinates(viewer.crs, x, y),
-//       heading: 0,
-//     },
-//   );
-// }
-
-function getController(gui, name) {
-  let controller = null;
-  const controllers = gui.__controllers;
-  for (let i = 0; i < controllers.length; i += 1) {
-    const c = controllers[i];
-    if (c.property === name || c.name === name) {
-      controller = c;
-      break;
-    }
-  }
-  return controller;
 }
 
 async function main() {
@@ -166,7 +141,7 @@ async function main() {
           if (layer.id !== editing.alertLayerName) {
             branch.deleteVectorLayer(layer);
             this.view.notifyChange(layer);
-            controllers.refreshDropBox(branch.vectorList
+            controllers.refreshDropBox('alert', branch.vectorList
               .filter((elem) => elem.name !== layer.id)
               .map((elem) => elem.name));
           } else {
@@ -197,66 +172,117 @@ async function main() {
     viewer.refresh(branch.layers);
 
     // const editing = new Editing(branch, apiUrl);
-    editing.cliche = 'unknown';
+    editing.cliche = 'none';
     editing.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
     editing.color = [0, 0, 0];
 
+    // message
+    controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord').name('Coordinates');
+    controllers.coord.listen();
+    viewer.message = '';
+    controllers.message = viewer.menuGlobe.gui.add(viewer, 'message').name('Message');
+    controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
+
     // const controllers = new Controller(viewer.menuGlobe, editing);
 
+    // Gestion branche
+    branch.branch = branch.active.name;
+    controllers.branch = viewer.menuGlobe.gui.add(branch, 'branch', branch.list.map((elem) => elem.name)).name('Active branch');
+    controllers.branch.onChange(async (name) => {
+      console.log('choosed branch: ', name);
+      branch.active = {
+        name,
+        id: branch.list.filter((elem) => elem.name === name)[0].id,
+      };
+      await branch.changeBranch();
+      controllers.setEditingController();
+      controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
+      controllers.resetAlerts();
+    });
+    controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch').name('Add new branch');
+
+    // Selection OPI
+    controllers.cliche = viewer.menuGlobe.gui.add(editing, 'cliche').name('OPI selected');
+    controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.select = viewer.menuGlobe.gui.add(editing, 'select').name('Select an OPI');
+
+    // Saisie
+    controllers.polygon = viewer.menuGlobe.gui.add(editing, 'polygon').name('Start polygon');
+    controllers.undo = viewer.menuGlobe.gui.add(editing, 'undo');
+    controllers.redo = viewer.menuGlobe.gui.add(editing, 'redo');
+    controllers.clear = viewer.menuGlobe.gui.add(editing, 'clear');
+    controllers.hide(['polygon', 'undo', 'redo', 'clear']);
+
+    // Couche d'alertes
     editing.alert = '';
-    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', branch.vectorList.map((elem) => elem.name));
-    controllers.alert.onChange((name) => {
+    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', branch.vectorList.map((elem) => elem.name)).name('Alerts Layer');
+    controllers.alert.onChange(async (name) => {
       console.log('choosed alert vector layer: ', name);
 
       editing.featureIndex = 0;
       editing.alertLayerName = name;
       viewer.alertLayerName = name;
-      editing.centerOnAlertFeature()
-        .then(() => {
-          editing.checked = editing.featureSelectedGeom.properties.status;
-          controllers.checked.updateDisplay();
-          viewer.comment = editing.featureSelectedGeom.properties.comment;
-          controllers.comment.updateDisplay();
-          controllers.nbChecked.updateDisplay();
-        });
-      getController(viewer.menuGlobe.gui, 'nbChecked').__li.style.display = '';
-      getController(viewer.menuGlobe.gui, 'checked').__li.style.display = '';
-      getController(viewer.menuGlobe.gui, 'comment').__li.style.display = '';
+
+      const layerTest = viewer.view.getLayerById(editing.alertLayerName);
+      editing.alertFC = await layerTest.source.loadData(undefined, layerTest);
+      editing.nbValidated = editing.alertFC.features[0].geometries.filter(
+        (elem) => elem.properties.status === true,
+      ).length;
+      editing.nbTotal = editing.alertFC.features[0].geometries.length;
+      editing.nbChecked = `${editing.nbValidated}/${editing.nbTotal}`;
+
+      editing.centerOnAlertFeature();
+      // .then(() => {
+      //   editing.checked = editing.featureSelectedGeom.properties.status;
+      //   controllers.checked.updateDisplay();
+      //   viewer.comment = editing.featureSelectedGeom.properties.comment;
+      //   controllers.comment.updateDisplay();
+      //   controllers.nbChecked.updateDisplay();
+      // });
+      editing.checked = editing.featureSelectedGeom.properties.status;
+      controllers.checked.updateDisplay();
+      viewer.comment = editing.featureSelectedGeom.properties.comment;
+      controllers.comment.updateDisplay();
+      controllers.nbChecked.updateDisplay();
+
+      controllers.setVisible(['nbChecked', 'checked', 'comment']);
       viewer.refresh(branch.layers);
     });
-
     editing.nbChecked = 'test';
-    controllers.nbChecked = viewer.menuGlobe.gui.add(editing, 'nbChecked');
-    getController(viewer.menuGlobe.gui, 'nbChecked').__li.style.display = 'none';
+    controllers.nbChecked = viewer.menuGlobe.gui.add(editing, 'nbChecked').name('Validated');
     controllers.nbChecked.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.hide('nbChecked');
 
     editing.checked = false;
     controllers.checked = viewer.menuGlobe.gui.add(editing, 'checked');
     controllers.checked.onChange(async (value) => {
       console.log('change status', value);
-
       const idFeature = editing.featureSelectedGeom.properties.id;
-
       const res = await fetch(`${apiUrl}/alert/${idFeature}?status=${value}`,
         {
           method: 'PUT',
         });
       if (res.status === 200) {
         viewer.refresh(branch.layers);
+        if (value === true) {
+          editing.nbValidated += 1;
+        } else {
+          editing.nbValidated -= 1;
+        }
+        editing.nbChecked = `${editing.nbValidated}/${editing.nbTotal}`;
+        editing.alertFC.features[0].geometries[editing.featureIndex].properties.status = value;
       } else {
         viewer.message = 'PB with validate';
       }
     });
-    getController(viewer.menuGlobe.gui, 'checked').__li.style.display = 'none';
+    controllers.hide('checked');
 
     viewer.comment = '';
     controllers.comment = viewer.menuGlobe.gui.add(viewer, 'comment');
     controllers.comment.onFinishChange(async (value) => {
-      console.log('change status', value);
-
+      console.log('change comment', value);
       if (value !== editing.featureSelectedGeom.properties.comment) {
         const idFeature = editing.featureSelectedGeom.properties.id;
-
         const res = await fetch(`${apiUrl}/alert/${idFeature}?comment=${value}`,
           {
             method: 'PUT',
@@ -268,35 +294,9 @@ async function main() {
         }
       }
     });
-    getController(viewer.menuGlobe.gui, 'comment').__li.style.display = 'none';
+    controllers.hide('comment');
 
-    controllers.select = viewer.menuGlobe.gui.add(editing, 'select');
-    controllers.cliche = viewer.menuGlobe.gui.add(editing, 'cliche');
-    controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
-    viewer.message = '';
-    controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord');
-    controllers.coord.listen();
-    controllers.message = viewer.menuGlobe.gui.add(viewer, 'message');
-    controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
-    branch.branch = branch.active.name;
-    controllers.branch = viewer.menuGlobe.gui.add(branch, 'branch', branch.list.map((elem) => elem.name));
-    controllers.branch.onChange(async (name) => {
-      console.log('choosed branch: ', name);
-      branch.active = {
-        name,
-        id: branch.list.filter((elem) => elem.name === name)[0].id,
-      };
-      await branch.changeBranch();
-      controllers.setEditingController(name);
-      controllers.refreshDropBox(branch.vectorList.map((elem) => elem.name));
-      delete editing.alertLayerName;
-      delete viewer.alertLayerName;
-      controllers.alert.__select.options.selectedIndex = -1;
-      getController(viewer.menuGlobe.gui, 'nbChecked').__li.style.display = 'none';
-      getController(viewer.menuGlobe.gui, 'checked').__li.style.display = 'none';
-      getController(viewer.menuGlobe.gui, 'comment').__li.style.display = 'none';
-    });
-    controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch');
+    // editing controllers
     editing.controllers = {
       select: controllers.select,
       cliche: controllers.cliche,
@@ -329,22 +329,16 @@ async function main() {
       console.log('-> A file had been dropped');
       await branch.saveLayer(event.name, event.data, event.style);
       // view.getLayerById(event.name).vectorId = branch.layers[event.name].id;
-
-      // console.log([...branch.vectorList.map((elem) => elem.name), event.name]);
-      // controllers.refreshDropBox([...branch.vectorList.map((elem) => elem.name), event.name]);
-      controllers.refreshDropBox(branch.vectorList.map((elem) => elem.name));
+      controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
+      controllers.resetAlerts();
     });
 
     view.addEventListener('branch-created', () => {
       console.log('-> New branch created');
       controllers.setEditingController();
-      controllers.refreshDropBox(branch.vectorList.map((elem) => elem.name));
-      delete editing.alertLayerName;
-      delete viewer.alertLayerName;
-      controllers.alert.__select.options.selectedIndex = -1;
-      getController(viewer.menuGlobe.gui, 'nbChecked').__li.style.display = 'none';
-      getController(viewer.menuGlobe.gui, 'checked').__li.style.display = 'none';
-      getController(viewer.menuGlobe.gui, 'comment').__li.style.display = 'none';
+      controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
+
+      controllers.resetAlerts();
       controllers.branch = controllers.branch.options(branch.list.map((elem) => elem.name))
         .setValue(branch.active.name);
       controllers.branch.onChange(async (name) => {
@@ -354,14 +348,9 @@ async function main() {
           id: branch.list.filter((elem) => elem.name === name)[0].id,
         };
         await branch.changeBranch();
-        controllers.setEditingController(name);
-        controllers.refreshDropBox(branch.vectorList.map((elem) => elem.name));
-        delete editing.alertLayerName;
-        delete viewer.alertLayerName;
-        controllers.alert.__select.options.selectedIndex = -1;
-        getController(viewer.menuGlobe.gui, 'nbChecked').__li.style.display = 'none';
-        getController(viewer.menuGlobe.gui, 'checked').__li.style.display = 'none';
-        getController(viewer.menuGlobe.gui, 'comment').__li.style.display = 'none';
+        controllers.setEditingController();
+        controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
+        controllers.resetAlerts();
       });
     });
 
@@ -413,14 +402,6 @@ async function main() {
     controllers.coord.onFinishChange(() => {
       const coords = checkCoordString(editing.coord);
       if (coords) {
-        // itowns.CameraUtils.transformCameraToLookAtTarget(
-        //   view,
-        //   view.camera.camera3D,
-        //   {
-        //     coord: new itowns.Coordinates(viewer.crs, coords[0], coords[1]),
-        //     heading: 0,
-        //   },
-        // );
         viewer.centerCamera(coords[0], coords[1]);
       }
       editing.message = '';
@@ -435,19 +416,8 @@ async function main() {
       editing.keyup(ev);
       return false;
     });
-    // });
 
     document.getElementById('recenterBtn').addEventListener('click', () => {
-    // bug itowns...
-    // itowns.CameraUtils.animateCameraToLookAtTarget( ... )
-      // itowns.CameraUtils.transformCameraToLookAtTarget(
-      //   view,
-      //   view.camera.camera3D,
-      //   {
-      //     coord: new itowns.Coordinates(viewer.crs, viewer.xcenter, viewer.ycenter),
-      //     heading: 0,
-      //   },
-      // );
       viewer.centerCamera(viewer.xcenter, viewer.ycenter);
       return false;
     }, false);
@@ -478,6 +448,7 @@ async function main() {
       helpContent.style.visibility = (helpContent.style.visibility === 'hidden') ? 'visible' : 'hidden';
     });
   } catch (err) {
+    /* eslint-disable no-alert */
     console.log(err);
     if (`${err.name}: ${err.message}` === 'TypeError: Failed to fetch') {
       const newApiUrl = window.prompt(`API non accessible à l'adresse renseignée (${apiUrl}). Veuillez entrer une adresse valide :`, apiUrl);
@@ -486,6 +457,7 @@ async function main() {
     } else {
       window.alert(err);
     }
+    /* eslint-enable no-alert */
   }
 }
 main();
