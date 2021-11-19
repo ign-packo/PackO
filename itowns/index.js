@@ -217,11 +217,18 @@ async function main() {
           controllers.checked.updateDisplay();
           viewer.comment = editing.featureSelectedGeom.properties.comment;
           controllers.comment.updateDisplay();
+          controllers.nbChecked.updateDisplay();
         });
+      getController(viewer.menuGlobe.gui, 'nbChecked').__li.style.display = '';
       getController(viewer.menuGlobe.gui, 'checked').__li.style.display = '';
       getController(viewer.menuGlobe.gui, 'comment').__li.style.display = '';
       viewer.refresh(branch.layers);
     });
+
+    editing.nbChecked = 'test';
+    controllers.nbChecked = viewer.menuGlobe.gui.add(editing, 'nbChecked');
+    getController(viewer.menuGlobe.gui, 'nbChecked').__li.style.display = 'none';
+    controllers.nbChecked.listen().domElement.parentElement.style.pointerEvents = 'none';
 
     editing.checked = false;
     controllers.checked = viewer.menuGlobe.gui.add(editing, 'checked');
@@ -285,6 +292,7 @@ async function main() {
       delete editing.alertLayerName;
       delete viewer.alertLayerName;
       controllers.alert.__select.options.selectedIndex = -1;
+      getController(viewer.menuGlobe.gui, 'nbChecked').__li.style.display = 'none';
       getController(viewer.menuGlobe.gui, 'checked').__li.style.display = 'none';
       getController(viewer.menuGlobe.gui, 'comment').__li.style.display = 'none';
     });
@@ -334,6 +342,7 @@ async function main() {
       delete editing.alertLayerName;
       delete viewer.alertLayerName;
       controllers.alert.__select.options.selectedIndex = -1;
+      getController(viewer.menuGlobe.gui, 'nbChecked').__li.style.display = 'none';
       getController(viewer.menuGlobe.gui, 'checked').__li.style.display = 'none';
       getController(viewer.menuGlobe.gui, 'comment').__li.style.display = 'none';
       controllers.branch = controllers.branch.options(branch.list.map((elem) => elem.name))
@@ -350,6 +359,7 @@ async function main() {
         delete editing.alertLayerName;
         delete viewer.alertLayerName;
         controllers.alert.__select.options.selectedIndex = -1;
+        getController(viewer.menuGlobe.gui, 'nbChecked').__li.style.display = 'none';
         getController(viewer.menuGlobe.gui, 'checked').__li.style.display = 'none';
         getController(viewer.menuGlobe.gui, 'comment').__li.style.display = 'none';
       });
