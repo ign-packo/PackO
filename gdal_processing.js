@@ -116,84 +116,88 @@ function processPatchAsync(patch, blocSize) {
     const urlGraph = patch.withOrig ? patch.urlGraphOrig : patch.urlGraph;
     const urlOrtho = patch.withOrig ? patch.urlOrthoOrig : patch.urlOrtho;
     const { urlOpi } = patch;
+    async function getBands(ds) {
+      const size = await ds.rasterSizeAsync;
+      return Promise.all([
+        ds.bands.getAsync(1).then(
+          (band) => band.pixels.readAsync(0, 0, size.x, size.y),
+        ),
+        ds.bands.getAsync(2).then(
+          (band) => band.pixels.readAsync(0, 0, size.x, size.y),
+        ),
+        ds.bands.getAsync(3).then(
+          (band) => band.pixels.readAsync(0, 0, size.x, size.y),
+        ),
+        ds,
+        size,
+      ]);
+    }
+    debug('chargement...');
     Promise.all([
-      gdal.openAsync(urlGraph),
-      gdal.openAsync(urlOpi),
-      gdal.openAsync(urlOrtho),
-    ]).then((dsArray) => {
-      const dsGraph = dsArray[0];
-      const dsOpi = dsArray[1];
-      const dsOrtho = dsArray[2];
-      debug('chargement...');
+      gdal.openAsync(urlGraph).then((ds) => getBands(ds)),
+      gdal.openAsync(urlOpi).then((ds) => getBands(ds)),
+      gdal.openAsync(urlOrtho).then((ds) => getBands(ds)),
+    ]).then(async (bands) => {
+      debug('... fin chargement');
+      debug('application du patch...');
+      const graph = bands[0];
+      const opi = bands[1];
+      const ortho = bands[2];
+      graph[0].forEach((_element, index) => {
+        /* eslint-disable no-param-reassign */
+        if (mask.data[4 * index] > 0) {
+          [graph[0][index],
+            graph[1][index],
+            graph[2][index]] = patch.color;
+          [ortho[0][index],
+            ortho[1][index],
+            ortho[2][index]] = [opi[0][index], opi[1][index], opi[2][index]];
+        }
+        /* eslint-enable no-param-reassign */
+      });
+      debug('... fin application des patch');
+      debug('creation des images en memoire...');
+      const graphMem = gdal.open('graph', 'w', 'MEM', graph[4].x, graph[4].y, 3);
+      // graphMem.geoTransform = dsGraph.geoTransform;
+      graphMem.srs = graph[3].srs;
+      graphMem.bands.get(1).pixels.write(0, 0,
+        graph[4].x, graph[4].y, graph[0]);
+      graphMem.bands.get(2).pixels.write(0, 0,
+        graph[4].x, graph[4].y, graph[1]);
+      graphMem.bands.get(3).pixels.write(0, 0,
+        graph[4].x, graph[4].y, graph[2]);
+      const orthoMem = gdal.open('ortho', 'w', 'MEM', ortho[4].x, ortho[4].y, 3);
+      // orthoMem.geoTransform = dsOrtho.geoTransform;
+      orthoMem.srs = ortho[3].srs;
+      orthoMem.bands.get(1).pixels.write(0, 0,
+        ortho[4].x, ortho[4].y, ortho[0]);
+      orthoMem.bands.get(2).pixels.write(0, 0,
+        ortho[4].x, ortho[4].y, ortho[1]);
+      orthoMem.bands.get(3).pixels.write(0, 0,
+        ortho[4].x, ortho[4].y, ortho[2]);
+      debug('... fin creation des images en memoire');
+      debug('creation des COGs ...');
+
+      graph[3].close();
+      ortho[3].close();
+      opi[3].close();
+
       Promise.all([
-        dsGraph.bands.get(1).pixels.readAsync(0, 0, dsGraph.rasterSize.x, dsGraph.rasterSize.y),
-        dsGraph.bands.get(2).pixels.readAsync(0, 0, dsGraph.rasterSize.x, dsGraph.rasterSize.y),
-        dsGraph.bands.get(3).pixels.readAsync(0, 0, dsGraph.rasterSize.x, dsGraph.rasterSize.y),
-        dsOpi.bands.get(1).pixels.readAsync(0, 0, dsOpi.rasterSize.x, dsOpi.rasterSize.y),
-        dsOpi.bands.get(2).pixels.readAsync(0, 0, dsOpi.rasterSize.x, dsOpi.rasterSize.y),
-        dsOpi.bands.get(3).pixels.readAsync(0, 0, dsOpi.rasterSize.x, dsOpi.rasterSize.y),
-        dsOrtho.bands.get(1).pixels.readAsync(0, 0, dsOrtho.rasterSize.x, dsOrtho.rasterSize.y),
-        dsOrtho.bands.get(2).pixels.readAsync(0, 0, dsOrtho.rasterSize.x, dsOrtho.rasterSize.y),
-        dsOrtho.bands.get(3).pixels.readAsync(0, 0, dsOrtho.rasterSize.x, dsOrtho.rasterSize.y),
-      ]).then((bands) => {
-        debug('... fin chargement');
-        debug('application du patch...');
-        bands[0].forEach((_element, index) => {
-          /* eslint-disable no-param-reassign */
-          if (mask.data[4 * index] > 0) {
-            [bands[0][index],
-              bands[1][index],
-              bands[2][index]] = patch.color;
-            [bands[6][index],
-              bands[7][index],
-              bands[8][index]] = [bands[3][index], bands[4][index], bands[5][index]];
-          }
-          /* eslint-enable no-param-reassign */
+        gdal.drivers.get('COG').createCopyAsync(patch.urlGraphOutput, graphMem, {
+          BLOCKSIZE: blocSize,
+          COMPRESS: 'LZW',
+        }),
+        gdal.drivers.get('COG').createCopyAsync(patch.urlOrthoOutput, orthoMem, {
+          BLOCKSIZE: blocSize,
+          COMPRESS: 'JPEG',
+          QUALITY: 90,
+        }),
+      ]).then((createdDs) => {
+        debug('...fin creation des COGs');
+        createdDs.forEach((ds) => {
+          ds.close();
         });
-        debug('... fin application des patch');
-        debug('creation des images en memoire...');
-        const graphMem = gdal.open('graph', 'w', 'MEM', dsGraph.rasterSize.x, dsGraph.rasterSize.y, 3);
-        graphMem.geoTransform = dsGraph.geoTransform;
-        graphMem.srs = dsGraph.srs;
-        graphMem.bands.get(1).pixels.write(0, 0,
-          dsGraph.rasterSize.x, dsGraph.rasterSize.y, bands[0]);
-        graphMem.bands.get(2).pixels.write(0, 0,
-          dsGraph.rasterSize.x, dsGraph.rasterSize.y, bands[1]);
-        graphMem.bands.get(3).pixels.write(0, 0,
-          dsGraph.rasterSize.x, dsGraph.rasterSize.y, bands[2]);
-        const orthoMem = gdal.open('ortho', 'w', 'MEM', dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, 3);
-        orthoMem.geoTransform = dsOrtho.geoTransform;
-        orthoMem.srs = dsOrtho.srs;
-        orthoMem.bands.get(1).pixels.write(0, 0,
-          dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[6]);
-        orthoMem.bands.get(2).pixels.write(0, 0,
-          dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[7]);
-        orthoMem.bands.get(3).pixels.write(0, 0,
-          dsOrtho.rasterSize.x, dsOrtho.rasterSize.y, bands[8]);
-        debug('... fin creation des images en memoire');
-        debug('creation des COGs ...');
-
-        dsGraph.close();
-        dsOpi.close();
-        dsOrtho.close();
-
-        Promise.all([
-          gdal.drivers.get('COG').createCopyAsync(patch.urlGraphOutput, graphMem, {
-            BLOCKSIZE: blocSize,
-            COMPRESS: 'LZW',
-          }),
-          gdal.drivers.get('COG').createCopyAsync(patch.urlOrthoOutput, orthoMem, {
-            BLOCKSIZE: blocSize,
-            COMPRESS: 'JPEG',
-            QUALITY: 90,
-          }),
-        ]).then((createdDs) => {
-          debug('...fin creation des COGs');
-          createdDs.forEach((ds) => {
-            ds.close();
-          });
-          res('fin');
-        });
+        res('fin');
       });
     });
   });
