@@ -208,6 +208,7 @@ class Editing {
   async centerOnAlertFeature() {
     const layerTest = this.viewer.view.getLayerById(this.alertLayerName);
     const fc = await layerTest.source.loadData(undefined, layerTest);
+    this.nbChecked = `${fc.features[0].geometries.filter((elem) => elem.properties.status === true).length}/${fc.features[0].geometries.length}`;
     if (this.featureIndex === fc.features[0].geometries.length) this.featureIndex = 0;
     if (this.featureIndex === -1) this.featureIndex = fc.features[0].geometries.length - 1;
 
