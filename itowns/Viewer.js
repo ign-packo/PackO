@@ -35,14 +35,11 @@ else {
 `);
 
 function coloringAlerts(properties) {
+  // Pour le moment on utilise que 2 etats
   if (properties.status === false) {
-    // return color.set(0x5555ff);
-    return '#ff5555';
+    return '#ff5555';// red
   }
-  if (properties.status === true) {
-    return '#3cd25f';
-  }
-  return 'eeeeee';
+  return '#3cd25f';// green
 }
 
 class Viewer {
@@ -149,6 +146,8 @@ class Viewer {
   }
 
   centerCamera(coordX, coordY) {
+    // bug itowns...
+    // itowns.CameraUtils.animateCameraToLookAtTarget( ... )
     itowns.CameraUtils.transformCameraToLookAtTarget(
       this.view,
       this.view.camera.camera3D,

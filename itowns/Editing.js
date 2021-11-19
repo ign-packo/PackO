@@ -1,3 +1,4 @@
+/* eslint-disable no-alert */
 /* eslint-disable no-console */
 /* eslint-disable no-underscore-dangle */
 import * as THREE from 'three';
@@ -205,30 +206,43 @@ class Editing {
   }
 
   // alerts
-  async centerOnAlertFeature() {
-    const layerTest = this.viewer.view.getLayerById(this.alertLayerName);
-    const fc = await layerTest.source.loadData(undefined, layerTest);
-    this.nbChecked = `${fc.features[0].geometries.filter((elem) => elem.properties.status === true).length}/${fc.features[0].geometries.length}`;
-    if (this.featureIndex === fc.features[0].geometries.length) this.featureIndex = 0;
-    if (this.featureIndex === -1) this.featureIndex = fc.features[0].geometries.length - 1;
+  // async centerOnAlertFeature(onlyUnchecked = false, step = 0) {
+  //   const layerTest = this.viewer.view.getLayerById(this.alertLayerName);
+  //   const fc = await layerTest.source.loadData(undefined, layerTest);
+
+  centerOnAlertFeature() {
+    // const fc = this.alertFC;
+
+    // refresh datGUI.nbChecked
+    // this.nbValidated = fc.features[0].geometries.filter(
+    //   (elem) => elem.properties.status === true,
+    // ).length;
+    // this.nbTotal = fc.features[0].geometries.length;
+    // this.nbChecked = `${this.nbValidated}/${this.nbTotal}`;
+
+    // get index of feature selected
+    // if (this.featureIndex === this.alertFC.features[0].geometries.length) this.featureIndex = 0;
+    // if (this.featureIndex === -1) {
+    //   this.featureIndex = this.alertFC.features[0].geometries.length - 1;
+    // }
+
+    // if (onlyUnchecked) {
+    //   if (fc.features[0].geometries[this.featureIndex].properties.status === true) {
+    //     this.featureIndex += step;
+    //     if (this.featureIndex === fc.features[0].geometries.length) this.featureIndex = 0;
+    //     if (this.featureIndex === -1) this.featureIndex = fc.features[0].geometries.length - 1;
+    //   }
+    // }
 
     // Center on Feature
-    const coordcenter = fc.features[0].geometries[this.featureIndex].extent.clone()
-      .applyMatrix4(fc.matrixWorld).center();
+    const coordcenter = this.alertFC.features[0].geometries[this.featureIndex].extent.clone()
+      .applyMatrix4(this.alertFC.matrixWorld).center();
 
-    itowns.CameraUtils.transformCameraToLookAtTarget(
-      this.viewer.view,
-      this.viewer.view.camera.camera3D,
-      {
-        coord: new itowns.Coordinates(this.viewer.crs, coordcenter.x, coordcenter.y),
-        heading: 0,
-      },
-    );
     this.viewer.centerCamera(coordcenter.x, coordcenter.y);
 
-    this.highlightSelectedFeature(fc,
-      fc.features[0].geometries[this.featureIndex],
-      fc.features[0].type);
+    this.highlightSelectedFeature(this.alertFC,
+      this.alertFC.features[0].geometries[this.featureIndex],
+      this.alertFC.features[0].type);
   }
 
   keydown(e) {
@@ -238,16 +252,42 @@ class Editing {
       // L'utilisateur demande à déselectionner l'OPI
       if (this.validClicheSelected && (e.key === 'Escape')) {
         this.validClicheSelected = false;
-        this.cliche = 'unknown';
+        this.cliche = 'none';
         this.controllers.cliche.__li.style.backgroundColor = '';
         this.view.getLayerById('Opi').visible = false;
         this.view.notifyChange(this.view.getLayerById('Opi'), true);
       } else if (this.alertLayerName && e.key === 'ArrowLeft') {
         this.featureIndex -= 1;
+        if (this.featureIndex === -1) {
+          this.featureIndex = this.alertFC.features[0].geometries.length - 1;
+        }
         this.centerOnAlertFeature();
       } else if (this.alertLayerName && e.key === 'ArrowRight') {
         this.featureIndex += 1;
+        if (this.featureIndex === this.alertFC.features[0].geometries.length) this.featureIndex = 0;
         this.centerOnAlertFeature();
+      } else if (this.alertLayerName && e.key === 'ArrowDown') {
+        let { featureIndex } = this;
+        featureIndex -= 1;
+        if (featureIndex === -1) featureIndex = this.alertFC.features[0].geometries.length - 1;
+        while (this.alertFC.features[0].geometries[featureIndex].properties.status === true
+          && featureIndex !== this.featureIndex) {
+          featureIndex -= 1;
+          if (featureIndex === -1) featureIndex = this.alertFC.features[0].geometries.length - 1;
+        }
+        this.featureIndex = featureIndex;
+        this.centerOnAlertFeature();
+      } else if (this.alertLayerName && e.key === 'ArrowUp') {
+        let { featureIndex } = this;
+        featureIndex += 1;
+        if (featureIndex === this.alertFC.features[0].geometries.length) featureIndex = 0;
+        while (this.alertFC.features[0].geometries[featureIndex].properties.status === true
+          && featureIndex !== this.featureIndex) {
+          featureIndex += 1;
+          if (featureIndex === this.alertFC.features[0].geometries.length) featureIndex = 0;
+        }
+        this.featureIndex = featureIndex;
+        this.centerOnAlertFeature(true, 1);
       }
       return;
     }
@@ -356,7 +396,7 @@ class Editing {
             }
             if (res.status === 201) {
               console.log('out of bounds');
-              this.cliche = 'unknown';
+              this.cliche = 'none';
               this.view.getLayerById('Opi').visible = false;
               this.validClicheSelected = false;
               this.controllers.cliche.__li.style.backgroundColor = '';

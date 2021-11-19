@@ -114,6 +114,7 @@ class Branch {
 
   createBranch() {
     this.viewer.message = '';
+    // eslint-disable-next-line no-alert
     const branchName = window.prompt('Choose a new branch name:', '');
     console.log(branchName);
     if (branchName === null) return;
