@@ -258,6 +258,29 @@ Cette route prend en paramètre:
 - le chemin du dossier contenant les COG créé par le script **create_cache** et correspondant au cache à importer (ex: "cache_test"): soit en absolu, soit en relatif par rapport au dossier de lancement de l'API
 - le contenu du fichier **overviews.json** du cache à importer (celui qui a été créé par le script python et qui est à la racine du dossier contenant le cache à importer)
 
+## Traitement d'un chantier
+
+### Connection à un cache
+
+A partir du client web en ajoutant le paramètre namecache={nom du cache en base} (ex : "cache_test"), on peut visualiser le cache choisi et commencer à travailler dessus.
+
+### Import de couches vecteur annexes
+
+A partir de l'interface web, on peut intégrer des couches vecteur (au format geojson ou shapefile) en les glissant directement dans la vue.
+Celle-ci est ensuite sauvegardée dans la base de données.
+
+### Gestion des couches d'alertes
+
+Pour naviguer à travers les entités d'une couche annexe prélablement ajoutée, il faut choisir cette couche dans le menu déroulant "alert".
+A partir du moment où une couche a été selectionnée, le nombre d'entités déjà verifiées sur le nombre total s'affiche ainsi que les attributs propres à la première entité de la couche.
+On peut ensuite naviguer à travers les différentes entités en utilisant les flèches droite et gauche ou en cliquant directement sur l'entité voulue. Les champs "checked" et "comment" sont rafraichis avec les valeurs de l'entité selectionnée et peuvent être modifiés directement via le menu.
+Les flèches haut et bas proposent le même principe que droite et gauche avec pour seule différence de ne naviguer qu'à travers les entités non encore validées.
+
+### Retouches et patchs
+
+
+
+
 ## Travailler à plusieurs sur un chantier
 
 Il ne faut jamais travailler à plusieurs en même temps sur la même branche. Pour l'instant aucune vérification n'est faite au niveau de PackO et cela va conduire à des incohérences (un mécanisme de protection sera ajouté dès que possible).
