@@ -13,7 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "itowns": "^2.36.0",
+    "itowns": "^2.36.1",
     "proj4": "^2.7.5",
     "shpjs": "^4.0.2",
     "three": "0.133.1"
