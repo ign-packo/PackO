@@ -128,59 +128,71 @@ function processPatchAsync(patch, blocSize) {
         ds.bands.getAsync(3).then(
           (band) => band.pixels.readAsync(0, 0, size.x, size.y),
         ),
-        ds,
+        ds.geoTransformAsync,
+        ds.srsAsync,
+      ]).then((res2) => ({
+        bands: [res2[0], res2[1], res2[2]],
+        geoTransform: res2[3],
+        srs: res2[4],
         size,
-      ]);
+        ds,
+      }));
     }
     debug('chargement...');
     Promise.all([
       gdal.openAsync(urlGraph).then((ds) => getBands(ds)),
       gdal.openAsync(urlOpi).then((ds) => getBands(ds)),
       gdal.openAsync(urlOrtho).then((ds) => getBands(ds)),
-    ]).then(async (bands) => {
+    ]).then(async (images) => {
       debug('... fin chargement');
       debug('application du patch...');
-      const graph = bands[0];
-      const opi = bands[1];
-      const ortho = bands[2];
-      graph[0].forEach((_element, index) => {
+      const graph = images[0];
+      const opi = images[1];
+      const ortho = images[2];
+      graph.bands[0].forEach((_element, index) => {
         /* eslint-disable no-param-reassign */
         if (mask.data[4 * index] > 0) {
-          [graph[0][index],
-            graph[1][index],
-            graph[2][index]] = patch.color;
-          [ortho[0][index],
-            ortho[1][index],
-            ortho[2][index]] = [opi[0][index], opi[1][index], opi[2][index]];
+          [graph.bands[0][index],
+            graph.bands[1][index],
+            graph.bands[2][index]] = patch.color;
+          [ortho.bands[0][index],
+            ortho.bands[1][index],
+            ortho.bands[2][index]] = [
+            opi.bands[0][index],
+            opi.bands[1][index],
+            opi.bands[2][index]];
         }
         /* eslint-enable no-param-reassign */
       });
       debug('... fin application des patch');
       debug('creation des images en memoire...');
-      const graphMem = gdal.open('graph', 'w', 'MEM', graph[4].x, graph[4].y, 3);
-      // graphMem.geoTransform = dsGraph.geoTransform;
-      graphMem.srs = graph[3].srs;
+      // on verifie que l orientation est bien interprété
+      graph.srs.autoIdentifyEPSG();
+
+      const graphMem = gdal.open('graph', 'w', 'MEM', graph.size.x, graph.size.y, 3);
+      graphMem.geoTransform = graph.geoTransform;
+      graphMem.srs = graph.srs;
       graphMem.bands.get(1).pixels.write(0, 0,
-        graph[4].x, graph[4].y, graph[0]);
+        graph.size.x, graph.size.y, graph.bands[0]);
       graphMem.bands.get(2).pixels.write(0, 0,
-        graph[4].x, graph[4].y, graph[1]);
+        graph.size.x, graph.size.y, graph.bands[1]);
       graphMem.bands.get(3).pixels.write(0, 0,
-        graph[4].x, graph[4].y, graph[2]);
-      const orthoMem = gdal.open('ortho', 'w', 'MEM', ortho[4].x, ortho[4].y, 3);
-      // orthoMem.geoTransform = dsOrtho.geoTransform;
-      orthoMem.srs = ortho[3].srs;
+        graph.size.x, graph.size.y, graph.bands[2]);
+      const orthoMem = gdal.open('ortho', 'w', 'MEM', ortho.size.x, ortho.size.y, 3);
+      orthoMem.geoTransform = ortho.geoTransform;
+      orthoMem.srs = gdal.SpatialReference.fromWKT(ortho.srs.toWKT());
       orthoMem.bands.get(1).pixels.write(0, 0,
-        ortho[4].x, ortho[4].y, ortho[0]);
+        ortho.size.x, ortho.size.y, ortho.bands[0]);
       orthoMem.bands.get(2).pixels.write(0, 0,
-        ortho[4].x, ortho[4].y, ortho[1]);
+        ortho.size.x, ortho.size.y, ortho.bands[1]);
       orthoMem.bands.get(3).pixels.write(0, 0,
-        ortho[4].x, ortho[4].y, ortho[2]);
+        ortho.size.x, ortho.size.y, ortho.bands[2]);
       debug('... fin creation des images en memoire');
       debug('creation des COGs ...');
 
-      graph[3].close();
-      ortho[3].close();
-      opi[3].close();
+      graph.ds.close();
+      ortho.ds.close();
+      opi.ds.close();
 
       Promise.all([
         gdal.drivers.get('COG').createCopyAsync(patch.urlGraphOutput, graphMem, {
