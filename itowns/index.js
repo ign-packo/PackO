@@ -138,11 +138,15 @@ async function main() {
       }
       if (typeGui === 'vectorGui') {
         folder.add(branch, 'deleteVectorLayer').name('delete').onChange(() => {
-          if (layer.id !== editing.alertLayerName) {
+          if ((layer.id !== editing.alertLayerName)
+              && (layer.id !== editing.annotationLayer.name)) {
             branch.deleteVectorLayer(layer);
             this.view.notifyChange(layer);
             controllers.refreshDropBox('alert', branch.vectorList
               .filter((elem) => elem.name !== layer.id)
+              .map((elem) => elem.name));
+            controllers.refreshDropBox('annotation', branch.vectorList
+              .filter((elem) => (elem.name !== layer.id) && (elem.is_annotation === true))
               .map((elem) => elem.name));
           } else {
             viewer.message = 'Couche en edition';
@@ -190,7 +194,12 @@ async function main() {
       await branch.changeBranch();
       controllers.setEditingController();
       controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
-      controllers.resetAlerts();
+      // controllers.resetAlerts();
+      controllers.refreshDropBox('annotation',
+        branch.vectorList
+          .filter((elem) => elem.is_annotation === true)
+          .map((elem) => elem.name));
+      controllers.resetAlertsAndAnnotations();
     });
     controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch').name('Add new branch');
 
@@ -217,7 +226,9 @@ async function main() {
 
     // Couche d'alertes
     editing.alert = '';
-    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', branch.vectorList.map((elem) => elem.name)).name('Alerts Layer');
+    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', []).name('Alerts Layer');
+    controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
+
     controllers.alert.onChange(async (name) => {
       console.log('choosed alert vector layer: ', name);
 
@@ -225,30 +236,26 @@ async function main() {
       editing.alertLayerName = name;
       viewer.alertLayerName = name;
 
-      const layerTest = viewer.view.getLayerById(editing.alertLayerName);
-      editing.alertFC = await layerTest.source.loadData(undefined, layerTest);
-      editing.nbValidated = editing.alertFC.features[0].geometries.filter(
-        (elem) => elem.properties.status === true,
-      ).length;
-      editing.nbTotal = editing.alertFC.features[0].geometries.length;
-      editing.nbChecked = `${editing.nbValidated}/${editing.nbTotal}`;
+      const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
+      editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
 
-      editing.centerOnAlertFeature();
-      // .then(() => {
-      //   editing.checked = editing.featureSelectedGeom.properties.status;
-      //   controllers.checked.updateDisplay();
-      //   viewer.comment = editing.featureSelectedGeom.properties.comment;
-      //   controllers.comment.updateDisplay();
-      //   controllers.nbChecked.updateDisplay();
-      // });
-      editing.checked = editing.featureSelectedGeom.properties.status;
-      controllers.checked.updateDisplay();
-      viewer.comment = editing.featureSelectedGeom.properties.comment;
-      controllers.comment.updateDisplay();
-      controllers.nbChecked.updateDisplay();
+      if (editing.alertFC.features.length > 0) {
+        editing.nbTotal = editing.alertFC.features[0].geometries.length;
+        editing.nbValidated = editing.alertFC.features[0].geometries.filter(
+          (elem) => elem.properties.status === true,
+        ).length;
+        editing.nbChecked = `${editing.nbValidated}/${editing.nbTotal}`;
 
-      controllers.setVisible(['nbChecked', 'checked', 'comment']);
-      viewer.refresh(branch.layers);
+        editing.centerOnAlertFeature();
+
+        editing.checked = editing.featureSelectedGeom.properties.status;
+        controllers.checked.updateDisplay();
+        viewer.comment = editing.featureSelectedGeom.properties.comment;
+        controllers.comment.updateDisplay();
+        controllers.nbChecked.updateDisplay();
+        viewer.refresh(branch.layers);
+      }
+      controllers[editing.alertFC.features.length > 0 ? 'setVisible' : 'hide'](['nbChecked', 'checked', 'comment']);
     });
     editing.nbChecked = 'test';
     controllers.nbChecked = viewer.menuGlobe.gui.add(editing, 'nbChecked').name('Validated');
@@ -303,6 +310,31 @@ async function main() {
     });
     controllers.hide('comment');
 
+    // Annotations
+    editing.annotation = '';
+    controllers.createAnnotation = viewer.menuGlobe.gui.add(editing, 'createAnnotation').name('Add annotation layer');
+    controllers.annotation = viewer.menuGlobe.gui.add(editing, 'annotation', []).name('Annotation Layer');
+    controllers.refreshDropBox('annotation',
+      branch.vectorList
+        .filter((elem) => elem.is_annotation === true)
+        .map((elem) => elem.name));
+    controllers.annotation.onChange((name) => {
+      console.log('choosed annotation vector layer: ', name);
+
+      editing.annotationLayer = {
+        name,
+        id: branch.vectorList.filter((elem) => elem.name === name)[0].id,
+      };
+
+      console.log(editing.annotationLayer);
+
+      controllers.setVisible('addPoint');
+      branch.setLayers();
+      viewer.refresh(branch.layers);
+    });
+    controllers.addPoint = viewer.menuGlobe.gui.add(editing, 'addPoint').name('Add annotation');
+    controllers.hide('addPoint');
+
     // editing controllers
     editing.controllers = {
       select: controllers.select,
@@ -310,6 +342,7 @@ async function main() {
       polygon: controllers.polygon,
       checked: controllers.checked,
       comment: controllers.comment,
+      addPoint: controllers.addPoint,
     };
     viewerDiv.focus();
 
@@ -344,8 +377,13 @@ async function main() {
       console.log('-> New branch created');
       controllers.setEditingController();
       controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
+      controllers.refreshDropBox('annotation',
+        branch.vectorList
+          .filter((elem) => elem.is_annotation === true)
+          .map((elem) => elem.name));
+      // controllers.resetAlerts();
+      controllers.resetAlertsAndAnnotations();
 
-      controllers.resetAlerts();
       controllers.branch = controllers.branch.options(branch.list.map((elem) => elem.name))
         .setValue(branch.active.name);
       controllers.branch.onChange(async (name) => {
@@ -357,8 +395,50 @@ async function main() {
         await branch.changeBranch();
         controllers.setEditingController();
         controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
-        controllers.resetAlerts();
+        controllers.refreshDropBox('annotation',
+          branch.vectorList
+            .filter((elem) => elem.is_annotation === true)
+            .map((elem) => elem.name));
+        controllers.resetAlertsAndAnnotations();
       });
+    });
+
+    view.addEventListener('annotationLayer-created', (event) => {
+      console.log('-> A annotation layer had been created');
+      controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
+      controllers.refreshDropBox('annotation', branch.vectorList
+        .filter((elem) => elem.is_annotation === true)
+        .map((elem) => elem.name));
+
+      // controllers.annotation.setValue(event.name);
+      editing.annotation = event.name;
+      controllers.annotation.updateDisplay();
+      controllers.setVisible('addPoint');
+    });
+
+    view.addEventListener('annotation-added', async () => {
+      console.log('-> A annotation had been added');
+      if (editing.annotationLayer.name === editing.alertLayerName) {
+        const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
+        await layerAlert.whenReady;
+
+        editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
+        editing.nbTotal = editing.alertFC.features[0].geometries.length;
+        editing.nbValidated = editing.alertFC.features[0].geometries.filter(
+          (elem) => elem.properties.status === true,
+        ).length;
+        editing.nbChecked = `${editing.nbValidated}/${editing.nbTotal}`;
+
+        editing.centerOnAlertFeature();
+
+        editing.checked = editing.featureSelectedGeom.properties.status;
+        controllers.checked.updateDisplay();
+        viewer.comment = editing.featureSelectedGeom.properties.comment;
+        controllers.comment.updateDisplay();
+        controllers.nbChecked.updateDisplay();
+
+        controllers.setVisible(['nbChecked', 'checked', 'comment']);
+      }
     });
 
     viewerDiv.addEventListener('mousemove', (ev) => {

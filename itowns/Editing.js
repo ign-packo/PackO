@@ -1,6 +1,6 @@
 /* eslint-disable no-alert */
 /* eslint-disable no-console */
-/* eslint-disable no-underscore-dangle */
+/* eslint no-underscore-dangle: ["error", { "allow": [__li] }] */
 import * as THREE from 'three';
 // alerts
 import * as itowns from 'itowns';
@@ -12,6 +12,7 @@ const status = {
   ENDING: 3,
   WAITING: 4,
   COMMENT: 5,
+  POINT: 6,
 };
 
 class Editing {
@@ -29,6 +30,11 @@ class Editing {
     this.mousePosition = null;
 
     this.STATUS = status;
+    this.alertLayerName = '';
+    this.annotationLayer = {
+      name: '',
+      id: undefined,
+    };
   }
 
   pickPoint(event) {
@@ -259,38 +265,42 @@ class Editing {
         this.controllers.cliche.__li.style.backgroundColor = '';
         this.view.getLayerById('Opi').visible = false;
         this.view.notifyChange(this.view.getLayerById('Opi'), true);
-      } else if (this.alertLayerName && e.key === 'ArrowLeft') {
-        this.featureIndex -= 1;
-        if (this.featureIndex === -1) {
-          this.featureIndex = this.alertFC.features[0].geometries.length - 1;
-        }
-        this.centerOnAlertFeature();
-      } else if (this.alertLayerName && e.key === 'ArrowRight') {
-        this.featureIndex += 1;
-        if (this.featureIndex === this.alertFC.features[0].geometries.length) this.featureIndex = 0;
-        this.centerOnAlertFeature();
-      } else if (this.alertLayerName && e.key === 'ArrowDown') {
-        let { featureIndex } = this;
-        featureIndex -= 1;
-        if (featureIndex === -1) featureIndex = this.alertFC.features[0].geometries.length - 1;
-        while (this.alertFC.features[0].geometries[featureIndex].properties.status === true
-          && featureIndex !== this.featureIndex) {
+      } else if (this.alertLayerName && this.alertFC.features.length > 0) {
+        if (e.key === 'ArrowLeft') {
+          this.featureIndex -= 1;
+          if (this.featureIndex === -1) {
+            this.featureIndex = this.alertFC.features[0].geometries.length - 1;
+          }
+          this.centerOnAlertFeature();
+        } else if (e.key === 'ArrowRight') {
+          this.featureIndex += 1;
+          if (this.featureIndex === this.alertFC.features[0].geometries.length) {
+            this.featureIndex = 0;
+          }
+          this.centerOnAlertFeature();
+        } else if (e.key === 'ArrowDown') {
+          let { featureIndex } = this;
           featureIndex -= 1;
           if (featureIndex === -1) featureIndex = this.alertFC.features[0].geometries.length - 1;
-        }
-        this.featureIndex = featureIndex;
-        this.centerOnAlertFeature();
-      } else if (this.alertLayerName && e.key === 'ArrowUp') {
-        let { featureIndex } = this;
-        featureIndex += 1;
-        if (featureIndex === this.alertFC.features[0].geometries.length) featureIndex = 0;
-        while (this.alertFC.features[0].geometries[featureIndex].properties.status === true
+          while (this.alertFC.features[0].geometries[featureIndex].properties.status === true
           && featureIndex !== this.featureIndex) {
+            featureIndex -= 1;
+            if (featureIndex === -1) featureIndex = this.alertFC.features[0].geometries.length - 1;
+          }
+          this.featureIndex = featureIndex;
+          this.centerOnAlertFeature();
+        } else if (e.key === 'ArrowUp') {
+          let { featureIndex } = this;
           featureIndex += 1;
           if (featureIndex === this.alertFC.features[0].geometries.length) featureIndex = 0;
+          while (this.alertFC.features[0].geometries[featureIndex].properties.status === true
+          && featureIndex !== this.featureIndex) {
+            featureIndex += 1;
+            if (featureIndex === this.alertFC.features[0].geometries.length) featureIndex = 0;
+          }
+          this.featureIndex = featureIndex;
+          this.centerOnAlertFeature(true, 1);
         }
-        this.featureIndex = featureIndex;
-        this.centerOnAlertFeature(true, 1);
       }
       return;
     }
@@ -441,6 +451,43 @@ class Editing {
         }
         break;
       }
+      case status.POINT: {
+        this.viewer.message = 'Add new point';
+
+        const annotationComment = window.prompt('comment:', '');
+
+        if (annotationComment !== null) {
+          this.currentStatus = status.WAITING;
+          this.view.controls.setCursor('default', 'wait');
+          this.viewer.message = 'calcul en cours';
+
+          // On post la geometrie sur l'API
+          fetch(`${this.apiUrl}/${this.annotationLayer.id}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${annotationComment}`,
+            {
+              method: 'PUT',
+            }).then(async (res) => {
+            if (res.status === 200) {
+              // const layerAlert = this.viewer.view.getLayerById('azer');
+              // console.log(layerAlert.source._featuresCaches[layerAlert.crs])
+              this.viewer.refresh(this.branch.layers);
+              // const layerAlert2 = this.viewer.view.getLayerById('azer');
+              // console.log(layerAlert2.source._featuresCaches[layerAlert2.crs])
+
+              this.view.controls.setCursor('default', 'auto');
+              this.currentStatus = status.RAS;
+              this.viewer.message = '';
+              this.controllers.addPoint.__li.style.backgroundColor = '';
+
+              this.view.dispatchEvent({
+                type: 'annotation-added',
+              });
+            } else {
+              this.viewer.message = 'annotation: error during save';
+            }
+          });
+        }
+        break;
+      }
       case status.ENDING:
       // on termine la ployline ou polygon
         this.update();
@@ -452,7 +499,7 @@ class Editing {
   select() {
     if (this.currentStatus === status.WAITING) return;
     this.cancelcurrentPolygon();
-    this.controllers.select.__li.style.backgroundColor = '#FF000055';
+    this.controllers.select.__li.style.backgroundColor = '#BB0000FF';
     this.view.controls.setCursor('default', 'crosshair');
     console.log('"select": En attente de sélection');
     this.currentStatus = status.SELECT;
@@ -471,7 +518,7 @@ class Editing {
       return;
     }
     this.controllers.select.__li.style.backgroundColor = '';
-    this.controllers.polygon.__li.style.backgroundColor = '#FF000055';
+    this.controllers.polygon.__li.style.backgroundColor = '#BB0000FF';
     this.view.controls.setCursor('default', 'crosshair');
     console.log("saisie d'un polygon");
     this.viewer.message = "saisie d'un polygon";
@@ -560,6 +607,46 @@ class Editing {
         this.viewer.message = msg;
       });
     });
+  }
+
+  createAnnotation() {
+    const annotationLayerName = window.prompt('Choose an annotation layer name:', '');
+
+    fetch(`${this.apiUrl}/${this.branch.active.id}/annotation?name=${annotationLayerName}&crs=${this.viewer.crs}`,
+      {
+        method: 'PUT',
+      }).then((res) => {
+      if (res.status === 200) {
+        console.log(`annotation layer '${annotationLayerName}' created`);
+        // this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
+
+        itowns.Fetcher.json(`${this.apiUrl}/${this.branch.active.id}/vectors`)
+          .then((res2) => {
+            this.branch.vectorList = res2;
+            this.annotationLayer = {
+              name: annotationLayerName,
+              id: this.branch.vectorList.filter((elem) => elem.name === annotationLayerName)[0].id,
+            };
+            this.branch.setLayers();
+            this.viewer.refresh(this.branch.layers);
+            this.view.dispatchEvent({
+              type: 'annotationLayer-created',
+              name: annotationLayerName,
+            });
+          });
+      }
+    });
+  }
+
+  addPoint() {
+    if (this.currentStatus !== status.RAS) return;
+
+    this.view.controls.setCursor('default', 'crosshair');
+    this.currentStatus = status.POINT;
+    this.controllers.addPoint.__li.style.backgroundColor = '#BB0000FF';
+
+    console.log("saisie d'un point");
+    this.viewer.message = "saisie d'un point";
   }
 }
 

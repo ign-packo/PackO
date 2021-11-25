@@ -34,13 +34,27 @@ class Controller {
     this[dropBoxName].domElement.children[0].innerHTML = innerHTML;
     // this.editing.alert = value;
     this[dropBoxName].updateDisplay();
+    this[list.length > 0 ? 'setVisible' : 'hide']([dropBoxName]);
   }
 
-  resetAlerts() {
+  // resetAlerts() {
+  //   delete this.editing.alertLayerName;
+  //   delete this.viewer.alertLayerName;
+  //   this.alert.__select.options.selectedIndex = -1;
+  //   this.hide(['nbChecked', 'checked', 'comment']);
+  // }
+
+  resetAlertsAndAnnotations() {
     delete this.editing.alertLayerName;
     delete this.viewer.alertLayerName;
     this.alert.__select.options.selectedIndex = -1;
-    this.hide(['nbChecked', 'checked', 'comment']);
+    // delete this.editing.annotationLayer;
+    this.editing.annotationLayer = {
+      name: '',
+      id: undefined,
+    };
+    this.annotation.__select.options.selectedIndex = -1;
+    this.hide(['nbChecked', 'checked', 'comment', 'addPoint']);
   }
 
   setVisible(controllerName) {
