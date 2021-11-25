@@ -310,14 +310,17 @@ optional arguments:
   -o OUTPUT, --output OUTPUT
                         output folder (default : .)
   -b BRANCH, --branch BRANCH
-                        id of branch of cache to use as source (default: 0)
+                        id of branch of cache to use as source for patches (default: None)
   -p PATCHES, --patches PATCHES
                         file containing patches on the branch to export
   -t TILESIZE, --tilesize TILESIZE
-                        tile size for vectorising graph tiles (default: 100000)
+                        tile size (in pixels) for vectorising graph tiles (default: 100000)
   -v VERBOSE, --verbose VERBOSE
                         verbose (default: 0)
 ````
+
+La variable "-b" est optionnelle. Si elle n'est pas donnée, alors elle prend la valeur de la branche du fichier json d'export de retouches dans le cas où des retouches ont été effectuées, sinon le calcul se fait sur le graphe initial.
+
 
 A l'heure actuelle, il faut utiliser des chemins absolus pour que le script fonctionne correctement.
 
