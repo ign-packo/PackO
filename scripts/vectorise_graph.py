@@ -11,6 +11,7 @@ import shutil
 from cache_def import get_slab_path
 from osgeo import gdal
 
+
 def read_args():
     """Gestion des arguments"""
 
@@ -20,8 +21,8 @@ def read_args():
         "-o", "--output", help="output folder (default : .)", default="."
     )
     parser.add_argument(
-        "-b", "--branch", help="id of branch of cache to use as source (default: 0)",
-        default=0
+        "-b", "--branch", help="id of branch of cache to use as source for patches (default: None)",
+        default=None
     )
     parser.add_argument(
         "-p", "--patches", required=True, help="file containing patches on the branch to export"
@@ -79,19 +80,18 @@ resol = overviews['resolution']
 cache_name = os.path.basename((os.path.normpath(args.input)))
 print('Cache name = ' + cache_name)
 
-# valeur par defaut pour verifier l'existance de la branche desiree apres recherche
-id_branch = args.branch
-
 # on recupere les infos concernant les patches dans le json en entree
 file_patches = open(args.patches)
 patches_data = json.load(file_patches)
 file_patches.close()
 patches = patches_data['features']
 
+id_branch_patch = None
 list_patches = list()
 for patch in patches:
     if patch['properties']['active'] is True:
         slabs = patch['properties']['slabs']
+        id_branch_patch = patch['properties']['id_branch']
         for slab in slabs:
             x = slab[0]
             y = slab[1]
@@ -99,6 +99,20 @@ for patch in patches:
             slab_path = get_slab_path(int(x), int(y), int(path_depth))
             tile_path = os.path.join(args.input, 'graph', str(level), slab_path[1:])
             list_patches.append(os.path.normpath(tile_path+'.tif'))
+
+if args.branch and id_branch_patch and int(args.branch) != id_branch_patch:
+    raise SystemExit('** ERREUR: '
+                     'Pas de correspondance entre la branche indiquée (%s) '
+                     'et celle des retouches (%s) !' % (args.branch, id_branch_patch))
+
+if args.branch and not id_branch_patch:
+    raise SystemExit('** ERREUR: '
+                     'Branche de retouches indiquée (%s), mais aucune retouche !'
+                     % args.branch)
+
+if not args.branch and id_branch_patch:
+    print("** La branche de retouches traitée est : " + str(id_branch_patch))
+    args.branch = str(id_branch_patch)
 
 graph_dir = os.path.join(args.input, 'graph', str(level))
 
@@ -121,7 +135,7 @@ for tile in list_tiles:
         continue
     if tile in list_patches:
         # dans ce cas il faut ajouter la tuile index_branche + tilename a la liste
-        tile_path = os.path.join(os.path.dirname(tile), str(id_branch)+'_'+os.path.basename(tile))
+        tile_path = os.path.join(os.path.dirname(tile), str(args.branch)+'_'+os.path.basename(tile))
         f_out.write(tile_path+'\n')
     else:
         # on ajoute la tuile d'origine dans la liste pour creer le vrt
@@ -278,7 +292,7 @@ t_end_polygonise = time.perf_counter()
 
 script_merge = "ogrmerge.py"
 if platform.system() == "Windows":
-    script = script.split('.')[0]+".bat"
+    script_merge = script_merge.split('.')[0]+".bat"
 
 t_start_merge = time.perf_counter()
 
