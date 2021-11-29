@@ -251,7 +251,9 @@ CREATE TABLE public.opi (
     id_cache integer NOT NULL,
     date date,
     name character varying NOT NULL,
-    color smallint[] NOT NULL
+    color smallint[] NOT NULL,
+    with_rgb boolean DEFAULT true NOT NULL,
+    with_ir boolean DEFAULT false NOT NULL
 );
 
 
