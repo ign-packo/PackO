@@ -59,7 +59,7 @@ router.get('/:idBranch/wmts',
       .optional(),
     query('STYLE').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
       .exists().withMessage(createErrMsg.missingParameter('STYLE'))
-      .isIn(['normal'])
+      .isIn(['normal', 'RVB', 'IRC', 'IR'])
       .withMessage((STYLE) => (`'${STYLE}': unsupported STYLE value`)),
     query('FORMAT').if(query('REQUEST').isIn(['GetTile'])).exists().withMessage(createErrMsg.missingParameter('FORMAT'))
       .isIn(['image/png', 'image/jpeg'])

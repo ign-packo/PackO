@@ -26,11 +26,29 @@ function clearCache() {
  * @param {int} z - niveau de zoom dans l'image (0 : pleine resolution)
  * @param {*} blocSize - taille des tuiles
  * @param {*} cacheKey - clé utilisée pour gérer le cache des images
+ * @param {*} bands - tableau des bandes à utiliser ([0, 1, 2] par défaut)
  * @returns
  */
-function getTile(url, x, y, z, blocSize, cacheKey) {
-  debug('~~~getTile : ', url, x, y, z, blocSize, cacheKey);
-  if (!fs.existsSync(url)) {
+function getTile(url, x, y, z, blocSize, cacheKey, bands) {
+  const b = bands || [0, 1, 2];
+  debug('~~~getTile : ', url, x, y, z, blocSize, cacheKey, b);
+
+  // url correspond au chemin de l'image RGB
+  // en cas de besoin (bands contient 3), il faut construire le chemin vers l'image IR
+  // pour les OPIs (YB_OPI_20FD6925x00001_00588.tif -> YB_OPI_20FD6925ix00001_00588.tif)
+  // pour les Ortho (UP.tif -> IPi.tif)
+  const urlIr = url.includes('x') ? url.replace('x', 'ix') : url.replace('.', 'i.');
+  const cacheKeyIr = `${cacheKey}_ir`;
+
+  if (b.includes(3)) {
+    if (!fs.existsSync(urlIr)) {
+      debug('default');
+      if (DEFAULT_IMAGE === null) {
+        DEFAULT_IMAGE = new Jimp(blocSize, blocSize, 0x000000ff);
+      }
+      return Promise.resolve(DEFAULT_IMAGE);
+    }
+  } else if (!fs.existsSync(url)) {
     debug('default');
     if (DEFAULT_IMAGE === null) {
       DEFAULT_IMAGE = new Jimp(blocSize, blocSize, 0x000000ff);
@@ -38,36 +56,56 @@ function getTile(url, x, y, z, blocSize, cacheKey) {
     return Promise.resolve(DEFAULT_IMAGE);
   }
 
-  if ((cacheKey in cache) && (cache[cacheKey][url] !== url)) {
-    cache[cacheKey].ds.close();
-    delete cache[cacheKey];
+  // On ouvre les images si nécessaire
+  if (b.includes(0) || b.includes(1) || b.includes(2)) {
+    if ((cacheKey in cache) && (cache[cacheKey][url] !== url)) {
+      cache[cacheKey].ds.close();
+      delete cache[cacheKey];
+    }
+    if (!(cacheKey in cache)) {
+      cache[cacheKey] = {
+        url,
+        ds: gdal.open(url),
+      };
+    }
   }
-  if (!(cacheKey in cache)) {
-    cache[cacheKey] = {
-      url,
-      ds: gdal.open(url),
-    };
+  const withIr = b.includes(3);
+  if (withIr) {
+    if ((cacheKeyIr in cache) && (cache[cacheKeyIr][urlIr] !== urlIr)) {
+      cache[cacheKeyIr].ds.close();
+      delete cache[cacheKeyIr];
+    }
+    if (!(cacheKeyIr in cache)) {
+      cache[cacheKeyIr] = {
+        urlIr,
+        ds: gdal.open(urlIr),
+      };
+    }
   }
 
-  const { ds } = cache[cacheKey];
   debug('fichier ouvert ');
-  const bandR = z === 0 ? ds.bands.get(1) : ds.bands.get(1).overviews.get(z - 1);
-  const bandG = z === 0 ? ds.bands.get(2) : ds.bands.get(2).overviews.get(z - 1);
-  const bandB = z === 0 ? ds.bands.get(3) : ds.bands.get(3).overviews.get(z - 1);
-  const bands = [
-    bandR.pixels.readBlock(x, y),
-    bandG.pixels.readBlock(x, y),
-    bandB.pixels.readBlock(x, y),
-  ];
+  const { ds } = cache[cacheKey];
+  const dsIr = withIr ? cache[cacheKeyIr] : null;
+  const blocks = {};
+  b.forEach((band) => {
+    if (band in blocks) return;
+    const selectedDs = band === 3 ? dsIr : ds;
+    const selectedBand = band === 3 ? 1 : band + 1;
+    const B = z === 0
+      ? selectedDs.bands.get(selectedBand)
+      : selectedDs.bands.get(selectedBand).overviews.get(z - 1);
+    blocks[band] = B.pixels.readBlock(x, y);
+  });
+
   return new Promise((res, rej) => {
     try {
       /* eslint-disable no-new */
       new Jimp(blocSize, blocSize, (err, image) => {
         /* eslint-disable no-param-reassign */
         image.scan(0, 0, image.bitmap.width, image.bitmap.height, (_x, _y, idx) => {
-          image.bitmap.data[idx] = bands[0][idx / 4];
-          image.bitmap.data[idx + 1] = bands[1][idx / 4];
-          image.bitmap.data[idx + 2] = bands[2][idx / 4];
+          image.bitmap.data[idx] = blocks[b[0]][idx / 4];
+          image.bitmap.data[idx + 1] = blocks[b[1]][idx / 4];
+          image.bitmap.data[idx + 2] = blocks[b[2]][idx / 4];
           image.bitmap.data[idx + 3] = 255;
         });
         res(image);
@@ -79,8 +117,9 @@ function getTile(url, x, y, z, blocSize, cacheKey) {
   });
 }
 
-function getTileEncoded(url, x, y, z, mime, blocSize, cacheKey) {
-  return getTile(url, x, y, z, blocSize, cacheKey).then((image) => image.getBufferAsync(mime));
+function getTileEncoded(url, x, y, z, mime, blocSize, cacheKey, bands) {
+  return getTile(url, x, y, z, blocSize, cacheKey, bands)
+    .then((image) => image.getBufferAsync(mime));
 }
 
 function getPixel(url, x, y, z, col, lig, blocSize, cacheKey) {
@@ -114,8 +153,10 @@ function processPatchAsync(patch, blocSize) {
     debug('ouverture de l image');
     debug(patch);
     const urlGraph = patch.withOrig ? patch.urlGraphOrig : patch.urlGraph;
-    const urlOrtho = patch.withOrig ? patch.urlOrthoOrig : patch.urlOrtho;
-    const { urlOpi } = patch;
+    const urlOrthoRgb = patch.withOrig ? patch.urlOrthoRgbOrig : patch.urlOrthoRgb;
+    const urlOrthoIr = urlOrthoRgb.replace('.', 'i.');
+    const { urlOpiRgb } = patch;
+    const urlOpiIr = urlOpiRgb.replace('x', 'ix');
     async function getBands(ds) {
       const size = await ds.rasterSizeAsync;
       return Promise.all([
@@ -138,29 +179,48 @@ function processPatchAsync(patch, blocSize) {
         ds,
       }));
     }
+    async function getBand(ds) {
+      const size = await ds.rasterSizeAsync;
+      return Promise.all([
+        ds.bands.getAsync(1).then(
+          (band) => band.pixels.readAsync(0, 0, size.x, size.y),
+        ),
+        ds,
+        size,
+      ]);
+    }
     debug('chargement...');
     Promise.all([
       gdal.openAsync(urlGraph).then((ds) => getBands(ds)),
-      gdal.openAsync(urlOpi).then((ds) => getBands(ds)),
-      gdal.openAsync(urlOrtho).then((ds) => getBands(ds)),
+      patch.withRgb ? gdal.openAsync(urlOpiRgb).then((ds) => getBands(ds)) : null,
+      patch.withIr ? gdal.openAsync(urlOpiIr).then((ds) => getBand(ds)) : null,
+      patch.withRgb ? gdal.openAsync(urlOrthoRgb).then((ds) => getBands(ds)) : null,
+      patch.withIr ? gdal.openAsync(urlOrthoIr).then((ds) => getBands(ds)) : null,
     ]).then(async (images) => {
       debug('... fin chargement');
       debug('application du patch...');
       const graph = images[0];
-      const opi = images[1];
-      const ortho = images[2];
+      const opiRgb = images[1];
+      const opiIr = images[2];
+      const orthoRgb = images[3];
+      const orthoIr = images[4];
       graph.bands[0].forEach((_element, index) => {
         /* eslint-disable no-param-reassign */
         if (mask.data[4 * index] > 0) {
           [graph.bands[0][index],
             graph.bands[1][index],
             graph.bands[2][index]] = patch.color;
-          [ortho.bands[0][index],
-            ortho.bands[1][index],
-            ortho.bands[2][index]] = [
-            opi.bands[0][index],
-            opi.bands[1][index],
-            opi.bands[2][index]];
+          if (orthoRgb) {
+            [orthoRgb.bands[0][index],
+              orthoRgb.bands[1][index],
+              orthoRgb.bands[2][index]] = [
+              opiRgb.bands[0][index],
+              opiRgb.bands[1][index],
+              opiRgb.bands[2][index]];
+          }
+          if (orthoIr) {
+            orthoIr.bands[0][index] = opiIr.bands[0][index];
+          }
         }
         /* eslint-enable no-param-reassign */
       });
@@ -183,36 +243,62 @@ function processPatchAsync(patch, blocSize) {
         graph.size.x, graph.size.y, graph.bands[1]);
       graphMem.bands.get(3).pixels.write(0, 0,
         graph.size.x, graph.size.y, graph.bands[2]);
-      const orthoMem = gdal.open('ortho', 'w', 'MEM', ortho.size.x, ortho.size.y, 3);
-      orthoMem.geoTransform = ortho.geoTransform;
-      orthoMem.srs = gdal.SpatialReference.fromWKT(ortho.srs.toWKT());
-      orthoMem.bands.get(1).pixels.write(0, 0,
-        ortho.size.x, ortho.size.y, ortho.bands[0]);
-      orthoMem.bands.get(2).pixels.write(0, 0,
-        ortho.size.x, ortho.size.y, ortho.bands[1]);
-      orthoMem.bands.get(3).pixels.write(0, 0,
-        ortho.size.x, ortho.size.y, ortho.bands[2]);
+      const orthoRgbMem = orthoRgb ? gdal.open('orthoRgb', 'w', 'MEM',
+        orthoRgb.size.x, orthoRgb.size.y, 3) : null;
+      if (orthoRgbMem) {
+        orthoRgbMem.geoTransform = orthoRgb.geoTransform;
+        orthoRgbMem.srs = gdal.SpatialReference.fromWKT(orthoRgb.srs.toWKT());
+        orthoRgbMem.bands.get(1).pixels.write(0, 0,
+          orthoRgb.size.x, orthoRgb.size.y, orthoRgb.bands[0]);
+        orthoRgbMem.bands.get(2).pixels.write(0, 0,
+          orthoRgb.size.x, orthoRgb.size.y, orthoRgb.bands[1]);
+        orthoRgbMem.bands.get(3).pixels.write(0, 0,
+          orthoRgb.size.x, orthoRgb.size.y, orthoRgb.bands[2]);
+      }
+      const orthoIrMem = orthoIr ? gdal.open('orthoIr', 'w', 'MEM', orthoIr.size.x, orthoIr.size.y, 1) : null;
+      if (orthoIrMem) {
+        orthoIrMem.geoTransform = orthoIr.geoTransform;
+        orthoIrMem.srs = gdal.SpatialReference.fromWKT(orthoIr.srs.toWKT());
+        orthoIrMem.bands.get(1).pixels.write(0, 0,
+          orthoIr.size.x, orthoIr.size.y, orthoIr.bands[0]);
+      }
+
       debug('... fin creation des images en memoire');
       debug('creation des COGs ...');
 
       graph.ds.close();
-      ortho.ds.close();
-      opi.ds.close();
+      if (orthoRgb) {
+        orthoRgb.ds.close();
+      }
+      if (orthoIr) {
+        orthoIr.ds.close();
+      }
+      if (opiRgb) {
+        opiRgb.ds.close();
+      }
+      if (opiIr) {
+        opiIr.ds.close();
+      }
 
       Promise.all([
         gdal.drivers.get('COG').createCopyAsync(patch.urlGraphOutput, graphMem, {
           BLOCKSIZE: blocSize,
           COMPRESS: 'LZW',
         }),
-        gdal.drivers.get('COG').createCopyAsync(patch.urlOrthoOutput, orthoMem, {
+        orthoRgbMem ? gdal.drivers.get('COG').createCopyAsync(patch.urlOrthoRgbOutput, orthoRgbMem, {
           BLOCKSIZE: blocSize,
           COMPRESS: 'JPEG',
           QUALITY: 90,
-        }),
+        }) : null,
+        orthoIrMem ? gdal.drivers.get('COG').createCopyAsync(patch.urlOrthoIrOutput, orthoIrMem, {
+          BLOCKSIZE: blocSize,
+          COMPRESS: 'JPEG',
+          QUALITY: 90,
+        }) : null,
       ]).then((createdDs) => {
         debug('...fin creation des COGs');
         createdDs.forEach((ds) => {
-          ds.close();
+          if (ds) ds.close();
         });
         res('fin');
       });
