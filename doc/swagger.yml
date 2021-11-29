@@ -123,10 +123,13 @@ paths:
                     type: object
                     example:
                       {
-                        "19FD5606Ax00020_16371": [
+                        "19FD5606Ax00020_16371": {
+                          "color": [
                               126,
                               222,
-                              76]}
+                              76],
+                          "with_rgb": true,
+                          "with_ir": false}}
                   dataSet:
                     type: object
                     properties:
@@ -611,6 +614,9 @@ paths:
           schema:
             type: string
             enum:
+              - RVB
+              - IRC
+              - IR
               - normal
 #              - default
             example: normal  # example of a parameter value
