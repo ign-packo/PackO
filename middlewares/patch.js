@@ -159,18 +159,24 @@ function createPatch(slab, feature, color, name, overviews, dirCache, idBranch) 
   P.withOrig = false;
   const checkGraph = fs.promises.access(P.urlGraph, fs.constants.F_OK).catch(
     () => {
-      fs.promises.access(P.urlGraphOrig, fs.constants.F_OK);
+      fs.promises.access(P.urlGraphOrig, fs.constants.F_OK)
+      // cas ou le patch sort du cache --> géré avec Opi
+        .catch(() => {});
       P.withOrig = true;
     },
   );
   const checkOrtho = fs.promises.access(P.urlOrtho, fs.constants.F_OK).catch(
     () => {
-      fs.promises.access(P.urlOrthoOrig, fs.constants.F_OK);
+      fs.promises.access(P.urlOrthoOrig, fs.constants.F_OK)
+      // cas ou le patch sort du cache --> géré avec Opi
+        .catch(() => {});
       P.withOrig = true;
     },
   );
   const checkOpi = fs.promises.access(P.urlOpi, fs.constants.F_OK);
-  return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => P);
+  return Promise.all([checkGraph, checkOrtho, checkOpi]).then(() => P).catch(() => {
+    throw new Error('Out of cache');
+  });
 }
 
 async function undo(req, _res, next) {
@@ -543,10 +549,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
       /* eslint-enable no-param-reassign */
       slabsModified.push(P.slab);
 
-      promises.push(gdalProcessing.processPatch(P, overviews.tileSize.width).catch((err) => {
-        debug(err);
-        throw err;
-      }));
+      promises.push(gdalProcessing.processPatch(P, overviews.tileSize.width));
     });
     debug('', promises.length, 'patchs à appliquer.');
     await Promise.all(promises).then(
@@ -605,9 +608,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
 
         debug('on retourne les dalles modifiees -- 1 : ', slabsModified);
       },
-    ).catch((err) => {
-      debug(err);
-    });
+    );
   });
   debug('Fin de applyPatch');
   debug('on retourne les dalles modifiees -- 2 : ', slabsModified);
@@ -625,23 +626,27 @@ async function postPatch(req, _res, next) {
   const geoJson = params.geoJSON;
   const { idBranch } = params;
 
-  try {
-    const slabsModified = await applyPatch(req.client,
-      overviews,
-      req.dir_cache,
-      idBranch,
-      geoJson.features[0]);
-    debug('slabsModified : ', slabsModified);
-    req.result = { json: slabsModified, code: 200 };
-  } catch (error) {
-    debug(error);
-    req.error = {
-      msg: error.toString(),
-      code: 404,
-      function: 'patch',
-    };
-  }
-  next();
+  applyPatch(req.client,
+    overviews,
+    req.dir_cache,
+    idBranch,
+    geoJson.features[0])
+    .then((slabsModified) => {
+      debug('slabsModified : ', slabsModified);
+      req.result = { json: slabsModified, code: 200 };
+    })
+    .catch((error) => {
+      debug(error);
+      req.error = {
+        msg: error.toString(),
+        code: 404,
+        function: 'patch',
+      };
+    })
+    .finally(() => {
+      debug('Fin de POST patch');
+      next();
+    });
 }
 
 async function applyPatches(pgClient, overviews, dirCache, idBranch, features) {

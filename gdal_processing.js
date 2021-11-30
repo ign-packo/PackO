@@ -104,7 +104,7 @@ function getDefaultEncoded(mime, blocSize) {
 }
 
 function processPatchAsync(patch, blocSize) {
-  return new Promise((res) => {
+  return new Promise((res, reject) => {
     // On patch le graph
     const { mask } = patch;
     // On a modifier le cache, donc il faut forcer le refresh
@@ -167,8 +167,13 @@ function processPatchAsync(patch, blocSize) {
       debug('... fin application des patch');
       debug('creation des images en memoire...');
       // on verifie que l orientation est bien interprété
-      graph.srs.autoIdentifyEPSG();
-
+      try {
+        graph.srs.autoIdentifyEPSG();
+      } catch (error) {
+        console.log('Erreur dans la gestion des SRS');
+        console.log('Il faut probablement supprimer la variable PROJ_LIB de votre environement');
+        reject(new Error('PROJ_LIB Error'));
+      }
       const graphMem = gdal.open('graph', 'w', 'MEM', graph.size.x, graph.size.y, 3);
       graphMem.geoTransform = graph.geoTransform;
       graphMem.srs = graph.srs;
