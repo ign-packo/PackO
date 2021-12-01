@@ -24,7 +24,7 @@ function wmts(req, _res, next) {
   //  const { VERSION } = params;
   const { LAYER } = params;
   let { Name } = params;
-  const STYLE = params.STYLE;
+  const { STYLE } = params;
   const { FORMAT } = params;
   // const TILEMATRIXSET = params.TILEMATRIXSET;
   const { TILEMATRIX } = params;

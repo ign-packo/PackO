@@ -147,7 +147,9 @@ function createPatch(slab,
 
   mask.data = mask.toBuffer('raw');
 
-  const P = { slab, mask, color, withRgb, withIr};
+  const P = {
+    slab, mask, color, withRgb, withIr,
+  };
   P.cogPath = cog.getSlabPath(
     P.slab.x,
     P.slab.y,
@@ -162,7 +164,7 @@ function createPatch(slab,
     `${idBranch}_${P.cogPath.filename}i.tif`);
   P.urlOpiRgb = path.join(dirCache, 'opi', P.cogPath.dirPath,
     `${P.cogPath.filename}_${name}.tif`);
-  P.urlOpiIr = P.urlOpiRgb.replace('x','ix'); 
+  P.urlOpiIr = P.urlOpiRgb.replace('x', 'ix');
   P.urlGraphOrig = path.join(dirCache, 'graph', P.cogPath.dirPath,
     `${P.cogPath.filename}.tif`);
   P.urlOrthoRgbOrig = path.join(dirCache, 'ortho', P.cogPath.dirPath,
@@ -170,7 +172,7 @@ function createPatch(slab,
   P.urlOrthoIrOrig = path.join(dirCache, 'ortho', P.cogPath.dirPath,
     `${P.cogPath.filename}i.tif`);
   P.withOrig = false;
-  let promises = [];
+  const promises = [];
   promises.push(fs.promises.access(P.urlGraph, fs.constants.F_OK).catch(
     () => {
       fs.promises.access(P.urlGraphOrig, fs.constants.F_OK)
@@ -580,7 +582,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
           'ortho', P.cogPath.dirPath,
           `${idBranch}_${P.cogPath.filename}_${newPatchNum}i.tif`);
       }
-      
+
       /* eslint-enable no-param-reassign */
       slabsModified.push(P.slab);
 
@@ -616,9 +618,9 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
               const urlOrthoRbgPrev = path.join(dirCache, 'ortho', P.cogPath.dirPath,
                 `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
                 // on ne fait un rename que si prevId n'est pas 'orig'
-                if (prevId !== 'orig') {
-                  rename(P.urlOrtho, urlOrthoRbgPrev);
-                }
+              if (prevId !== 'orig') {
+                rename(P.urlOrtho, urlOrthoRbgPrev);
+              }
             }
             if (P.with_ir) {
               const urlOrthoIrPrev = path.join(dirCache, 'ortho', P.cogPath.dirPath,
