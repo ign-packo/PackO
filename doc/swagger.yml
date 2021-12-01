@@ -567,6 +567,9 @@ paths:
           schema:
             type: string
             enum:
+              - RVB
+              - IRC
+              - IR
               - normal
 #              - default
             example: normal  # example of a parameter value

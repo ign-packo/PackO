@@ -24,7 +24,7 @@ function wmts(req, _res, next) {
   //  const { VERSION } = params;
   const { LAYER } = params;
   let { Name } = params;
-  // const STYLE = params.STYLE;
+  const STYLE = params.STYLE;
   const { FORMAT } = params;
   // const TILEMATRIXSET = params.TILEMATRIXSET;
   const { TILEMATRIX } = params;
@@ -251,9 +251,24 @@ function wmts(req, _res, next) {
       } else {
         debug('version orig');
       }
+      let bands;
+      switch (STYLE) {
+        case 'normal':
+        case 'RVB':
+          bands = [0, 1, 2];
+          break;
+        case 'IRC':
+          bands = [3, 1, 2];
+          break;
+        case 'IR':
+          bands = [3, 3, 3];
+          break;
+        default:
+          debug('STYLE non géré');
+      }
       gdalProcessing.getTileEncoded(url,
         cogPath.x, cogPath.y, cogPath.z,
-        mime, overviews.tileSize.width, cacheKey).then((img) => {
+        mime, overviews.tileSize.width, cacheKey, bands).then((img) => {
         req.result = { img, code: 200 };
         next();
       });
