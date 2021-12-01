@@ -106,7 +106,9 @@ class Editing {
       if (res.status === 200) {
         this.viewer.refresh(this.branch.layers);
       } else {
-        this.viewer.message = "polygon: out of OPI's bounds";
+        res.json().then((json) => {
+          this.viewer.message = json.msg;
+        });
       }
     });
   }

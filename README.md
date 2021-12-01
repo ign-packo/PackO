@@ -120,6 +120,17 @@ par défaut:
 
 La doc de l'API est publiée directement par le service et est disponible à l'adresse : http://[serveur]:[port]/doc
 
+Attention, l'API utilise une version de GDAL pour la lecture et la création des images du cache. Si une version de GDAL est déjà présente sur la machine, il peut y avoir des problèmes avec la variable d'environnement **PROJ_LIB** qui indique l'emplacement du dossier qui contient la définition des systèmes de coordonnées. Dans ce cas, l'API va signaler une erreur lors de l'application d'une retouche (erreur visible dans la console côté serveur et dans l'interface iTowns côté client). Si cela se produit, il faut supprimer la variable d'environnement **PROJ_LIB** avant de lancer l'API.
+Sous MacOS ou Linux, cela peut être fait avec la commande:
+```
+unset PROJ_LIB
+```
+Sous Windows:
+```
+SET PROJ_LIB=
+```
+
+
 ### Principe de fonctionnement
 
 Ce service propose: 
