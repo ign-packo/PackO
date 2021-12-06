@@ -289,10 +289,20 @@ async function getLayers(pgClient, idBranch) {
 
 async function getLayer(pgClient, idVector) {
   debug(`    ~~getLayer (idVector: ${idVector})`);
+  // const sql = format(
+  //   "SELECT json_build_object("
+  //   + "'type', 'FeatureCollection', 'features', json_agg(ST_AsGeoJSON(t.*)::json)"
+  //   + ") as geojson "
+  //   + 'FROM'
+  //   + '(SELECT f.* FROM features f'
+  //   + ' WHERE f.id_layer=%s ORDER BY f.id) as t',
+  //   idVector,
+  // );
   const sql = format(
     "SELECT json_build_object('type', 'FeatureCollection', 'features', json_agg(ST_AsGeoJSON(t.*)::json)) as geojson "
     + 'FROM'
-    + '(SELECT f.* FROM features f'
+    + ' (SELECT f.*, COALESCE(fc.status, false) as status, fc.comment FROM features f'
+    + ' LEFT JOIN feature_ctrs fc ON f.id=fc.id_feature'
     + ' WHERE f.id_layer=%s ORDER BY f.id) as t',
     idVector,
   );
@@ -429,6 +439,34 @@ async function finishProcess(pgClient, status, idProcess, result) {
   );
 }
 
+async function updateAlert(pgClient, idFeature, status, comment) {
+  debug(`~~updateAlert (idFeature: ${idFeature})`);
+  let column;
+  let value;
+  if (status !== undefined) {
+    column = 'status';
+    value = status;
+  } else {
+    column = 'comment';
+    value = `'${comment}'`;
+  }
+  const sqlInsertFeatureCtr = format(
+    `INSERT INTO feature_ctrs (${column}, id_feature) `
+    + 'VALUES (%s, %s) '
+    + 'ON CONFLICT (id_feature) DO '
+    + 'UPDATE '
+    + `SET ${column}=%s `
+    + 'RETURNING id as feature_ctrs_id',
+    value,
+    idFeature,
+    value,
+  );
+  debug(sqlInsertFeatureCtr);
+  const results = await pgClient.query(sqlInsertFeatureCtr);
+
+  return results.rows[0];
+}
+
 module.exports = {
   beginTransaction,
   endTransaction,
@@ -459,4 +497,5 @@ module.exports = {
   getProcesses,
   createProcess,
   finishProcess,
+  updateAlert,
 };

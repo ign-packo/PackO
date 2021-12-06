@@ -1,5 +1,7 @@
 const router = require('express').Router();
-const { param, query, body } = require('express-validator');
+const {
+  param, query, body, oneOf,
+} = require('express-validator');
 const GJV = require('geojson-validation');
 const cache = require('../middlewares/cache');
 const branch = require('../middlewares/branch');
@@ -117,6 +119,24 @@ router.delete('/vector',
     .withMessage(createErrMsg.invalidParameter('idVector')),
   validateParams,
   vector.deleteVector,
+  pgClient.close,
+  returnMsg);
+
+router.put('/alert/:idFeature',
+  pgClient.open,
+  branch.getBranches.bind({ column: 'id' }),
+  param('idFeature'),
+  // .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+  // .custom((value, { req }) => req.result.json.includes(Number(value)))
+  // .withMessage(createErrMsg.invalidParameter('idBranch')),
+  oneOf([
+    query('status')
+      .exists().withMessage(createErrMsg.missingParameter('status')),
+    query('comment')
+      .exists().withMessage(createErrMsg.missingParameter('comment')),
+  ]),
+  validateParams,
+  vector.updateAlert,
   pgClient.close,
   returnMsg);
 
