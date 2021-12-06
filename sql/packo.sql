@@ -340,7 +340,8 @@ CREATE TABLE public.layers (
     num integer NOT NULL,
     crs character varying NOT NULL,
     id_branch integer NOT NULL,
-    id_style integer NOT NULL
+    id_style integer NOT NULL,
+    is_annotation boolean
 );
 
 
