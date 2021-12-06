@@ -275,7 +275,7 @@ async function insertSlabs(pgClient, idPatch, slabs) {
 async function getLayers(pgClient, idBranch) {
   debug(`    ~~getLayers (idBranch: ${idBranch})`);
   const sql = format(
-    'SELECT layers.id, layers.name, num, crs, style_itowns, opacity, visibility FROM layers, styles WHERE layers.id_style=styles.id %s',
+    'SELECT layers.id, layers.name, num, crs, style_itowns, opacity, visibility, is_annotation FROM layers, styles WHERE layers.id_style=styles.id %s',
     idBranch !== undefined ? `AND id_Branch=${idBranch}` : '',
   );
   debug('      ', sql);
@@ -310,21 +310,24 @@ async function getLayer(pgClient, idVector) {
 
   const results = await pgClient.query(sql);
 
-  // // cas ou il n'y a pas de patches actifs en base
-  // if (results.rows[0].json_build_object.features === null) {
-  //   results.rows[0].json_build_object.features = [];
-  // }
   if (results.rowCount !== 1) {
     throw new Error(`layer ${idVector} non trouvé`);
   }
+
+  // cas ou il n'y a pas de patches actifs en base
+  if (results.rows[0].geojson.features === null) {
+    results.rows[0].geojson.features = [];
+  }
+
   return results.rows[0].geojson;
 }
 
-async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
+async function insertLayer(pgClient, idBranch, geojson, metadonnees, isAnnotation = false) {
   debug(`    ~~insertLayer (idBranch: ${idBranch})`);
   // metadonnees.opacity = 1;
   // metadonnees.visibility = true;
   let results;
+
   /// ////////////////////
   // TODO gestion des STYLES
 
@@ -342,31 +345,36 @@ async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
   // end STYLE
   /// /////////////////
 
-  const sqlInsertLayer = format('INSERT INTO layers (name, crs, id_branch, id_style) '
-    + 'VALUES (%L, %L, %s, %s) '
+  const sqlInsertLayer = format('INSERT INTO layers (name, crs, id_branch, id_style, is_annotation) '
+    + 'VALUES (%L, %L, %s, %s, %L) '
     + 'RETURNING id as id_layer',
   metadonnees.name,
   metadonnees.crs,
   idBranch,
-  results.rows[0].id_style);
+  results.rows[0].id_style,
+  isAnnotation);
 
   debug('      ', sqlInsertLayer);
   results = await pgClient.query(sqlInsertLayer);
 
   const idNewLayer = results.rows[0].id_layer;
 
-  const values = [];
-  geojson.features.forEach((feature) => {
-    values.push(`ST_SetSRID(ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}'), ${metadonnees.crs.split(':')[1]}), '${JSON.stringify(feature.properties)}', '${idNewLayer}'`);
-  });
+  if (geojson !== null) {
+    const values = [];
+    geojson.features.forEach((feature) => {
+      values.push(`ST_SetSRID(ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}'), ${metadonnees.crs.split(':')[1]}), '${JSON.stringify(feature.properties)}', '${idNewLayer}'`);
+    });
 
-  const sqlInsertFeatures = format('INSERT INTO features (geom, properties, id_layer) '
-  + 'VALUES (%s) '
-  + 'RETURNING id as id_feature',
-  values.join('),('));
+    const sqlInsertFeatures = format('INSERT INTO features (geom, properties, id_layer) '
+    + 'VALUES (%s) '
+    + 'RETURNING id as id_feature',
+    values.join('),('));
 
-  debug('      ', sqlInsertFeatures);
-  results = await pgClient.query(sqlInsertFeatures);
+    debug('      ', sqlInsertFeatures);
+    results = await pgClient.query(sqlInsertFeatures);
+  } else {
+    results.rows = 'none';
+  }
 
   return {
     id: idNewLayer,
@@ -461,8 +469,27 @@ async function updateAlert(pgClient, idFeature, status, comment) {
     idFeature,
     value,
   );
-  debug(sqlInsertFeatureCtr);
+  debug('      ', sqlInsertFeatureCtr);
   const results = await pgClient.query(sqlInsertFeatureCtr);
+
+  return results.rows[0];
+}
+
+async function insertFeature(pgClient, idLayer, geometry) {
+  debug(`~~insertFeature (idLayer: ${idLayer})`);
+
+  const sqlInsertFeature = format(
+    'INSERT INTO features (geom, id_layer) '
+      // + "VALUES (ST_SetSRID(ST_GeomFromGeoJSON('%s'), %s), %s) "
+      + "VALUES (ST_GeomFromGeoJSON('%s'), %s) "
+      + 'RETURNING id as id_feature',
+    JSON.stringify(geometry),
+    // crs.split(':')[1],
+    idLayer,
+  );
+
+  debug('      ', sqlInsertFeature);
+  const results = await pgClient.query(sqlInsertFeature);
 
   return results.rows[0];
 }
@@ -498,4 +525,5 @@ module.exports = {
   createProcess,
   finishProcess,
   updateAlert,
+  insertFeature,
 };

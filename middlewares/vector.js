@@ -142,8 +142,75 @@ async function updateAlert(req, _res, next) {
   const { idFeature, status, comment } = params;
 
   try {
-    const vector = await db.updateAlert(req.client, idFeature, status, comment);
-    req.result = { json: `vecteur '${vector.name}' détruit (sur la branche '${vector.branch_name}')`, code: 200 };
+    await db.updateAlert(req.client, idFeature, status, comment);
+    req.result = { json: `alerte '${idFeature}' mis a jour.`, code: 200 };
+  } catch (error) {
+    debug(error);
+    req.error = error;
+  }
+  debug('  next>>');
+  next();
+}
+
+async function addAnnotationLayer(req, _res, next) {
+  debug('>>PUT annotation Layer');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+
+  const { idBranch, name, crs } = params;
+
+  const randomColor = Math.round(Math.random() * 0xffffff);
+
+  const style = {
+    fill: {
+      color: `#${randomColor.toString(16)}`,
+      opacity: 0.7,
+    },
+    stroke: {
+      color: `#${randomColor.toString(16)}`,
+    },
+    point: {
+      color: `#${randomColor.toString(16)}`,
+      radius: 5,
+    },
+  };
+
+  try {
+    const vector = await db.insertLayer(req.client, idBranch, null, { name, crs, style }, true);
+    req.result = { json: `annotation '${vector.name}' ajouté (sur la branche '${vector.branch_name}')`, code: 200 };
+  } catch (error) {
+    debug(error);
+    req.error = error;
+  }
+  debug('  next>>');
+  next();
+}
+
+async function addAnnotation(req, _res, next) {
+  debug('>>PUT annotation');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+
+  const {
+    idAnnotationLayer, x, y, comment,
+  } = params;
+
+  const geometry = {
+    type: 'Point',
+    coordinates: [x, y],
+  };
+
+  try {
+    const annotation = await db.insertFeature(req.client, idAnnotationLayer, geometry, comment);
+
+    await db.updateAlert(req.client, annotation.id_feature, undefined, comment);
+    req.result = { json: `annotation '${annotation.id_feature}' ajoutée`, code: 200 };
   } catch (error) {
     debug(error);
     req.error = error;
@@ -158,4 +225,6 @@ module.exports = {
   postVector,
   deleteVector,
   updateAlert,
+  addAnnotationLayer,
+  addAnnotation,
 };

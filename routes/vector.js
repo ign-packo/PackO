@@ -140,4 +140,39 @@ router.put('/alert/:idFeature',
   pgClient.close,
   returnMsg);
 
+router.put('/:idBranch/annotation',
+  pgClient.open,
+  branch.getBranches.bind({ column: 'id' }),
+  param('idBranch')
+    .custom((value, { req }) => req.result.json.includes(Number(value)))
+    .withMessage(createErrMsg.invalidParameter('idBranch')),
+  query('name')
+    .exists().withMessage(createErrMsg.missingParameter('name'))
+    .escape(),
+  query('crs')
+    .exists().withMessage(createErrMsg.missingParameter('crs')),
+  validateParams,
+  vector.addAnnotationLayer,
+  pgClient.close,
+  returnMsg);
+
+router.put('/:idAnnotationLayer/feature',
+  pgClient.open,
+  vector.getVectors.bind({ column: 'id' }),
+  param('idAnnotationLayer')
+    .exists().withMessage(createErrMsg.missingParameter('idAnnotationLayer'))
+    .custom((value, { req }) => req.result.json.includes(Number(value)))
+    .withMessage(createErrMsg.invalidParameter('idAnnotationLayer')),
+  query('x')
+    .exists().withMessage(createErrMsg.missingParameter('x'))
+    .escape(),
+  query('y')
+    .exists().withMessage(createErrMsg.missingParameter('y')),
+  query('comment')
+    .exists().withMessage(createErrMsg.missingParameter('comment')),
+  validateParams,
+  vector.addAnnotation,
+  pgClient.close,
+  returnMsg);
+
 module.exports = router;
