@@ -132,9 +132,30 @@ async function deleteVector(req, _res, next) {
   next();
 }
 
+async function updateAlert(req, _res, next) {
+  debug('>>UPDATE alert');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+  const { idFeature, status, comment } = params;
+
+  try {
+    const vector = await db.updateAlert(req.client, idFeature, status, comment);
+    req.result = { json: `vecteur '${vector.name}' détruit (sur la branche '${vector.branch_name}')`, code: 200 };
+  } catch (error) {
+    debug(error);
+    req.error = error;
+  }
+  debug('  next>>');
+  next();
+}
+
 module.exports = {
   getVectors,
   getVector,
   postVector,
   deleteVector,
+  updateAlert,
 };
