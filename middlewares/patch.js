@@ -215,6 +215,9 @@ async function undo(req, _res, next) {
   const params = matchedData(req);
   const { idBranch } = params;
   const { overviews } = req;
+  const [firstOPI] = Object.values(overviews.list_OPI);
+  const withRgb = firstOPI.with_rgb;
+  const withIr = firstOPI.with_ir;
 
   const activePatches = await db.getActivePatches(req.client, idBranch);
 
@@ -315,20 +318,26 @@ async function undo(req, _res, next) {
     const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
     // renommer les images pour pointer sur ce numéro de version
     const urlGraph = path.join(graphDir, `${idBranch}_${cogPath.filename}.tif`);
-    const urlOrtho = path.join(orthoDir, `${idBranch}_${cogPath.filename}.tif`);
+    const urlOrthoRgb = path.join(orthoDir, `${idBranch}_${cogPath.filename}.tif`);
+    const urlOrthoIr = path.join(orthoDir, `${idBranch}_${cogPath.filename}i.tif`);
     const urlGraphSelected = path.join(graphDir, `${idBranch}_${cogPath.filename}_${idSelected}.tif`);
-    const urlOrthoSelected = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${idSelected}.tif`);
+    const urlOrthoRgbSelected = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${idSelected}.tif`);
+    const urlOrthoIrSelected = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${idSelected}i.tif`);
 
     // on renomme les anciennes images
     const urlGraphPrev = path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
-    const urlOrthoPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
+    const urlOrthoRgbPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
+    const urlOrthoIrPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}i.tif`);
+
     rename(urlGraph, urlGraphPrev);
-    rename(urlOrtho, urlOrthoPrev);
+    if (withRgb) rename(urlOrthoRgb, urlOrthoRgbPrev);
+    if (withIr) rename(urlOrthoIr, urlOrthoIrPrev);
 
     // on renomme les nouvelles images sauf si c'est la version orig
     if (idSelected !== 'orig') {
       rename(urlGraphSelected, urlGraph);
-      rename(urlOrthoSelected, urlOrtho);
+      if (withRgb) rename(urlOrthoRgbSelected, urlOrthoRgb);
+      if (withIr) rename(urlOrthoIrSelected, urlOrthoIr);
     }
   });
 
@@ -360,6 +369,9 @@ async function redo(req, _res, next) {
   const params = matchedData(req);
   const { idBranch } = params;
   const { overviews } = req;
+  const [firstOPI] = Object.values(overviews.list_OPI);
+  const withRgb = firstOPI.with_rgb;
+  const withIr = firstOPI.with_ir;
 
   const unactivePatches = await db.getUnactivePatches(req.client, idBranch);
 
@@ -421,21 +433,26 @@ async function redo(req, _res, next) {
     fs.writeFileSync(`${urlHistory}`, history);
     // on verifie si la tuile a été effectivement modifiée par ce patch
     const urlGraphSelected = path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchNumRedo}.tif`);
-    const urlOrthoSelected = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchNumRedo}.tif`);
+    const urlOrthoRgbSelected = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchNumRedo}.tif`);
+    const urlOrthoIrSelected = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchNumRedo}i.tif`);
     // renommer les images pour pointer sur ce numéro de version
     const urlGraph = path.join(graphDir, `${idBranch}_${cogPath.filename}.tif`);
-    const urlOrtho = path.join(orthoDir, `${idBranch}_${cogPath.filename}.tif`);
+    const urlOrthoRgb = path.join(orthoDir, `${idBranch}_${cogPath.filename}.tif`);
+    const urlOrthoIr = path.join(orthoDir, `${idBranch}_${cogPath.filename}i.tif`);
     // on renomme les anciennes images
     const urlGraphPrev = path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
-    const urlOrthoPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
+    const urlOrthoRgbPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
+    const urlOrthoIrPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}i.tif`);
     if (patchIdPrev !== 'orig') {
       rename(urlGraph, urlGraphPrev);
-      rename(urlOrtho, urlOrthoPrev);
+      if (withRgb) rename(urlOrthoRgb, urlOrthoRgbPrev);
+      if (withIr) rename(urlOrthoIr, urlOrthoIrPrev);
     }
 
     // on renomme les nouvelles images
     rename(urlGraphSelected, urlGraph);
-    rename(urlOrthoSelected, urlOrtho);
+    if (withRgb) rename(urlOrthoRgbSelected, urlOrthoRgb);
+    if (withIr) rename(urlOrthoIrSelected, urlOrthoIr);
   });
   // on remet les features dans req.app.activePatches.features
   // req.selectedBranch.activePatches.features = req.selectedBranch.activePatches.features.concat(
@@ -614,17 +631,17 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
               rename(P.urlGraph, urlGraphPrev);
             }
 
-            if (P.with_rgb) {
+            if (P.withRgb) {
               const urlOrthoRbgPrev = path.join(dirCache, 'ortho', P.cogPath.dirPath,
                 `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
                 // on ne fait un rename que si prevId n'est pas 'orig'
               if (prevId !== 'orig') {
-                rename(P.urlOrtho, urlOrthoRbgPrev);
+                rename(P.urlOrthoRgb, urlOrthoRbgPrev);
               }
             }
-            if (P.with_ir) {
+            if (P.withIr) {
               const urlOrthoIrPrev = path.join(dirCache, 'ortho', P.cogPath.dirPath,
-                `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
+                `${idBranch}_${P.cogPath.filename}_${prevId}i.tif`);
               // on ne fait un rename que si prevId n'est pas 'orig'
               if (prevId !== 'orig') {
                 rename(P.urlOrthoIr, urlOrthoIrPrev);
@@ -640,10 +657,10 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
             // qui reste partagée pour toutes les branches
           }
           rename(P.urlGraphOutput, P.urlGraph);
-          if (P.with_rgb) {
+          if (P.withRgb) {
             rename(P.urlOrthoRgbOutput, P.urlOrthoRgb);
           }
-          if (P.with_ir) {
+          if (P.withIr) {
             rename(P.urlOrthoIrOutput, P.urlOrthoIr);
           }
         });
