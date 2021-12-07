@@ -183,6 +183,7 @@ def prep_tiling(list_filename_rgb,
                 overviews,
                 color_dict,
                 gdal_option,
+                db_options,
                 verbose,
                 reprocess):
     """Preparation for tiling images according to overviews file"""
@@ -195,6 +196,9 @@ def prep_tiling(list_filename_rgb,
     with_ir = (len(list_filename_ir) > 0)
     if len(list_filename_rgb) == 0:
         list_filename = list_filename_ir
+
+    # cas du geopackage
+    db_graph = gdal.OpenEx(db_options['connString'], gdal.OF_VECTOR)
 
     for filename in list_filename:
         print('  image :', filename)
@@ -224,6 +228,16 @@ def prep_tiling(list_filename_rgb,
                 opi_rgb = opi_ir.replace('_ix', 'x')
                 filename_ir = filename
 
+            # on recupere les metadonnees d'acquisition
+            layer = db_graph.GetLayer()
+            if with_ir and not with_rgb:
+                opi = opi.replace('_ix', 'x')
+            layer.SetAttributeFilter("CLICHE LIKE '" + opi.replace("OPI_", "") + "'")
+            feature = layer.GetNextFeature()
+            date = feature.GetField('DATE')
+            time_ut = feature.GetField('HEURE_TU')
+            layer.SetAttributeFilter(None)
+
             args_cut_image.append({
                 'opi': {
                     'rgb': filename_rgb,
@@ -241,6 +255,8 @@ def prep_tiling(list_filename_rgb,
             # on ajoute l'OPI traitée à la liste (avec sa couleur)
             overviews["list_OPI"][opi] = {
                 'color': new_color(opi, color_dict),
+                'date': date.replace('/', '-'),
+                'time_ut': time_ut.replace('h', ':'),
                 'with_rgb': with_rgb,
                 'with_ir': with_ir
             }
