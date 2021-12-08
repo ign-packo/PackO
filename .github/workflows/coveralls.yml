@@ -82,11 +82,11 @@ jobs:
 
     - name: create cache IR
       run: |
-        python scripts/create_cache.py -I "regress/data/IR/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress -g "regress/data/regress_graphe.gpkg" -t graphe
+        python scripts/create_cache.py -I "regress/data/IR/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress_IR -g "regress/data/regress_graphe.gpkg" -t graphe
 
     - name: update cache IR
       run: |
-        python scripts/update_cache.py -I "regress/data/update/IR/*.tif" -c cache_regress -g "regress/data/regress_graphe.gpkg" -t graphe
+        python scripts/update_cache.py -I "regress/data/update/IR/*.tif" -c cache_regress_IR -g "regress/data/regress_graphe.gpkg" -t graphe
 
     - name: install
       run: npm install

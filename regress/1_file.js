@@ -5,7 +5,7 @@ chai.use(require('chai-http'));
 const should = chai.should();
 const app = require('..');
 
-const cachePath = 'cache_test';
+const cachePath = 'cache_test/cache_test_RGB';
 
 describe('Files', () => {
   after((done) => {

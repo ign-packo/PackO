@@ -7,9 +7,9 @@ const fs = require('fs');
 const GJV = require('geojson-validation');
 const app = require('..');
 
-const overviews = JSON.parse(fs.readFileSync('./cache_test/overviews.json', 'utf8'));
-const cacheName = 'cacheRegress';
-const cachePath = 'cache_test';
+const overviews = JSON.parse(fs.readFileSync('./cache_test/cache_test_RGB/overviews.json', 'utf8'));
+const cacheName = 'cacheTestRgb';
+const cachePath = 'cache_test/cache_test_RGB';
 
 let idCache = null;
 function setIdCache(id) {
