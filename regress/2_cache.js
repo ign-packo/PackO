@@ -7,9 +7,9 @@ const fs = require('fs');
 
 const app = require('..');
 
-const overviews = JSON.parse(fs.readFileSync('./regress/data/regress_overviews.json', 'utf8'));
-const cacheName = 'cacheRegress';
-const cachePath = '/cache_regress';
+const overviews = JSON.parse(fs.readFileSync('./regress/data/regress_overviews_rgb.json', 'utf8'));
+const cacheName = 'cacheRegressRgb';
+const cachePath = '/cache_regress_RGB';
 
 let idCache = null;
 function setIdCache(id) {
