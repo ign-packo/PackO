@@ -11,6 +11,7 @@ const status = {
   POLYGON: 2,
   ENDING: 3,
   WAITING: 4,
+  COMMENT: 5,
 };
 
 class Editing {
@@ -26,6 +27,8 @@ class Editing {
     this.nbVertices = 0;
     this.lastPos = null;
     this.mousePosition = null;
+
+    this.STATUS = status;
   }
 
   pickPoint(event) {
