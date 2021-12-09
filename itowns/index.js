@@ -279,8 +279,13 @@ async function main() {
 
     viewer.comment = '';
     controllers.comment = viewer.menuGlobe.gui.add(viewer, 'comment');
+    controllers.comment.onChange(() => {
+      console.log('edition du commentaire en cours');
+      editing.currentStatus = editing.STATUS.COMMENT;
+    });
     controllers.comment.onFinishChange(async (value) => {
-      console.log('change comment', value);
+      console.log('edition du commentaire terminée : ', value);
+      editing.currentStatus = editing.STATUS.RAS;
       if (value !== editing.featureSelectedGeom.properties.comment) {
         const idFeature = editing.featureSelectedGeom.properties.id;
         const res = await fetch(`${apiUrl}/alert/${idFeature}?comment=${value}`,
