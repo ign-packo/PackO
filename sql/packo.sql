@@ -273,6 +273,7 @@ CREATE TABLE public.opi (
     id integer NOT NULL,
     id_cache integer NOT NULL,
     date date,
+    time_ut time without time zone,
     name character varying NOT NULL,
     color smallint[] NOT NULL,
     with_rgb boolean DEFAULT true NOT NULL,
