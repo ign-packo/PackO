@@ -164,7 +164,7 @@ function createPatch(slab,
     `${idBranch}_${P.cogPath.filename}i.tif`);
   P.urlOpiRgb = path.join(dirCache, 'opi', P.cogPath.dirPath,
     `${P.cogPath.filename}_${name}.tif`);
-  P.urlOpiIr = P.urlOpiRgb.replace('x', 'ix');
+  P.urlOpiIr = P.urlOpiRgb.replace('x', '_ix');
   P.urlGraphOrig = path.join(dirCache, 'graph', P.cogPath.dirPath,
     `${P.cogPath.filename}.tif`);
   P.urlOrthoRgbOrig = path.join(dirCache, 'ortho', P.cogPath.dirPath,
