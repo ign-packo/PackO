@@ -176,13 +176,6 @@ async function main() {
     editing.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
     editing.color = [0, 0, 0];
 
-    // message
-    controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord').name('Coordinates');
-    controllers.coord.listen();
-    viewer.message = '';
-    controllers.message = viewer.menuGlobe.gui.add(viewer, 'message').name('Message');
-    controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
-
     // const controllers = new Controller(viewer.menuGlobe, editing);
 
     // Gestion branche
@@ -202,9 +195,13 @@ async function main() {
     controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch').name('Add new branch');
 
     // Selection OPI
+    controllers.select = viewer.menuGlobe.gui.add(editing, 'select').name('Select an OPI');
     controllers.cliche = viewer.menuGlobe.gui.add(editing, 'cliche').name('OPI selected');
     controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
-    controllers.select = viewer.menuGlobe.gui.add(editing, 'select').name('Select an OPI');
+
+    // Coord
+    controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord').name('Coordinates');
+    controllers.coord.listen();
 
     // Saisie
     controllers.polygon = viewer.menuGlobe.gui.add(editing, 'polygon').name('Start polygon');
@@ -212,6 +209,11 @@ async function main() {
     controllers.redo = viewer.menuGlobe.gui.add(editing, 'redo');
     controllers.clear = viewer.menuGlobe.gui.add(editing, 'clear');
     controllers.hide(['polygon', 'undo', 'redo', 'clear']);
+
+    // Message
+    viewer.message = '';
+    controllers.message = viewer.menuGlobe.gui.add(viewer, 'message').name('Message');
+    controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
 
     // Couche d'alertes
     editing.alert = '';
