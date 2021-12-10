@@ -168,6 +168,15 @@ async function main() {
         layer.opacity = value;
         viewer.view.notifyChange(layer);
       }));
+      if (layer.source.wmtsStyle) {
+        const styles = ['RVB', 'IRC', 'IR'];
+        folder.add({ style: layer.source.wmtsStyle }, 'style', styles).onChange((value) => {
+          const regex = /STYLE=.*TILEMATRIXSET/;
+          layer.source.url = layer.source.url.replace(regex, `STYLE=${value}&TILEMATRIXSET`);
+          layer.source.wmtsStyle = value;
+          viewer.refresh(branch.layers);
+        });
+      }
       if (layer.effect_parameter) {
         folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
           layer.effect_parameter = value;
