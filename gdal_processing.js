@@ -244,7 +244,7 @@ function processPatchAsync(patch, blocSize) {
         graph.srs.autoIdentifyEPSG();
       } catch (error) {
         console.log('Erreur dans la gestion des SRS');
-        console.log('Il faut probablement supprimer la variable PROJ_LIB de votre environement');
+        console.log('Il faut probablement supprimer la variable PROJ_LIB de votre environnement');
         reject(new Error('PROJ_LIB Error'));
       }
       const graphMem = gdal.open('graph', 'w', 'MEM', graph.size.x, graph.size.y, 3);
