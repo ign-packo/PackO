@@ -37,7 +37,8 @@ function getTile(url, x, y, z, blocSize, cacheKey, bands) {
   // en cas de besoin (bands contient 3), il faut construire le chemin vers l'image IR
   // pour les OPIs (YB_OPI_20FD6925x00001_00588.tif -> YB_OPI_20FD6925ix00001_00588.tif)
   // pour les Ortho (UP.tif -> IPi.tif)
-  const urlIr = url.includes('x') ? url.replace('x', 'ix') : url.replace('.', 'i.');
+  const urlIr = url.includes('x') ? url.replace('x', '_ix') : url.replace('.', 'i.');
+  debug(url, urlIr);
   const cacheKeyIr = `${cacheKey}_ir`;
 
   if (b.includes(3)) {
@@ -57,7 +58,8 @@ function getTile(url, x, y, z, blocSize, cacheKey, bands) {
   }
 
   // On ouvre les images si nécessaire
-  if (b.includes(0) || b.includes(1) || b.includes(2)) {
+  const withRgb = b.includes(0) || b.includes(1) || b.includes(2);
+  if (withRgb) {
     if ((cacheKey in cache) && (cache[cacheKey][url] !== url)) {
       cache[cacheKey].ds.close();
       delete cache[cacheKey];
@@ -84,16 +86,16 @@ function getTile(url, x, y, z, blocSize, cacheKey, bands) {
   }
 
   debug('fichier ouvert ');
-  const { ds } = cache[cacheKey];
-  const dsIr = withIr ? cache[cacheKeyIr] : null;
+  const ds = withRgb ? cache[cacheKey].ds : null;
+  const dsIr = withIr ? cache[cacheKeyIr].ds : null;
   const blocks = {};
   b.forEach((band) => {
     if (band in blocks) return;
-    const selectedDs = band === 3 ? dsIr : ds;
-    const selectedBand = band === 3 ? 1 : band + 1;
+    const selectedBand = band === 3 ? dsIr.bands.get(1)
+      : ds.bands.get(band + 1);
     const B = z === 0
-      ? selectedDs.bands.get(selectedBand)
-      : selectedDs.bands.get(selectedBand).overviews.get(z - 1);
+      ? selectedBand
+      : selectedBand.overviews.get(z - 1);
     blocks[band] = B.pixels.readBlock(x, y);
   });
 
@@ -156,7 +158,7 @@ function processPatchAsync(patch, blocSize) {
     const urlOrthoRgb = patch.withOrig ? patch.urlOrthoRgbOrig : patch.urlOrthoRgb;
     const urlOrthoIr = urlOrthoRgb.replace('.', 'i.');
     const { urlOpiRgb } = patch;
-    const urlOpiIr = urlOpiRgb.replace('x', 'ix');
+    const urlOpiIr = urlOpiRgb.replace('x', '_ix');
     async function getBands(ds) {
       const size = await ds.rasterSizeAsync;
       return Promise.all([
@@ -185,9 +187,15 @@ function processPatchAsync(patch, blocSize) {
         ds.bands.getAsync(1).then(
           (band) => band.pixels.readAsync(0, 0, size.x, size.y),
         ),
-        ds,
+        ds.geoTransformAsync,
+        ds.srsAsync,
+      ]).then((res2) => ({
+        bands: [res2[0]],
+        geoTransform: res2[1],
+        srs: res2[2],
         size,
-      ]);
+        ds,
+      }));
     }
     debug('chargement...');
     Promise.all([
@@ -195,7 +203,7 @@ function processPatchAsync(patch, blocSize) {
       patch.withRgb ? gdal.openAsync(urlOpiRgb).then((ds) => getBands(ds)) : null,
       patch.withIr ? gdal.openAsync(urlOpiIr).then((ds) => getBand(ds)) : null,
       patch.withRgb ? gdal.openAsync(urlOrthoRgb).then((ds) => getBands(ds)) : null,
-      patch.withIr ? gdal.openAsync(urlOrthoIr).then((ds) => getBands(ds)) : null,
+      patch.withIr ? gdal.openAsync(urlOrthoIr).then((ds) => getBand(ds)) : null,
     ]).then(async (images) => {
       debug('... fin chargement');
       debug('application du patch...');

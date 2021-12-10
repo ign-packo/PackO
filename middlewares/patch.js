@@ -156,6 +156,8 @@ function createPatch(slab,
     P.slab.z,
     overviews,
   );
+  const nameRgb = withRgb ? name : name.replace('_ix', 'x');
+  const nameIr = withRgb ? name.replace('x', '_ix') : name;
   P.urlGraph = path.join(dirCache, 'graph', P.cogPath.dirPath,
     `${idBranch}_${P.cogPath.filename}.tif`);
   P.urlOrthoRgb = path.join(dirCache, 'ortho', P.cogPath.dirPath,
@@ -163,8 +165,9 @@ function createPatch(slab,
   P.urlOrthoIr = path.join(dirCache, 'ortho', P.cogPath.dirPath,
     `${idBranch}_${P.cogPath.filename}i.tif`);
   P.urlOpiRgb = path.join(dirCache, 'opi', P.cogPath.dirPath,
-    `${P.cogPath.filename}_${name}.tif`);
-  P.urlOpiIr = P.urlOpiRgb.replace('x', 'ix');
+    `${P.cogPath.filename}_${nameRgb}.tif`);
+  P.urlOpiIr = path.join(dirCache, 'opi', P.cogPath.dirPath,
+    `${P.cogPath.filename}_${nameIr}.tif`);
   P.urlGraphOrig = path.join(dirCache, 'graph', P.cogPath.dirPath,
     `${P.cogPath.filename}.tif`);
   P.urlOrthoRgbOrig = path.join(dirCache, 'ortho', P.cogPath.dirPath,
