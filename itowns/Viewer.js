@@ -254,12 +254,14 @@ class Viewer {
             url: layerList[layerName].url,
             crs: layerList[layerName].crs,
             format: 'image/png',
+            style: layerList[layerName].wmtsStyle,
             name: layerName !== 'Contour' ? layerName.toLowerCase() : 'graph',
             tileMatrixSet: this.overviews.identifier,
             tileMatrixSetLimits:
               (layerName === 'Contour') || (layerName === 'Graph')
                 ? this.overviews.dataSet.limitsForGraph : this.overviews.dataSet.limits,
           });
+          layer.config.source.wmtsStyle = layerList[layerName].wmtsStyle;
         } else if (layerList[layerName].type === 'vector') {
           layer.config.source = new itowns.FileSource({
             url: layerList[layerName].url,

@@ -132,6 +132,15 @@ async function main() {
         layer.opacity = value;
         viewer.view.notifyChange(layer);
       }));
+      if (layer.source.wmtsStyle) {
+        const styles = ['RVB', 'IRC', 'IR'];
+        folder.add({ style: layer.source.wmtsStyle }, 'style', styles).onChange((value) => {
+          const regex = /STYLE=.*TILEMATRIXSET/;
+          layer.source.url = layer.source.url.replace(regex, `STYLE=${value}&TILEMATRIXSET`);
+          layer.source.wmtsStyle = value;
+          viewer.refresh(branch.layers);
+        });
+      }
       // folder.add({ frozen: layer.frozen }, 'frozen').onChange(((value) => {
       //   layer.frozen = value;
       //   // this.view.notifyChange(layer);
