@@ -269,17 +269,24 @@ A partir du client web en ajoutant le paramètre namecache={nom du cache en base
 A partir de l'interface web, on peut intégrer des couches vecteur (au format geojson ou shapefile) en les glissant directement dans la vue.
 Celle-ci est ensuite sauvegardée dans la base de données.
 
+Les paramètres d'affichage des couches ne sont pas persistants après un changement de branche de saisie ou de rafraîchissement de la page dans le navigateur.
+
 ### Gestion des couches d'alertes
 
-Pour naviguer à travers les entités d'une couche annexe prélablement ajoutée, il faut choisir cette couche dans le menu déroulant "alert".
+Pour naviguer à travers les entités d'une couche annexe prélablement ajoutée, il faut choisir cette couche dans le menu déroulant "Alerts Layer".
 A partir du moment où une couche a été selectionnée, le nombre d'entités déjà verifiées sur le nombre total s'affiche ainsi que les attributs propres à la première entité de la couche.
 On peut ensuite naviguer à travers les différentes entités en utilisant les flèches droite et gauche ou en cliquant directement sur l'entité voulue. Les champs "checked" et "comment" sont rafraichis avec les valeurs de l'entité selectionnée et peuvent être modifiés directement via le menu.
 Les flèches haut et bas proposent le même principe que droite et gauche avec pour seule différence de ne naviguer qu'à travers les entités non encore validées.
 
-### Retouches et patchs
+### Retouches
 
+Les étapes du processus de retouche du graphe de mosaïquage sont :
+* choisir la branche de saisie dans le menu déroulant "Active branch" (utiliser "Add new branch" pour créer une nouvelle branche)
+* choisir l'OPI de travail avec "Select an OPI"
+* démarrer la retouche ("Start polygon"), appuyer sur la touche "Majuscule" du clavier pour fermer la saisie
+* annuler ou refaire la retouche en utilisant les outils "undo", "redo"
 
-
+Les contours des retouches d'un chantier peuvent être affichés en activant l'option "visible" de la couche "Patches".
 
 ## Travailler à plusieurs sur un chantier
 
