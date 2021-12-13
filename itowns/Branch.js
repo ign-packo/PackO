@@ -78,9 +78,6 @@ class Branch {
           point: {
             color: 'Yellow',
           },
-          fill: {
-            color: 'Yellow',
-          },
         },
       },
     };
