@@ -523,12 +523,16 @@ def create_ortho_and_graph_1arg(arg):
             #                SQLStatement='select geom from '
             #                + arg['dbOption']['table']
             #                + ' where cliche like \'%' + stem[-20:] + '%\'')
-            stem_cleaned = stem.replace("OPI_", "")
+            # attention, le graph contient peut-etre des reférences aux images RGB
+            # alors que les fichiers sont peut-être des IR
+            stem_cleaned1 = stem.replace("OPI_", "")
+            stem_cleaned2 = stem.replace("OPI_", "").replace("_ix", "x")
             gdal.Rasterize(mask,
                            db_graph,
                            SQLStatement='select geom from '
                            + arg['dbOption']['table']
-                           + ' where cliche like \'%' + stem_cleaned + '%\'')
+                           + ' where cliche like \'%' + stem_cleaned1 + '%\''
+                           + ' or cliche like \'%' + stem_cleaned2 + '%\'')
             img_mask = mask.GetRasterBand(1).ReadAsArray()
             # si mask est vide, on ne fait rien
             val_max = np.amax(img_mask)
