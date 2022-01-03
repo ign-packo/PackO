@@ -115,25 +115,25 @@ function wmts(req, _res, next) {
         'ows:UpperCorner': proj4(crs, 'EPSG:4326', overviews.dataSet.boundingBox.UpperCorner).join(' '),
       },
       'ows:Identifier': layerName,
-      Style: {
-        'ows:Title': 'Legende generique',
-        'ows:Abstract': 'Fichier de legende generique',
-        'ows:Keywords': { 'ows:Keyword': 'Defaut' },
-        'ows:Identifier': 'normal',
-        LegendeURL: {
+      Style: layerName === 'graph'
+        ? {
+          'ows:Identifier': 'default',
           $: {
-            format: 'image/jpeg',
-            height: '200',
-            maxScaleDenominator: '100000000',
-            minScaleDenominator: '200',
-            width: '200',
-            'xlink:href': 'https://wxs.ign.fr/static/legends/LEGEND.jpg',
+            isDefault: 'true',
           },
-        },
-        $: {
-          isDefault: 'true',
-        },
-      },
+        } : [
+          {
+            'ows:Identifier': 'RVB',
+            $: {
+              isDefault: 'true',
+            },
+          },
+          {
+            'ows:Identifier': 'IRC',
+          },
+          {
+            'ows:Identifier': 'IR',
+          }],
       Format: 'image/png',
       [extra[layerName].key]: extra[layerName].value,
       TileMatrixSetLink: {
