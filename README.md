@@ -136,7 +136,7 @@ SET PROJ_LIB=
 Ce service propose: 
 
 - un flux WMTS standard pour les couches ortho et graph
-- un flux WMTS permettant d'accéder aux OPI: ce flux est déclaré comme une couche unique (opi) et on utilise un paramètre de dimension pour choisir le cliché à afficher. Attention, il faut normalement déclarer explicitement toutes les valeurs de dimension dans le GetCapabilties mais cela ne va pas être possible de déclarer tous les clichés (potientiellement plusieurs milliers).
+- un flux WMTS permettant d'accéder aux OPI: ce flux est déclaré comme une couche unique (opi) et on utilise un paramètre de dimension pour choisir le cliché à afficher.
 - une commande permettant de modifier le graphe en donnant: un geojson + une référence de cliché
 
 ## Client web (uniquement si on souhaite le lancer séparément)
@@ -178,16 +178,16 @@ shp2pgsql graphe.shp | psql -d bd_graphe
 psql -d bd_graphe -c "SELECT UpdateGeometrySRID('graphe','geom',2154)"
 ```
 
-Pour le moment, PackO ne gère que des images 3 canaux (RGB), mais des évolutions sont en cours pour gérer des images 4 canaux (RGB+IR).
+PackO peut gérer des images 3 canaux (RGB), 4 canaux (RGB + IR) ou mono canal (IR).
 
 La création du cache est faite à l'aide du script **create_cache.py**:
 ````
-usage: create_cache.py [-h] -i INPUT [-c CACHE] [-o OVERVIEWS] [-g GEOPACKAGE] [-t TABLE] [-p PROCESSORS] [-v VERBOSE]
+usage: create_cache.py [-h] [-R RGB] [-I IR] [-c CACHE] [-o OVERVIEWS] [-g GEOPACKAGE] [-t TABLE] [-p PROCESSORS] [-v VERBOSE]
 
 optional arguments:
   -h, --help            show this help message and exit
-  -i INPUT, --input INPUT
-                        input OPI pattern
+  -R RGB, --rgb RGB     input RGB OPI pattern
+  -I IR, --ir IR        input IR OPI pattern
   -c CACHE, --cache CACHE
                         cache directory (default: cache)
   -o OVERVIEWS, --overviews OVERVIEWS
@@ -225,12 +225,12 @@ Le script permet d'obtenir trois arborescences de COG (graph/opi/ortho) et un fi
 Une fois le cache créé, on peut y ajouter des OPI si nécessaire avec le script **update_cache.py**:
 
 ````
-usage: update_cache.py [-h] -i INPUT [-c CACHE] [-r REPROCESSING] [-g GEOPACKAGE] [-t TABLE] [-p PROCESSORS] [-v VERBOSE]
+usage: update_cache.py [-h] [-R RGB] [-I IR] [-c CACHE] [-r REPROCESSING] [-g GEOPACKAGE] [-t TABLE] [-p PROCESSORS] [-v VERBOSE]
 
 optional arguments:
   -h, --help            show this help message and exit
-  -i INPUT, --input INPUT
-                        input OPI pattern
+  -R RGB, --rgb RGB     input RGB OPI pattern
+  -I IR, --ir IR        input IR OPI pattern
   -c CACHE, --cache CACHE
                         cache directory (default: cache)
   -r REPROCESSING, --reprocessing REPROCESSING
@@ -329,9 +329,9 @@ Pour cela il faut:
 1. identifier l'identifiant de la branche que l'on souhaite exporter. Pour cela on peut demander à l'API la liste des branches en utilisant l'url: 
 http://[serveur]:[port]/branches
 
-2. générer un descripteur XML gdal avec la commande **gdal_translate** en indiquant l'identifiant de la branche et la couche souhaitée (ortho ou graph):
+2. générer un descripteur XML gdal avec la commande **gdal_translate** en indiquant l'identifiant de la branche et la couche souhaitée (ortho ou graph) et éventuellement le style souhaité (RVB, IRC ou IR):
 ````
-gdal_translate "WMTS:http://[serveur]:[port]/[idBranch]/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0,layer=ortho" ortho.xml -of WMTS
+gdal_translate "WMTS:http://[serveur]:[port]/[idBranch]/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0,layer=ortho,style=[style]" ortho.xml -of WMTS
 gdal_translate "WMTS:http://[serveur]:[port]/[idBranch]/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0,layer=graph" graph.xml -of WMTS
 `````
 3. utiliser n'importe quelle commande gdal pour faire un export à partir du descripteur ainsi obtenu:
