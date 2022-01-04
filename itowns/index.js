@@ -335,10 +335,9 @@ async function main() {
 
     view.addEventListener('file-dropped', async (event) => {
       console.log('-> A file had been dropped');
+      // controllers.resetAlerts();
       await branch.saveLayer(event.name, event.data, event.style);
-      // view.getLayerById(event.name).vectorId = branch.layers[event.name].id;
       controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
-      controllers.resetAlerts();
     });
 
     view.addEventListener('branch-created', () => {

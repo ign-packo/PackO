@@ -41,6 +41,9 @@ class Controller {
     delete this.viewer.alertLayerName;
     this.alert.__select.options.selectedIndex = -1;
     this.hide(['nbChecked', 'checked', 'comment']);
+    if (this.viewer.view.getLayerById('selectedFeature')) {
+      this.viewer.view.removeLayer('selectedFeature');
+    }
   }
 
   setVisible(controllerName) {
