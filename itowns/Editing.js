@@ -299,25 +299,26 @@ class Editing {
       this.cancelcurrentPolygon();
     } else if (e.key === 'Shift') {
       if (this.currentStatus === status.POLYGON) {
-        if (this.currentPolygon && (this.nbVertices > 2)) {
-          if (this.branch.active.name !== 'orig') {
+        if (this.currentPolygon) {
+          if (this.branch.active.name === 'orig') {
+            this.viewer.message = 'Changer de branche pour continuer';
+          } else if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
+            this.viewer.message = 'Zoom non valide pour continuer';
+          } else if (this.nbVertices < 3) {
+            this.viewer.message = 'Pas assez de points';
+          } else {
             this.currentStatus = status.ENDING;
             this.viewer.message = 'Cliquer pour valider la saisie';
-          } else {
-            this.viewer.message = 'Changer de branche pour continuer';
+            this.view.controls.setCursor('default', 'progress');
+
+            const vertices = this.currentPolygon.geometry.attributes.position;
+            vertices.copyAt(this.nbVertices, vertices, 0);
+            vertices.needsUpdate = true;
+
+            this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
+            this.currentPolygon.geometry.computeBoundingSphere();
+            this.view.notifyChange(this.currentPolygon);
           }
-
-          this.view.controls.setCursor('default', 'progress');
-
-          const vertices = this.currentPolygon.geometry.attributes.position;
-          vertices.copyAt(this.nbVertices, vertices, 0);
-          vertices.needsUpdate = true;
-
-          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
-          this.currentPolygon.geometry.computeBoundingSphere();
-          this.view.notifyChange(this.currentPolygon);
-        } else {
-          this.viewer.message = 'Pas assez de points';
         }
       }
     } else if (e.key === 'Backspace') {
@@ -417,7 +418,11 @@ class Editing {
         break;
       }
       case status.POLYGON: {
-        if (this.branch.active.name !== 'orig') {
+        if (this.branch.active.name === 'orig') {
+          this.viewer.message = 'Changer de branche pour continuer';
+        } else if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
+          this.viewer.message = 'Zoom non valide pour continuer';
+        } else {
           // Cas ou l'on est en train de saisir un polygon : on ajoute un point
           this.viewer.message = 'Maj pour terminer';
 
@@ -436,8 +441,6 @@ class Editing {
             vertices.needsUpdate = true;
           }
           this.nbVertices += 1;
-        } else {
-          this.viewer.message = 'Changer de branche pour continuer';
         }
         break;
       }
