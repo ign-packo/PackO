@@ -85,7 +85,7 @@ async function main() {
       l <= overviews.dataSet.level.max; l += 1) {
       overviews.dataSet.limitsForGraph[l] = overviews.dataSet.limits[l];
     }
-    viewer.zoomMin = overviews.dataSet.level.max - nbSubLevelsPerCOG;
+    viewer.zoomMinPatch = overviews.dataSet.level.max - nbSubLevelsPerCOG;
     // pour la fonction updateScaleWidget
     viewer.maxGraphDezoom = 2 ** nbSubLevelsPerCOG;
 
