@@ -120,11 +120,16 @@ async function main() {
       const folder = this[typeGui].addFolder(layer.id);
       folder.add({ visible: layer.visible }, 'visible').onChange(((value) => {
         layer.visible = value;
-        this.view.notifyChange(layer);
+
+        if (layer.id === editing.alertLayerName) {
+          viewer.view.getLayerById('selectedFeature').visible = value;
+        }
+
+        viewer.view.notifyChange(layer);
       }));
       folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0).onChange(((value) => {
         layer.opacity = value;
-        this.view.notifyChange(layer);
+        viewer.view.notifyChange(layer);
       }));
       // folder.add({ frozen: layer.frozen }, 'frozen').onChange(((value) => {
       //   layer.frozen = value;
@@ -133,14 +138,14 @@ async function main() {
       if (layer.effect_parameter) {
         folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
           layer.effect_parameter = value;
-          this.view.notifyChange(layer);
+          viewer.view.notifyChange(layer);
         }));
       }
       if (typeGui === 'vectorGui') {
         folder.add(branch, 'deleteVectorLayer').name('delete').onChange(() => {
           if (layer.id !== editing.alertLayerName) {
             branch.deleteVectorLayer(layer);
-            this.view.notifyChange(layer);
+            viewer.view.notifyChange(layer);
             controllers.refreshDropBox('alert', branch.vectorList
               .filter((elem) => elem.name !== layer.id)
               .map((elem) => elem.name));
