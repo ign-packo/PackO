@@ -39,7 +39,7 @@ class Controller {
   resetAlerts() {
     delete this.editing.alertLayerName;
     delete this.viewer.alertLayerName;
-    this.alert.__select.options.selectedIndex = -1;
+    this.alert.__select.options.selectedIndex = 0;
     this.hide(['nbChecked', 'checked', 'comment']);
     if (this.viewer.view.getLayerById('selectedFeature')) {
       this.viewer.view.removeLayer('selectedFeature');
