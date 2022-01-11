@@ -296,6 +296,7 @@ async function main() {
           });
         if (res.status === 200) {
           viewer.refresh(branch.layers);
+          editing.alertFC.features[0].geometries[editing.featureIndex].properties.comment = value;
         } else {
           viewer.message = 'PB with validate';
         }
