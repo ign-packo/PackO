@@ -275,7 +275,8 @@ async function main() {
           method: 'PUT',
         });
       if (res.status === 200) {
-        viewer.refresh(branch.layers);
+        // viewer.refresh(branch.layers);
+        viewer.refresh({ [editing.alertLayerName]: branch.layers[editing.alertLayerName] });
         if (value === true) {
           editing.nbValidated += 1;
         } else {
@@ -305,7 +306,8 @@ async function main() {
             method: 'PUT',
           });
         if (res.status === 200) {
-          viewer.refresh(branch.layers);
+          // viewer.refresh(branch.layers);
+          viewer.refresh({ [editing.alertLayerName]: branch.layers[editing.alertLayerName] });
           editing.alertFC.features[0].geometries[editing.featureIndex].properties.comment = value;
         } else {
           viewer.message = 'PB with validate';
