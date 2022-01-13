@@ -202,8 +202,8 @@ class Editing {
     });
 
     this.viewer.view.addLayer(newColorLayer);
-    this.checked = this.featureSelectedGeom.properties.status;
-    this.controllers.checked.updateDisplay();
+    this.validated = this.featureSelectedGeom.properties.status;
+    this.controllers.validated.updateDisplay();
     this.viewer.comment = this.featureSelectedGeom.properties.comment;
     this.controllers.comment.updateDisplay();
   }
@@ -213,39 +213,51 @@ class Editing {
   //   const layerTest = this.viewer.view.getLayerById(this.alertLayerName);
   //   const fc = await layerTest.source.loadData(undefined, layerTest);
 
+  async postValue(idFeature, variable, value) {
+    const res = await fetch(`${this.apiUrl}/alert/${idFeature}?${variable}=${value}`,
+      {
+        method: 'PUT',
+      });
+    if (res.status === 200) {
+      this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
+      this.alertFC.features[0].geometries[this.featureIndex].properties[variable] = value;
+    } else {
+      this.viewer.message = 'PB with validate';
+    }
+  }
+
   centerOnAlertFeature() {
-    // const fc = this.alertFC;
-
-    // refresh datGUI.nbChecked
-    // this.nbValidated = fc.features[0].geometries.filter(
-    //   (elem) => elem.properties.status === true,
-    // ).length;
-    // this.nbTotal = fc.features[0].geometries.length;
-    // this.nbChecked = `${this.nbValidated}/${this.nbTotal}`;
-
-    // get index of feature selected
-    // if (this.featureIndex === this.alertFC.features[0].geometries.length) this.featureIndex = 0;
-    // if (this.featureIndex === -1) {
-    //   this.featureIndex = this.alertFC.features[0].geometries.length - 1;
-    // }
-
-    // if (onlyUnchecked) {
-    //   if (fc.features[0].geometries[this.featureIndex].properties.status === true) {
-    //     this.featureIndex += step;
-    //     if (this.featureIndex === fc.features[0].geometries.length) this.featureIndex = 0;
-    //     if (this.featureIndex === -1) this.featureIndex = fc.features[0].geometries.length - 1;
-    //   }
-    // }
-
-    // Center on Feature
+    this.viewer.message = '';
     const coordcenter = this.alertFC.features[0].geometries[this.featureIndex].extent.clone()
       .applyMatrix4(this.alertFC.matrixWorld).center();
 
     this.viewer.centerCamera(coordcenter.x, coordcenter.y);
 
+    this.featureSelectedGeom = this.alertFC.features[0].geometries[this.featureIndex];
+
+    if (this.featureSelectedGeom.properties.status === null) {
+      this.postValue(this.featureSelectedGeom.properties.id, 'status', false);
+      this.featureSelectedGeom.properties.status = false;
+      this.nbChecked += 1;
+      this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
+    }
+
     this.highlightSelectedFeature(this.alertFC,
-      this.alertFC.features[0].geometries[this.featureIndex],
+      this.featureSelectedGeom,
       this.alertFC.features[0].type);
+  }
+
+  checked() {
+    if (this.featureSelectedGeom.properties.status === true) {
+      this.viewer.message = 'alerte déjà validée';
+    } else if (this.featureSelectedGeom.properties.status === false){
+      this.postValue(this.featureSelectedGeom.properties.id, 'status', null);
+      this.featureSelectedGeom.properties.status = null;
+      this.nbChecked -= 1;
+      this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
+    } else {
+      this.viewer.message = 'alerte déjà validée';
+    }
   }
 
   keydown(e) {

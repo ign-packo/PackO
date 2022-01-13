@@ -237,38 +237,42 @@ async function main() {
         editing.nbValidated = editing.alertFC.features[0].geometries.filter(
           (elem) => elem.properties.status === true,
         ).length;
+        editing.nbChecked = editing.alertFC.features[0].geometries.filter(
+          (elem) => elem.properties.status !== null,
+        ).length;
         editing.nbTotal = editing.alertFC.features[0].geometries.length;
-        editing.nbChecked = `${editing.nbValidated}/${editing.nbTotal}`;
+        editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
 
         editing.centerOnAlertFeature();
-        // .then(() => {
-        //   editing.checked = editing.featureSelectedGeom.properties.status;
-        //   controllers.checked.updateDisplay();
-        //   viewer.comment = editing.featureSelectedGeom.properties.comment;
-        //   controllers.comment.updateDisplay();
-        //   controllers.nbChecked.updateDisplay();
-        // });
-        editing.checked = editing.featureSelectedGeom.properties.status;
-        controllers.checked.updateDisplay();
+        editing.validated = editing.featureSelectedGeom.properties.status;
+        controllers.validated.updateDisplay();
         viewer.comment = editing.featureSelectedGeom.properties.comment;
         controllers.comment.updateDisplay();
-        controllers.nbChecked.updateDisplay();
+        controllers.progress.updateDisplay();
 
-        controllers.setVisible(['nbChecked', 'checked', 'comment']);
+        controllers.setVisible(['progress', 'validated', 'checked', 'comment']);
       } else {
         controllers.resetAlerts();
       }
+      viewer.message = '';
       viewer.refresh(branch.layers);
       // viewer.refresh({ name: branch.layers[name] });
     });
-    editing.nbChecked = 'test';
-    controllers.nbChecked = viewer.menuGlobe.gui.add(editing, 'nbChecked').name('Validated');
-    controllers.nbChecked.listen().domElement.parentElement.style.pointerEvents = 'none';
-    controllers.hide('nbChecked');
+    editing.progress = 'test';
+    controllers.progress = viewer.menuGlobe.gui.add(editing, 'progress').name('Progress');
+    controllers.progress.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.hide('progress');
 
-    editing.checked = false;
-    controllers.checked = viewer.menuGlobe.gui.add(editing, 'checked');
-    controllers.checked.onChange(async (value) => {
+    // editing.checked = true;
+    // controllers.checked = viewer.menuGlobe.gui.add(editing, 'checked');
+    // controllers.hide('checked');
+
+    controllers.checked = viewer.menuGlobe.gui.add(editing, 'checked').name('Marked as unchecked');
+    controllers.hide('checked');
+
+    editing.validated = false;
+    controllers.validated = viewer.menuGlobe.gui.add(editing, 'validated');
+    controllers.validated.onChange(async (value) => {
       console.log('change status', value);
       const idFeature = editing.featureSelectedGeom.properties.id;
       const res = await fetch(`${apiUrl}/alert/${idFeature}?status=${value}`,
@@ -283,38 +287,40 @@ async function main() {
         } else {
           editing.nbValidated -= 1;
         }
-        editing.nbChecked = `${editing.nbValidated}/${editing.nbTotal}`;
+        editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
         editing.alertFC.features[0].geometries[editing.featureIndex].properties.status = value;
       } else {
         viewer.message = 'PB with validate';
       }
     });
-    controllers.hide('checked');
+    controllers.hide('validated');
 
     viewer.comment = '';
     controllers.comment = viewer.menuGlobe.gui.add(viewer, 'comment');
-    controllers.comment.onChange(() => {
-      console.log('edition du commentaire en cours');
-      editing.currentStatus = editing.STATUS.COMMENT;
-    });
-    controllers.comment.onFinishChange(async (value) => {
-      console.log('edition du commentaire terminée : ', value);
-      editing.currentStatus = editing.STATUS.RAS;
-      if (value !== editing.featureSelectedGeom.properties.comment) {
-        const idFeature = editing.featureSelectedGeom.properties.id;
-        const res = await fetch(`${apiUrl}/alert/${idFeature}?comment=${value}`,
-          {
-            method: 'PUT',
-          });
-        if (res.status === 200) {
-          // viewer.refresh(branch.layers);
-          viewer.refresh({ [editing.alertLayerName]: branch.layers[editing.alertLayerName] });
-          editing.alertFC.features[0].geometries[editing.featureIndex].properties.comment = value;
-        } else {
-          viewer.message = 'PB with validate';
-        }
-      }
-    });
+    controllers.comment.listen().domElement.parentElement.style.pointerEvents = 'none';
+    // controllers.comment.onChange(() => {
+    //   console.log('edition du commentaire en cours');
+    //   editing.currentStatus = editing.STATUS.COMMENT;
+    // });
+    // controllers.comment.onFinishChange(async (value) => {
+    //   console.log('edition du commentaire terminée : ', value);
+    //   editing.currentStatus = editing.STATUS.RAS;
+    //   if (value !== editing.featureSelectedGeom.properties.comment) {
+    //     const idFeature = editing.featureSelectedGeom.properties.id;
+    //     const res = await fetch(`${apiUrl}/alert/${idFeature}?comment=${value}`,
+    //       {
+    //         method: 'PUT',
+    //       });
+    //     if (res.status === 200) {
+    //       // viewer.refresh(branch.layers);
+    //       viewer.refresh({ [editing.alertLayerName]: branch.layers[editing.alertLayerName] });
+    //       editing.alertFC.features[0].geometries[editing.featureIndex]
+    //         .properties.comment = value;
+    //     } else {
+    //       viewer.message = 'PB with validate';
+    //     }
+    //   }
+    // });
     controllers.hide('comment');
 
     // editing controllers
@@ -323,6 +329,7 @@ async function main() {
       cliche: controllers.cliche,
       polygon: controllers.polygon,
       checked: controllers.checked,
+      validated: controllers.validated,
       comment: controllers.comment,
     };
     viewerDiv.focus();
@@ -392,6 +399,14 @@ async function main() {
               editing.featureIndex = i;
             }
           }
+
+          if (features[layerTest.id][0].geometry.properties.status === null) {
+            editing.postValue(features[layerTest.id][0].geometry.properties.id, 'status', false);
+            editing.featureSelectedGeom.properties.status = false;
+            editing.nbChecked += 1;
+            editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
+          }
+
           editing.highlightSelectedFeature(featureCollec,
             features[layerTest.id][0].geometry,
             features[layerTest.id][0].type);
