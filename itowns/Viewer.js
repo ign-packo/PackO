@@ -35,11 +35,13 @@ else {
 `);
 
 function coloringAlerts(properties) {
-  // Pour le moment on utilise que 2 etats
   if (properties.status === false) {
-    return '#ff5555';// red
+    return '#ffff00';// yellow
   }
-  return '#3cd25f';// green
+  if (properties.status === true) {
+    return '#3cd25f';// green
+  }
+  return '#ff5555';// red
 }
 
 class Viewer {
