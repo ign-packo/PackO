@@ -36,12 +36,15 @@ else {
 
 function coloringAlerts(properties) {
   if (properties.status === false) {
-    return '#ffff00';// yellow
+    // return '#ffff00';// yellow
+    // return '#ffa500';// orange
+    return '#0000ff99';// blue
   }
   if (properties.status === true) {
-    return '#3cd25f';// green
+    return '#3cd25f99';// green
   }
-  return '#ff5555';// red
+  // return '#ff5555';// red
+  return '#ff000099';
 }
 
 class Viewer {
