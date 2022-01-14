@@ -1,16 +1,16 @@
 /* eslint no-underscore-dangle: ["error", { "allow": [__controllers, __li, __select] }] */
-function getController(gui, name) {
-  let controller = null;
-  const controllers = gui.__controllers;
-  for (let i = 0; i < controllers.length; i += 1) {
-    const c = controllers[i];
-    if (c.property === name || c.name === name) {
-      controller = c;
-      break;
-    }
-  }
-  return controller;
-}
+// function getController(gui, name) {
+//   let controller = null;
+//   const controllers = gui.__controllers;
+//   for (let i = 0; i < controllers.length; i += 1) {
+//     const c = controllers[i];
+//     if (c.property === name || c.name === name) {
+//       controller = c;
+//       break;
+//     }
+//   }
+//   return controller;
+// }
 
 class Controller {
   constructor(menuGlobe, editing) {
@@ -18,6 +18,19 @@ class Controller {
     this.menuGlobe = menuGlobe;
     this.editing = editing;
     this.viewer = this.editing.viewer;
+  }
+
+  getController(name) {
+    let controller = null;
+    const controllers = this.viewer.menuGlobe.gui.__controllers;
+    for (let i = 0; i < controllers.length; i += 1) {
+      const c = controllers[i];
+      if (c.property === name || c.name === name) {
+        controller = c;
+        break;
+      }
+    }
+    return controller;
   }
 
   setEditingController() {
@@ -50,14 +63,14 @@ class Controller {
   setVisible(controllerName) {
     const controllers = (typeof controllerName === 'string' || controllerName instanceof String) ? [controllerName] : controllerName;
     controllers.forEach((controller) => {
-      getController(this.viewer.menuGlobe.gui, controller).__li.style.display = '';
+      this.getController(controller).__li.style.display = '';
     });
   }
 
   hide(controllerName) {
     const controllers = (typeof controllerName === 'string' || controllerName instanceof String) ? [controllerName] : controllerName;
     controllers.forEach((controller) => {
-      getController(this.viewer.menuGlobe.gui, controller).__li.style.display = 'none';
+      this.getController(controller).__li.style.display = 'none';
     });
   }
 }
