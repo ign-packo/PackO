@@ -11,7 +11,7 @@ const status = {
   POLYGON: 2,
   ENDING: 3,
   WAITING: 4,
-  COMMENT: 5,
+  WRITING: 5,
 };
 
 class Editing {
@@ -185,16 +185,13 @@ class Editing {
         max: this.viewer.overviews.dataSet.level.max,
       },
       style: new itowns.Style({
-        // fill: {
-        //   color: '#bbffbb',
-        // },
         stroke: {
           color: 'yellow',
           width: 5,
         },
         point: {
           color: '#66666600',
-          radius: 5,
+          radius: 7,
           line: 'yellow',
           width: 5,
         },
@@ -202,10 +199,6 @@ class Editing {
     });
 
     this.viewer.view.addLayer(newColorLayer);
-    this.validated = this.featureSelectedGeom.properties.status;
-    this.controllers.validated.updateDisplay();
-    this.viewer.comment = this.featureSelectedGeom.properties.comment;
-    this.controllers.comment.updateDisplay();
   }
 
   // alerts
@@ -237,26 +230,31 @@ class Editing {
 
     if (this.featureSelectedGeom.properties.status === null) {
       this.postValue(this.featureSelectedGeom.properties.id, 'status', false);
-      this.featureSelectedGeom.properties.status = false;
+      // this.featureSelectedGeom.properties.status = false;
       this.nbChecked += 1;
       this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
     }
+
+    // this.id = this.featureSelectedGeom.properties.id;
+    this.id = this.featureIndex;
+    this.controllers.id.updateDisplay();
+    this.validated = this.featureSelectedGeom.properties.status;
+    this.controllers.validated.updateDisplay();
+    this.viewer.comment = this.featureSelectedGeom.properties.comment;
 
     this.highlightSelectedFeature(this.alertFC,
       this.featureSelectedGeom,
       this.alertFC.features[0].type);
   }
 
-  checked() {
+  unchecked() {
     if (this.featureSelectedGeom.properties.status === true) {
       this.viewer.message = 'alerte déjà validée';
-    } else if (this.featureSelectedGeom.properties.status === false){
+    } else if (this.featureSelectedGeom.properties.status === false) {
       this.postValue(this.featureSelectedGeom.properties.id, 'status', null);
       this.featureSelectedGeom.properties.status = null;
       this.nbChecked -= 1;
       this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
-    } else {
-      this.viewer.message = 'alerte déjà validée';
     }
   }
 
