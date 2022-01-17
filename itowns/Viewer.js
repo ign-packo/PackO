@@ -215,7 +215,7 @@ class Viewer {
             opacity,
             style,
             zoom: {
-              min: layerName === 'Patches' ? this.zoomMinPatch : this.overviews.dataSet.level.min,
+              min: layerName === 'Patches' || layerName === this.alertLayerName ? this.zoomMinPatch - 1 : this.overviews.dataSet.level.min,
               // min: this.overviews.dataSet.level.min,
               max: this.overviews.dataSet.level.max,
             },
