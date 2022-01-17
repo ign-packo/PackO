@@ -266,8 +266,10 @@ A partir du client web en ajoutant le paramètre namecache={nom du cache en base
 
 ### Import de couches vecteur annexes
 
-A partir de l'interface web, on peut intégrer des couches vecteur (au format geojson ou shapefile) en les glissant directement dans la vue.
-Celle-ci est ensuite sauvegardée dans la base de données.
+A partir de l'interface web, on peut intégrer des couches vecteur (au format geojson ou shapefile) en les glissant directement dans la vue. 
+Pour les fichiers shapefile, il faut glisser les fichiers .shp, .shx, .dbf et .prj en même temps.
+Pour des soucis d'intégrité, si on désire ajouter plusieurs couches, il faut les ajouter une à une.
+Chaque couche ajoutée est sauvegardée dans la base de données.
 
 Les paramètres d'affichage des couches ne sont pas persistants après un changement de branche de saisie ou de rafraîchissement de la page dans le navigateur.
 

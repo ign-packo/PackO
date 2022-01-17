@@ -120,11 +120,16 @@ async function main() {
       const folder = this[typeGui].addFolder(layer.id);
       folder.add({ visible: layer.visible }, 'visible').onChange(((value) => {
         layer.visible = value;
-        this.view.notifyChange(layer);
+
+        if (layer.id === editing.alertLayerName) {
+          viewer.view.getLayerById('selectedFeature').visible = value;
+        }
+
+        viewer.view.notifyChange(layer);
       }));
       folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0).onChange(((value) => {
         layer.opacity = value;
-        this.view.notifyChange(layer);
+        viewer.view.notifyChange(layer);
       }));
       // folder.add({ frozen: layer.frozen }, 'frozen').onChange(((value) => {
       //   layer.frozen = value;
@@ -133,17 +138,17 @@ async function main() {
       if (layer.effect_parameter) {
         folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
           layer.effect_parameter = value;
-          this.view.notifyChange(layer);
+          viewer.view.notifyChange(layer);
         }));
       }
       if (typeGui === 'vectorGui') {
         folder.add(branch, 'deleteVectorLayer').name('delete').onChange(() => {
           if (layer.id !== editing.alertLayerName) {
             branch.deleteVectorLayer(layer);
-            this.view.notifyChange(layer);
-            controllers.refreshDropBox('alert', branch.vectorList
+            viewer.view.notifyChange(layer);
+            controllers.refreshDropBox('alert', [' -', ...branch.vectorList
               .filter((elem) => elem.name !== layer.id)
-              .map((elem) => elem.name));
+              .map((elem) => elem.name)]);
           } else {
             viewer.message = 'Couche en edition';
           }
@@ -189,7 +194,7 @@ async function main() {
       };
       await branch.changeBranch();
       controllers.setEditingController();
-      controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
+      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
       controllers.resetAlerts();
     });
     controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch').name('Add new branch');
@@ -216,38 +221,42 @@ async function main() {
     controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
 
     // Couche d'alertes
-    editing.alert = '';
-    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', branch.vectorList.map((elem) => elem.name)).name('Alerts Layer');
+    editing.alert = ' -';
+    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [' -', ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
     controllers.alert.onChange(async (name) => {
       console.log('choosed alert vector layer: ', name);
 
-      editing.featureIndex = 0;
-      editing.alertLayerName = name;
-      viewer.alertLayerName = name;
+      if (name !== ' -') {
+        editing.featureIndex = 0;
+        editing.alertLayerName = name;
+        viewer.alertLayerName = name;
 
-      const layerTest = viewer.view.getLayerById(editing.alertLayerName);
-      editing.alertFC = await layerTest.source.loadData(undefined, layerTest);
-      editing.nbValidated = editing.alertFC.features[0].geometries.filter(
-        (elem) => elem.properties.status === true,
-      ).length;
-      editing.nbTotal = editing.alertFC.features[0].geometries.length;
-      editing.nbChecked = `${editing.nbValidated}/${editing.nbTotal}`;
+        const layerTest = viewer.view.getLayerById(editing.alertLayerName);
+        editing.alertFC = await layerTest.source.loadData(undefined, layerTest);
+        editing.nbValidated = editing.alertFC.features[0].geometries.filter(
+          (elem) => elem.properties.status === true,
+        ).length;
+        editing.nbTotal = editing.alertFC.features[0].geometries.length;
+        editing.nbChecked = `${editing.nbValidated}/${editing.nbTotal}`;
 
-      editing.centerOnAlertFeature();
-      // .then(() => {
-      //   editing.checked = editing.featureSelectedGeom.properties.status;
-      //   controllers.checked.updateDisplay();
-      //   viewer.comment = editing.featureSelectedGeom.properties.comment;
-      //   controllers.comment.updateDisplay();
-      //   controllers.nbChecked.updateDisplay();
-      // });
-      editing.checked = editing.featureSelectedGeom.properties.status;
-      controllers.checked.updateDisplay();
-      viewer.comment = editing.featureSelectedGeom.properties.comment;
-      controllers.comment.updateDisplay();
-      controllers.nbChecked.updateDisplay();
+        editing.centerOnAlertFeature();
+        // .then(() => {
+        //   editing.checked = editing.featureSelectedGeom.properties.status;
+        //   controllers.checked.updateDisplay();
+        //   viewer.comment = editing.featureSelectedGeom.properties.comment;
+        //   controllers.comment.updateDisplay();
+        //   controllers.nbChecked.updateDisplay();
+        // });
+        editing.checked = editing.featureSelectedGeom.properties.status;
+        controllers.checked.updateDisplay();
+        viewer.comment = editing.featureSelectedGeom.properties.comment;
+        controllers.comment.updateDisplay();
+        controllers.nbChecked.updateDisplay();
 
-      controllers.setVisible(['nbChecked', 'checked', 'comment']);
+        controllers.setVisible(['nbChecked', 'checked', 'comment']);
+      } else {
+        controllers.resetAlerts();
+      }
       viewer.refresh(branch.layers);
     });
     editing.nbChecked = 'test';
@@ -296,6 +305,7 @@ async function main() {
           });
         if (res.status === 200) {
           viewer.refresh(branch.layers);
+          editing.alertFC.features[0].geometries[editing.featureIndex].properties.comment = value;
         } else {
           viewer.message = 'PB with validate';
         }
@@ -334,17 +344,15 @@ async function main() {
 
     view.addEventListener('file-dropped', async (event) => {
       console.log('-> A file had been dropped');
+      // controllers.resetAlerts();
       await branch.saveLayer(event.name, event.data, event.style);
-      // view.getLayerById(event.name).vectorId = branch.layers[event.name].id;
-      controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
-      controllers.resetAlerts();
+      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
     });
 
     view.addEventListener('branch-created', () => {
       console.log('-> New branch created');
       controllers.setEditingController();
-      controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
-
+      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
       controllers.resetAlerts();
       controllers.branch = controllers.branch.options(branch.list.map((elem) => elem.name))
         .setValue(branch.active.name);
@@ -356,7 +364,7 @@ async function main() {
         };
         await branch.changeBranch();
         controllers.setEditingController();
-        controllers.refreshDropBox('alert', branch.vectorList.map((elem) => elem.name));
+        controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
         controllers.resetAlerts();
       });
     });
