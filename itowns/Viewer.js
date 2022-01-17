@@ -210,7 +210,8 @@ class Viewer {
             opacity,
             style,
             zoom: {
-              min: source.isVectorSource ? this.zoomMin : this.overviews.dataSet.level.min,
+              min: layerName === 'Patches' ? this.zoomMinPatch : this.overviews.dataSet.level.min,
+              // min: this.overviews.dataSet.level.min,
               max: this.overviews.dataSet.level.max,
             },
           });
@@ -251,7 +252,11 @@ class Viewer {
           //   layerList[layerName].style.point.color = coloringAlerts;
           // }
           layer.config.style = new itowns.Style(layerList[layerName].style);
-          layer.config.zoom = { min: this.zoomMin, max: this.overviews.dataSet.level.max };
+          layer.config.zoom = {
+            min: this.overviews.dataSet.level.min,
+            max: this.overviews.dataSet.level.max,
+          };
+          // pas besoin de definir le zoom min pour patches car il y en a jamais sur la couche orig
         }
         layer.config.opacity = layerList[layerName].opacity;
         layer.colorLayer = new itowns.ColorLayer(

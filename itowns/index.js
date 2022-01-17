@@ -25,6 +25,7 @@ function updateScaleWidget(view, resolution, maxGraphDezoom) {
   document.getElementById('spanZoomWidget').innerHTML = dezoom <= 1 ? `zoom: ${1 / dezoom}` : `zoom: 1/${dezoom}`;
   document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
   document.getElementById('spanGraphVisibWidget').classList.toggle('not_displayed', dezoom > maxGraphDezoom);
+  return dezoom;
 }
 
 // check if string is in "x,y" format with x and y positive floats
@@ -85,7 +86,7 @@ async function main() {
       l <= overviews.dataSet.level.max; l += 1) {
       overviews.dataSet.limitsForGraph[l] = overviews.dataSet.limits[l];
     }
-    viewer.zoomMin = overviews.dataSet.level.max - nbSubLevelsPerCOG;
+    viewer.zoomMinPatch = overviews.dataSet.level.max - nbSubLevelsPerCOG;
     // pour la fonction updateScaleWidget
     viewer.maxGraphDezoom = 2 ** nbSubLevelsPerCOG;
 
@@ -333,12 +334,12 @@ async function main() {
     const { view } = viewer;
     view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
       console.info('-> View initialized');
-      updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+      viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
     });
     view.addEventListener(itowns.PLANAR_CONTROL_EVENT.MOVED, () => {
       console.info('-> View moved');
       if (view.controls.state === -1) {
-        updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+        viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
       }
     });
 
@@ -442,7 +443,7 @@ async function main() {
         view.camera.camera3D.zoom *= 2;
         view.camera.camera3D.updateProjectionMatrix();
         view.notifyChange(view.camera.camera3D);
-        updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+        viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
       }
       return false;
     });
@@ -452,7 +453,7 @@ async function main() {
         view.camera.camera3D.zoom *= 0.5;
         view.camera.camera3D.updateProjectionMatrix();
         view.notifyChange(view.camera.camera3D);
-        updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+        viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
       }
       return false;
     });
