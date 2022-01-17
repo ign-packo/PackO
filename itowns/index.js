@@ -228,12 +228,12 @@ async function main() {
       console.log('choosed alert vector layer: ', name);
 
       if (name !== ' -') {
-        editing.featureIndex = 0;
         editing.alertLayerName = name;
         viewer.alertLayerName = name;
 
         const layerTest = viewer.view.getLayerById(editing.alertLayerName);
         editing.alertFC = await layerTest.source.loadData(undefined, layerTest);
+
         editing.nbValidated = editing.alertFC.features[0].geometries.filter(
           (elem) => elem.properties.status === true,
         ).length;
@@ -243,6 +243,16 @@ async function main() {
         editing.nbTotal = editing.alertFC.features[0].geometries.length;
         editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
         // controllers.progress.updateDisplay();
+
+        let featureIndex = 0;
+        if (editing.alertFC.features[0].geometries[0].properties.status !== null) {
+          while (editing.alertFC.features[0].geometries[featureIndex].properties.status !== null
+            && featureIndex <= editing.alertFC.features[0].geometries.length) {
+            featureIndex += 1;
+          }
+          featureIndex -= 1;
+        }
+        editing.featureIndex = featureIndex;
 
         editing.id = 0;
         controllers.id.updateDisplay();
