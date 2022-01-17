@@ -284,7 +284,7 @@ class Editing {
         let { featureIndex } = this;
         featureIndex -= 1;
         if (featureIndex === -1) featureIndex = this.alertFC.features[0].geometries.length - 1;
-        while (this.alertFC.features[0].geometries[featureIndex].properties.status === true
+        while (this.alertFC.features[0].geometries[featureIndex].properties.status !== null
           && featureIndex !== this.featureIndex) {
           featureIndex -= 1;
           if (featureIndex === -1) featureIndex = this.alertFC.features[0].geometries.length - 1;
@@ -295,7 +295,7 @@ class Editing {
         let { featureIndex } = this;
         featureIndex += 1;
         if (featureIndex === this.alertFC.features[0].geometries.length) featureIndex = 0;
-        while (this.alertFC.features[0].geometries[featureIndex].properties.status === true
+        while (this.alertFC.features[0].geometries[featureIndex].properties.status !== null
           && featureIndex !== this.featureIndex) {
           featureIndex += 1;
           if (featureIndex === this.alertFC.features[0].geometries.length) featureIndex = 0;
