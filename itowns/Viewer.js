@@ -287,9 +287,9 @@ class Viewer {
           layer.config,
         );
 
-        if (layerName === 'Patch') {
-          layer.buildExtent = false;
-        }
+        // if (layerName === 'Patch') {
+        //   layer.buildExtent = false;
+        // }
 
         layer.colorLayer.visible = layerList[layerName].visible;
         if (layerName === 'Contour') {
