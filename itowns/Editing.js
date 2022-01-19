@@ -455,6 +455,38 @@ class Editing {
         }
         break;
       }
+      case status.POINT: {
+        this.viewer.message = 'Add new point';
+
+        const annotationComment = window.prompt('comment:', '');
+
+        if (annotationComment !== null) {
+          this.currentStatus = status.WAITING;
+          this.view.controls.setCursor('default', 'wait');
+          this.viewer.message = 'calcul en cours';
+
+          // On post la geometrie sur l'API
+          fetch(`${this.apiUrl}/${this.annotationLayer.id}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${annotationComment}`,
+            {
+              method: 'PUT',
+            }).then(async (res) => {
+            if (res.status === 200) {
+              this.viewer.refresh(this.branch.layers);
+              this.view.controls.setCursor('default', 'auto');
+              this.currentStatus = status.RAS;
+              this.viewer.message = '';
+              this.controllers.addPoint.__li.style.backgroundColor = '';
+
+              this.view.dispatchEvent({
+                type: 'annotation-added',
+              });
+            } else {
+              this.viewer.message = 'annotation: error during save';
+            }
+          });
+        }
+        break;
+      }
       case status.ENDING:
       // on termine la ployline ou polygon
         this.update();
@@ -466,7 +498,7 @@ class Editing {
   select() {
     if (this.currentStatus === status.WAITING) return;
     this.cancelcurrentPolygon();
-    this.controllers.select.__li.style.backgroundColor = '#FF000055';
+    this.controllers.select.__li.style.backgroundColor = '#BB0000';
     this.view.controls.setCursor('default', 'crosshair');
     console.log('"select": En attente de sélection');
     this.currentStatus = status.SELECT;
@@ -485,7 +517,7 @@ class Editing {
       return;
     }
     this.controllers.select.__li.style.backgroundColor = '';
-    this.controllers.polygon.__li.style.backgroundColor = '#FF000055';
+    this.controllers.polygon.__li.style.backgroundColor = '#BB0000';
     this.view.controls.setCursor('default', 'crosshair');
     console.log("saisie d'un polygon");
     this.viewer.message = "saisie d'un polygon";
@@ -574,6 +606,18 @@ class Editing {
         this.viewer.message = msg;
       });
     });
+  }
+
+  // annotation
+  addPoint() {
+    if (this.currentStatus !== status.RAS) return;
+
+    this.view.controls.setCursor('default', 'crosshair');
+    this.currentStatus = status.POINT;
+    this.controllers.addPoint.__li.style.backgroundColor = '#BB0000FF';
+
+    console.log("saisie d'un point");
+    this.viewer.message = "saisie d'un point";
   }
 }
 
