@@ -12,6 +12,7 @@ const status = {
   ENDING: 3,
   WAITING: 4,
   WRITING: 5,
+  ADDREMARK: 6,
 };
 
 class Editing {
@@ -270,38 +271,41 @@ class Editing {
         this.controllers.cliche.__li.style.backgroundColor = '';
         this.view.getLayerById('Opi').visible = false;
         this.view.notifyChange(this.view.getLayerById('Opi'), true);
-      } else if (this.alertLayerName && e.key === 'ArrowLeft') {
-        this.featureIndex -= 1;
-        if (this.featureIndex === -1) {
-          this.featureIndex = this.alertFC.features[0].geometries.length - 1;
-        }
-        this.centerOnAlertFeature();
-      } else if (this.alertLayerName && e.key === 'ArrowRight') {
-        this.featureIndex += 1;
-        if (this.featureIndex === this.alertFC.features[0].geometries.length) this.featureIndex = 0;
-        this.centerOnAlertFeature();
-      } else if (this.alertLayerName && e.key === 'ArrowDown') {
-        let { featureIndex } = this;
-        featureIndex -= 1;
-        if (featureIndex === -1) featureIndex = this.alertFC.features[0].geometries.length - 1;
-        while (this.alertFC.features[0].geometries[featureIndex].properties.status !== null
-          && featureIndex !== this.featureIndex) {
+      } else if (this.alertLayerName && this.alertFC.features.length > 0) {
+        const { geometries } = this.alertFC.features[0];
+        if (e.key === 'ArrowLeft') {
+          this.featureIndex -= 1;
+          if (this.featureIndex === -1) {
+            this.featureIndex = geometries.length - 1;
+          }
+          this.centerOnAlertFeature();
+        } else if (e.key === 'ArrowRight') {
+          this.featureIndex += 1;
+          if (this.featureIndex === geometries.length) this.featureIndex = 0;
+          this.centerOnAlertFeature();
+        } else if (e.key === 'ArrowDown') {
+          let { featureIndex } = this;
           featureIndex -= 1;
-          if (featureIndex === -1) featureIndex = this.alertFC.features[0].geometries.length - 1;
-        }
-        this.featureIndex = featureIndex;
-        this.centerOnAlertFeature();
-      } else if (this.alertLayerName && e.key === 'ArrowUp') {
-        let { featureIndex } = this;
-        featureIndex += 1;
-        if (featureIndex === this.alertFC.features[0].geometries.length) featureIndex = 0;
-        while (this.alertFC.features[0].geometries[featureIndex].properties.status !== null
-          && featureIndex !== this.featureIndex) {
+          if (featureIndex === -1) featureIndex = geometries.length - 1;
+          while (geometries[featureIndex].properties.status !== null
+            && featureIndex !== this.featureIndex) {
+            featureIndex -= 1;
+            if (featureIndex === -1) featureIndex = geometries.length - 1;
+          }
+          this.featureIndex = featureIndex;
+          this.centerOnAlertFeature();
+        } else if (e.key === 'ArrowUp') {
+          let { featureIndex } = this;
           featureIndex += 1;
-          if (featureIndex === this.alertFC.features[0].geometries.length) featureIndex = 0;
+          if (featureIndex === geometries.length) featureIndex = 0;
+          while (geometries[featureIndex].properties.status !== null
+            && featureIndex !== this.featureIndex) {
+            featureIndex += 1;
+            if (featureIndex === geometries.length) featureIndex = 0;
+          }
+          this.featureIndex = featureIndex;
+          this.centerOnAlertFeature();
         }
-        this.featureIndex = featureIndex;
-        this.centerOnAlertFeature(true, 1);
       }
       return;
     }
@@ -455,7 +459,7 @@ class Editing {
         }
         break;
       }
-      case status.POINT: {
+      case status.ADDREMARK: {
         this.viewer.message = 'Add new point';
 
         const annotationComment = window.prompt('comment:', '');
@@ -466,22 +470,23 @@ class Editing {
           this.viewer.message = 'calcul en cours';
 
           // On post la geometrie sur l'API
-          fetch(`${this.apiUrl}/${this.annotationLayer.id}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${annotationComment}`,
+          const remarksId = this.branch.vectorList.filter((elem) => elem.name === 'Remarks')[0].id;
+          fetch(`${this.apiUrl}/${remarksId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${annotationComment}`,
             {
               method: 'PUT',
             }).then(async (res) => {
             if (res.status === 200) {
-              this.viewer.refresh(this.branch.layers);
+              this.viewer.refresh({ Remarks: this.branch.layers.Remarks });
               this.view.controls.setCursor('default', 'auto');
               this.currentStatus = status.RAS;
               this.viewer.message = '';
-              this.controllers.addPoint.__li.style.backgroundColor = '';
+              this.controllers.addRemark.__li.style.backgroundColor = '';
 
               this.view.dispatchEvent({
-                type: 'annotation-added',
+                type: 'remark-added',
               });
             } else {
-              this.viewer.message = 'annotation: error during save';
+              this.viewer.message = 'remark: error during save';
             }
           });
         }
@@ -608,16 +613,16 @@ class Editing {
     });
   }
 
-  // annotation
-  addPoint() {
+  // remarques
+  addRemark() {
     if (this.currentStatus !== status.RAS) return;
 
     this.view.controls.setCursor('default', 'crosshair');
-    this.currentStatus = status.POINT;
-    this.controllers.addPoint.__li.style.backgroundColor = '#BB0000FF';
+    this.currentStatus = status.ADDREMARK;
+    this.controllers.addRemark.__li.style.backgroundColor = '#BB0000';
 
-    console.log("saisie d'un point");
-    this.viewer.message = "saisie d'un point";
+    console.log("saisie d'une remarque");
+    this.viewer.message = "saisie d'une remarque";
   }
 }
 

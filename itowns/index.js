@@ -132,17 +132,13 @@ async function main() {
         layer.opacity = value;
         viewer.view.notifyChange(layer);
       }));
-      // folder.add({ frozen: layer.frozen }, 'frozen').onChange(((value) => {
-      //   layer.frozen = value;
-      //   // this.view.notifyChange(layer);
-      // }));
       if (layer.effect_parameter) {
         folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
           layer.effect_parameter = value;
           viewer.view.notifyChange(layer);
         }));
       }
-      if (typeGui === 'vectorGui') {
+      if (typeGui === 'vectorGui' && layer.id !== 'Remarks') {
         folder.add(branch, 'deleteVectorLayer').name('delete').onChange(() => {
           if (layer.id !== editing.alertLayerName) {
             branch.deleteVectorLayer(layer);
@@ -234,6 +230,7 @@ async function main() {
         const layerTest = viewer.view.getLayerById(editing.alertLayerName);
         editing.alertFC = await layerTest.source.loadData(undefined, layerTest);
 
+        // if (editing.alertFC.features.length > 0) {
         editing.nbValidated = editing.alertFC.features[0].geometries.filter(
           (elem) => elem.properties.status === true,
         ).length;
@@ -246,8 +243,8 @@ async function main() {
 
         let featureIndex = 0;
         if (editing.alertFC.features[0].geometries[0].properties.status !== null) {
-          while (editing.alertFC.features[0].geometries[featureIndex].properties.status !== null
-            && featureIndex <= editing.alertFC.features[0].geometries.length) {
+          while (featureIndex < editing.alertFC.features[0].geometries.length
+            && editing.alertFC.features[0].geometries[featureIndex].properties.status !== null) {
             featureIndex += 1;
           }
           featureIndex -= 1;
@@ -264,6 +261,7 @@ async function main() {
         controllers.comment.updateDisplay();
 
         controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'comment']);
+        // }
       } else {
         controllers.resetAlerts();
       }
@@ -335,6 +333,9 @@ async function main() {
     controllers.comment.listen().domElement.parentElement.style.pointerEvents = 'none';
     controllers.hide('comment');
 
+    // Remarques
+    controllers.addRemark = viewer.menuGlobe.gui.add(editing, 'addRemark').name('Add remark');
+
     // editing controllers
     editing.controllers = {
       select: controllers.select,
@@ -344,6 +345,7 @@ async function main() {
       id: controllers.id,
       validated: controllers.validated,
       // comment: controllers.comment,
+      addRemark: controllers.addRemark,
     };
     viewerDiv.focus();
 
@@ -391,6 +393,32 @@ async function main() {
         controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
         controllers.resetAlerts();
       });
+    });
+
+    view.addEventListener('remark-added', async () => {
+      console.log('-> A remark had been added');
+      if (editing.alertLayerName === 'Remarks') {
+        const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
+        await layerAlert.whenReady;
+        editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
+
+        editing.nbValidated = editing.alertFC.features[0].geometries.filter(
+          (elem) => elem.properties.status === true,
+        ).length;
+        editing.nbChecked = editing.alertFC.features[0].geometries.filter(
+          (elem) => elem.properties.status !== null,
+        ).length;
+        editing.nbTotal = editing.alertFC.features[0].geometries.length;
+        editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
+
+        editing.centerOnAlertFeature();
+        editing.validated = editing.featureSelectedGeom.properties.status;
+        controllers.validated.updateDisplay();
+        viewer.comment = editing.featureSelectedGeom.properties.comment;
+        controllers.comment.updateDisplay();
+
+        controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'comment']);
+      }
     });
 
     viewerDiv.addEventListener('mousemove', (ev) => {
