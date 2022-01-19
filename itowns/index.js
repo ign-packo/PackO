@@ -257,10 +257,15 @@ async function main() {
         editing.centerOnAlertFeature();
         editing.validated = editing.featureSelectedGeom.properties.status;
         controllers.validated.updateDisplay();
-        viewer.comment = editing.featureSelectedGeom.properties.comment;
-        controllers.comment.updateDisplay();
+        viewer.remark = editing.featureSelectedGeom.properties.comment;
+        controllers.remark.updateDisplay();
 
-        controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'comment']);
+        controllers.setVisible(['progress', 'id', 'validated', 'unchecked']);
+        if (name === 'Remarks') {
+          controllers.setVisible(['remark']);
+        } else {
+          controllers.hide(['remark']);
+        }
         // }
       } else {
         controllers.resetAlerts();
@@ -300,7 +305,7 @@ async function main() {
     controllers.hide('unchecked');
 
     editing.validated = false;
-    controllers.validated = viewer.menuGlobe.gui.add(editing, 'validated');
+    controllers.validated = viewer.menuGlobe.gui.add(editing, 'validated').name('Validated');
     controllers.validated.onChange(async (value) => {
       console.log('change status', value);
       const idFeature = editing.featureSelectedGeom.properties.id;
@@ -328,10 +333,10 @@ async function main() {
     });
     controllers.hide('validated');
 
-    viewer.comment = '';
-    controllers.comment = viewer.menuGlobe.gui.add(viewer, 'comment');
-    controllers.comment.listen().domElement.parentElement.style.pointerEvents = 'none';
-    controllers.hide('comment');
+    viewer.remark = '';
+    controllers.remark = viewer.menuGlobe.gui.add(viewer, 'remark').name('Remark');
+    controllers.remark.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.hide('remark');
 
     // Remarques
     controllers.addRemark = viewer.menuGlobe.gui.add(editing, 'addRemark').name('Add remark');
@@ -414,10 +419,10 @@ async function main() {
         editing.centerOnAlertFeature();
         editing.validated = editing.featureSelectedGeom.properties.status;
         controllers.validated.updateDisplay();
-        viewer.comment = editing.featureSelectedGeom.properties.comment;
-        controllers.comment.updateDisplay();
+        viewer.remark = editing.featureSelectedGeom.properties.comment;
+        controllers.remark.updateDisplay();
 
-        controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'comment']);
+        controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'remark']);
       }
     });
 
@@ -453,7 +458,7 @@ async function main() {
           controllers.id.updateDisplay();
           editing.validated = features[layerTest.id][0].geometry.properties.status;
           controllers.validated.updateDisplay();
-          viewer.comment = features[layerTest.id][0].geometry.properties.comment;
+          viewer.remark = features[layerTest.id][0].geometry.properties.comment;
 
           editing.highlightSelectedFeature(featureCollec,
             features[layerTest.id][0].geometry,

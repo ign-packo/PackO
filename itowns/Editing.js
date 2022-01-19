@@ -242,7 +242,7 @@ class Editing {
     this.controllers.id.updateDisplay();
     this.validated = this.featureSelectedGeom.properties.status;
     this.controllers.validated.updateDisplay();
-    this.viewer.comment = this.featureSelectedGeom.properties.comment;
+    this.viewer.remark = this.featureSelectedGeom.properties.comment;
 
     this.highlightSelectedFeature(this.alertFC,
       this.featureSelectedGeom,
@@ -462,16 +462,16 @@ class Editing {
       case status.ADDREMARK: {
         this.viewer.message = 'Add new point';
 
-        const annotationComment = window.prompt('comment:', '');
+        const remark = window.prompt('comment:', '');
 
-        if (annotationComment !== null) {
+        if (remark !== null) {
           this.currentStatus = status.WAITING;
           this.view.controls.setCursor('default', 'wait');
           this.viewer.message = 'calcul en cours';
 
           // On post la geometrie sur l'API
           const remarksId = this.branch.vectorList.filter((elem) => elem.name === 'Remarks')[0].id;
-          fetch(`${this.apiUrl}/${remarksId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${annotationComment}`,
+          fetch(`${this.apiUrl}/${remarksId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${remark}`,
             {
               method: 'PUT',
             }).then(async (res) => {
