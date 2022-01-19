@@ -152,10 +152,41 @@ async function updateAlert(req, _res, next) {
   next();
 }
 
+async function addRemark(req, _res, next) {
+  debug('>>PUT remark');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+
+  const {
+    idLayer, x, y, comment,
+  } = params;
+
+  const geometry = {
+    type: 'Point',
+    coordinates: [x, y],
+  };
+
+  try {
+    const remark = await db.insertFeature(req.client, idLayer, geometry, comment);
+
+    await db.updateAlert(req.client, remark.id_feature, undefined, comment);
+    req.result = { json: `annotation '${remark.id_feature}' ajoutée`, code: 200 };
+  } catch (error) {
+    debug(error);
+    req.error = error;
+  }
+  debug('  next>>');
+  next();
+}
+
 module.exports = {
   getVectors,
   getVector,
   postVector,
   deleteVector,
   updateAlert,
+  addRemark,
 };

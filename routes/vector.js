@@ -140,4 +140,23 @@ router.put('/alert/:idFeature',
   pgClient.close,
   returnMsg);
 
+router.put('/:idLayer/feature',
+  pgClient.open,
+  vector.getVectors.bind({ column: 'id' }),
+  param('idLayer')
+    .exists().withMessage(createErrMsg.missingParameter('idLayer'))
+    .custom((value, { req }) => req.result.json.includes(Number(value)))
+    .withMessage(createErrMsg.invalidParameter('idLayer')),
+  query('x')
+    .exists().withMessage(createErrMsg.missingParameter('x'))
+    .escape(),
+  query('y')
+    .exists().withMessage(createErrMsg.missingParameter('y')),
+  query('comment')
+    .exists().withMessage(createErrMsg.missingParameter('comment')),
+  validateParams,
+  vector.addRemark,
+  pgClient.close,
+  returnMsg);
+
 module.exports = router;

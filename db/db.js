@@ -467,6 +467,24 @@ async function updateAlert(pgClient, idFeature, status, comment) {
   return results.rows[0];
 }
 
+async function insertFeature(pgClient, idLayer, geometry) {
+  debug(`~~insertFeature (idLayer: ${idLayer})`);
+
+  const sqlInsertFeature = format(
+    'INSERT INTO features (geom, id_layer) '
+      + "SELECT ST_SetSRID(ST_GeomFromGeoJSON('%s'), substring(layers.crs from '.:(.+)')::int), layers.id "
+      + 'FROM layers WHERE layers.id=%s '
+      + 'RETURNING id as id_feature',
+    JSON.stringify(geometry),
+    idLayer,
+  );
+
+  debug('      ', sqlInsertFeature);
+  const results = await pgClient.query(sqlInsertFeature);
+
+  return results.rows[0];
+}
+
 module.exports = {
   beginTransaction,
   endTransaction,
@@ -498,4 +516,5 @@ module.exports = {
   createProcess,
   finishProcess,
   updateAlert,
+  insertFeature,
 };
