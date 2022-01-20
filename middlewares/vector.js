@@ -173,7 +173,31 @@ async function addRemark(req, _res, next) {
     const remark = await db.insertFeature(req.client, idLayer, geometry, comment);
 
     await db.updateAlert(req.client, remark.id_feature, undefined, comment);
-    req.result = { json: `annotation '${remark.id_feature}' ajoutée`, code: 200 };
+    req.result = { json: `remarque '${remark.id_feature}' ajoutée`, code: 200 };
+  } catch (error) {
+    debug(error);
+    req.error = error;
+  }
+  debug('  next>>');
+  next();
+}
+
+async function delRemark(req, _res, next) {
+  debug('>>DELETE remark');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+
+  const {
+    id,
+  } = params;
+
+  try {
+    const remark = await db.deleteFeature(req.client, id);
+
+    req.result = { json: `remarque '${remark.id_feature}' supprimée`, code: 200 };
   } catch (error) {
     debug(error);
     req.error = error;
@@ -189,4 +213,5 @@ module.exports = {
   deleteVector,
   updateAlert,
   addRemark,
+  delRemark,
 };
