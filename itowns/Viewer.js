@@ -246,7 +246,7 @@ class Viewer {
           layer.config.source = new itowns.FileSource({
             url: layerList[layerName].url,
             fetcher: itowns.Fetcher.json,
-            crs: layerList[layerName].crs,
+            crs: layerList[layerName].crs ? layerList[layerName].crs : this.crs,
             parser: itowns.GeoJsonParser.parse,
           });
 

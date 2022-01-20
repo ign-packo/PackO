@@ -311,12 +311,12 @@ async function getLayer(pgClient, idVector) {
 
   const results = await pgClient.query(sql);
 
-  // // cas ou il n'y a pas de patches actifs en base
-  // if (results.rows[0].json_build_object.features === null) {
-  //   results.rows[0].json_build_object.features = [];
-  // }
   if (results.rowCount !== 1) {
     throw new Error(`layer ${idVector} non trouvé`);
+  }
+  // cas ou il n'y a pas de feature en base
+  if (results.rows[0].geojson.features === null) {
+    results.rows[0].geojson.features = [];
   }
   return results.rows[0].geojson;
 }
@@ -487,6 +487,22 @@ async function insertFeature(pgClient, idLayer, geometry) {
   return results.rows[0];
 }
 
+async function deleteFeature(pgClient, idFeature) {
+  debug(`~~deleteFeature (idFeature: ${idFeature})`);
+
+  const sqlDeleteFeature = format(
+    'DELETE FROM features '
+      + 'WHERE id = %s '
+      + 'RETURNING id as id_feature',
+    idFeature,
+  );
+
+  debug('      ', sqlDeleteFeature);
+  const results = await pgClient.query(sqlDeleteFeature);
+
+  return results.rows[0];
+}
+
 module.exports = {
   beginTransaction,
   endTransaction,
@@ -519,4 +535,5 @@ module.exports = {
   finishProcess,
   updateAlert,
   insertFeature,
+  deleteFeature,
 };

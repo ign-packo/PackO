@@ -29,6 +29,8 @@ class Editing {
     this.lastPos = null;
     this.mousePosition = null;
 
+    this.featureIndex = 0;
+
     this.STATUS = status;
   }
 
@@ -470,13 +472,13 @@ class Editing {
           this.viewer.message = 'calcul en cours';
 
           // On post la geometrie sur l'API
-          const remarksId = this.branch.vectorList.filter((elem) => elem.name === 'Remarks')[0].id;
-          fetch(`${this.apiUrl}/${remarksId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${remark}`,
+          const remarksLayerId = this.branch.vectorList.filter((elem) => elem.name === 'Remarques')[0].id;
+          fetch(`${this.apiUrl}/${remarksLayerId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${remark}`,
             {
               method: 'PUT',
             }).then(async (res) => {
             if (res.status === 200) {
-              this.viewer.refresh({ Remarks: this.branch.layers.Remarks });
+              this.viewer.refresh({ Remarques: this.branch.layers.Remarques });
               this.view.controls.setCursor('default', 'auto');
               this.currentStatus = status.RAS;
               this.viewer.message = '';
@@ -623,6 +625,36 @@ class Editing {
 
     console.log("saisie d'une remarque");
     this.viewer.message = "saisie d'une remarque";
+  }
+
+  delRemark() {
+    if (this.currentStatus !== status.RAS) return;
+
+    console.log("suppression d'une remarque");
+
+    this.currentStatus = status.WAITING;
+    this.view.controls.setCursor('default', 'wait');
+    this.viewer.message = 'calcul en cours';
+
+    // On post la geometrie sur l'API
+    const remarksLayerId = this.branch.vectorList.filter((elem) => elem.name === 'Remarques')[0].id;
+    fetch(`${this.apiUrl}/${remarksLayerId}/feature?id=${this.featureSelectedGeom.properties.id}`,
+      {
+        method: 'DELETE',
+      }).then(async (res) => {
+      if (res.status === 200) {
+        this.viewer.refresh({ Remarques: this.branch.layers.Remarques });
+        this.view.controls.setCursor('default', 'auto');
+        this.currentStatus = status.RAS;
+        this.viewer.message = '';
+
+        this.view.dispatchEvent({
+          type: 'remark-deleted',
+        });
+      } else {
+        this.viewer.message = 'remark: error during delete';
+      }
+    });
   }
 }
 

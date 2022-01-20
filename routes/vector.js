@@ -148,14 +148,27 @@ router.put('/:idLayer/feature',
     .custom((value, { req }) => req.result.json.includes(Number(value)))
     .withMessage(createErrMsg.invalidParameter('idLayer')),
   query('x')
-    .exists().withMessage(createErrMsg.missingParameter('x'))
-    .escape(),
+    .exists().withMessage(createErrMsg.missingParameter('x')),
   query('y')
     .exists().withMessage(createErrMsg.missingParameter('y')),
   query('comment')
     .exists().withMessage(createErrMsg.missingParameter('comment')),
   validateParams,
   vector.addRemark,
+  pgClient.close,
+  returnMsg);
+
+router.delete('/:idLayer/feature',
+  pgClient.open,
+  vector.getVectors.bind({ column: 'id' }),
+  param('idLayer')
+    .exists().withMessage(createErrMsg.missingParameter('idLayer'))
+    .custom((value, { req }) => req.result.json.includes(Number(value)))
+    .withMessage(createErrMsg.invalidParameter('idLayer')),
+  query('id')
+    .exists().withMessage(createErrMsg.missingParameter('id')),
+  validateParams,
+  vector.delRemark,
   pgClient.close,
   returnMsg);
 
