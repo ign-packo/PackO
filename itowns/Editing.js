@@ -500,6 +500,10 @@ class Editing {
 
   undo() {
     if (this.currentStatus === status.WAITING) return;
+    if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
+      this.viewer.message = 'Zoom non valide pour annuler';
+      return;
+    }
     this.cancelcurrentPolygon();
     this.viewer.message = '';
     console.log('undo');
@@ -522,6 +526,10 @@ class Editing {
 
   redo() {
     if (this.currentStatus === status.WAITING) return;
+    if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
+      this.viewer.message = 'Zoom non valide pour refaire';
+      return;
+    }
     this.cancelcurrentPolygon();
     this.viewer.message = '';
     console.log('redo');
