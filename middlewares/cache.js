@@ -67,9 +67,12 @@ async function postCache(req, _res, next) {
   }
   const params = matchedData(req);
   const { name, overviews, path } = params;
+  const { crs } = overviews;
+
+  const cacheCrs = `${crs.type}:${crs.code}`;
 
   try {
-    const newCache = await db.insertCache(req.client, name, path);
+    const newCache = await db.insertCache(req.client, name, path, cacheCrs);
     const nbOpiInserted = await db.insertListOpi(req.client, newCache.id, overviews.list_OPI);
     if (nbOpiInserted !== Object.keys(overviews.list_OPI).length) {
       // TODO test REGRESS

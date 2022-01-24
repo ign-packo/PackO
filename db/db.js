@@ -24,11 +24,11 @@ async function getCaches(pgClient) {
   return results.rows;
 }
 
-async function insertCache(pgClient, name, path) {
-  debug(`    ~~insertCache (name: ${name}, path: ${path})`);
+async function insertCache(pgClient, name, path, crs) {
+  debug(`    ~~insertCache (name: ${name}, path: ${path}, crs: ${crs})`);
   const results = await pgClient.query(
-    'INSERT INTO caches (name, path) values ($1, $2) RETURNING id, name, path',
-    [name, path],
+    'INSERT INTO caches (name, path, crs) values ($1, $2, $3) RETURNING id, name, path',
+    [name, path, crs],
   );
   if (results.rowCount === 1) return results.rows[0];
   throw new Error('failed to insert');
