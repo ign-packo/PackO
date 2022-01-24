@@ -45,7 +45,8 @@ jobs:
         PGPASSWORD: postgres
       run: |
         psql -c "CREATE DATABASE packo"
-        psql -d packo -f sql/packo.sql
+        psql -d packo -f sql/packo_model.sql
+        psql -d packo -f sql/import_data.sql
 
     - name: apt update
       run: |

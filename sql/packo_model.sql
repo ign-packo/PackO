@@ -4,6 +4,7 @@
 
 -- Dumped from database version 13.2
 -- Dumped by pg_dump version 13.1
+-- edited by F_Toromanoff
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -165,12 +166,32 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: create_remarks_layer(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.create_remarks_layer() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+	INSERT INTO layers (name, crs, id_branch, id_style)
+		SELECT 'Remarques', Caches.crs, NEW.id, 0
+			FROM Caches
+			WHERE Caches.id = NEW.id_cache;
+	RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.create_remarks_layer() OWNER TO postgres;
+
+--
 -- Name: auto_num_layers(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
 CREATE FUNCTION public.auto_num_layers() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$BEGIN
+    AS $$
+BEGIN
 	NEW.num = (
 		SELECT  
 	CASE WHEN max(num) IS NULL THEN 1
@@ -181,7 +202,8 @@ CREATE FUNCTION public.auto_num_layers() RETURNS trigger
 		id_branch=NEW.id_branch 
 	);
 	RETURN NEW;
-END;$$;
+END;
+$$;
 
 
 ALTER FUNCTION public.auto_num_layers() OWNER TO postgres;
@@ -220,6 +242,7 @@ ALTER TABLE public.branches ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 CREATE TABLE public.caches (
     id integer NOT NULL,
     name character varying NOT NULL,
+    crs character varying NOT NULL,
     v_packo character varying,
     date date,
     path character varying NOT NULL
@@ -611,6 +634,13 @@ CREATE TRIGGER insert_newcache AFTER INSERT ON public.caches FOR EACH ROW EXECUT
 
 
 --
+-- Name: branches insert_newbranch; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER insert_newbranch AFTER INSERT ON public.branches FOR EACH ROW EXECUTE FUNCTION public.create_remarks_layer();
+
+
+--
 -- Name: patches on_patch_activation; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -706,4 +736,3 @@ ALTER TABLE ONLY public.feature_ctrs
 --
 -- PostgreSQL database dump complete
 --
-
