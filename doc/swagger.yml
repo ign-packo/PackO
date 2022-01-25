@@ -469,7 +469,7 @@ paths:
     get:
       tags:
         - vector
-      summary: "Récupération d'un vecteur annexe donné"
+      summary: "Récupération d'un vecteur annexe donné à partir de son identifiant"
       description: ""
       parameters:
         - in: query
@@ -524,6 +524,7 @@ paths:
 
   '/alert/{idFeature}?comment={comment}':
     put:
+      deprecated: true
       tags:
         - vector
       summary: "Modification de l'attribut 'comment' d'une feature donnée"
@@ -541,6 +542,63 @@ paths:
           required: true
           schema:
             type: string
+      responses:
+        '200':
+          description: OK
+
+  '/{idLayer}/feature':
+    put:
+      tags:
+        - vector
+      summary: "Ajout d'un ponctuel sur la couche {idLayer}"
+      description: ""
+      parameters:
+        - in: path
+          name: idFeature
+          description: l'identifiant de la feature à modifier
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: x
+          description: coordonnées x
+          required: true
+          schema:
+            type: number
+        - in: query
+          name: y
+          description: coordonnées y
+          required: true
+          schema:
+            type: number
+        - in: query
+          name: comment
+          description: commentaire
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+
+    delete:
+      tags:
+        - vector
+      summary: "Suppression d'un ponctuel sur la couche {idLayer}"
+      description: ""
+      parameters:
+        - in: path
+          name: idFeature
+          description: l'identifiant de la feature à modifier
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: id
+          description: id de la feature à supprimer
+          required: true
+          schema:
+            type: integer
       responses:
         '200':
           description: OK
