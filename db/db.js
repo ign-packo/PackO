@@ -288,23 +288,24 @@ async function getLayers(pgClient, idBranch) {
 }
 
 async function getLayer(pgClient, idVector) {
-  debug(`    ~~getLayer (idVector: ${idVector})`);
-  // const sql = format(
-  //   "SELECT json_build_object("
-  //   + "'type', 'FeatureCollection', 'features', json_agg(ST_AsGeoJSON(t.*)::json)"
-  //   + ") as geojson "
-  //   + 'FROM'
-  //   + '(SELECT f.* FROM features f'
-  //   + ' WHERE f.id_layer=%s ORDER BY f.id) as t',
-  //   idVector,
-  // );
+  if (typeof idVector !== 'object') {
+    debug(`    ~~getLayer (idVector: ${idVector})`);
+  } else {
+    debug(`    ~~getLayer (idBranch: ${idVector.idBranch}, name: ${idVector.name})`);
+  }
+
   const sql = format(
     "SELECT json_build_object('type', 'FeatureCollection', 'features', json_agg(ST_AsGeoJSON(t.*)::json)) as geojson "
     + 'FROM'
     + ' (SELECT f.*, fc.status, fc.comment FROM features f'
     + ' LEFT JOIN feature_ctrs fc ON f.id=fc.id_feature'
-    + ' WHERE f.id_layer=%s ORDER BY f.id) as t',
-    idVector,
+    // + ' RIGHT JOIN layers l ON l.id=f.id_layer'
+    + '%s'
+    // + ' WHERE f.id_layer=%s ORDER BY f.id) as t',
+    // idVector,
+    + ' WHERE %s ORDER BY f.id) as t',
+    typeof idVector !== 'object' ? '' : ' RIGHT JOIN layers l ON l.id=f.id_layer',
+    typeof idVector !== 'object' ? `f.id_layer=${idVector}` : `l.id_branch=${idVector.idBranch} AND l.name='${idVector.name}'`,
   );
   debug('      ', sql);
 

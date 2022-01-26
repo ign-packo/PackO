@@ -41,7 +41,11 @@ async function getVector(req, _res, next) {
     return;
   }
   const params = matchedData(req);
-  const { idVector } = params;
+  const idVector = typeof params.idVector === 'undefined' ? params : params.idVector;
+  // let { idVector } = params;
+  // if (typeof idVector === 'undefined') {
+  //   idVector = params;
+  // }
   try {
     const vector = await db.getLayer(req.client, idVector);
 
