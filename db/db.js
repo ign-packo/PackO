@@ -288,7 +288,11 @@ async function getLayers(pgClient, idBranch) {
 }
 
 async function getLayer(pgClient, idVector) {
-  debug(`    ~~getLayer (idVector: ${idVector})`);
+  if (typeof idVector !== 'object') {
+    debug(`    ~~getLayer (idVector: ${idVector})`);
+  } else {
+    debug(`    ~~getLayer (idBranch: ${idVector.idBranch}, name: ${idVector.name})`);
+  }
   // const sql = format(
   //   "SELECT json_build_object("
   //   + "'type', 'FeatureCollection', 'features', json_agg(ST_AsGeoJSON(t.*)::json)"
@@ -304,8 +308,13 @@ async function getLayer(pgClient, idVector) {
     // + ' (SELECT f.*, COALESCE(fc.status, false) as status, fc.comment FROM features f'
     + ' (SELECT f.*, fc.status, fc.comment FROM features f'
     + ' LEFT JOIN feature_ctrs fc ON f.id=fc.id_feature'
-    + ' WHERE f.id_layer=%s ORDER BY f.id) as t',
-    idVector,
+    // + ' RIGHT JOIN layers l ON l.id=f.id_layer'
+    + '%s'
+    // + ' WHERE f.id_layer=%s ORDER BY f.id) as t',
+    // idVector,
+    + ' WHERE %s ORDER BY f.id) as t',
+    typeof idVector !== 'object' ? '' : ' RIGHT JOIN layers l ON l.id=f.id_layer',
+    typeof idVector !== 'object' ? `f.id_layer=${idVector}` : `l.id_branch=${idVector.idBranch} AND l.name='${idVector.name}'`,
   );
   debug('      ', sql);
 
@@ -440,6 +449,22 @@ async function finishProcess(pgClient, status, idProcess, result) {
   );
 }
 
+async function getFeatures(pgClient, idLayer) {
+  debug('    ~~getFeatures');
+  let results;
+  if (idLayer) {
+    results = await pgClient.query(
+      'SELECT id FROM features WHERE id_layer=$1 ORDER BY id ASC',
+      [idLayer],
+    );
+  } else {
+    results = await pgClient.query(
+      'SELECT id, id_layer FROM features',
+    );
+  }
+  return results.rows;
+}
+
 async function updateAlert(pgClient, idFeature, status, comment) {
   debug(`~~updateAlert (idFeature: ${idFeature})`);
   let column;
@@ -457,7 +482,7 @@ async function updateAlert(pgClient, idFeature, status, comment) {
     + 'ON CONFLICT (id_feature) DO '
     + 'UPDATE '
     + `SET ${column}=%s `
-    + 'RETURNING id as feature_ctrs_id',
+    + 'RETURNING id as id_feature_ctrs, id_feature',
     value,
     idFeature,
     value,
@@ -533,6 +558,7 @@ module.exports = {
   getProcesses,
   createProcess,
   finishProcess,
+  getFeatures,
   updateAlert,
   insertFeature,
   deleteFeature,

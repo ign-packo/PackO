@@ -15,7 +15,9 @@ async function getVectors(req, _res, next) {
   try {
     const vectors = await db.getLayers(req.client, idBranch);
     if (this.column) {
-      req.result = { json: vectors.map((vector) => vector[this.column]), code: 200 };
+      // req.result = { json: vectors.map((vector) => vector[this.column]), code: 200 };
+      if (!req.result) req.result = {};
+      req.result.getVectors = vectors.map((vector) => vector[this.column]);
     } else {
       req.result = { json: vectors, code: 200 };
     }
@@ -39,7 +41,11 @@ async function getVector(req, _res, next) {
     return;
   }
   const params = matchedData(req);
-  const { idVector } = params;
+  const idVector = typeof params.idVector === 'undefined' ? params : params.idVector;
+  // let { idVector } = params;
+  // if (typeof idVector === 'undefined') {
+  //   idVector = params;
+  // }
   try {
     const vector = await db.getLayer(req.client, idVector);
 
@@ -132,6 +138,29 @@ async function deleteVector(req, _res, next) {
   next();
 }
 
+async function getFeatures(req, _res, next) {
+  debug('>>GET getFeatures');
+  if (req.error) {
+    next();
+    return;
+  }
+  try {
+    const features = await db.getFeatures(req.client);
+    if (this.column) {
+      // req.result = { getFeatures: features.map((feature) => feature[this.column]), code: 200 };
+      if (!req.result) req.result = {};
+      req.result.getFeatures = features.map((feature) => feature[this.column]);
+    } else {
+      req.result = { json: features, code: 200 };
+    }
+  } catch (error) {
+    debug(error);
+    req.error = error;
+  }
+  debug('  next>>');
+  next();
+}
+
 async function updateAlert(req, _res, next) {
   debug('>>UPDATE alert');
   if (req.error) {
@@ -143,7 +172,7 @@ async function updateAlert(req, _res, next) {
 
   try {
     const vector = await db.updateAlert(req.client, idFeature, status, comment);
-    req.result = { json: `vecteur '${vector.name}' détruit (sur la branche '${vector.branch_name}')`, code: 200 };
+    req.result = { json: `feature '${vector.id_feature}' mis à jour`, code: 200 };
   } catch (error) {
     debug(error);
     req.error = error;
@@ -211,6 +240,7 @@ module.exports = {
   getVector,
   postVector,
   deleteVector,
+  getFeatures,
   updateAlert,
   addRemark,
   delRemark,
