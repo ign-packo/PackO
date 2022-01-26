@@ -409,6 +409,29 @@ paths:
           description: OK
 
   '/{idBranch}/vector':
+    get:
+      tags:
+        - vector
+      summary: "Récuperation d'un vecteur annexe à partir de son nom"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: name
+          description: le nom de la couche vecteur
+          required: true
+          schema:
+            type: string
+          example: Remarques
+      responses:
+        '200':
+          description: OK
+  
     post:
       tags:
         - vector
