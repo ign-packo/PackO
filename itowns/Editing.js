@@ -181,8 +181,7 @@ class Editing {
       transparent: true,
       opacity: 0.7,
       zoom: {
-        // PB itowns refresh
-        min: this.viewer.zoomMinPatch - 1,
+        min: this.viewer.overviews.dataSet.level.min,
         max: this.viewer.overviews.dataSet.level.max,
       },
       style: new itowns.Style({
