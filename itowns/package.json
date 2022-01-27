@@ -16,7 +16,7 @@
     "itowns": "^2.36.1",
     "proj4": "^2.7.5",
     "shpjs": "^4.0.2",
-    "three": "0.133.1"
+    "three": "0.137.0"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
