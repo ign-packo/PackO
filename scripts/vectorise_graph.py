@@ -12,6 +12,8 @@ from cache_def import get_slab_path
 from osgeo import gdal
 
 
+QGISBIN="C:\\QGIS_3.20.2\\bin"
+
 def read_args():
     """Gestion des arguments"""
 
@@ -80,6 +82,9 @@ resol = overviews['resolution']
 cache_name = os.path.basename((os.path.normpath(args.input)))
 print('Cache name = ' + cache_name)
 
+dict_cmd = {"projects": [{"name": str(cache_name+'_prep'), "jobs": []}]}
+print(dict_cmd["projects"][0]["name"])
+
 # on recupere les infos concernant les patches dans le json en entree
 file_patches = open(args.patches)
 patches_data = json.load(file_patches)
@@ -124,7 +129,7 @@ for (root, dirs, files) in os.walk(graph_dir):
         list_tiles.append(os.path.normpath(file))
 
 # fichier intermediaire contenant la liste de images pour le vrt
-path_out = os.path.basename(args.input)
+path_out = os.path.join(args.output, os.path.basename(args.input))
 f_out = open(path_out + '.txt', 'w')
 
 for tile in list_tiles:
@@ -149,7 +154,7 @@ t_start_vrt1 = time.perf_counter()
 
 # on construit un vrt a partir de la liste des images recuperee precedemment
 cmd_buildvrt = (
-    'gdalbuildvrt'
+    os.path.join(QGISBIN, 'gdalbuildvrt')
     + ' -input_file_list '
     + path_out + '.txt '
     + path_out + '_tiles.vrt'
@@ -161,6 +166,9 @@ if args.verbose > 0:
     print(cmd_buildvrt)
 os.system(cmd_buildvrt)
 
+dict_cmd["projects"][0]["jobs"].append({"name": "buildvrt", "command": cmd_buildvrt})
+print(dict_cmd)
+
 t_end_vrt1 = time.perf_counter()
 
 t_start_vrt2 = time.perf_counter()
@@ -168,7 +176,7 @@ t_start_vrt2 = time.perf_counter()
 # on construit un 2eme vrt à partir du premier (pour avoir la bonne structure avec les bons parametres :
 # notamment l emprise)
 cmd_buildvrt2 = (
-    'gdalbuildvrt '
+    os.path.join(QGISBIN, 'gdalbuildvrt ')
     + path_out + '_tmp.vrt '
     + path_out + '_tiles.vrt'
 )
@@ -177,36 +185,22 @@ if args.verbose > 0:
     print(cmd_buildvrt2)
 os.system(cmd_buildvrt2)
 
+dict_cmd["projects"][0]["jobs"].append({"name": "buildvrt2", "command": cmd_buildvrt2, "deps": [{"id": 0}]})
+print(dict_cmd)
+
 t_end_vrt2 = time.perf_counter()
 
-with open(path_out + '_tmp.vrt', 'r') as f:
-    lines = f.readlines()
-with open(path_out + '_32bits.vrt', 'w') as f:
-    for line in lines:
-        # on ecrit le code python au bon endroit dans le VRT
-        if 'band="1"' in line:
-            f.write('\t<VRTRasterBand dataType="Int32" band="1" subClass="VRTDerivedRasterBand">\n')
-            f.write('\t<PixelFunctionType>color_to_int32</PixelFunctionType>\n')
-            f.write('\t<PixelFunctionLanguage>Python</PixelFunctionLanguage>\n')
-            f.write('\t<PixelFunctionCode>\n')
-            f.write('<![CDATA[\n')
-            f.write('import numpy as np\n')
-            f.write('def color_to_int32(in_ar, out_ar, xoff, yoff, xsize, ysize, \
-                    raster_xsize, raster_ysize, buf_radius, gt, **kwargs):\n')
-            f.write('\tout_ar[:] = in_ar[0] + 256 * in_ar[1] + 256 * 256 * in_ar[2]\n')
-            f.write(']]>\n')
-            f.write('\t</PixelFunctionCode>\n')
-        elif 'band="2"' in line:
-            pass
-        elif 'band="3"' in line:
-            pass
-        elif '</VRTRaster' in line:
-            pass
-        elif '<OverviewList' in line:
-            f.write('\t</VRTRasterBand>\n')
-            f.write(line)
-        else:
-            f.write(line)
+# en faire un script pout l'integrer dans le json de gpao
+script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "modifyvrt.py")
+
+cmd_modifyvrt = (
+    'python ' + script_path + ' '
+    + '-i ' + path_out + '_tmp.vrt '
+    + '-o ' + path_out + '_32bits.vrt'
+)
+
+dict_cmd["projects"][0]["jobs"].append({"name": "modifyvrt", "command": cmd_modifyvrt, "deps": [{"id": 1}]})
+print(cmd_modifyvrt)
 
 tmp_dir = os.path.join(args.output, 'tmp')
 if not os.path.exists(tmp_dir):
@@ -216,6 +210,7 @@ t_start_tiling = time.perf_counter()
 
 # on recupere l'emprise globale du chantier dont on veut extraire xmin, xmax, ymin, ymax
 info = gdal.Info(path_out + '_32bits.vrt')
+print("info = "+str(info))
 infoList = info.split('\n')
 
 ul, lr = '', ''
@@ -248,7 +243,7 @@ for x in range(x_min, x_max, tile_size):
     for y in range(y_min, y_max, tile_size):
         file = str(x) + '_' + str(y) + '.vrt'
         cmd_vrt = (
-            'gdalbuildvrt '
+            os.path.join(QGISBIN, 'gdalbuildvrt ')
             + os.path.join(tmp_dir, file) + ' '
             + path_out + '_32bits.vrt'
             + ' -tr ' + str(resol) + ' ' + str(resol)
@@ -260,6 +255,11 @@ for x in range(x_min, x_max, tile_size):
         os.system(cmd_vrt)
 
 t_end_tiling = time.perf_counter()
+
+# fin prep chantier polygonize
+
+# debut chantier polygonize
+dict_cmd["projects"].append({"name": str(cache_name+'_polygonize'), "jobs": [], "deps": [{"id": 0}]})
 
 # on recupere la liste des tuiles creees
 list_tiles_graph = os.listdir(tmp_dir)
@@ -277,7 +277,7 @@ for tile in list_tiles_graph:
     if os.path.exists(gpkg_path):
         os.remove(gpkg_path)
     cmd_polygonize = (
-            script + ' '
+            os.join.path(QGISBIN, script) + ' '
             + os.path.join(tmp_dir, tile) + ' '
             + gpkg_path
             + ' -f "GPKG" '
@@ -286,9 +286,15 @@ for tile in list_tiles_graph:
     print('Gdal_polygonize en cours...')
     if args.verbose > 0:
         print(cmd_polygonize)
+    dict_cmd["projects"][1]["jobs"].append({"name": "polygonize", "command": cmd_polygonize})
     os.system(cmd_polygonize)
 
 t_end_polygonise = time.perf_counter()
+
+# fin chantier polygonize
+
+# debut chantier merge
+dict_cmd["projects"].append({"name": str(cache_name+'_merge'), "jobs": [], "deps": [{"id": 1}]})
 
 script_merge = "ogrmerge.py"
 if platform.system() == "Windows":
@@ -300,7 +306,7 @@ merge_file = cache_name + '_merge.gpkg'
 merge_path = os.path.join(tmp_dir, merge_file)
 all_gpkg = os.path.join(tmp_dir, '*.gpkg')
 cmd_merge = (
-    script_merge
+    os.path.join(QGISBIN, script_merge)
     + ' -o ' + merge_path
     + ' ' + all_gpkg
     + ' -single'
@@ -309,6 +315,7 @@ cmd_merge = (
 print('Ogrmerge en cours...')
 if args.verbose > 0:
     print(cmd_merge)
+dict_cmd["projects"][2]["jobs"].append({"name": "ogrmerge", "command": cmd_merge})
 os.system(cmd_merge)
 
 t_end_merge = time.perf_counter()
@@ -318,7 +325,7 @@ t_start_dissolve = time.perf_counter()
 dissolve_file = cache_name + '_dissolve.gpkg'
 dissolve_path = os.path.join(tmp_dir, dissolve_file)
 cmd_dissolve = (
-    'ogr2ogr '
+    os.path.join(QGISBIN, 'ogr2ogr ')
     + dissolve_path + ' '
     + merge_path
     + ' -nlt PROMOTE_TO_MULTI'
@@ -328,6 +335,7 @@ cmd_dissolve = (
 print('Ogr2ogr - dissolve en cours...')
 if args.verbose > 0:
     print(cmd_dissolve)
+dict_cmd["projects"][2]["jobs"].append({"name": "dissolve", "command": cmd_dissolve, "deps": [{"id": 0}]})
 os.system(cmd_dissolve)
 
 t_end_dissolve = time.perf_counter()
@@ -337,7 +345,7 @@ t_start_make_valid = time.perf_counter()
 valid_file = cache_name + '.gpkg'
 valid_path = os.path.join(args.output, valid_file)
 cmd_make_valid = (
-    'ogr2ogr '
+    os.path.join(QGISBIN, 'ogr2ogr ')
     + valid_path + ' '
     + dissolve_path
     + ' -nlt PROMOTE_TO_MULTI'
@@ -346,6 +354,7 @@ cmd_make_valid = (
 print('Ogr2ogr - make_valid en cours...')
 if args.verbose > 0:
     print(cmd_make_valid)
+dict_cmd["projects"][2]["jobs"].append({"name": "make_valid", "command": cmd_make_valid, "deps": [{"id": 1}]})
 os.system(cmd_make_valid)
 
 t_end_make_valid = time.perf_counter()
@@ -356,6 +365,11 @@ if os.path.exists(path_out + '.txt'):
 if os.path.exists(tmp_dir) and os.path.exists(valid_path):
     shutil.rmtree(tmp_dir)
 
+print(dict_cmd)
+json_file = os.path.join(args.output, cache_name + '.json')
+print(json_file)
+out_file = open(json_file, "w")
+json.dump(dict_cmd, out_file, indent=4)
 print('Fin\n')
 
 t_end = time.perf_counter()
