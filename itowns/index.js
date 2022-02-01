@@ -414,6 +414,18 @@ async function main() {
             }
           }
 
+          console.log(editing.alertFC)
+          console.log(featureCollec.features[0].geometries[editing.featureIndex].properties.id)
+          const tempId = featureCollec.features[0].geometries[editing.featureIndex].properties.id
+          console.log(editing.alertFC.features[0].geometries
+            .filter((elem) => elem.properties.id === tempId))
+
+          const tempGeom = editing.alertFC.features[0].geometries
+            .filter((elem) => elem.properties.id === tempId);
+
+          console.log("___")
+          console.log(features[layerTest.id][0].geometry)
+
           if (features[layerTest.id][0].geometry.properties.status === null) {
             editing.postValue(features[layerTest.id][0].geometry.properties.id, 'status', false);
             editing.featureSelectedGeom.properties.status = false;
@@ -428,7 +440,8 @@ async function main() {
           viewer.comment = features[layerTest.id][0].geometry.properties.comment;
 
           editing.highlightSelectedFeature(featureCollec,
-            features[layerTest.id][0].geometry,
+            // features[layerTest.id][0].geometry,
+            tempGeom,
             features[layerTest.id][0].type);
         }
       }

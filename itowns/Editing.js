@@ -159,17 +159,36 @@ class Editing {
 
     const vector = new THREE.Vector2();
     const vector3 = new THREE.Vector3();
-    const { count, offset } = featureGeometry.indices[0];
 
-    newFeatureGeometry.startSubGeometry(count, newFeature);
-    const { vertices } = feature;
-    for (let v = offset * 2; v < (offset + count) * 2; v += 2) {
-      vector.fromArray(vertices, v);
-      vector3.copy(vector).setZ(0).applyMatrix4(featureCollec.matrixWorld);
-      coord.x = vector3.x;
-      coord.y = vector3.y;
-      newFeatureGeometry.pushCoordinates(coord, newFeature);
+    if (!Array.isArray(featureGeometry)) {
+      featureGeometry = [featureGeometry];
     }
+
+    featureGeometry.forEach((featureGeometry2) => {
+      const { count, offset } = featureGeometry2.indices[0];
+
+      newFeatureGeometry.startSubGeometry(count, newFeature);
+      const { vertices } = feature;
+      for (let v = offset * 2; v < (offset + count) * 2; v += 2) {
+        vector.fromArray(vertices, v);
+        vector3.copy(vector).setZ(0).applyMatrix4(featureCollec.matrixWorld);
+        coord.x = vector3.x;
+        coord.y = vector3.y;
+        newFeatureGeometry.pushCoordinates(coord, newFeature);
+      }
+    });
+
+    // const { count, offset } = featureGeometry.indices[0];
+
+    // newFeatureGeometry.startSubGeometry(count, newFeature);
+    // const { vertices } = feature;
+    // for (let v = offset * 2; v < (offset + count) * 2; v += 2) {
+    //   vector.fromArray(vertices, v);
+    //   vector3.copy(vector).setZ(0).applyMatrix4(featureCollec.matrixWorld);
+    //   coord.x = vector3.x;
+    //   coord.y = vector3.y;
+    //   newFeatureGeometry.pushCoordinates(coord, newFeature);
+    // }
 
     newFeatureGeometry.updateExtent();
 

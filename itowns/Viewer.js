@@ -415,6 +415,7 @@ class Viewer {
         }
         if (resData) {
           const geoJson = JSON.parse(JSON.stringify(resData));
+          console.log(geoJson)
           const { crs } = _view.tileLayer.extent;
           const options = {
             out: {
