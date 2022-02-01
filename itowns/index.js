@@ -1,10 +1,12 @@
 /* eslint-disable no-console */
-/* global setupLoadingScreen, GuiTools */
+// /* global setupLoadingScreen, GuiTools */
 import * as itowns from 'itowns';
 import Viewer from './Viewer';
 import Editing from './Editing';
 import Branch from './Branch';
 import Controller from './Controller';
+import API from './API';
+import Alert from './Alert';
 
 // Global itowns pour GuiTools -> peut être améliorer
 global.itowns = itowns;
@@ -49,6 +51,8 @@ async function main() {
   console.log('serverAPI:', serverAPI, 'portAPI:', portAPI);
   const apiUrl = `http://${serverAPI}:${portAPI}`;
 
+  const api = new API(apiUrl);
+
   const nameCache = urlParams.get('namecache');
 
   itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
@@ -70,7 +74,9 @@ async function main() {
     // const getVectorList = itowns.Fetcher.json(`${apiUrl}/vectors?cachePath=${activeCache.path}`);
 
     const viewerDiv = document.getElementById('viewerDiv');
-    const viewer = new Viewer(viewerDiv);
+    const viewer = new Viewer(viewerDiv, api);
+
+    // viewer.apiUrl = apiUrl;
 
     const overviews = await getOverviews;
 
@@ -91,76 +97,25 @@ async function main() {
     viewer.maxGraphDezoom = 2 ** nbSubLevelsPerCOG;
 
     viewer.createView(overviews, activeCache.id);
-    setupLoadingScreen(viewerDiv, viewer.view);
+    api.view = viewer.view;
+    // setupLoadingScreen(viewerDiv, viewer.view);
     // FeatureToolTip.init(viewerDiv, viewer.view);
 
-    viewer.view.isDebugMode = true;
-    viewer.menuGlobe = new GuiTools('menuDiv', viewer.view);
-    viewer.menuGlobe.gui.width = 300;
+    // viewer.view.isDebugMode = true;
+    // viewer.menuGlobe = new GuiTools('menuDiv', viewer.view);
+    // viewer.menuGlobe.gui.width = 300;
 
-    viewer.menuGlobe.colorGui.show();
-    viewer.menuGlobe.colorGui.open();
-    viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Extra Layers');
-    viewer.menuGlobe.vectorGui.open();
+    // viewer.menuGlobe.colorGui.show();
+    // viewer.menuGlobe.colorGui.open();
+    // viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Extra Layers');
+    // viewer.menuGlobe.vectorGui.open();
 
     const branch = new Branch(apiUrl, viewer);
-    const editing = new Editing(branch, apiUrl);
+    const editing = new Editing(branch);
+    editing.apiUrl = apiUrl;
 
     const controllers = new Controller(viewer.menuGlobe, editing);
-
-    // Patch pour ajouter la modification de l'epaisseur des contours dans le menu
-    viewer.menuGlobe.addImageryLayerGUI = function addImageryLayerGUI(layer) {
-    /* eslint-disable no-param-reassign */
-      let typeGui = 'colorGui';
-      if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layer.id)) {
-        typeGui = 'vectorGui';
-      }
-      if (this[typeGui].hasFolder(layer.id)) { return; }
-      if (layer.id === 'selectedFeature') { return; }
-
-      const folder = this[typeGui].addFolder(layer.id);
-      folder.add({ visible: layer.visible }, 'visible').onChange(((value) => {
-        layer.visible = value;
-
-        if (layer.id === editing.alertLayerName) {
-          viewer.view.getLayerById('selectedFeature').visible = value;
-        }
-
-        viewer.view.notifyChange(layer);
-      }));
-      folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0).onChange(((value) => {
-        layer.opacity = value;
-        viewer.view.notifyChange(layer);
-      }));
-      if (layer.effect_parameter) {
-        folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
-          layer.effect_parameter = value;
-          viewer.view.notifyChange(layer);
-        }));
-      }
-      if (typeGui === 'vectorGui' && layer.id !== 'Remarques') {
-        folder.add(branch, 'deleteVectorLayer').name('delete').onChange(() => {
-          if (layer.id !== editing.alertLayerName) {
-            branch.deleteVectorLayer(layer);
-            viewer.view.notifyChange(layer);
-            controllers.refreshDropBox('alert', [' -', ...branch.vectorList
-              .filter((elem) => elem.name !== layer.id)
-              .map((elem) => elem.name)]);
-          } else {
-            viewer.message = 'Couche en edition';
-          }
-        });
-      }
-    /* eslint-enable no-param-reassign */
-    };
-
-    viewer.menuGlobe.removeLayersGUI = function removeLayersGUI(nameLayer) {
-      if (this.colorGui.hasFolder(nameLayer)) {
-        this.colorGui.removeFolder(nameLayer);
-      } else {
-        this.vectorGui.removeFolder(nameLayer);
-      }
-    };
+    const alert = new Alert(viewer);
 
     // const branch = new Branch(apiUrl, viewer);
     branch.list = await getBranches;
@@ -226,8 +181,10 @@ async function main() {
       if (name !== ' -') {
         editing.alertLayerName = name;
         viewer.alertLayerName = name;
+        alert.layerName = name;
 
-        const layerTest = viewer.view.getLayerById(editing.alertLayerName);
+        // const layerTest = viewer.view.getLayerById(editing.alertLayerName);
+        const layerTest = viewer.view.getLayerById(alert.layerName);
         editing.alertFC = await layerTest.source.loadData(undefined, layerTest);
 
         if (editing.alertFC.features.length > 0) {
@@ -309,30 +266,67 @@ async function main() {
 
     editing.validated = false;
     controllers.validated = viewer.menuGlobe.gui.add(editing, 'validated').name('Validated');
-    controllers.validated.onChange(async (value) => {
+    controllers.validated.onChange((value) => {
       console.log('change status', value);
       const idFeature = editing.featureSelectedGeom.properties.id;
-      const res = await fetch(`${apiUrl}/alert/${idFeature}?status=${value}`,
-        {
-          method: 'PUT',
-        });
-      if (res.status === 200) {
-        // viewer.refresh(branch.layers);
-        viewer.refresh({ [editing.alertLayerName]: branch.layers[editing.alertLayerName] });
-        if (value === true) {
-          editing.nbValidated += 1;
-          if (editing.alertFC.features[0].geometries[editing.featureIndex]
-            .properties.status === null) {
-            editing.nbChecked += 1;
-          }
-        } else {
-          editing.nbValidated -= 1;
+      // api.updateStatus(idFeature, value)
+      //   .then(() => {
+      //     viewer.refresh({ [editing.alertLayerName]: branch.layers[editing.alertLayerName] });
+      //     editing.alertFC.features[0].geometries[editing.featureIndex].properties.status = value;
+
+      //     if (value === true) {
+      //       editing.nbValidated += 1;
+      //       if (editing.alertFC.features[0].geometries[editing.featureIndex]
+      //         .properties.status === null) {
+      //         editing.nbChecked += 1;
+      //       }
+      //     } else {
+      //       editing.nbValidated -= 1;
+      //     }
+      //     editing.progress = `${editing.nbChecked}/${editing.nbTotal}`
+      //                      + ` (${editing.nbValidated} validés)`;
+      //   })
+      //   .catch((error) => {
+      //     console.log(error);
+      //     viewer.view.dispatchEvent({
+      //       type: 'error',
+      //       msg: error,
+      //     });
+      //   });
+      editing.postValue(idFeature, 'status', value);
+      if (value === true) {
+        editing.nbValidated += 1;
+        if (editing.alertFC.features[0].geometries[editing.featureIndex]
+          .properties.status === null) {
+          editing.nbChecked += 1;
         }
-        editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
-        editing.alertFC.features[0].geometries[editing.featureIndex].properties.status = value;
       } else {
-        viewer.message = 'PB with validate';
+        editing.nbValidated -= 1;
       }
+      editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
+
+      // const res = await fetch(`${apiUrl}/alert/${idFeature}?status=${value}`,
+      //   {
+      //     method: 'PUT',
+      //   });
+      // if (res.status === 200) {
+      //   // viewer.refresh(branch.layers);
+      //   viewer.refresh({ [editing.alertLayerName]: branch.layers[editing.alertLayerName] });
+      //   if (value === true) {
+      //     editing.nbValidated += 1;
+      //     if (editing.alertFC.features[0].geometries[editing.featureIndex]
+      //       .properties.status === null) {
+      //       editing.nbChecked += 1;
+      //     }
+      //   } else {
+      //     editing.nbValidated -= 1;
+      //   }
+      //   editing.progress = `${editing.nbChecked}/${editing.nbTotal}`
+      //                    + ` (${editing.nbValidated} validés)`;
+      //   editing.alertFC.features[0].geometries[editing.featureIndex].properties.status = value;
+      // } else {
+      //   viewer.message = 'PB with validate';
+      // }
     });
     controllers.hide('validated');
 
@@ -385,6 +379,20 @@ async function main() {
       controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
     });
 
+    view.addEventListener('vector-deleted', async (event) => {
+      console.log('-> A vector layer had been deleted');
+      // controllers.resetAlerts();
+      const layer = branch.vectorList.filter((elem) => elem.id === event.layerId)[0];
+      const index = branch.vectorList.indexOf(layer);
+      branch.vectorList.splice(index, 1);
+      delete branch.layers[layer.name];
+
+      viewer.deleteLayer(layer.name);
+      controllers.refreshDropBox('alert', [' -', ...branch.vectorList
+        .filter((elem) => elem.name !== event.layerId)
+        .map((elem) => elem.name)]);
+    });
+
     view.addEventListener('branch-created', () => {
       console.log('-> New branch created');
       controllers.setEditingController();
@@ -407,8 +415,10 @@ async function main() {
 
     view.addEventListener('remark-added', async () => {
       console.log('-> A remark had been added');
-      if (editing.alertLayerName === 'Remarques') {
-        const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
+      // if (editing.alertLayerName === 'Remarques') {
+      //   const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
+      if (alert.layerName === 'Remarques') {
+        const layerAlert = viewer.view.getLayerById(alert.layerName);
         await layerAlert.whenReady;
         editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
 
@@ -421,7 +431,7 @@ async function main() {
         editing.nbTotal = editing.alertFC.features[0].geometries.length;
         editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
 
-        editing.centerOnAlertFeature();
+        // editing.centerOnAlertFeature();
         editing.validated = editing.featureSelectedGeom.properties.status;
         controllers.validated.updateDisplay();
         viewer.remark = editing.featureSelectedGeom.properties.comment;
@@ -462,6 +472,11 @@ async function main() {
       }
     });
 
+    view.addEventListener('error', (ev) => {
+      // eslint-disable-next-line no-alert
+      window.alert(ev.msg);
+    });
+
     viewerDiv.addEventListener('mousemove', (ev) => {
       ev.preventDefault();
       editing.mousemove(ev);
@@ -485,7 +500,9 @@ async function main() {
 
           if (features[layerTest.id][0].geometry.properties.status === null) {
             editing.postValue(features[layerTest.id][0].geometry.properties.id, 'status', false);
-            editing.featureSelectedGeom.properties.status = false;
+            // editing.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
+            // editing.alertFC.features[0].geometries[this.featureIndex].properties[status] = value;
+
             editing.nbChecked += 1;
             editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
           }

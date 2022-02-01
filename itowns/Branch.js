@@ -184,29 +184,29 @@ class Branch {
     }
   }
 
-  deleteLayer(id) {
-    fetch(`${this.apiUrl}/vector?idVector=${id}`,
-      {
-        method: 'DELETE',
-      }).then((res) => {
-      if (res.status === 200) {
-        const layer = this.vectorList.filter((elem) => elem.id === id)[0];
-        const index = this.vectorList.indexOf(layer);
-        this.vectorList.splice(index, 1);
-        delete this.layers[layer.name];
-        console.log(`-> Layer '${id}' deleted`);
-      } else {
-        console.log(`-> Error Serveur: Layer '${id}' NOT deleted`);
-      }
-    });
-  }
+  // deleteLayer(id) {
+  //   fetch(`${this.apiUrl}/vector?idVector=${id}`,
+  //     {
+  //       method: 'DELETE',
+  //     }).then((res) => {
+  //     if (res.status === 200) {
+  //       const layer = this.vectorList.filter((elem) => elem.id === id)[0];
+  //       const index = this.vectorList.indexOf(layer);
+  //       this.vectorList.splice(index, 1);
+  //       delete this.layers[layer.name];
+  //       console.log(`-> Layer '${id}' deleted`);
+  //     } else {
+  //       console.log(`-> Error Serveur: Layer '${id}' NOT deleted`);
+  //     }
+  //   });
+  // }
 
-  deleteVectorLayer(layer) {
-    if (!layer) return;
-    this.deleteLayer(layer.vectorId);
-    this.view.removeLayer(layer.id);
-    this.viewer.menuGlobe.removeLayersGUI(layer.id);
-    delete this.viewer.layerIndex[layer.id];
-  }
+  // deleteVectorLayer(layer) {
+  //   if (!layer) return;
+  //   this.deleteLayer(layer.vectorId);
+  //   this.view.removeLayer(layer.id);
+  //   this.viewer.menuGlobe.removeLayersGUI(layer.id);
+  //   delete this.viewer.layerIndex[layer.id];
+  // }
 }
 export default Branch;

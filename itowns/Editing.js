@@ -16,11 +16,11 @@ const status = {
 };
 
 class Editing {
-  constructor(branch, apiUrl) {
+  constructor(branch) {
     this.branch = branch;
     this.viewer = branch.viewer;
     this.view = this.viewer.view;
-    this.apiUrl = apiUrl;
+    this.api = this.viewer.api;
 
     this.validClicheSelected = false;
     this.currentStatus = status.RAS;
@@ -102,24 +102,39 @@ class Editing {
     this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
     // On post le geojson sur l'API
-    fetch(`${this.apiUrl}/${this.branch.active.id}/patch?`,
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: dataStr,
-      }).then((res) => {
-      this.cancelcurrentPolygon();
-      if (res.status === 200) {
+    this.api.postPatch(this.branch.active.id, dataStr)
+      .then(() => {
         this.viewer.refresh(this.branch.layers);
-      } else {
-        res.json().then((json) => {
-          this.viewer.message = json.msg;
+      })
+      .catch((error) => {
+        console.log(error);
+        this.viewer.message = error;
+        this.viewer.view.dispatchEvent({
+          type: 'error',
+          msg: error,
         });
-      }
-    });
+      })
+      .finally(() => {
+        this.cancelcurrentPolygon();
+      });
+    // fetch(`${this.apiUrl}/${this.branch.active.id}/patch?`,
+    //   {
+    //     method: 'POST',
+    //     headers: {
+    //       Accept: 'application/json',
+    //       'Content-Type': 'application/json',
+    //     },
+    //     body: dataStr,
+    //   }).then((res) => {
+    //   this.cancelcurrentPolygon();
+    //   if (res.status === 200) {
+    //     this.viewer.refresh(this.branch.layers);
+    //   } else {
+    //     res.json().then((json) => {
+    //       this.viewer.message = json.msg;
+    //     });
+    //   }
+    // });
   }
 
   cancelcurrentPolygon() {
@@ -210,17 +225,30 @@ class Editing {
   //   const layerTest = this.viewer.view.getLayerById(this.alertLayerName);
   //   const fc = await layerTest.source.loadData(undefined, layerTest);
 
-  async postValue(idFeature, variable, value) {
-    const res = await fetch(`${this.apiUrl}/alert/${idFeature}?${variable}=${value}`,
-      {
-        method: 'PUT',
+  postValue(idFeature, variable, value) {
+    this.api.updateAlert(idFeature, variable, value)
+      .then(() => {
+        this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
+        this.alertFC.features[0].geometries[this.featureIndex].properties[variable] = value;
+      })
+      .catch((error) => {
+        console.log(error);
+        this.viewer.message = 'PB with updating the database';
+        this.viewer.view.dispatchEvent({
+          type: 'error',
+          msg: error,
+        });
       });
-    if (res.status === 200) {
-      this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
-      this.alertFC.features[0].geometries[this.featureIndex].properties[variable] = value;
-    } else {
-      this.viewer.message = 'PB with validate';
-    }
+    // const res = await fetch(`${this.apiUrl}/alert/${idFeature}?${variable}=${value}`,
+    //   {
+    //     method: 'PUT',
+    //   });
+    // if (res.status === 200) {
+    //   this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
+    //   this.alertFC.features[0].geometries[this.featureIndex].properties[variable] = value;
+    // } else {
+    //   this.viewer.message = 'PB with validate';
+    // }
   }
 
   centerOnAlertFeature() {
@@ -234,7 +262,9 @@ class Editing {
 
     if (this.featureSelectedGeom.properties.status === null) {
       this.postValue(this.featureSelectedGeom.properties.id, 'status', false);
-      // this.featureSelectedGeom.properties.status = false;
+      // this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
+      // this.alertFC.features[0].geometries[this.featureIndex].properties[status] = value;
+
       this.nbChecked += 1;
       this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
     }
@@ -256,7 +286,9 @@ class Editing {
       this.viewer.message = 'alerte déjà validée';
     } else if (this.featureSelectedGeom.properties.status === false) {
       this.postValue(this.featureSelectedGeom.properties.id, 'status', null);
-      this.featureSelectedGeom.properties.status = null;
+      // this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
+      // this.alertFC.features[0].geometries[this.featureIndex].properties[status] = value;
+
       this.nbChecked -= 1;
       this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
     }

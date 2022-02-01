@@ -1,3 +1,4 @@
+/* global setupLoadingScreen, GuiTools */
 /* eslint-disable no-console */
 /* eslint-disable no-underscore-dangle */
 import * as itowns from 'itowns';
@@ -48,13 +49,14 @@ function coloringAlerts(properties) {
 }
 
 class Viewer {
-  constructor(viewerDiv) {
+  constructor(viewerDiv, api) {
     this.viewerDiv = viewerDiv;
+    this.api = api;
 
     this.crs = {};
     this.overview = {};
     this.view = null;
-    this.menuGlobe = null;
+    // this.menuGlobe = null;
 
     this.xcenter = 0;
     this.ycenter = 0;
@@ -69,6 +71,7 @@ class Viewer {
       Patches: 4,
     };
     this.oldStyle = {};
+    this.alertLayerName = null;
   }
 
   createView(overviews, idCache) {
@@ -148,6 +151,70 @@ class Viewer {
         minResolution: this.resolLvMin,
       },
     });
+
+    setupLoadingScreen(this.viewerDiv, this.view);
+    this.view.isDebugMode = true;
+    this.menuGlobe = new GuiTools('menuDiv', this.view);
+    this.menuGlobe.gui.width = 300;
+
+    this.menuGlobe.colorGui.show();
+    this.menuGlobe.colorGui.open();
+    this.menuGlobe.vectorGui = this.menuGlobe.gui.addFolder('Extra Layers');
+    this.menuGlobe.vectorGui.open();
+
+    // Patch pour ajouter la modification de l'epaisseur des contours dans le menu
+    const viewer = this;
+    this.menuGlobe.addImageryLayerGUI = function addImageryLayerGUI(layer) {
+      /* eslint-disable no-param-reassign */
+      let typeGui = 'colorGui';
+      if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layer.id)) {
+        typeGui = 'vectorGui';
+      }
+      if (this[typeGui].hasFolder(layer.id)) { return; }
+      if (layer.id === 'selectedFeature') { return; }
+
+      const folder = this[typeGui].addFolder(layer.id);
+      folder.add({ visible: layer.visible }, 'visible').onChange(((value) => {
+        layer.visible = value;
+
+        if (layer.id === this.alertLayerName) {
+          this.view.getLayerById('selectedFeature').visible = value;
+        }
+
+        this.view.notifyChange(layer);
+      }));
+      folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0).onChange(((value) => {
+        layer.opacity = value;
+        this.view.notifyChange(layer);
+      }));
+      if (layer.effect_parameter) {
+        folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
+          layer.effect_parameter = value;
+          this.view.notifyChange(layer);
+        }));
+      }
+      if (typeGui === 'vectorGui' && layer.id !== 'Remarques') {
+        folder.add(viewer, 'deleteVectorLayer').name('delete').onChange(() => {
+          if (layer.id !== this.alertLayerName) {
+            viewer.deleteVectorLayer(layer);
+            // controllers.refreshDropBox('alert', [' -', ...branch.vectorList
+            //   .filter((elem) => elem.name !== layer.id)
+            //   .map((elem) => elem.name)]);
+          } else {
+            this.message = 'Couche en edition';
+          }
+        });
+      }
+    /* eslint-enable no-param-reassign */
+    };
+
+    this.menuGlobe.removeLayersGUI = function removeLayersGUI(nameLayer) {
+      if (this.colorGui.hasFolder(nameLayer)) {
+        this.colorGui.removeFolder(nameLayer);
+      } else {
+        this.vectorGui.removeFolder(nameLayer);
+      }
+    };
   }
 
   centerCamera(coordX, coordY) {
@@ -497,6 +564,44 @@ class Viewer {
           // throw new Error('Type of file not supported, please add it using DragNDrop.register');
       }
     }
+  }
+
+  deleteVectorLayer(layer) {
+    if (!layer) return;
+    // this.deleteLayer(layer.id, layer.vectorId);
+    this.api.deleteLayer(layer.id, layer.vectorId);
+  }
+
+  // deleteLayer(name, id) {
+  //   fetch(`${this.apiUrl}/vector?idVector=${id}`,
+  //     {
+  //       method: 'DELETE',
+  //     }).then((res) => {
+  //     if (res.status === 200) {
+  //       console.log(`-> Layer '${name}' (id: ${id}) succesfully deleted`);
+  //       this.view.removeLayer(name);
+  //       this.menuGlobe.removeLayersGUI(name);
+  //       delete this.layerIndex[name];
+  //       // this.view.notifyChange();
+  //       this.view.dispatchEvent({
+  //         type: 'vector-deleted',
+  //         layerId: id,
+  //       });
+  //     } else {
+  //       console.log(`-> Error Serveur: Layer '${name}' (id: ${id}) NOT deleted`);
+  //       this.view.dispatchEvent({
+  //         type: 'error',
+  //         msg: `Error Serveur: Layer '${name}' (id: ${id}) NOT deleted`,
+  //       });
+  //     }
+  //   });
+  // }
+
+  deleteLayer(name) {
+    this.view.removeLayer(name);
+    this.menuGlobe.removeLayersGUI(name);
+    delete this.layerIndex[name];
+    // this.view.notifyChange();
   }
 }
 export default Viewer;
