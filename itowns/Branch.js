@@ -1,72 +1,55 @@
 /* eslint-disable no-console */
 import * as itowns from 'itowns';
-
-function readCRS(json) {
-  if (json.crs) {
-    if (json.crs.type.toLowerCase() === 'epsg') {
-      return `EPSG:${json.crs.properties.code}`;
-    } if (json.crs.type.toLowerCase() === 'name') {
-      const epsgIdx = json.crs.properties.name.toLowerCase().indexOf('epsg:');
-      if (epsgIdx >= 0) {
-        // authority:version:code => EPSG:[...]:code
-        const codeStart = json.crs.properties.name.indexOf(':', epsgIdx + 5);
-        if (codeStart > 0) {
-          return `EPSG:${json.crs.properties.name.substr(codeStart + 1)}`;
-        }
-      }
-    }
-    throw new Error(`Unsupported CRS type '${json.crs}'`);
-  }
-  // assume default crs
-  return 'EPSG:4326';
-}
+import Alert from './Alert';
 
 class Branch {
-  constructor(apiUrl, viewer) {
-    this.apiUrl = apiUrl;
+  constructor(viewer) {
+    // this.apiUrl = apiUrl;
     this.viewer = viewer;
     this.view = viewer.view;
+    this.api = viewer.api;
 
     this.layers = {};
     this.vectorList = {};
 
     this.active = {};
     this.list = {};
+    this.alert = new Alert(this);
   }
 
   setLayers() {
     this.layers = {
       Ortho: {
         type: 'raster',
-        url: `${this.apiUrl}/${this.active.id}/wmts`,
+        url: `${this.api.url}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
         opacity: 1,
         visible: true,
       },
       Graph: {
         type: 'raster',
-        url: `${this.apiUrl}/${this.active.id}/wmts`,
+        url: `${this.api.url}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
         opacity: 1,
         visible: true,
       },
       Contour: {
         type: 'raster',
-        url: `${this.apiUrl}/${this.active.id}/wmts`,
+        url: `${this.api.url}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
         opacity: 0.5,
         visible: true,
       },
       Opi: {
         type: 'raster',
-        url: `${this.apiUrl}/${this.active.id}/wmts`,
+        url: `${this.api.url}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
         opacity: 0.5,
         visible: false,
       },
       Patches: {
         type: 'vector',
-        url: `${this.apiUrl}/${this.active.id}/patches`,
+        url: `${this.api.url}/${this.active.id}/patches`,
         crs: this.viewer.crs,
         opacity: 1,
         visible: false,
@@ -85,128 +68,103 @@ class Branch {
     this.vectorList.forEach((vector) => {
       this.layers[vector.name] = {
         type: 'vector',
-        url: `${this.apiUrl}/vector?idVector=${vector.id}`,
+        url: `${this.api.url}/vector?idVector=${vector.id}`,
         crs: vector.crs,
         opacity: 1,
-        style: JSON.parse(vector.style_itowns),
         visible: true,
+        style: JSON.parse(vector.style_itowns),
         id: vector.id,
       };
     });
   }
 
-  async changeBranch() {
+  async changeBranch(name) {
+    this.active = {
+      name,
+      id: this.list.filter((elem) => elem.name === name)[0].id,
+    };
     console.log('changeBranch -> name:', this.active.name, 'id:', this.active.id);
-    this.viewer.message = '';
     const listColorLayer = this.viewer.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
     listColorLayer.forEach((element) => {
-      const regex = new RegExp(`^${this.apiUrl}\\/[0-9]+\\/`);
-      this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url.replace(regex, `${this.apiUrl}/${this.active.id}/`);
+      const regex = new RegExp(`^${this.api.url}\\/[0-9]+\\/`);
+      this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url
+        .replace(regex, `${this.api.url}/${this.active.id}/`);
     });
-    const getVectorList = itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
-    this.vectorList = await getVectorList;
+    this.vectorList = await itowns.Fetcher.json(`${this.api.url}/${this.active.id}/vectors`);
     this.setLayers();
     this.viewer.refresh(this.layers, true);
   }
 
   createBranch() {
-    this.viewer.message = '';
     // eslint-disable-next-line no-alert
     const branchName = window.prompt('Choose a new branch name:', '');
     console.log(branchName);
     if (branchName === null) return;
     if (branchName.length === 0) {
-      this.viewer.message = 'le nom n\'est pas valide';
+      this.viewer.message = "le nom n'est pas valide";
       return;
     }
     this.addBranch(branchName);
   }
 
-  async addBranch(branchName) {
-    const res = await fetch(`${this.apiUrl}/branch?name=${branchName}&idCache=${this.viewer.idCache}`,
-      {
-        method: 'POST',
-      });// .then((res) => {
-    if (res.status === 200) {
-      const branches = await itowns.Fetcher.json(`${this.apiUrl}/branches?idCache=${this.viewer.idCache}`);// .then((branches) => {
-      this.list = branches;
-      this.active.name = branchName;
-      this.active.id = this.list.filter((branch) => branch.name === branchName)[0].id;
-      await this.changeBranch();
-      this.view.dispatchEvent({
-        type: 'branch-created',
+  addBranch(branchName) {
+    this.api.postBranch(this.viewer.idCache, branchName)
+      .then((newBranch) => {
+        console.log(`-> Branch '${newBranch.name}' (id: ${newBranch.id}) succesfully added`);
+        this.list.push(newBranch);
+        this.view.dispatchEvent({
+          type: 'branch-created',
+        });
+        // await this.changeBranch(branchName);
+        this.changeBranch(branchName);
+      })
+      .catch((error) => {
+        if (error.name === 'Server Error') {
+          this.viewer.message = 'la branche existe déjà';
+        } else {
+          this.viewer.message = 'PB de mise à jour de la BdD';
+          this.view.dispatchEvent({
+            type: 'error',
+            msg: error,
+          });
+        }
       });
-      // });
-    } else {
-      res.text().then((err) => {
-        console.log(err);
-        this.viewer.message = 'le nom n\'est pas valide';
-      });
-    }
-    // });
   }
 
-  async saveLayer(name, geojson, style) {
-    const crs = readCRS(geojson);
-    const res = await fetch(`${this.apiUrl}/${this.active.id}/vector`,
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          metadonnees: {
-            name,
-            style,
-            crs,
-          },
-          data: geojson,
-        }),
-      });
-    if (res.status === 200) {
-      this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
-      this.setLayers();
-      // const json = await res.json();
-      // this.layers[name] = {
-      //   type: 'vector',
-      //   url: `${this.apiUrl}/vector?idVector=${json.id}`,
-      //   crs,
-      //   opacity: 1,
-      //   style,
-      //   visible: true,
-      //   id: json.id,
-      // };
-      console.log(`-> Layer '${name}' saved`);
-      this.viewer.refresh(this.layers);
-    } else {
-      console.log(`-> Error Serveur: Layer '${name}' NOT saved`);
-    }
-  }
-
-  deleteLayer(id) {
-    fetch(`${this.apiUrl}/vector?idVector=${id}`,
-      {
-        method: 'DELETE',
-      }).then((res) => {
-      if (res.status === 200) {
-        const layer = this.vectorList.filter((elem) => elem.id === id)[0];
-        const index = this.vectorList.indexOf(layer);
-        this.vectorList.splice(index, 1);
-        delete this.layers[layer.name];
-        console.log(`-> Layer '${id}' deleted`);
-      } else {
-        console.log(`-> Error Serveur: Layer '${id}' NOT deleted`);
-      }
+  deleteLayer(name, id) {
+    return new Promise((resolve, reject) => {
+      this.api.deleteVector(name, id)
+        .then(() => {
+          resolve();
+        })
+        .catch(() => {
+          this.viewer.message = 'PB with updating the database';
+          const err = new Error(`Vector '${name}' (id: ${id}) NOT deleted`);
+          err.name = 'Database Error';
+          reject(err);
+        });
     });
   }
 
-  deleteVectorLayer(layer) {
-    if (!layer) return;
-    this.deleteLayer(layer.vectorId);
-    this.view.removeLayer(layer.id);
-    this.viewer.menuGlobe.removeLayersGUI(layer.id);
-    delete this.viewer.layerIndex[layer.id];
+  saveLayer(name, geojson, style) {
+    return new Promise((resolve, reject) => {
+      this.api.saveVector(this.active.id, name, geojson, style)
+        .then(() => {
+          resolve();
+        })
+        .catch(() => {
+          this.viewer.message = 'PB with updating the database';
+          const err = new Error(`Layer '${name}' NOT saved`);
+          err.name = 'Database Error';
+          reject(err);
+        });
+    });
+  }
+
+  setAlertLayer(name) {
+    if (this.alert.layerName !== ' -') this.layers[this.alert.layerName].isAlert = false;
+    if (name !== ' -') this.layers[name].isAlert = true;
+    this.alert.layerName = name;
   }
 }
 export default Branch;

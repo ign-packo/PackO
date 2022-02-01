@@ -66,13 +66,14 @@ function coloringAlerts(properties) {
 }
 
 class Viewer {
-  constructor(viewerDiv) {
+  constructor(viewerDiv, api) {
     this.viewerDiv = viewerDiv;
+    this.api = api;
 
     this.crs = {};
     this.overview = {};
     this.view = null;
-    this.menuGlobe = null;
+    // this.menuGlobe = null;
 
     this.dezoomInitial = 4;// to define
     this.zoomFactor = 2;// customizable
@@ -285,8 +286,8 @@ class Viewer {
         const {
           opacity, transparent, visible,
         } = this.view.getLayerById(layerName);
-        let { style } = this.view.getLayerById(layerName);
-        let { source } = this.view.getLayerById(layerName);
+        let { style, source } = this.view.getLayerById(layerName);
+        // const { isAlert } = this.view.getLayerById(layerName);
         if (source.isVectorSource) {
           source = new itowns.FileSource({
             url: source.url,
@@ -297,7 +298,8 @@ class Viewer {
           if (this.oldStyle[layerName]) {
             style = this.oldStyle[layerName];
           }
-          if (layerName === this.alertLayerName) {
+          // if (layerName === this.alertLayerName) {
+          if (layerList[layerName].isAlert === true) {
             this.oldStyle[layerName] = style.clone();
             /* eslint-disable no-param-reassign */
             style.fill.color = coloringAlerts;
@@ -393,6 +395,9 @@ class Viewer {
       if (layerList[layerName].id !== undefined) {
         layer.colorLayer.vectorId = layerList[layerName].id;
       }
+
+      layer.colorLayer.isAlert = layerList[layerName].isAlert === undefined
+        ? false : layerList[layerName].isAlert;
     });
 
     // Layer ordering

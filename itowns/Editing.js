@@ -16,11 +16,11 @@ const status = {
 };
 
 class Editing {
-  constructor(branch, apiUrl) {
+  constructor(branch) {
     this.branch = branch;
     this.viewer = branch.viewer;
     this.view = this.viewer.view;
-    this.apiUrl = apiUrl;
+    this.api = this.viewer.api;
 
     this.validClicheSelected = false;
     this.currentStatus = status.RAS;
@@ -29,7 +29,7 @@ class Editing {
     this.lastPos = null;
     this.mousePosition = null;
 
-    this.featureIndex = 0;
+    // this.featureIndex = 0;
 
     this.STATUS = status;
   }
@@ -43,22 +43,20 @@ class Editing {
 
   mousemove(e) {
     this.mousePosition = this.pickPoint(e);
-    if (this.mousePosition) {
-      this.coord = `${this.mousePosition.x.toFixed(2)},${this.mousePosition.y.toFixed(2)}`;
-      if (this.currentPolygon == null) return;
+    this.coord = `${this.mousePosition.x.toFixed(2)},${this.mousePosition.y.toFixed(2)}`;
+    if (this.currentPolygon == null) return;
 
-      if (this.currentStatus === status.POLYGON && this.nbVertices > 0) {
-        const vertices = this.currentPolygon.geometry.attributes.position;
-        const newPoint = new THREE.Vector3();
-        newPoint.subVectors(this.mousePosition, this.currentPolygon.position);
-        vertices.set(newPoint.toArray(), 3 * this.nbVertices);
-        vertices.copyAt(this.nbVertices + 1, vertices, 0);
-        vertices.needsUpdate = true;
+    if (this.currentStatus === status.POLYGON && this.nbVertices > 0) {
+      const vertices = this.currentPolygon.geometry.attributes.position;
+      const newPoint = new THREE.Vector3();
+      newPoint.subVectors(this.mousePosition, this.currentPolygon.position);
+      vertices.set(newPoint.toArray(), 3 * this.nbVertices);
+      vertices.copyAt(this.nbVertices + 1, vertices, 0);
+      vertices.needsUpdate = true;
 
-        this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 2);
-        this.currentPolygon.geometry.computeBoundingSphere();
-        this.view.notifyChange(this.currentPolygon);
-      }
+      this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 2);
+      this.currentPolygon.geometry.computeBoundingSphere();
+      this.view.notifyChange(this.currentPolygon);
     }
   }
 
@@ -102,24 +100,39 @@ class Editing {
     this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
     // On post le geojson sur l'API
-    fetch(`${this.apiUrl}/${this.branch.active.id}/patch?`,
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: dataStr,
-      }).then((res) => {
-      this.cancelcurrentPolygon();
-      if (res.status === 200) {
+    this.api.postPatch(this.branch.active.id, dataStr)
+      .then(() => {
         this.viewer.refresh(this.branch.layers);
-      } else {
-        res.json().then((json) => {
-          this.viewer.message = json.msg;
+      })
+      .catch((error) => {
+        console.log(error);
+        this.viewer.message = error;
+        this.viewer.view.dispatchEvent({
+          type: 'error',
+          msg: error,
         });
-      }
-    });
+      })
+      .finally(() => {
+        this.cancelcurrentPolygon();
+      });
+    // fetch(`${this.apiUrl}/${this.branch.active.id}/patch?`,
+    //   {
+    //     method: 'POST',
+    //     headers: {
+    //       Accept: 'application/json',
+    //       'Content-Type': 'application/json',
+    //     },
+    //     body: dataStr,
+    //   }).then((res) => {
+    //   this.cancelcurrentPolygon();
+    //   if (res.status === 200) {
+    //     this.viewer.refresh(this.branch.layers);
+    //   } else {
+    //     res.json().then((json) => {
+    //       this.viewer.message = json.msg;
+    //     });
+    //   }
+    // });
   }
 
   cancelcurrentPolygon() {
@@ -147,7 +160,7 @@ class Editing {
     if (layerFeatureSelected) {
       this.viewer.view.removeLayer('selectedFeature');
     }
-    const layerTest = this.viewer.view.getLayerById(this.alertLayerName);
+    const layerTest = this.viewer.view.getLayerById(this.branch.alert.layerName);
     // const featureCollec = await layerTest.source.loadData(undefined, layerTest);
     const newFeatureCollec = new itowns.FeatureCollection(layerTest);
 
@@ -204,161 +217,150 @@ class Editing {
     this.viewer.view.addLayer(newColorLayer);
   }
 
-  // alerts
-  // async centerOnAlertFeature(onlyUnchecked = false, step = 0) {
-  //   const layerTest = this.viewer.view.getLayerById(this.alertLayerName);
-  //   const fc = await layerTest.source.loadData(undefined, layerTest);
-
-  async postValue(idFeature, variable, value) {
-    const res = await fetch(`${this.apiUrl}/vector/${idFeature}?${variable}=${value}`,
-      {
-        method: 'PUT',
-      });
-    if (res.status === 200) {
-      this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
-      this.alertFC.features[0].geometries[this.featureIndex].properties[variable] = value;
-    } else {
-      this.viewer.message = 'PB with validate';
-    }
-  }
-
   centerOnAlertFeature() {
     this.viewer.message = '';
-    const coordcenter = this.alertFC.features[0].geometries[this.featureIndex].extent.clone()
-      .applyMatrix4(this.alertFC.matrixWorld).center();
+    const alertFC = this.branch.alert.featureCollection;
+    const coordcenter = alertFC.features[0].geometries[this.branch.alert.featureIndex]
+      .extent.clone().applyMatrix4(alertFC.matrixWorld).center();
 
     this.viewer.centerCamera(coordcenter.x, coordcenter.y);
 
-    this.featureSelectedGeom = this.alertFC.features[0].geometries[this.featureIndex];
+    this.featureSelectedGeom = alertFC.features[0].geometries[this.branch.alert.featureIndex];
 
     if (this.featureSelectedGeom.properties.status === null) {
-      this.postValue(this.featureSelectedGeom.properties.id, 'status', false);
-      // this.featureSelectedGeom.properties.status = false;
-      this.nbChecked += 1;
-      this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
+      this.branch.alert.postValue(this.featureSelectedGeom.properties.id, 'status', false);
+      // this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
+      // this.alertFC.features[0].geometries[this.featureIndex].properties[status] = value;
+
+      this.branch.alert.nbChecked += 1;
+      this.branch.alert.progress = `${this.branch.alert.nbChecked}/${this.branch.alert.nbTotal} (${this.branch.alert.nbValidated} validés)`;
     }
 
-    // this.id = this.featureSelectedGeom.properties.id;
-    this.id = this.featureIndex;
+    this.branch.alert.id = this.branch.alert.featureIndex;
     this.controllers.id.updateDisplay();
-    this.validated = this.featureSelectedGeom.properties.status;
+    this.branch.alert.validated = this.featureSelectedGeom.properties.status;
     this.controllers.validated.updateDisplay();
-    // this.viewer.remark = this.featureSelectedGeom.properties.comment;
-    this.comment = this.featureSelectedGeom.properties.comment;
+    this.branch.alert.comment = this.featureSelectedGeom.properties.comment;
 
-    this.highlightSelectedFeature(this.alertFC,
+    this.highlightSelectedFeature(alertFC,
       this.featureSelectedGeom,
-      this.alertFC.features[0].type);
+      alertFC.features[0].type);
   }
 
   unchecked() {
     if (this.featureSelectedGeom.properties.status === true) {
       this.viewer.message = 'alerte déjà validée';
     } else if (this.featureSelectedGeom.properties.status === false) {
-      this.postValue(this.featureSelectedGeom.properties.id, 'status', null);
-      this.featureSelectedGeom.properties.status = null;
-      this.nbChecked -= 1;
-      this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
+      this.branch.alert.postValue(this.featureSelectedGeom.properties.id, 'status', null);
+      // this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
+      // this.alertFC.features[0].geometries[this.featureIndex].properties[status] = value;
+
+      this.branch.alert.nbChecked -= 1;
+      this.branch.alert.progress = `${this.branch.alert.nbChecked}/${this.branch.alert.nbTotal} (${this.branch.alert.nbValidated} validés)`;
     }
   }
 
   keydown(e) {
     if (this.currentStatus === status.WAITING) return;
-    console.log(e.key, ' down');
-    if (this.currentStatus === status.RAS) {
-      // L'utilisateur demande à déselectionner l'OPI
-      if (this.validClicheSelected && (e.key === 'Escape')) {
-        this.validClicheSelected = false;
-        this.cliche = 'none';
-        this.controllers.cliche.__li.style.backgroundColor = '';
-        this.view.getLayerById('Opi').visible = false;
-        this.view.notifyChange(this.view.getLayerById('Opi'), true);
-      } else if (this.alertLayerName && this.alertFC.features.length > 0) {
-        const { geometries } = this.alertFC.features[0];
-        if (e.key === 'ArrowLeft') {
-          this.featureIndex -= 1;
-          if (this.featureIndex === -1) {
-            this.featureIndex = geometries.length - 1;
-          }
-          this.centerOnAlertFeature();
-        } else if (e.key === 'ArrowRight') {
-          this.featureIndex += 1;
-          if (this.featureIndex === geometries.length) this.featureIndex = 0;
-          this.centerOnAlertFeature();
-        } else if (e.key === 'ArrowDown') {
-          let { featureIndex } = this;
-          featureIndex -= 1;
-          if (featureIndex === -1) featureIndex = geometries.length - 1;
-          while (geometries[featureIndex].properties.status !== null
-            && featureIndex !== this.featureIndex) {
+    this.viewer.message = '';
+    switch (this.currentStatus) {
+      case status.RAS: {
+        // L'utilisateur demande à déselectionner l'OPI
+        if (this.validClicheSelected && (e.key === 'Escape')) {
+          this.validClicheSelected = false;
+          this.cliche = 'none';
+          this.controllers.cliche.__li.style.backgroundColor = '';
+          this.view.getLayerById('Opi').visible = false;
+          this.view.notifyChange(this.view.getLayerById('Opi'), true);
+        } else if (this.branch.alert.layerName !== ' -'
+                   && this.branch.alert.nbTotal > 0) {
+          const { geometries } = this.branch.alert.featureCollection.features[0];
+          if (e.key === 'ArrowLeft') {
+            this.branch.alert.featureIndex -= 1;
+            if (this.branch.alert.featureIndex === -1) {
+              this.branch.alert.featureIndex = geometries.length - 1;
+            }
+            this.centerOnAlertFeature();
+          } else if (e.key === 'ArrowRight') {
+            this.branch.alert.featureIndex += 1;
+            if (this.branch.alert.featureIndex === geometries.length) {
+              this.branch.alert.featureIndex = 0;
+            }
+            this.centerOnAlertFeature();
+          } else if (e.key === 'ArrowDown') {
+            let { featureIndex } = this;
             featureIndex -= 1;
             if (featureIndex === -1) featureIndex = geometries.length - 1;
-          }
-          this.featureIndex = featureIndex;
-          this.centerOnAlertFeature();
-        } else if (e.key === 'ArrowUp') {
-          let { featureIndex } = this;
-          featureIndex += 1;
-          if (featureIndex === geometries.length) featureIndex = 0;
-          while (geometries[featureIndex].properties.status !== null
-            && featureIndex !== this.featureIndex) {
+            while (geometries[featureIndex].properties.status !== null
+              && featureIndex !== this.branch.alert.featureIndex) {
+              featureIndex -= 1;
+              if (featureIndex === -1) featureIndex = geometries.length - 1;
+            }
+            this.branch.alert.featureIndex = featureIndex;
+            this.centerOnAlertFeature();
+          } else if (e.key === 'ArrowUp') {
+            let { featureIndex } = this;
             featureIndex += 1;
             if (featureIndex === geometries.length) featureIndex = 0;
+            while (geometries[featureIndex].properties.status !== null
+              && featureIndex !== this.branch.alert.featureIndex) {
+              featureIndex += 1;
+              if (featureIndex === geometries.length) featureIndex = 0;
+            }
+            this.branch.alert.featureIndex = featureIndex;
+            this.centerOnAlertFeature();
           }
-          this.featureIndex = featureIndex;
-          this.centerOnAlertFeature();
         }
+        break;
       }
-      return;
-    }
-    if (e.key === 'Escape') {
-      this.view.controls.setCursor('default', 'auto');
-      this.cancelcurrentPolygon();
-    } else if (e.key === 'Shift') {
-      if (this.currentStatus === status.POLYGON) {
-        if (this.currentPolygon) {
-          if (this.branch.active.name === 'orig') {
-            this.viewer.message = 'Changer de branche pour continuer';
-          } else if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
-            this.viewer.message = 'Zoom non valide pour continuer';
-          } else if (this.nbVertices < 3) {
-            this.viewer.message = 'Pas assez de points';
-          } else {
-            this.currentStatus = status.ENDING;
-            this.viewer.message = 'Cliquer pour valider la saisie';
-            this.view.controls.setCursor('default', 'progress');
+      case status.POLYGON: {
+        if (e.key === 'Escape') {
+          this.view.controls.setCursor('default', 'auto');
+          this.cancelcurrentPolygon();
+        } else if (e.key === 'Shift') {
+          if (this.currentPolygon) {
+            if (this.branch.active.name === 'orig') {
+              this.viewer.message = 'Changer de branche pour continuer';
+            } else if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
+              this.viewer.message = 'Zoom non valide pour continuer';
+            } else if (this.nbVertices < 3) {
+              this.viewer.message = 'Pas assez de points';
+            } else {
+              this.currentStatus = status.ENDING;
+              this.viewer.message = 'Cliquer pour valider la saisie';
+              this.view.controls.setCursor('default', 'progress');
 
+              const vertices = this.currentPolygon.geometry.attributes.position;
+              vertices.copyAt(this.nbVertices, vertices, 0);
+              vertices.needsUpdate = true;
+
+              this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
+              this.currentPolygon.geometry.computeBoundingSphere();
+              this.view.notifyChange(this.currentPolygon);
+            }
+          }
+        } else if (e.key === 'Backspace') {
+          if (this.currentPolygon && (this.nbVertices > 1)) {
             const vertices = this.currentPolygon.geometry.attributes.position;
+            vertices.copyAt(this.nbVertices - 1, vertices, this.nbVertices);
             vertices.copyAt(this.nbVertices, vertices, 0);
             vertices.needsUpdate = true;
 
             this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
             this.currentPolygon.geometry.computeBoundingSphere();
             this.view.notifyChange(this.currentPolygon);
+
+            this.nbVertices -= 1;
           }
         }
+        break;
       }
-    } else if (e.key === 'Backspace') {
-      if (this.currentStatus === status.POLYGON) {
-        if (this.currentPolygon && (this.nbVertices > 1)) {
-          const vertices = this.currentPolygon.geometry.attributes.position;
-          vertices.copyAt(this.nbVertices - 1, vertices, this.nbVertices);
-          vertices.copyAt(this.nbVertices, vertices, 0);
-          vertices.needsUpdate = true;
-
-          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
-          this.currentPolygon.geometry.computeBoundingSphere();
-          this.view.notifyChange(this.currentPolygon);
-
-          this.nbVertices -= 1;
-        }
-      }
+      default:
     }
   }
 
   keyup(e) {
     if (this.currentStatus === status.WAITING) return;
-    console.log(e.key, ' up');
     if (e.key === 'Shift') {
       if (this.currentStatus === status.ENDING || this.currentStatus === status.POLYGON) {
         this.viewer.message = 'Maj pour terminer';
@@ -394,7 +396,7 @@ class Editing {
         // on selectionne le cliche
         const pos = this.pickPoint(e);
         this.view.controls.setCursor('default', 'auto');
-        fetch(`${this.apiUrl}/${this.branch.active.id}/graph?x=${pos.x}&y=${pos.y}`,
+        fetch(`${this.api.url}/${this.branch.active.id}/graph?x=${pos.x}&y=${pos.y}`,
           {
             method: 'GET',
             headers: {
@@ -473,10 +475,10 @@ class Editing {
 
           // On post la geometrie sur l'API
           const remarksLayerId = this.branch.vectorList.filter((elem) => elem.name === 'Remarques')[0].id;
-          fetch(`${this.apiUrl}/${remarksLayerId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${remark}`,
+          fetch(`${this.api.url}/${remarksLayerId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${remark}`,
             {
               method: 'PUT',
-            }).then(async (res) => {
+            }).then((res) => {
             if (res.status === 200) {
               this.viewer.refresh({ Remarques: this.branch.layers.Remarques });
               this.view.controls.setCursor('default', 'auto');
@@ -515,7 +517,7 @@ class Editing {
   polygon() {
     if (this.currentStatus === status.WAITING) return;
     if (!this.validClicheSelected) {
-      this.viewer.message = (this.currentStatus === status.MOVE_POINT) ? 'choisir un cliche valide' : 'cliche non valide';
+      this.viewer.message = (this.currentStatus === status.SELECT) ? 'cliché non encore choisi' : 'pas de cliché sélectionné';
       return;
     }
     if (this.currentPolygon) {
@@ -560,7 +562,7 @@ class Editing {
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/${this.branch.active.id}/patch/undo?`,
+    fetch(`${this.api.url}/${this.branch.active.id}/patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -586,7 +588,7 @@ class Editing {
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/${this.branch.active.id}/patch/redo?`,
+    fetch(`${this.api.url}/${this.branch.active.id}/patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -609,7 +611,7 @@ class Editing {
     this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
 
-    fetch(`${this.apiUrl}/${this.branch.active.id}/patches/clear?`,
+    fetch(`${this.api.url}/${this.branch.active.id}/patches/clear?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -646,10 +648,10 @@ class Editing {
 
     // On post la geometrie sur l'API
     const remarksLayerId = this.branch.vectorList.filter((elem) => elem.name === 'Remarques')[0].id;
-    fetch(`${this.apiUrl}/${remarksLayerId}/feature?id=${this.featureSelectedGeom.properties.id}`,
+    fetch(`${this.api.url}/${remarksLayerId}/feature?id=${this.featureSelectedGeom.properties.id}`,
       {
         method: 'DELETE',
-      }).then(async (res) => {
+      }).then((res) => {
       if (res.status === 200) {
         this.viewer.refresh({ Remarques: this.branch.layers.Remarques });
         this.view.controls.setCursor('default', 'auto');
