@@ -246,8 +246,8 @@ async function main() {
 
         let featureIndex = 0;
         if (editing.alertFC.features[0].geometries[0].properties.status !== null) {
-          while (editing.alertFC.features[0].geometries[featureIndex].properties.status !== null
-            && featureIndex <= editing.alertFC.features[0].geometries.length) {
+          while (featureIndex < editing.alertFC.features[0].geometries.length
+            && editing.alertFC.features[0].geometries[featureIndex].properties.status !== null) {
             featureIndex += 1;
           }
           featureIndex -= 1;
