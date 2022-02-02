@@ -227,7 +227,10 @@ async function main() {
     controllers.alert.onChange(async (name) => {
       console.log('choosed alert vector layer: ', name);
 
+      const layerToRefresh = {};
+
       if (name !== ' -') {
+        editing.oldAlertLayerName = editing.alertLayerName;
         editing.alertLayerName = name;
         viewer.alertLayerName = name;
 
@@ -264,11 +267,17 @@ async function main() {
         controllers.comment.updateDisplay();
 
         controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'comment']);
+
+        layerToRefresh[editing.alertLayerName] = branch.layers[editing.alertLayerName];
+        if (editing.oldAlertLayerName !== undefined) {
+          layerToRefresh[editing.oldAlertLayerName] = branch.layers[editing.oldAlertLayerName];
+        }
       } else {
+        layerToRefresh[editing.alertLayerName] = branch.layers[editing.alertLayerName];
         controllers.resetAlerts();
       }
       viewer.message = '';
-      viewer.refresh(branch.layers);
+      viewer.refresh(layerToRefresh);
     });
     editing.id = '';
     controllers.id = viewer.menuGlobe.gui.add(editing, 'id').name('Alert id');

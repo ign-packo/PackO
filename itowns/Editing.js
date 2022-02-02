@@ -405,7 +405,8 @@ class Editing {
               // On modifie la couche OPI
               this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
               this.view.getLayerById('Opi').visible = true;
-              this.viewer.refresh(this.branch.layers);
+              // this.viewer.refresh(this.branch.layers);
+              this.viewer.refresh({ Opi: this.branch.layers.Opi });
               this.validClicheSelected = true;
             }
             if (res.status === 201) {
