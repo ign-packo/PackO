@@ -71,7 +71,6 @@ class Viewer {
       Patches: 4,
     };
     this.oldStyle = {};
-    this.alertLayerName = null;
   }
 
   createView(overviews, idCache) {
@@ -154,6 +153,8 @@ class Viewer {
 
     setupLoadingScreen(this.viewerDiv, this.view);
     this.view.isDebugMode = true;
+
+    // menuGlobe
     this.menuGlobe = new GuiTools('menuDiv', this.view);
     this.menuGlobe.gui.width = 300;
 
@@ -162,7 +163,6 @@ class Viewer {
     this.menuGlobe.vectorGui = this.menuGlobe.gui.addFolder('Extra Layers');
     this.menuGlobe.vectorGui.open();
 
-    // Patch pour ajouter la modification de l'epaisseur des contours dans le menu
     const viewer = this;
     this.menuGlobe.addImageryLayerGUI = function addImageryLayerGUI(layer) {
       /* eslint-disable no-param-reassign */
@@ -177,7 +177,8 @@ class Viewer {
       folder.add({ visible: layer.visible }, 'visible').onChange(((value) => {
         layer.visible = value;
 
-        if (layer.id === this.alertLayerName) {
+        // if (layer.id === this.alertLayerName) {
+        if (layer.isAlert === true) {
           this.view.getLayerById('selectedFeature').visible = value;
         }
 
@@ -187,6 +188,7 @@ class Viewer {
         layer.opacity = value;
         this.view.notifyChange(layer);
       }));
+      // Patch pour ajouter la modification de l'epaisseur des contours dans le menu
       if (layer.effect_parameter) {
         folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
           layer.effect_parameter = value;
@@ -195,13 +197,14 @@ class Viewer {
       }
       if (typeGui === 'vectorGui' && layer.id !== 'Remarques') {
         folder.add(viewer, 'deleteVectorLayer').name('delete').onChange(() => {
-          if (layer.id !== this.alertLayerName) {
+          // if (layer.id !== this.alertLayerName) {
+          if (layer.isAlert === false) {
             viewer.deleteVectorLayer(layer);
             // controllers.refreshDropBox('alert', [' -', ...branch.vectorList
             //   .filter((elem) => elem.name !== layer.id)
             //   .map((elem) => elem.name)]);
           } else {
-            this.message = 'Couche en edition';
+            viewer.message = 'Couche en edition';
           }
         });
       }
@@ -254,8 +257,8 @@ class Viewer {
         const {
           opacity, transparent, visible,
         } = this.view.getLayerById(layerName);
-        let { style } = this.view.getLayerById(layerName);
-        let { source } = this.view.getLayerById(layerName);
+        let { style, source } = this.view.getLayerById(layerName);
+        const { isAlert } = this.view.getLayerById(layerName);
         if (source.isVectorSource) {
           source = new itowns.FileSource({
             url: source.url,
@@ -266,7 +269,8 @@ class Viewer {
           if (this.oldStyle[layerName]) {
             style = this.oldStyle[layerName];
           }
-          if (layerName === this.alertLayerName) {
+          // if (layerName === this.alertLayerName) {
+          if (isAlert === true) {
             this.oldStyle[layerName] = style.clone();
             // eslint-disable-next-line no-param-reassign
             style.fill.color = coloringAlerts;
@@ -282,7 +286,7 @@ class Viewer {
             opacity,
             style,
             zoom: {
-              min: layerName === 'Patches' || layerName === this.alertLayerName ? this.zoomMinPatch - 1 : this.overviews.dataSet.level.min,
+              min: layerName === 'Patches' ? this.zoomMinPatch : this.overviews.dataSet.level.min,
               // min: this.overviews.dataSet.level.min,
               max: this.overviews.dataSet.level.max,
             },
@@ -365,6 +369,9 @@ class Viewer {
       if (layerList[layerName].id) {
         layer.colorLayer.vectorId = layerList[layerName].id;
       }
+
+      layer.colorLayer.isAlert = layerList[layerName].isAlert === undefined
+        ? false : layerList[layerName].isAlert;
     });
 
     // Layer ordering

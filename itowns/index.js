@@ -180,8 +180,9 @@ async function main() {
 
       if (name !== ' -') {
         editing.alertLayerName = name;
-        viewer.alertLayerName = name;
+        // viewer.alertLayerName = name;
         alert.layerName = name;
+        branch.setAlert(name);
 
         // const layerTest = viewer.view.getLayerById(editing.alertLayerName);
         const layerTest = viewer.view.getLayerById(alert.layerName);
@@ -443,7 +444,8 @@ async function main() {
 
     view.addEventListener('remark-deleted', async () => {
       console.log('-> A remark had been deleted');
-      const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
+      // const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
+      const layerAlert = viewer.view.getLayerById(alert.layerName);
       await layerAlert.whenReady;
       editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
 
@@ -485,8 +487,10 @@ async function main() {
     viewerDiv.addEventListener('click', async (ev) => {
       ev.preventDefault();
 
-      if (editing.alertLayerName) {
-        const layerTest = view.getLayerById(editing.alertLayerName);
+      // if (editing.alertLayerName) {
+      //   const layerTest = view.getLayerById(editing.alertLayerName);
+      if (alert.layerName) {
+        const layerTest = view.getLayerById(alert.layerName);
         const features = view.pickFeaturesAt(ev, 5, layerTest.id);
 
         if (features[layerTest.id].length > 0) {

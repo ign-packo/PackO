@@ -208,5 +208,11 @@ class Branch {
   //   this.viewer.menuGlobe.removeLayersGUI(layer.id);
   //   delete this.viewer.layerIndex[layer.id];
   // }
+
+  setAlert(name) {
+    if (this.alertLayerName) this.layers[this.alertLayerName].isAlert = false;
+    this.layers[name].isAlert = true;
+    this.alertLayerName = name;
+  }
 }
 export default Branch;
