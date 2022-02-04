@@ -18,6 +18,7 @@ class Controller {
     this.menuGlobe = menuGlobe;
     this.editing = editing;
     this.viewer = this.editing.viewer;
+    this.branch = this.editing.branch;
   }
 
   getController(name) {
@@ -34,9 +35,9 @@ class Controller {
   }
 
   setEditingController() {
-    const brancheName = this.editing.branch.active.name;
-    this[brancheName !== 'orig' ? 'setVisible' : 'hide'](['polygon', 'undo', 'redo']);
-    if (process.env.NODE_ENV === 'development') this[brancheName !== 'orig' ? 'setVisible' : 'hide']('clear');
+    const branchName = this.branch.active.name;
+    this[branchName !== 'orig' ? 'setVisible' : 'hide'](['polygon', 'undo', 'redo']);
+    if (process.env.NODE_ENV === 'development') this[branchName !== 'orig' ? 'setVisible' : 'hide']('clear');
   }
 
   refreshDropBox(dropBoxName, list) {
@@ -50,8 +51,9 @@ class Controller {
   }
 
   resetAlerts() {
-    delete this.editing.alertLayerName;
-    delete this.viewer.alertLayerName;
+    // delete this.editing.alertLayerName;
+    // delete this.viewer.alertLayerName;
+    delete this.branch.alert;
     this.alert.__select.options.selectedIndex = 0;
     // this.hide(['nbChecked', 'checked', 'comment']);
     this.hide(['progress', 'id', 'validated', 'unchecked', 'remark', 'delRemark']);

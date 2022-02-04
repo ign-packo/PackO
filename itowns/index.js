@@ -6,7 +6,6 @@ import Editing from './Editing';
 import Branch from './Branch';
 import Controller from './Controller';
 import API from './API';
-import Alert from './Alert';
 
 // Global itowns pour GuiTools -> peut être améliorer
 global.itowns = itowns;
@@ -115,7 +114,6 @@ async function main() {
     editing.apiUrl = apiUrl;
 
     const controllers = new Controller(viewer.menuGlobe, editing);
-    const alert = new Alert(viewer);
 
     // const branch = new Branch(apiUrl, viewer);
     branch.list = await getBranches;
@@ -136,9 +134,9 @@ async function main() {
     // const controllers = new Controller(viewer.menuGlobe, editing);
 
     // Gestion branche
-    branch.branch = branch.active.name;
-    controllers.branch = viewer.menuGlobe.gui.add(branch, 'branch', branch.list.map((elem) => elem.name)).name('Active branch');
-    controllers.branch.onChange(async (name) => {
+    controllers.branchName = branch.active.name;
+    controllers.activeBranch = viewer.menuGlobe.gui.add(controllers, 'branchName', branch.list.map((elem) => elem.name)).name('Active branch');
+    controllers.activeBranch.onChange(async (name) => {
       console.log('choosed branch: ', name);
       branch.active = {
         name,
@@ -178,36 +176,39 @@ async function main() {
     controllers.alert.onChange(async (name) => {
       console.log('choosed alert vector layer: ', name);
 
+      branch.setAlertLayer(name);
+
       if (name !== ' -') {
-        editing.alertLayerName = name;
+        // editing.alertLayerName = name;
         // viewer.alertLayerName = name;
-        alert.layerName = name;
-        branch.setAlert(name);
+        // branch.alert.layerName = name;
 
         // const layerTest = viewer.view.getLayerById(editing.alertLayerName);
-        const layerTest = viewer.view.getLayerById(alert.layerName);
-        editing.alertFC = await layerTest.source.loadData(undefined, layerTest);
+        const layerTest = viewer.view.getLayerById(branch.alert.layerName);
+        // editing.alertFC = await layerTest.source.loadData(undefined, layerTest);
+        branch.alert.featureCollection = await layerTest.source.loadData(undefined, layerTest);
+        const featureCollection = branch.alert.featureCollection.features;
 
-        if (editing.alertFC.features.length > 0) {
-          editing.nbValidated = editing.alertFC.features[0].geometries.filter(
+        if (featureCollection.length > 0) {
+          editing.nbValidated = featureCollection[0].geometries.filter(
             (elem) => elem.properties.status === true,
           ).length;
-          editing.nbChecked = editing.alertFC.features[0].geometries.filter(
+          editing.nbChecked = featureCollection[0].geometries.filter(
             (elem) => elem.properties.status !== null,
           ).length;
-          editing.nbTotal = editing.alertFC.features[0].geometries.length;
+          editing.nbTotal = featureCollection[0].geometries.length;
           editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
           // controllers.progress.updateDisplay();
 
           let featureIndex = 0;
-          if (editing.alertFC.features[0].geometries[0].properties.status !== null) {
-            while (featureIndex < editing.alertFC.features[0].geometries.length
-            && editing.alertFC.features[0].geometries[featureIndex].properties.status !== null) {
+          if (featureCollection[0].geometries[0].properties.status !== null) {
+            while (featureIndex < featureCollection[0].geometries.length
+            && featureCollection[0].geometries[featureIndex].properties.status !== null) {
               featureIndex += 1;
             }
             featureIndex -= 1;
           }
-          editing.featureIndex = featureIndex;
+          branch.alert.featureIndex = featureIndex;
 
           editing.id = 0;
           controllers.id.updateDisplay();
@@ -229,6 +230,7 @@ async function main() {
         controllers.resetAlerts();
       }
       viewer.message = '';
+      // branch.setAlert(name);
       viewer.refresh(branch.layers);
       // viewer.refresh({
       //   name: branch.layers[name],
@@ -246,12 +248,12 @@ async function main() {
       console.log("changement d'id : ", newId);
       editing.currentStatus = editing.STATUS.RAS;
       if (newId >= 0 && newId < editing.nbTotal) {
-        editing.featureIndex = newId;
+        branch.alert.featureIndex = newId;
 
         editing.centerOnAlertFeature();
       } else {
         viewer.message = 'id non valide';
-        editing.id = editing.featureIndex;
+        editing.id = branch.alert.featureIndex;
         controllers.id.updateDisplay();
       }
     });
@@ -269,35 +271,11 @@ async function main() {
     controllers.validated = viewer.menuGlobe.gui.add(editing, 'validated').name('Validated');
     controllers.validated.onChange((value) => {
       console.log('change status', value);
-      const idFeature = editing.featureSelectedGeom.properties.id;
-      // api.updateStatus(idFeature, value)
-      //   .then(() => {
-      //     viewer.refresh({ [editing.alertLayerName]: branch.layers[editing.alertLayerName] });
-      //     editing.alertFC.features[0].geometries[editing.featureIndex].properties.status = value;
 
-      //     if (value === true) {
-      //       editing.nbValidated += 1;
-      //       if (editing.alertFC.features[0].geometries[editing.featureIndex]
-      //         .properties.status === null) {
-      //         editing.nbChecked += 1;
-      //       }
-      //     } else {
-      //       editing.nbValidated -= 1;
-      //     }
-      //     editing.progress = `${editing.nbChecked}/${editing.nbTotal}`
-      //                      + ` (${editing.nbValidated} validés)`;
-      //   })
-      //   .catch((error) => {
-      //     console.log(error);
-      //     viewer.view.dispatchEvent({
-      //       type: 'error',
-      //       msg: error,
-      //     });
-      //   });
-      editing.postValue(idFeature, 'status', value);
+      branch.alert.postValue(editing.featureSelectedGeom.properties.id, 'status', value);
       if (value === true) {
         editing.nbValidated += 1;
-        if (editing.alertFC.features[0].geometries[editing.featureIndex]
+        if (branch.alert.featureCollection.features[0].geometries[branch.alert.featureIndex]
           .properties.status === null) {
           editing.nbChecked += 1;
         }
@@ -305,29 +283,6 @@ async function main() {
         editing.nbValidated -= 1;
       }
       editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
-
-      // const res = await fetch(`${apiUrl}/alert/${idFeature}?status=${value}`,
-      //   {
-      //     method: 'PUT',
-      //   });
-      // if (res.status === 200) {
-      //   // viewer.refresh(branch.layers);
-      //   viewer.refresh({ [editing.alertLayerName]: branch.layers[editing.alertLayerName] });
-      //   if (value === true) {
-      //     editing.nbValidated += 1;
-      //     if (editing.alertFC.features[0].geometries[editing.featureIndex]
-      //       .properties.status === null) {
-      //       editing.nbChecked += 1;
-      //     }
-      //   } else {
-      //     editing.nbValidated -= 1;
-      //   }
-      //   editing.progress = `${editing.nbChecked}/${editing.nbTotal}`
-      //                    + ` (${editing.nbValidated} validés)`;
-      //   editing.alertFC.features[0].geometries[editing.featureIndex].properties.status = value;
-      // } else {
-      //   viewer.message = 'PB with validate';
-      // }
     });
     controllers.hide('validated');
 
@@ -388,7 +343,7 @@ async function main() {
       branch.vectorList.splice(index, 1);
       delete branch.layers[layer.name];
 
-      viewer.deleteLayer(layer.name);
+      viewer.supLayer(layer.name);
       controllers.refreshDropBox('alert', [' -', ...branch.vectorList
         .filter((elem) => elem.name !== event.layerId)
         .map((elem) => elem.name)]);
@@ -399,9 +354,10 @@ async function main() {
       controllers.setEditingController();
       controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
       controllers.resetAlerts();
-      controllers.branch = controllers.branch.options(branch.list.map((elem) => elem.name))
+      controllers.activeBranch = controllers.activeBranch
+        .options(branch.list.map((elem) => elem.name))
         .setValue(branch.active.name);
-      controllers.branch.onChange(async (name) => {
+      controllers.activeBranch.onChange(async (name) => {
         console.log('choosed branch: ', name);
         branch.active = {
           name,
@@ -418,18 +374,20 @@ async function main() {
       console.log('-> A remark had been added');
       // if (editing.alertLayerName === 'Remarques') {
       //   const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
-      if (alert.layerName === 'Remarques') {
-        const layerAlert = viewer.view.getLayerById(alert.layerName);
+      if (branch.alert.layerName === 'Remarques') {
+        const layerAlert = viewer.view.getLayerById(branch.alert.layerName);
         await layerAlert.whenReady;
-        editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
+        // editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
+        branch.alert.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
+        const featureCollection = branch.alert.featureCollection.features;
 
-        editing.nbValidated = editing.alertFC.features[0].geometries.filter(
+        editing.nbValidated = featureCollection[0].geometries.filter(
           (elem) => elem.properties.status === true,
         ).length;
-        editing.nbChecked = editing.alertFC.features[0].geometries.filter(
+        editing.nbChecked = featureCollection[0].geometries.filter(
           (elem) => elem.properties.status !== null,
         ).length;
-        editing.nbTotal = editing.alertFC.features[0].geometries.length;
+        editing.nbTotal = featureCollection[0].geometries.length;
         editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
 
         // editing.centerOnAlertFeature();
@@ -445,22 +403,24 @@ async function main() {
     view.addEventListener('remark-deleted', async () => {
       console.log('-> A remark had been deleted');
       // const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
-      const layerAlert = viewer.view.getLayerById(alert.layerName);
+      const layerAlert = viewer.view.getLayerById(branch.alert.layerName);
       await layerAlert.whenReady;
-      editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
+      // editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
+      branch.alert.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
+      const featureCollection = branch.alert.featureCollection.features;
 
-      if (editing.alertFC.features.length > 0) {
-        editing.nbValidated = editing.alertFC.features[0].geometries.filter(
+      if (featureCollection.length > 0) {
+        editing.nbValidated = featureCollection[0].geometries.filter(
           (elem) => elem.properties.status === true,
         ).length;
-        editing.nbChecked = editing.alertFC.features[0].geometries.filter(
+        editing.nbChecked = featureCollection[0].geometries.filter(
           (elem) => elem.properties.status !== null,
         ).length;
-        editing.nbTotal = editing.alertFC.features[0].geometries.length;
+        editing.nbTotal = featureCollection[0].geometries.length;
         editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
-        editing.featureIndex -= 1;
-        if (editing.featureIndex === -1) {
-          editing.featureIndex = editing.alertFC.features[0].geometries.length - 1;
+        branch.alert.featureIndex -= 1;
+        if (branch.alert.featureIndex === -1) {
+          branch.alert.featureIndex = featureCollection[0].geometries.length - 1;
         }
 
         editing.centerOnAlertFeature();
@@ -489,21 +449,22 @@ async function main() {
 
       // if (editing.alertLayerName) {
       //   const layerTest = view.getLayerById(editing.alertLayerName);
-      if (alert.layerName) {
-        const layerTest = view.getLayerById(alert.layerName);
+      if (branch.alert.layerName !== ' -') {
+        const layerTest = view.getLayerById(branch.alert.layerName);
         const features = view.pickFeaturesAt(ev, 5, layerTest.id);
 
         if (features[layerTest.id].length > 0) {
-          const featureCollec = await layerTest.source.loadData(undefined, layerTest);
-          editing.alertFC = featureCollec;
+          // const featureCollec = await layerTest.source.loadData(undefined, layerTest);
+          const featureCollec = branch.alert.featureCollection;
+          // editing.alertFC = featureCollec;
           for (let i = 0; i < featureCollec.features[0].geometries.length; i += 1) {
             if (featureCollec.features[0].geometries[i] === features[layerTest.id][0].geometry) {
-              editing.featureIndex = i;
+              branch.alert.featureIndex = i;
             }
           }
 
           if (features[layerTest.id][0].geometry.properties.status === null) {
-            editing.postValue(features[layerTest.id][0].geometry.properties.id, 'status', false);
+            branch.alert.postValue(features[layerTest.id][0].geometry.properties.id, 'status', false);
             // editing.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
             // editing.alertFC.features[0].geometries[this.featureIndex].properties[status] = value;
 
@@ -511,7 +472,7 @@ async function main() {
             editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
           }
 
-          editing.id = editing.featureIndex;
+          editing.id = branch.alert.featureIndex;
           controllers.id.updateDisplay();
           editing.validated = features[layerTest.id][0].geometry.properties.status;
           controllers.validated.updateDisplay();

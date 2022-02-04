@@ -29,7 +29,7 @@ class Editing {
     this.lastPos = null;
     this.mousePosition = null;
 
-    this.featureIndex = 0;
+    // this.featureIndex = 0;
 
     this.STATUS = status;
   }
@@ -162,7 +162,7 @@ class Editing {
     if (layerFeatureSelected) {
       this.viewer.view.removeLayer('selectedFeature');
     }
-    const layerTest = this.viewer.view.getLayerById(this.alertLayerName);
+    const layerTest = this.viewer.view.getLayerById(this.branch.alert.layerName);
     // const featureCollec = await layerTest.source.loadData(undefined, layerTest);
     const newFeatureCollec = new itowns.FeatureCollection(layerTest);
 
@@ -220,48 +220,18 @@ class Editing {
     this.viewer.view.addLayer(newColorLayer);
   }
 
-  // alerts
-  // async centerOnAlertFeature(onlyUnchecked = false, step = 0) {
-  //   const layerTest = this.viewer.view.getLayerById(this.alertLayerName);
-  //   const fc = await layerTest.source.loadData(undefined, layerTest);
-
-  postValue(idFeature, variable, value) {
-    this.api.updateAlert(idFeature, variable, value)
-      .then(() => {
-        this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
-        this.alertFC.features[0].geometries[this.featureIndex].properties[variable] = value;
-      })
-      .catch((error) => {
-        console.log(error);
-        this.viewer.message = 'PB with updating the database';
-        this.viewer.view.dispatchEvent({
-          type: 'error',
-          msg: error,
-        });
-      });
-    // const res = await fetch(`${this.apiUrl}/alert/${idFeature}?${variable}=${value}`,
-    //   {
-    //     method: 'PUT',
-    //   });
-    // if (res.status === 200) {
-    //   this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
-    //   this.alertFC.features[0].geometries[this.featureIndex].properties[variable] = value;
-    // } else {
-    //   this.viewer.message = 'PB with validate';
-    // }
-  }
-
   centerOnAlertFeature() {
     this.viewer.message = '';
-    const coordcenter = this.alertFC.features[0].geometries[this.featureIndex].extent.clone()
-      .applyMatrix4(this.alertFC.matrixWorld).center();
+    const alertFC = this.branch.alert.featureCollection;
+    const coordcenter = alertFC.features[0].geometries[this.branch.alert.featureIndex]
+      .extent.clone().applyMatrix4(alertFC.matrixWorld).center();
 
     this.viewer.centerCamera(coordcenter.x, coordcenter.y);
 
-    this.featureSelectedGeom = this.alertFC.features[0].geometries[this.featureIndex];
+    this.featureSelectedGeom = alertFC.features[0].geometries[this.branch.alert.featureIndex];
 
     if (this.featureSelectedGeom.properties.status === null) {
-      this.postValue(this.featureSelectedGeom.properties.id, 'status', false);
+      this.branch.alert.postValue(this.featureSelectedGeom.properties.id, 'status', false);
       // this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
       // this.alertFC.features[0].geometries[this.featureIndex].properties[status] = value;
 
@@ -270,22 +240,22 @@ class Editing {
     }
 
     // this.id = this.featureSelectedGeom.properties.id;
-    this.id = this.featureIndex;
+    this.id = this.branch.alert.featureIndex;
     this.controllers.id.updateDisplay();
     this.validated = this.featureSelectedGeom.properties.status;
     this.controllers.validated.updateDisplay();
     this.viewer.remark = this.featureSelectedGeom.properties.comment;
 
-    this.highlightSelectedFeature(this.alertFC,
+    this.highlightSelectedFeature(alertFC,
       this.featureSelectedGeom,
-      this.alertFC.features[0].type);
+      alertFC.features[0].type);
   }
 
   unchecked() {
     if (this.featureSelectedGeom.properties.status === true) {
       this.viewer.message = 'alerte déjà validée';
     } else if (this.featureSelectedGeom.properties.status === false) {
-      this.postValue(this.featureSelectedGeom.properties.id, 'status', null);
+      this.branch.alert.postValue(this.featureSelectedGeom.properties.id, 'status', null);
       // this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
       // this.alertFC.features[0].geometries[this.featureIndex].properties[status] = value;
 
@@ -296,101 +266,105 @@ class Editing {
 
   keydown(e) {
     if (this.currentStatus === status.WAITING) return;
-    console.log(e.key, ' down');
-    if (this.currentStatus === status.RAS) {
-      // L'utilisateur demande à déselectionner l'OPI
-      if (this.validClicheSelected && (e.key === 'Escape')) {
-        this.validClicheSelected = false;
-        this.cliche = 'none';
-        this.controllers.cliche.__li.style.backgroundColor = '';
-        this.view.getLayerById('Opi').visible = false;
-        this.view.notifyChange(this.view.getLayerById('Opi'), true);
-      } else if (this.alertLayerName && this.alertFC.features.length > 0) {
-        const { geometries } = this.alertFC.features[0];
-        if (e.key === 'ArrowLeft') {
-          this.featureIndex -= 1;
-          if (this.featureIndex === -1) {
-            this.featureIndex = geometries.length - 1;
-          }
-          this.centerOnAlertFeature();
-        } else if (e.key === 'ArrowRight') {
-          this.featureIndex += 1;
-          if (this.featureIndex === geometries.length) this.featureIndex = 0;
-          this.centerOnAlertFeature();
-        } else if (e.key === 'ArrowDown') {
-          let { featureIndex } = this;
-          featureIndex -= 1;
-          if (featureIndex === -1) featureIndex = geometries.length - 1;
-          while (geometries[featureIndex].properties.status !== null
-            && featureIndex !== this.featureIndex) {
+    this.viewer.message = '';
+    switch (this.currentStatus) {
+      case status.RAS: {
+        // L'utilisateur demande à déselectionner l'OPI
+        if (this.validClicheSelected && (e.key === 'Escape')) {
+          this.validClicheSelected = false;
+          this.cliche = 'none';
+          this.controllers.cliche.__li.style.backgroundColor = '';
+          this.view.getLayerById('Opi').visible = false;
+          this.view.notifyChange(this.view.getLayerById('Opi'), true);
+        } else if (this.branch.alert.layerName !== ' -'
+                   && this.branch.alert.featureCollection.features.length > 0) {
+          const { geometries } = this.branch.alert.featureCollection.features[0];
+          if (e.key === 'ArrowLeft') {
+            this.branch.alert.featureIndex -= 1;
+            if (this.branch.alert.featureIndex === -1) {
+              this.branch.alert.featureIndex = geometries.length - 1;
+            }
+            this.centerOnAlertFeature();
+          } else if (e.key === 'ArrowRight') {
+            this.branch.alert.featureIndex += 1;
+            if (this.branch.alert.featureIndex === geometries.length) {
+              this.branch.alert.featureIndex = 0;
+            }
+            this.centerOnAlertFeature();
+          } else if (e.key === 'ArrowDown') {
+            let { featureIndex } = this;
             featureIndex -= 1;
             if (featureIndex === -1) featureIndex = geometries.length - 1;
-          }
-          this.featureIndex = featureIndex;
-          this.centerOnAlertFeature();
-        } else if (e.key === 'ArrowUp') {
-          let { featureIndex } = this;
-          featureIndex += 1;
-          if (featureIndex === geometries.length) featureIndex = 0;
-          while (geometries[featureIndex].properties.status !== null
-            && featureIndex !== this.featureIndex) {
+            while (geometries[featureIndex].properties.status !== null
+              && featureIndex !== this.branch.alert.featureIndex) {
+              featureIndex -= 1;
+              if (featureIndex === -1) featureIndex = geometries.length - 1;
+            }
+            this.branch.alert.featureIndex = featureIndex;
+            this.centerOnAlertFeature();
+          } else if (e.key === 'ArrowUp') {
+            let { featureIndex } = this;
             featureIndex += 1;
             if (featureIndex === geometries.length) featureIndex = 0;
+            while (geometries[featureIndex].properties.status !== null
+              && featureIndex !== this.branch.alert.featureIndex) {
+              featureIndex += 1;
+              if (featureIndex === geometries.length) featureIndex = 0;
+            }
+            this.branch.alert.featureIndex = featureIndex;
+            this.centerOnAlertFeature();
           }
-          this.featureIndex = featureIndex;
-          this.centerOnAlertFeature();
         }
+        break;
       }
-      return;
-    }
-    if (e.key === 'Escape') {
-      this.view.controls.setCursor('default', 'auto');
-      this.cancelcurrentPolygon();
-    } else if (e.key === 'Shift') {
-      if (this.currentStatus === status.POLYGON) {
-        if (this.currentPolygon) {
-          if (this.branch.active.name === 'orig') {
-            this.viewer.message = 'Changer de branche pour continuer';
-          } else if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
-            this.viewer.message = 'Zoom non valide pour continuer';
-          } else if (this.nbVertices < 3) {
-            this.viewer.message = 'Pas assez de points';
-          } else {
-            this.currentStatus = status.ENDING;
-            this.viewer.message = 'Cliquer pour valider la saisie';
-            this.view.controls.setCursor('default', 'progress');
+      case status.POLYGON: {
+        if (e.key === 'Escape') {
+          this.view.controls.setCursor('default', 'auto');
+          this.cancelcurrentPolygon();
+        } else if (e.key === 'Shift') {
+          if (this.currentPolygon) {
+            if (this.branch.active.name === 'orig') {
+              this.viewer.message = 'Changer de branche pour continuer';
+            } else if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
+              this.viewer.message = 'Zoom non valide pour continuer';
+            } else if (this.nbVertices < 3) {
+              this.viewer.message = 'Pas assez de points';
+            } else {
+              this.currentStatus = status.ENDING;
+              this.viewer.message = 'Cliquer pour valider la saisie';
+              this.view.controls.setCursor('default', 'progress');
 
+              const vertices = this.currentPolygon.geometry.attributes.position;
+              vertices.copyAt(this.nbVertices, vertices, 0);
+              vertices.needsUpdate = true;
+
+              this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
+              this.currentPolygon.geometry.computeBoundingSphere();
+              this.view.notifyChange(this.currentPolygon);
+            }
+          }
+        } else if (e.key === 'Backspace') {
+          if (this.currentPolygon && (this.nbVertices > 1)) {
             const vertices = this.currentPolygon.geometry.attributes.position;
+            vertices.copyAt(this.nbVertices - 1, vertices, this.nbVertices);
             vertices.copyAt(this.nbVertices, vertices, 0);
             vertices.needsUpdate = true;
 
             this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
             this.currentPolygon.geometry.computeBoundingSphere();
             this.view.notifyChange(this.currentPolygon);
+
+            this.nbVertices -= 1;
           }
         }
+        break;
       }
-    } else if (e.key === 'Backspace') {
-      if (this.currentStatus === status.POLYGON) {
-        if (this.currentPolygon && (this.nbVertices > 1)) {
-          const vertices = this.currentPolygon.geometry.attributes.position;
-          vertices.copyAt(this.nbVertices - 1, vertices, this.nbVertices);
-          vertices.copyAt(this.nbVertices, vertices, 0);
-          vertices.needsUpdate = true;
-
-          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
-          this.currentPolygon.geometry.computeBoundingSphere();
-          this.view.notifyChange(this.currentPolygon);
-
-          this.nbVertices -= 1;
-        }
-      }
+      default:
     }
   }
 
   keyup(e) {
     if (this.currentStatus === status.WAITING) return;
-    console.log(e.key, ' up');
     if (e.key === 'Shift') {
       if (this.currentStatus === status.ENDING || this.currentStatus === status.POLYGON) {
         this.viewer.message = 'Maj pour terminer';

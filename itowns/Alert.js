@@ -1,10 +1,12 @@
 class Alert {
-  constructor(viewer) {
-    this.viewer = viewer;
+  constructor(branch) {
+    this.branch = branch;
+    this.viewer = this.branch.viewer;
     this.api = this.viewer.api;
 
-    this.layerName = null;
-    this.alertFC = null;
+    this.layerName = ' -';
+    this.featureCollection = null;
+    this.featureIndex = 0;
 
     this.nbChecked = 0;
     this.nbTotal = 0;
@@ -17,7 +19,8 @@ class Alert {
       .then(() => {
         // this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
         this.viewer.refresh({ [this.layerName]: this.branch.layers[this.layerName] });
-        this.alertFC.features[0].geometries[this.featureIndex].properties[variable] = value;
+        this.featureCollection.features[0]
+          .geometries[this.featureIndex].properties[variable] = value;
       })
       .catch((error) => {
         console.log(error);

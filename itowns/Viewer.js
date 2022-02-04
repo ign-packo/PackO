@@ -258,7 +258,7 @@ class Viewer {
           opacity, transparent, visible,
         } = this.view.getLayerById(layerName);
         let { style, source } = this.view.getLayerById(layerName);
-        const { isAlert } = this.view.getLayerById(layerName);
+        // const { isAlert } = this.view.getLayerById(layerName);
         if (source.isVectorSource) {
           source = new itowns.FileSource({
             url: source.url,
@@ -270,7 +270,7 @@ class Viewer {
             style = this.oldStyle[layerName];
           }
           // if (layerName === this.alertLayerName) {
-          if (isAlert === true) {
+          if (layerList[layerName].isAlert === true) {
             this.oldStyle[layerName] = style.clone();
             // eslint-disable-next-line no-param-reassign
             style.fill.color = coloringAlerts;
@@ -604,7 +604,7 @@ class Viewer {
   //   });
   // }
 
-  deleteLayer(name) {
+  supLayer(name) {
     this.view.removeLayer(name);
     this.menuGlobe.removeLayersGUI(name);
     delete this.layerIndex[name];
