@@ -2,31 +2,12 @@
 import * as itowns from 'itowns';
 import Alert from './Alert';
 
-function readCRS(json) {
-  if (json.crs) {
-    if (json.crs.type.toLowerCase() === 'epsg') {
-      return `EPSG:${json.crs.properties.code}`;
-    } if (json.crs.type.toLowerCase() === 'name') {
-      const epsgIdx = json.crs.properties.name.toLowerCase().indexOf('epsg:');
-      if (epsgIdx >= 0) {
-        // authority:version:code => EPSG:[...]:code
-        const codeStart = json.crs.properties.name.indexOf(':', epsgIdx + 5);
-        if (codeStart > 0) {
-          return `EPSG:${json.crs.properties.name.substr(codeStart + 1)}`;
-        }
-      }
-    }
-    throw new Error(`Unsupported CRS type '${json.crs}'`);
-  }
-  // assume default crs
-  return 'EPSG:4326';
-}
-
 class Branch {
   constructor(apiUrl, viewer) {
     this.apiUrl = apiUrl;
     this.viewer = viewer;
     this.view = viewer.view;
+    this.api = viewer.api;
 
     this.layers = {};
     this.vectorList = {};
@@ -40,35 +21,35 @@ class Branch {
     this.layers = {
       Ortho: {
         type: 'raster',
-        url: `${this.apiUrl}/${this.active.id}/wmts`,
+        url: `${this.api.url}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
         opacity: 1,
         visible: true,
       },
       Graph: {
         type: 'raster',
-        url: `${this.apiUrl}/${this.active.id}/wmts`,
+        url: `${this.api.url}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
         opacity: 1,
         visible: true,
       },
       Contour: {
         type: 'raster',
-        url: `${this.apiUrl}/${this.active.id}/wmts`,
+        url: `${this.api.url}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
         opacity: 0.5,
         visible: true,
       },
       Opi: {
         type: 'raster',
-        url: `${this.apiUrl}/${this.active.id}/wmts`,
+        url: `${this.api.url}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
         opacity: 0.5,
         visible: false,
       },
       Patches: {
         type: 'vector',
-        url: `${this.apiUrl}/${this.active.id}/patches`,
+        url: `${this.api.url}/${this.active.id}/patches`,
         crs: this.viewer.crs,
         opacity: 1,
         visible: false,
@@ -87,7 +68,7 @@ class Branch {
     this.vectorList.forEach((vector) => {
       this.layers[vector.name] = {
         type: 'vector',
-        url: `${this.apiUrl}/vector?idVector=${vector.id}`,
+        url: `${this.api.url}/vector?idVector=${vector.id}`,
         crs: vector.crs,
         opacity: 1,
         style: JSON.parse(vector.style_itowns),
@@ -148,42 +129,44 @@ class Branch {
     // });
   }
 
-  async saveLayer(name, geojson, style) {
-    const crs = readCRS(geojson);
-    const res = await fetch(`${this.apiUrl}/${this.active.id}/vector`,
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          metadonnees: {
-            name,
-            style,
-            crs,
-          },
-          data: geojson,
-        }),
-      });
-    if (res.status === 200) {
-      this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
-      this.setLayers();
-      // const json = await res.json();
-      // this.layers[name] = {
-      //   type: 'vector',
-      //   url: `${this.apiUrl}/vector?idVector=${json.id}`,
-      //   crs,
-      //   opacity: 1,
-      //   style,
-      //   visible: true,
-      //   id: json.id,
-      // };
-      console.log(`-> Layer '${name}' saved`);
-      this.viewer.refresh(this.layers);
-    } else {
-      console.log(`-> Error Serveur: Layer '${name}' NOT saved`);
-    }
+  // saveLayer(name, geojson, style) {
+  //   this.api.saveVector(this.active.id, name, geojson, style);
+  // }
+
+  // deleteLayer(name, id) {
+  //   this.api.deleteVector(name, id);
+  // }
+
+  deleteLayer(name, id) {
+    return new Promise((resolve, reject) => {
+      this.api.deleteVector(name, id)
+        .then(() => {
+          resolve();
+        })
+        .catch((error) => {
+          console.log(error);
+          this.viewer.message = 'PB with updating the database';
+          const err = new Error(`Vector '${name}' (id: ${id}) NOT deleted`);
+          err.name = 'Server Error';
+          reject(err);
+        });
+    });
+  }
+
+  saveLayer(name, geojson, style) {
+    return new Promise((resolve, reject) => {
+      this.api.saveVector(this.active.id, name, geojson, style)
+        .then(() => {
+          resolve();
+        })
+        .catch((error) => {
+          console.log(error);
+          this.viewer.message = 'PB with updating the database';
+          const err = new Error(`Layer '${name}' NOT saved`);
+          err.name = 'Server Error';
+          reject(err);
+        });
+    });
   }
 
   setAlertLayer(name) {

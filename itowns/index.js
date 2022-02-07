@@ -328,25 +328,43 @@ async function main() {
       }
     });
 
-    view.addEventListener('file-dropped', async (event) => {
-      console.log('-> A file had been dropped');
-      // controllers.resetAlerts();
-      await branch.saveLayer(event.name, event.data, event.style);
-      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+    view.addEventListener('file-dropped', (event) => {
+      console.log(`-> A file (${event.name}) had been dropped`);
+      branch.saveLayer(event.name, event.data, event.style)
+        .then(async () => {
+          // console.log('-> A vector layer had been added');
+          branch.vectorList = await itowns.Fetcher.json(`${apiUrl}/${branch.active.id}/vectors`);
+          branch.setLayers();
+          branch.viewer.refresh(branch.layers);
+
+          controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+        })
+        .catch((error) => {
+          view.dispatchEvent({
+            type: 'error',
+            msg: error,
+          });
+        });
     });
 
-    view.addEventListener('vector-deleted', async (event) => {
-      console.log('-> A vector layer had been deleted');
-      // controllers.resetAlerts();
-      const layer = branch.vectorList.filter((elem) => elem.id === event.layerId)[0];
-      const index = branch.vectorList.indexOf(layer);
-      branch.vectorList.splice(index, 1);
-      delete branch.layers[layer.name];
+    view.addEventListener('vectorLayer-removed', (event) => {
+      // console.log(`-> Layer '${event.layerName} (id: ${event.layerId}) had been removed`);
+      branch.deleteLayer(event.layerName, event.layerId)
+        .then(() => {
+          console.log(`-> Vector '${event.layerName} (id: ${event.layerId}) had been deleted`);
+          const layer = branch.vectorList.filter((elem) => elem.id === event.layerId)[0];
+          const index = branch.vectorList.indexOf(layer);
+          branch.vectorList.splice(index, 1);
+          delete branch.layers[layer.name];
 
-      viewer.supLayer(layer.name);
-      controllers.refreshDropBox('alert', [' -', ...branch.vectorList
-        .filter((elem) => elem.name !== event.layerId)
-        .map((elem) => elem.name)]);
+          controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+        })
+        .catch((error) => {
+          view.dispatchEvent({
+            type: 'error',
+            msg: error,
+          });
+        });
     });
 
     view.addEventListener('branch-created', () => {

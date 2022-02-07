@@ -196,13 +196,10 @@ class Viewer {
         }));
       }
       if (typeGui === 'vectorGui' && layer.id !== 'Remarques') {
-        folder.add(viewer, 'deleteVectorLayer').name('delete').onChange(() => {
+        folder.add(viewer, 'removeVectorLayer').name('delete').onChange(() => {
           // if (layer.id !== this.alertLayerName) {
           if (layer.isAlert === false) {
-            viewer.deleteVectorLayer(layer);
-            // controllers.refreshDropBox('alert', [' -', ...branch.vectorList
-            //   .filter((elem) => elem.name !== layer.id)
-            //   .map((elem) => elem.name)]);
+            viewer.removeVectorLayer(layer);
           } else {
             viewer.message = 'Couche en edition';
           }
@@ -464,7 +461,7 @@ class Viewer {
 
       const fileReader = new FileReader();
       const _view = this.view;
-      // const _index = this.layerIndex;
+
       // eslint-disable-next-line no-loop-func
       fileReader.onload = function onload(e) {
         const dataLoaded = e.target.result;
@@ -523,22 +520,8 @@ class Viewer {
                 radius: 5,
               },
             };
-            // const layer = new itowns.ColorLayer(layerName, {
-            //   transparent: true,
-            //   style: new itowns.Style(style),
-            //   source,
-            // });
 
-            // _view.addLayer(layer);
-
-            // console.log(`-> Layer '${layer.id}' added`);
-
-            // _index[layer.id] = Object.keys(_index).length;
-            // itowns.ColorLayersOrdering.moveLayerToIndex(_view,
-            //   layer.id, _index[layer.id]);
-
-            console.log(`-> Layer '${layerName}' dropped`);
-
+            // console.log(`-> Layer '${layerName}' dropped`);
             _view.dispatchEvent({
               type: 'file-dropped',
               name: layerName,
@@ -573,42 +556,28 @@ class Viewer {
     }
   }
 
-  deleteVectorLayer(layer) {
+  removeVectorLayer(layer) {
     if (!layer) return;
-    // this.deleteLayer(layer.id, layer.vectorId);
-    this.api.deleteLayer(layer.id, layer.vectorId);
-  }
-
-  // deleteLayer(name, id) {
-  //   fetch(`${this.apiUrl}/vector?idVector=${id}`,
-  //     {
-  //       method: 'DELETE',
-  //     }).then((res) => {
-  //     if (res.status === 200) {
-  //       console.log(`-> Layer '${name}' (id: ${id}) succesfully deleted`);
-  //       this.view.removeLayer(name);
-  //       this.menuGlobe.removeLayersGUI(name);
-  //       delete this.layerIndex[name];
-  //       // this.view.notifyChange();
-  //       this.view.dispatchEvent({
-  //         type: 'vector-deleted',
-  //         layerId: id,
-  //       });
-  //     } else {
-  //       console.log(`-> Error Serveur: Layer '${name}' (id: ${id}) NOT deleted`);
-  //       this.view.dispatchEvent({
-  //         type: 'error',
-  //         msg: `Error Serveur: Layer '${name}' (id: ${id}) NOT deleted`,
-  //       });
-  //     }
-  //   });
-  // }
-
-  supLayer(name) {
+    const name = layer.id;
     this.view.removeLayer(name);
     this.menuGlobe.removeLayersGUI(name);
     delete this.layerIndex[name];
-    // this.view.notifyChange();
+    this.view.dispatchEvent({
+      type: 'vectorLayer-removed',
+      layerId: layer.vectorId,
+      layerName: layer.id,
+    });
   }
+
+  // saveVectorLayer(name, geojson, style) {
+  //   this.api.saveLayer(name, geojson, style);
+  // }
+
+  // supLayer(name) {
+  //   this.view.removeLayer(name);
+  //   this.menuGlobe.removeLayersGUI(name);
+  //   delete this.layerIndex[name];
+  //   // this.view.notifyChange();
+  // }
 }
 export default Viewer;
