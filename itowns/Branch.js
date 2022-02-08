@@ -78,16 +78,20 @@ class Branch {
     });
   }
 
-  async changeBranch() {
+  async changeBranch(name) {
+    this.active = {
+      name,
+      id: this.list.filter((elem) => elem.name === name)[0].id,
+    };
     console.log('changeBranch -> name:', this.active.name, 'id:', this.active.id);
     this.viewer.message = '';
     const listColorLayer = this.viewer.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
     listColorLayer.forEach((element) => {
       const regex = new RegExp(`^${this.apiUrl}\\/[0-9]+\\/`);
-      this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url.replace(regex, `${this.apiUrl}/${this.active.id}/`);
+      this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url
+        .replace(regex, `${this.apiUrl}/${this.active.id}/`);
     });
-    const getVectorList = itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
-    this.vectorList = await getVectorList;
+    this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
     this.setLayers();
     this.viewer.refresh(this.layers, true);
   }
@@ -99,13 +103,13 @@ class Branch {
     console.log(branchName);
     if (branchName === null) return;
     if (branchName.length === 0) {
-      this.viewer.message = 'le nom n\'est pas valide';
+      this.viewer.message = "le nom n'est pas valide";
       return;
     }
     this.addBranch(branchName);
   }
 
-  async addBranch(branchName) {
+  async addBranchSAV(branchName) {
     const res = await fetch(`${this.apiUrl}/branch?name=${branchName}&idCache=${this.viewer.idCache}`,
       {
         method: 'POST',
@@ -113,9 +117,9 @@ class Branch {
     if (res.status === 200) {
       const branches = await itowns.Fetcher.json(`${this.apiUrl}/branches?idCache=${this.viewer.idCache}`);// .then((branches) => {
       this.list = branches;
-      this.active.name = branchName;
-      this.active.id = this.list.filter((branch) => branch.name === branchName)[0].id;
-      await this.changeBranch();
+      // this.active.name = branchName;
+      // this.active.id = this.list.filter((branch) => branch.name === branchName)[0].id;
+      await this.changeBranch(branchName);
       this.view.dispatchEvent({
         type: 'branch-created',
       });
@@ -129,13 +133,29 @@ class Branch {
     // });
   }
 
-  // saveLayer(name, geojson, style) {
-  //   this.api.saveVector(this.active.id, name, geojson, style);
-  // }
-
-  // deleteLayer(name, id) {
-  //   this.api.deleteVector(name, id);
-  // }
+  addBranch(branchName) {
+    this.api.postBranch(this.viewer.idCache, branchName)
+      .then((newBranch) => {
+        console.log(`-> Branch '${newBranch.name}' (id: ${newBranch.id}) succesfully added`);
+        this.list.push(newBranch);
+        this.view.dispatchEvent({
+          type: 'branch-created',
+        });
+        // await this.changeBranch(branchName);
+        this.changeBranch(branchName);
+      })
+      .catch((error) => {
+        if (error.name === 'Server Error') {
+          this.viewer.message = 'la branche existe déjà';
+        } else {
+          this.viewer.message = 'PB de mise à jour de la BdD';
+        }
+        this.view.dispatchEvent({
+          type: 'error',
+          msg: error,
+        });
+      });
+  }
 
   deleteLayer(name, id) {
     return new Promise((resolve, reject) => {
@@ -147,7 +167,7 @@ class Branch {
           console.log(error);
           this.viewer.message = 'PB with updating the database';
           const err = new Error(`Vector '${name}' (id: ${id}) NOT deleted`);
-          err.name = 'Server Error';
+          err.name = 'Database Error';
           reject(err);
         });
     });
@@ -163,7 +183,7 @@ class Branch {
           console.log(error);
           this.viewer.message = 'PB with updating the database';
           const err = new Error(`Layer '${name}' NOT saved`);
-          err.name = 'Server Error';
+          err.name = 'Database Error';
           reject(err);
         });
     });

@@ -138,11 +138,12 @@ async function main() {
     controllers.activeBranch = viewer.menuGlobe.gui.add(controllers, 'branchName', branch.list.map((elem) => elem.name)).name('Active branch');
     controllers.activeBranch.onChange(async (name) => {
       console.log('choosed branch: ', name);
-      branch.active = {
-        name,
-        id: branch.list.filter((elem) => elem.name === name)[0].id,
-      };
-      await branch.changeBranch();
+      // branch.active = {
+      //   name,
+      //   id: branch.list.filter((elem) => elem.name === name)[0].id,
+      // };
+      // await branch.changeBranch();
+      await branch.changeBranch(name);
       controllers.setEditingController();
       controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
       controllers.resetAlerts();
@@ -377,11 +378,12 @@ async function main() {
         .setValue(branch.active.name);
       controllers.activeBranch.onChange(async (name) => {
         console.log('choosed branch: ', name);
-        branch.active = {
-          name,
-          id: branch.list.filter((elem) => elem.name === name)[0].id,
-        };
-        await branch.changeBranch();
+        // branch.active = {
+        //   name,
+        //   id: branch.list.filter((elem) => elem.name === name)[0].id,
+        // };
+        // await branch.changeBranch();
+        await branch.changeBranch(name);
         controllers.setEditingController();
         controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
         controllers.resetAlerts();

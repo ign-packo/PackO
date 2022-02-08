@@ -23,78 +23,32 @@ class API {
     this.url = url;
   }
 
-  // branch
-  // deleteVector(name, id) {
-  //   fetch(`${this.url}/vector?idVector=${id}`,
-  //     {
-  //       method: 'DELETE',
-  //     }).then((res) => {
-  //     if (res.status === 200) {
-  //       console.log(`-> Vector '${name}' (id: ${id}) succesfully deleted`);
-  //       this.view.dispatchEvent({
-  //         type: 'vector-deleted',
-  //         layerId: id,
-  //         layerName: name,
-  //       });
-  //     } else {
-  //       console.log(`-> Error Serveur: Vector '${name}' (id: ${id}) NOT deleted`);
-  //       this.view.dispatchEvent({
-  //         type: 'error',
-  //         msg: `Error Serveur: Vector '${name}' (id: ${id}) NOT deleted`,
-  //       });
-  //     }
-  //   });
-  // }
-
-  // saveVector(idBranch, name, geojson, style) {
-  //   const crs = readCRS(geojson);
-  //   fetch(`${this.url}/${idBranch}/vector`,
-  //     {
-  //       method: 'POST',
-  //       headers: {
-  //         Accept: 'application/json',
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify({
-  //         metadonnees: {
-  //           name,
-  //           style,
-  //           crs,
-  //         },
-  //         data: geojson,
-  //       }),
-  //     }).then((res) => {
-  //     if (res.status === 200) {
-  //       console.log(`-> Layer '${name}' succesfully saved`);
-  //       this.view.dispatchEvent({
-  //         type: 'vector-saved',
-  //       });
-  //     } else {
-  //       console.log(`-> Error Serveur: Layer '${name}' NOT saved`);
-  //       this.view.dispatchEvent({
-  //         type: 'error',
-  //         msg: `Error Serveur: Layer '${name}' NOT saved`,
-  //       });
-  //     }
-  //   });
-  // }
-
-  // index
-  // updateStatus(idFeature, value) {
-  //   return new Promise((resolve, reject) => {
-  //     fetch(`${this.url}/alert/${idFeature}?status=${value}`,
-  //       {
-  //         method: 'PUT',
-  //       })
-  //       .then((res) => {
-  //         if (res.status === 200) {
-  //           resolve();
-  //         } else {
-  //           res.text().then((msg) => reject(msg));
-  //         }
-  //       });
-  //   });
-  // }
+  postBranch(idCache, name) {
+    return new Promise((resolve, reject) => {
+      fetch(`${this.url}/branch?name=${name}&idCache=${idCache}`,
+        {
+          method: 'POST',
+        }).then((res) => {
+        res.json().then((json) => {
+          if (res.status === 200) {
+            resolve(json);
+          } else {
+            console.log(`-> Database Error: Branch '${name}' NOT added`);
+            console.log(JSON.stringify(json));
+            const err = new Error();
+            if (res.status === 406) {
+              err.name = 'Server Error';
+              err.message = `Branch '${name}' already created`;
+            } else {
+              err.name = 'Database Error';
+              err.message = `Branch '${name}' NOT added`;
+            }
+            reject(err);
+          }
+        });
+      });
+    });
+  }
 
   // branch
   deleteVector(name, id) {
