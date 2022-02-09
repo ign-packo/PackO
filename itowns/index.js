@@ -278,7 +278,7 @@ async function main() {
     });
     controllers.id.onFinishChange((value) => {
       const newId = parseInt(value, 10);
-      console.log("changement d'id : ", newId);
+      console.log('Nouvelle id : ', newId);
       editing.currentStatus = editing.STATUS.RAS;
       if (newId >= 0 && newId < editing.nbTotal) {
         editing.featureIndex = newId;

@@ -218,10 +218,11 @@ class Viewer {
           }
           if (layerName === this.alertLayerName) {
             this.oldStyle[layerName] = style.clone();
-            // eslint-disable-next-line no-param-reassign
+            /* eslint-disable no-param-reassign */
             style.fill.color = coloringAlerts;
-            // eslint-disable-next-line no-param-reassign
             style.point.color = coloringAlerts;
+            style.stroke.color = coloringAlerts;
+            /* eslint-enable no-param-reassign */
           }
         }
         this.view.removeLayer(layerName);
