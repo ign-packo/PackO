@@ -271,6 +271,8 @@ Pour les fichiers shapefile, il faut glisser les fichiers .shp, .shx, .dbf et .p
 Pour des soucis d'intégrité, si on désire ajouter plusieurs couches, il faut les ajouter une à une.
 Chaque couche ajoutée est sauvegardée dans la base de données.
 
+Actuellement les couches de polygone multipart ne sont pas bien gérées, il faut exploser ces couches en polygone simple avant de les ajouter à la vue itowns.
+
 Les paramètres d'affichage des couches ne sont pas persistants après un changement de branche de saisie ou de rafraîchissement de la page dans le navigateur.
 
 ### Gestion des couches d'alertes
