@@ -28,18 +28,17 @@ class Controller {
     if (process.env.NODE_ENV === 'development') this[branchName !== 'orig' ? 'setVisible' : 'hide']('clear');
   }
 
-  refreshDropBox(dropBoxName, list) {
+  refreshDropBox(dropBoxName, list, index) {
     let innerHTML = '';
     list.forEach((element) => {
       innerHTML += `<option value='${element}'>${element}</option>`;
     });
     this[dropBoxName].domElement.children[0].innerHTML = innerHTML;
-    // this.editing.alert = value;
-    this[dropBoxName].updateDisplay();
+    if (index !== undefined) this[dropBoxName].__select.options.selectedIndex = index;
+    // dans le cas ou index n'est pas renseigné on conserve la valeur précedente
   }
 
   refreshAlert() {
-    this.alert.__select.options.selectedIndex = 0;
     this.hide(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
     if (this.viewer.view.getLayerById('selectedFeature')) {
       this.viewer.view.removeLayer('selectedFeature');
