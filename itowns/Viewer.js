@@ -34,12 +34,34 @@ else {
 }
 `);
 
+let alertUncheckedColor = '';
+let alertCheckedColor = '';
+let alertValidatedColor = '';
+
+function initAlertColor() {
+  Array.from(document.styleSheets).forEach((sheet) => {
+    Array.from(sheet.cssRules).forEach((rule) => {
+      if (rule.selectorText === '.alertUnchecked') {
+        alertUncheckedColor = rule.style.color;
+      } else if (rule.selectorText === '.alertChecked') {
+        alertCheckedColor = rule.style.color;
+      } else if (rule.selectorText === '.alertValidated') {
+        alertValidatedColor = rule.style.color;
+      }
+    });
+  });
+}
+
+initAlertColor();
+
 function coloringAlerts(properties) {
-  // Pour le moment on utilise que 2 etats
   if (properties.status === false) {
-    return '#ff5555';// red
+    return alertCheckedColor;
   }
-  return '#3cd25f';// green
+  if (properties.status === true) {
+    return alertValidatedColor;
+  }
+  return alertUncheckedColor;
 }
 
 class Viewer {
@@ -196,10 +218,11 @@ class Viewer {
           }
           if (layerName === this.alertLayerName) {
             this.oldStyle[layerName] = style.clone();
-            // eslint-disable-next-line no-param-reassign
+            /* eslint-disable no-param-reassign */
             style.fill.color = coloringAlerts;
-            // eslint-disable-next-line no-param-reassign
             style.point.color = coloringAlerts;
+            style.stroke.color = coloringAlerts;
+            /* eslint-enable no-param-reassign */
           }
         }
         this.view.removeLayer(layerName);

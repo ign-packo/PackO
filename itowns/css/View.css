@@ -160,3 +160,15 @@ body {
     color: #93B7C0;
     text-shadow: 0px 1px 0px rgba(200,200,200,.3), 0px -1px 0px rgba(30,30,30,.7);
 }
+
+.alertUnchecked {
+    color: #ff000099;
+}
+
+.alertChecked {
+    color: #0000ff99;
+}
+
+.alertValidated {
+    color: #3cd25f99;
+}

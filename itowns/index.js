@@ -228,46 +228,81 @@ async function main() {
       console.log('choosed alert vector layer: ', name);
 
       if (name !== ' -') {
-        editing.featureIndex = 0;
         editing.alertLayerName = name;
         viewer.alertLayerName = name;
 
         const layerTest = viewer.view.getLayerById(editing.alertLayerName);
         editing.alertFC = await layerTest.source.loadData(undefined, layerTest);
+
         editing.nbValidated = editing.alertFC.features[0].geometries.filter(
           (elem) => elem.properties.status === true,
         ).length;
+        editing.nbChecked = editing.alertFC.features[0].geometries.filter(
+          (elem) => elem.properties.status !== null,
+        ).length;
         editing.nbTotal = editing.alertFC.features[0].geometries.length;
-        editing.nbChecked = `${editing.nbValidated}/${editing.nbTotal}`;
+        editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
+        // controllers.progress.updateDisplay();
+
+        let featureIndex = 0;
+        if (editing.alertFC.features[0].geometries[0].properties.status !== null) {
+          while (featureIndex < editing.alertFC.features[0].geometries.length
+            && editing.alertFC.features[0].geometries[featureIndex].properties.status !== null) {
+            featureIndex += 1;
+          }
+          featureIndex -= 1;
+        }
+        editing.featureIndex = featureIndex;
+
+        editing.id = 0;
+        controllers.id.updateDisplay();
 
         editing.centerOnAlertFeature();
-        // .then(() => {
-        //   editing.checked = editing.featureSelectedGeom.properties.status;
-        //   controllers.checked.updateDisplay();
-        //   viewer.comment = editing.featureSelectedGeom.properties.comment;
-        //   controllers.comment.updateDisplay();
-        //   controllers.nbChecked.updateDisplay();
-        // });
-        editing.checked = editing.featureSelectedGeom.properties.status;
-        controllers.checked.updateDisplay();
+        editing.validated = editing.featureSelectedGeom.properties.status;
+        controllers.validated.updateDisplay();
         viewer.comment = editing.featureSelectedGeom.properties.comment;
         controllers.comment.updateDisplay();
-        controllers.nbChecked.updateDisplay();
 
-        controllers.setVisible(['nbChecked', 'checked', 'comment']);
+        controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'comment']);
       } else {
         controllers.resetAlerts();
       }
+      viewer.message = '';
       viewer.refresh(branch.layers);
     });
-    editing.nbChecked = 'test';
-    controllers.nbChecked = viewer.menuGlobe.gui.add(editing, 'nbChecked').name('Validated');
-    controllers.nbChecked.listen().domElement.parentElement.style.pointerEvents = 'none';
-    controllers.hide('nbChecked');
+    editing.id = '';
+    controllers.id = viewer.menuGlobe.gui.add(editing, 'id').name('Alert id');
+    controllers.id.onChange(() => {
+      console.log("saisie d'une id");
+      editing.currentStatus = editing.STATUS.WRITING;
+    });
+    controllers.id.onFinishChange((value) => {
+      const newId = parseInt(value, 10);
+      console.log('Nouvelle id : ', newId);
+      editing.currentStatus = editing.STATUS.RAS;
+      if (newId >= 0 && newId < editing.nbTotal) {
+        editing.featureIndex = newId;
 
-    editing.checked = false;
-    controllers.checked = viewer.menuGlobe.gui.add(editing, 'checked');
-    controllers.checked.onChange(async (value) => {
+        editing.centerOnAlertFeature();
+      } else {
+        viewer.message = 'id non valide';
+        editing.id = editing.featureIndex;
+        controllers.id.updateDisplay();
+      }
+    });
+    controllers.hide('id');
+
+    editing.progress = '';
+    controllers.progress = viewer.menuGlobe.gui.add(editing, 'progress').name('Progress');
+    controllers.progress.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.hide('progress');
+
+    controllers.unchecked = viewer.menuGlobe.gui.add(editing, 'unchecked').name('Mark as unchecked');
+    controllers.hide('unchecked');
+
+    editing.validated = false;
+    controllers.validated = viewer.menuGlobe.gui.add(editing, 'validated');
+    controllers.validated.onChange(async (value) => {
       console.log('change status', value);
       const idFeature = editing.featureSelectedGeom.properties.id;
       const res = await fetch(`${apiUrl}/alert/${idFeature}?status=${value}`,
@@ -275,43 +310,28 @@ async function main() {
           method: 'PUT',
         });
       if (res.status === 200) {
-        viewer.refresh(branch.layers);
+        // viewer.refresh(branch.layers);
+        viewer.refresh({ [editing.alertLayerName]: branch.layers[editing.alertLayerName] });
         if (value === true) {
           editing.nbValidated += 1;
+          if (editing.alertFC.features[0].geometries[editing.featureIndex]
+            .properties.status === null) {
+            editing.nbChecked += 1;
+          }
         } else {
           editing.nbValidated -= 1;
         }
-        editing.nbChecked = `${editing.nbValidated}/${editing.nbTotal}`;
+        editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
         editing.alertFC.features[0].geometries[editing.featureIndex].properties.status = value;
       } else {
         viewer.message = 'PB with validate';
       }
     });
-    controllers.hide('checked');
+    controllers.hide('validated');
 
     viewer.comment = '';
     controllers.comment = viewer.menuGlobe.gui.add(viewer, 'comment');
-    controllers.comment.onChange(() => {
-      console.log('edition du commentaire en cours');
-      editing.currentStatus = editing.STATUS.COMMENT;
-    });
-    controllers.comment.onFinishChange(async (value) => {
-      console.log('edition du commentaire terminée : ', value);
-      editing.currentStatus = editing.STATUS.RAS;
-      if (value !== editing.featureSelectedGeom.properties.comment) {
-        const idFeature = editing.featureSelectedGeom.properties.id;
-        const res = await fetch(`${apiUrl}/alert/${idFeature}?comment=${value}`,
-          {
-            method: 'PUT',
-          });
-        if (res.status === 200) {
-          viewer.refresh(branch.layers);
-          editing.alertFC.features[0].geometries[editing.featureIndex].properties.comment = value;
-        } else {
-          viewer.message = 'PB with validate';
-        }
-      }
-    });
+    controllers.comment.listen().domElement.parentElement.style.pointerEvents = 'none';
     controllers.hide('comment');
 
     // editing controllers
@@ -319,8 +339,10 @@ async function main() {
       select: controllers.select,
       cliche: controllers.cliche,
       polygon: controllers.polygon,
-      checked: controllers.checked,
-      comment: controllers.comment,
+      // checked: controllers.checked,
+      id: controllers.id,
+      validated: controllers.validated,
+      // comment: controllers.comment,
     };
     viewerDiv.focus();
 
@@ -384,11 +406,26 @@ async function main() {
 
         if (features[layerTest.id].length > 0) {
           const featureCollec = await layerTest.source.loadData(undefined, layerTest);
+          editing.alertFC = featureCollec;
           for (let i = 0; i < featureCollec.features[0].geometries.length; i += 1) {
             if (featureCollec.features[0].geometries[i] === features[layerTest.id][0].geometry) {
               editing.featureIndex = i;
             }
           }
+
+          if (features[layerTest.id][0].geometry.properties.status === null) {
+            editing.postValue(features[layerTest.id][0].geometry.properties.id, 'status', false);
+            editing.featureSelectedGeom.properties.status = false;
+            editing.nbChecked += 1;
+            editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
+          }
+
+          editing.id = editing.featureIndex;
+          controllers.id.updateDisplay();
+          editing.validated = features[layerTest.id][0].geometry.properties.status;
+          controllers.validated.updateDisplay();
+          viewer.comment = features[layerTest.id][0].geometry.properties.comment;
+
           editing.highlightSelectedFeature(featureCollec,
             features[layerTest.id][0].geometry,
             features[layerTest.id][0].type);
@@ -398,6 +435,7 @@ async function main() {
       editing.click(ev);
       return false;
     }, false);
+
     viewerDiv.addEventListener('mousedown', (ev) => {
       if (ev.button === 1) {
         console.log('middle button clicked');
