@@ -93,7 +93,17 @@ class Branch {
     });
     this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
     this.setLayers();
-    this.viewer.refresh(this.layers, true);
+    this.resetAlert();
+    this.view.dispatchEvent({
+      type: 'branch-changed',
+      name: this.active.name,
+    });
+    // this.viewer.refresh(this.layers, true);
+  }
+
+  async getVectorList() {
+    this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
+    this.setLayers();
   }
 
   createBranch() {
@@ -109,30 +119,6 @@ class Branch {
     this.addBranch(branchName);
   }
 
-  async addBranchSAV(branchName) {
-    const res = await fetch(`${this.apiUrl}/branch?name=${branchName}&idCache=${this.viewer.idCache}`,
-      {
-        method: 'POST',
-      });// .then((res) => {
-    if (res.status === 200) {
-      const branches = await itowns.Fetcher.json(`${this.apiUrl}/branches?idCache=${this.viewer.idCache}`);// .then((branches) => {
-      this.list = branches;
-      // this.active.name = branchName;
-      // this.active.id = this.list.filter((branch) => branch.name === branchName)[0].id;
-      await this.changeBranch(branchName);
-      this.view.dispatchEvent({
-        type: 'branch-created',
-      });
-      // });
-    } else {
-      res.text().then((err) => {
-        console.log(err);
-        this.viewer.message = 'le nom n\'est pas valide';
-      });
-    }
-    // });
-  }
-
   addBranch(branchName) {
     this.api.postBranch(this.viewer.idCache, branchName)
       .then((newBranch) => {
@@ -140,9 +126,9 @@ class Branch {
         this.list.push(newBranch);
         this.view.dispatchEvent({
           type: 'branch-created',
+          name: branchName,
         });
         // await this.changeBranch(branchName);
-        this.changeBranch(branchName);
       })
       .catch((error) => {
         if (error.name === 'Server Error') {
@@ -193,6 +179,10 @@ class Branch {
     if (this.alert.layerName !== ' -') this.layers[this.alert.layerName].isAlert = false;
     if (name !== ' -') this.layers[name].isAlert = true;
     this.alert.layerName = name;
+  }
+
+  resetAlert() {
+    this.alert = new Alert(this);
   }
 }
 export default Branch;

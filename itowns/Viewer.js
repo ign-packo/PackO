@@ -230,11 +230,11 @@ class Viewer {
     );
   }
 
-  refresh(layerList, changeBranch = false) {
+  refresh(layerList, cleanUpExtraLayer = false) {
     const layerNames = Array.isArray(layerList) ? layerList : Object.keys(layerList);
     let listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
 
-    if (changeBranch) {
+    if (cleanUpExtraLayer) {
       // Clean up of all the extra layers
       listColorLayer.forEach((layerName) => {
         if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layerName)) {
