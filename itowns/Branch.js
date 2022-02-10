@@ -1,13 +1,13 @@
-/* eslint-disable no-console */
 import * as itowns from 'itowns';
 import Alert from './Alert';
 
 class Branch {
-  constructor(viewer) {
+  constructor(viewer, idCache) {
     // this.apiUrl = apiUrl;
     this.viewer = viewer;
     this.view = viewer.view;
     this.api = viewer.api;
+    this.idCache = idCache;
 
     this.layers = {};
     this.vectorList = {};
@@ -83,8 +83,7 @@ class Branch {
       name,
       id: this.list.filter((elem) => elem.name === name)[0].id,
     };
-    console.log('changeBranch -> name:', this.active.name, 'id:', this.active.id);
-    const listColorLayer = this.viewer.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
+    const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
     listColorLayer.forEach((element) => {
       const regex = new RegExp(`^${this.api.url}\\/[0-9]+\\/`);
       this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url
@@ -92,13 +91,22 @@ class Branch {
     });
     this.vectorList = await itowns.Fetcher.json(`${this.api.url}/${this.active.id}/vectors`);
     this.setLayers();
-    this.viewer.refresh(this.layers, true);
+    this.resetAlert();
+    this.view.dispatchEvent({
+      type: 'branch-changed',
+      name: this.active.name,
+    });
+    // this.viewer.refresh(this.layers, true);
+  }
+
+  async getVectorList() {
+    this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
+    this.setLayers();
   }
 
   createBranch() {
     // eslint-disable-next-line no-alert
     const branchName = window.prompt('Choose a new branch name:', '');
-    console.log(branchName);
     if (branchName === null) return;
     if (branchName.length === 0) {
       this.viewer.message = "le nom n'est pas valide";
@@ -108,15 +116,15 @@ class Branch {
   }
 
   addBranch(branchName) {
-    this.api.postBranch(this.viewer.idCache, branchName)
+    this.api.postBranch(this.idCache, branchName)
       .then((newBranch) => {
-        console.log(`-> Branch '${newBranch.name}' (id: ${newBranch.id}) succesfully added`);
         this.list.push(newBranch);
         this.view.dispatchEvent({
           type: 'branch-created',
+          name: branchName,
+          id: newBranch.id,
         });
         // await this.changeBranch(branchName);
-        this.changeBranch(branchName);
       })
       .catch((error) => {
         if (error.name === 'Server Error') {
@@ -165,6 +173,10 @@ class Branch {
     if (this.alert.layerName !== ' -') this.layers[this.alert.layerName].isAlert = false;
     if (name !== ' -') this.layers[name].isAlert = true;
     this.alert.layerName = name;
+  }
+
+  resetAlert() {
+    this.alert = new Alert(this);
   }
 }
 export default Branch;

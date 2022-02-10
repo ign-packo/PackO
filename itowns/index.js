@@ -86,7 +86,7 @@ async function main() {
 
     const overviews = await getOverviews;
 
-    viewer.createView(overviews, activeCache.id);
+    viewer.createView(overviews);
     // setupLoadingScreen(viewerDiv, viewer.view);
     // FeatureToolTip.init(viewerDiv, viewer.view);
 
@@ -99,7 +99,7 @@ async function main() {
     // viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Extra Layers');
     // viewer.menuGlobe.vectorGui.open();
 
-    const branch = new Branch(viewer);
+    const branch = new Branch(viewer, activeCache.id);
     const editing = new Editing(branch);
 
     const controllers = new Controller(viewer.menuGlobe, editing);
@@ -125,18 +125,10 @@ async function main() {
     // Gestion branche
     controllers.branchName = branch.active.name;
     controllers.activeBranch = viewer.menuGlobe.gui.add(controllers, 'branchName', branch.list.map((elem) => elem.name)).name('Active branch');
-    controllers.activeBranch.onChange(async (name) => {
+    controllers.activeBranch.onChange((name) => {
       document.activeElement.blur();
       console.log('choosed branch: ', name);
-      // branch.active = {
-      //   name,
-      //   id: branch.list.filter((elem) => elem.name === name)[0].id,
-      // };
-      // await branch.changeBranch();
-      await branch.changeBranch(name);
-      controllers.setEditingController();
-      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
-      controllers.resetAlerts();
+      branch.changeBranch(name);
     });
     controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch').name('Add new branch');
 
@@ -222,7 +214,8 @@ async function main() {
           }
         }
       } else {
-        controllers.resetAlerts();
+        controllers.refreshAlert();
+        branch.resetAlert();
       }
       // branch.setAlert(name);
       viewer.refresh(branch.layers);
@@ -361,26 +354,32 @@ async function main() {
         });
     });
 
-    view.addEventListener('branch-created', () => {
-      console.log('-> New branch created');
-      controllers.setEditingController();
-      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
-      controllers.resetAlerts();
+    view.addEventListener('branch-created', (newBranch) => {
+      console.log(`-> New branch created (name: '${newBranch.name}', id: ${newBranch.id})`);
+      branch.changeBranch(newBranch.name);
+      // controllers.setEditingController();
+      // controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+      // controllers.resetAlerts();
       controllers.activeBranch = controllers.activeBranch
         .options(branch.list.map((elem) => elem.name))
         .setValue(branch.active.name);
-      controllers.activeBranch.onChange(async (name) => {
+      controllers.activeBranch.onChange((name) => {
         console.log('choosed branch: ', name);
-        // branch.active = {
-        //   name,
-        //   id: branch.list.filter((elem) => elem.name === name)[0].id,
-        // };
-        // await branch.changeBranch();
-        await branch.changeBranch(name);
-        controllers.setEditingController();
-        controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
-        controllers.resetAlerts();
+        branch.changeBranch(name);
+        // controllers.setEditingController();
+        // controllers.refreshDropBox('alert',
+        //   [' -', ...branch.vectorList.map((elem) => elem.name)]);
+        // controllers.resetAlerts();
       });
+    });
+
+    view.addEventListener('branch-changed', (newBranch) => {
+      console.log(`branche changed to '${newBranch.name}'`);
+      controllers.setEditingController(newBranch.name);
+      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+      controllers.refreshAlert();
+      // branch.resetAlert();
+      viewer.refresh(branch.layers, true);
     });
 
     view.addEventListener('remark-added', async () => {

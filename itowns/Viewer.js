@@ -93,9 +93,8 @@ class Viewer {
     this.oldStyle = {};
   }
 
-  createView(overviews, idCache) {
+  createView(overviews) {
     this.overviews = overviews;
-    this.idCache = idCache;
 
     // on ajoute les dataset.limits pour les layers graph/contour
     // avec uniquement les niveaux correspondants au COG mis à jour par les patchs
@@ -262,11 +261,11 @@ class Viewer {
     );
   }
 
-  refresh(layerList, changeBranch = false) {
+  refresh(layerList, cleanUpExtraLayer = false) {
     const layerNames = Array.isArray(layerList) ? layerList : Object.keys(layerList);
     let listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
 
-    if (changeBranch) {
+    if (cleanUpExtraLayer) {
       // Clean up of all the extra layers
       listColorLayer.forEach((layerName) => {
         if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layerName)) {

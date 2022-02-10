@@ -6,7 +6,7 @@ class Controller {
     this.menuGlobe = menuGlobe;
     this.editing = editing;
     this.viewer = this.editing.viewer;
-    this.branch = this.editing.branch;
+    // this.branch = this.editing.branch;
   }
 
   getController(name) {
@@ -22,8 +22,8 @@ class Controller {
     return controller;
   }
 
-  setEditingController() {
-    const branchName = this.branch.active.name;
+  setEditingController(branchName) {
+    // const branchName = this.branch.active.name;
     this[branchName !== 'orig' ? 'setVisible' : 'hide'](['polygon', 'undo', 'redo']);
     if (process.env.NODE_ENV === 'development') this[branchName !== 'orig' ? 'setVisible' : 'hide']('clear');
   }
@@ -38,10 +38,7 @@ class Controller {
     this[dropBoxName].updateDisplay();
   }
 
-  resetAlerts() {
-    // delete this.editing.alertLayerName;
-    // delete this.viewer.alertLayerName;
-    delete this.branch.alert;
+  refreshAlert() {
     this.alert.__select.options.selectedIndex = 0;
     this.hide(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
     if (this.viewer.view.getLayerById('selectedFeature')) {
