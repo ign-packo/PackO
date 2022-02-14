@@ -1,4 +1,3 @@
-import * as itowns from 'itowns';
 import Alert from './Alert';
 
 function readCRS(json) {
@@ -30,14 +29,19 @@ class Branch {
     this.idCache = idCache;
 
     this.layers = {};
-    this.vectorList = {};
+    this.vectorList = [];
 
     this.active = {};
     this.list = {};
     this.alert = new Alert(this);
   }
 
-  setLayers() {
+  async setLayers(vectorList = null) {
+    let getVectorList = null;
+    if (vectorList === null) {
+      getVectorList = this.api.getVectors(this.active.id);
+    }
+
     this.layers = {
       Ortho: {
         type: 'raster',
@@ -84,6 +88,9 @@ class Branch {
         },
       },
     };
+    if (vectorList === null) {
+      this.vectorList = await getVectorList;
+    }
 
     this.vectorList.forEach((vector) => {
       this.layers[vector.name] = {
@@ -109,19 +116,13 @@ class Branch {
       this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url
         .replace(regex, `${this.api.url}/${this.active.id}/`);
     });
-    this.vectorList = await itowns.Fetcher.json(`${this.api.url}/${this.active.id}/vectors`);
-    this.setLayers();
+    await this.setLayers();
+
     this.resetAlert();
     this.view.dispatchEvent({
       type: 'branch-changed',
       name: this.active.name,
     });
-    // this.viewer.refresh(this.layers, true);
-  }
-
-  async getVectorList() {
-    this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
-    this.setLayers();
   }
 
   createBranch() {
@@ -144,7 +145,6 @@ class Branch {
           name: branchName,
           id: newBranch.id,
         });
-        // await this.changeBranch(branchName);
       })
       .catch((error) => {
         if (error.name === 'Server Error') {
@@ -189,7 +189,7 @@ class Branch {
             style_itowns: JSON.stringify(style),
             crs,
           });
-          this.setLayers();
+          this.setLayers(this.vectorList);
           resolve();
         })
         .catch(() => {

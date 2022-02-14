@@ -109,10 +109,11 @@ async function main() {
 
     [branch.active] = branch.list;
 
-    const getVectorList = itowns.Fetcher.json(`${apiUrl}/${branch.active.id}/vectors`);
-    branch.vectorList = await getVectorList;
+    // const getVectorList = itowns.Fetcher.json(`${apiUrl}/${branch.active.id}/vectors`);
+    // branch.vectorList = await getVectorList;
 
-    branch.setLayers();
+    // branch.setLayers();
+    await branch.setLayers();
     viewer.refresh(branch.layers);
 
     // const editing = new Editing(branch, apiUrl);
