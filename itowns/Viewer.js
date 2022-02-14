@@ -316,18 +316,25 @@ class Viewer {
       if (layerList[layerName].id) {
         layer.colorLayer.vectorId = layerList[layerName].id;
       }
+
+      itowns.ColorLayersOrdering.moveLayerToIndex(
+        this.view,
+        layerName,
+        this.layerIndex[layerName] === undefined
+          ? Math.max(...Object.values(this.layerIndex)) + 1 : this.layerIndex[layerName],
+      );
     });
 
-    // Layer ordering
-    listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
-    listColorLayer.forEach((layerId) => {
-      if (this.layerIndex[layerId] === undefined) {
-        const extrIndex = Math.max(...Object.values(this.layerIndex)) + 1;
-        itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, extrIndex);
-      } else {
-        itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, this.layerIndex[layerId]);
-      }
-    });
+    // // Layer ordering
+    // listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
+    // listColorLayer.forEach((layerId) => {
+    //   if (this.layerIndex[layerId] === undefined) {
+    //     const extrIndex = Math.max(...Object.values(this.layerIndex)) + 1;
+    //     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, extrIndex);
+    //   } else {
+    //     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, this.layerIndex[layerId]);
+    //   }
+    // });
   }
 
   addDnDFiles(eventDnD, files) {
