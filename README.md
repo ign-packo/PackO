@@ -278,9 +278,24 @@ Les paramètres d'affichage des couches ne sont pas persistants après un change
 ### Gestion des couches d'alertes
 
 Pour naviguer à travers les entités d'une couche annexe prélablement ajoutée, il faut choisir cette couche dans le menu déroulant "Alerts Layer".
-A partir du moment où une couche a été selectionnée, le nombre d'entités déjà verifiées sur le nombre total s'affiche ainsi que les attributs propres à la première entité de la couche.
-On peut ensuite naviguer à travers les différentes entités en utilisant les flèches droite et gauche ou en cliquant directement sur l'entité voulue. Les champs "checked" et "comment" sont rafraichis avec les valeurs de l'entité selectionnée et peuvent être modifiés directement via le menu.
-Les flèches haut et bas proposent le même principe que droite et gauche avec pour seule différence de ne naviguer qu'à travers les entités non encore validées.
+A partir du moment où une couche a été selectionnée, la vue est centré sur la première entité non encore passée en revue et les champs "Alert id", "Progress", "Validated" ainsi que le bouton "Mark as Unchecked" apparaisent avec leurs valeurs mises à jour.
+On peut ensuite naviguer à travers les différentes entités :
+- en utilisant les flèches droite et gauche (ou haut et bas),
+- en cliquant directement sur l'entité voulue,
+- en entrant l'id de l'entité voulue dans le champ "Alert id".
+Les champs "Alert id", "Progress", "Validated" (et "Remark" pour la couche 'Remarques') sont rafraichis avec les valeurs de l'entité selectionnée.
+Les flèches haut et bas proposent le même principe que droite et gauche avec pour seule différence de ne naviguer qu'à travers les entités non-vues.
+
+Une entité peut se retrouver sous 3 statuts différents : *non-vu*, *vu* et *validé*. Par défaut le statut de chaque entité est *non-vu*. Dés que celle ci se retrouve selectionnée (par une des 3 methodes citées ci dessus) son statut passe à *vu*. Le bouton "Validated" permet de changer le statut de l'entité à *validé* et le bouton "Mark as unchecked" permet de revenir au statut *non-vu* (ne marche pas si l'entité à déja été validée).
+
+
+### Couche d'annotation (Remarques)
+
+Sur chaque branche, une couche vecteur 'Remarques' est par défault créée qui peut être traitée comme une couche d'alerte.
+Le bouton "Add remark" permet à tout moment d'ajouter une entité ponctuelle sur la couche 'Remarques", en cliquant sur la vue et de renseigner un texte.
+Lorsque la couche de 'Remarques' est choisie comme couche d'alerte, en plus des fonctionnalités propres aux couches d'alerte (voir paragraphe précedent), le champ "Remark" est affiché (contenant le texte entré lors de la création de l'entité) et on peut aussi détruire l'entité selectionnée avec le bouton "Delete Remark".
+
+A tout moment, cette couche "Remarques" peut être exportée en geoJson en appelant la route GET /{idBranch}/vector?name=Remarques. (En utilisant le swagger par exemple.)
 
 ### Retouches
 
@@ -306,7 +321,7 @@ En pratique, PackO va effectuer les opérations suivantes:
 - copie des patchs de **B2** dans cette nouvelle branche: c'est rapide puisque l'historique et les résultats d'application de patch sont simplement copiés
 - une fois que cette copie est prête: l'utilisateur reçoit une réponse avec l'Id de la nouvelle branche et l'Id du processus long pour suivre l'avancement du **rebase**
 - PackO va ensuite appliquer tous les patchs de **B1** sur cette nouvelle branche. Cela va prendre du temps puisqu'il faut rejouer chaque patch un par un dans l'ordre.
-- Lorsque les traitements sont terminés, le processus est mis à jour avec la date de fin et son status est passé à **succeed**
+- Lorsque les traitements sont terminés, le processus est mis à jour avec la date de fin et son statut est passé à **succeed**
 
 Il n'y a pas d'interface pour faire le **rebase** depuis iTowns, il faut utiliser la doc: 
 ````
