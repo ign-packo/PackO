@@ -10,7 +10,9 @@
     "build-dev": "cd itowns && npm install && npm run build-dev",
     "start-dev": "cross-env NODE_ENV=development node serveur.js",
     "build": "cd itowns && npm install && npm run build",
-    "start": "cross-env NODE_ENV=production node serveur.js"
+    "start": "run-p \"start-api -- {@}\" \"start-monitor -- {@}\" --",
+    "start-api": "cross-env NODE_ENV=production node serveur.js",
+    "start-monitor": "cd itowns && node serveur.js"
   },
   "repository": {
     "type": "git",

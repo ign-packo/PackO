@@ -18,7 +18,7 @@ const { argv } = require('yargs')
   //   alias: 'c',
   //   describe: "cache directory (default: 'cache')",
   // })
-  .option('port', {
+  .option('portApi', {
     alias: 'p',
     describe: "API port (default: '8081')",
   })
@@ -49,7 +49,7 @@ try {
   // effet : maj autom apres saisie - OK Chrome/Chromium, Pas OK Firefox
   app.use(nocache());
 
-  const PORT = argv.port ? argv.port : 8081;
+  const PORT = argv.portApi ? argv.portApi : 8081;
   const SERVER = argv.server ? argv.server : os.hostname();
   app.urlApi = `http://${SERVER}:${PORT}`;
 
