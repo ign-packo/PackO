@@ -243,7 +243,8 @@ class Editing {
     this.controllers.id.updateDisplay();
     this.validated = this.featureSelectedGeom.properties.status;
     this.controllers.validated.updateDisplay();
-    this.viewer.remark = this.featureSelectedGeom.properties.comment;
+    // this.viewer.remark = this.featureSelectedGeom.properties.comment;
+    this.comment = this.featureSelectedGeom.properties.comment;
 
     this.highlightSelectedFeature(this.alertFC,
       this.featureSelectedGeom,

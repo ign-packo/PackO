@@ -257,14 +257,17 @@ async function main() {
           editing.centerOnAlertFeature();
           editing.validated = editing.featureSelectedGeom.properties.status;
           controllers.validated.updateDisplay();
-          viewer.remark = editing.featureSelectedGeom.properties.comment;
-          controllers.remark.updateDisplay();
+          // viewer.remark = editing.featureSelectedGeom.properties.comment;
+          // controllers.remark.updateDisplay();
 
-          controllers.setVisible(['progress', 'id', 'validated', 'unchecked']);
+          editing.comment = editing.featureSelectedGeom.properties.comment;
+          // controllers.comment.updateDisplay();
+
+          controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'comment']);
           if (name === 'Remarques') {
-            controllers.setVisible(['remark', 'delRemark']);
+            controllers.setVisible(['delRemark']);
           } else {
-            controllers.hide(['remark', 'delRemark']);
+            controllers.hide(['delRemark']);
           }
         }
       } else {
@@ -332,10 +335,14 @@ async function main() {
     });
     controllers.hide('validated');
 
-    viewer.remark = '';
-    controllers.remark = viewer.menuGlobe.gui.add(viewer, 'remark').name('Remark');
-    controllers.remark.listen().domElement.parentElement.style.pointerEvents = 'none';
-    controllers.hide('remark');
+    // viewer.remark = '';
+    // controllers.remark = viewer.menuGlobe.gui.add(viewer, 'remark').name('Remark');
+    // controllers.remark.listen().domElement.parentElement.style.pointerEvents = 'none';
+    // controllers.hide('remark');
+    editing.comment = '';
+    controllers.comment = viewer.menuGlobe.gui.add(editing, 'comment').name('comment');
+    controllers.comment.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.hide('comment');
 
     // Remarques
     controllers.addRemark = viewer.menuGlobe.gui.add(editing, 'addRemark').name('Add remark');
@@ -420,10 +427,12 @@ async function main() {
         editing.centerOnAlertFeature();
         editing.validated = editing.featureSelectedGeom.properties.status;
         controllers.validated.updateDisplay();
-        viewer.remark = editing.featureSelectedGeom.properties.comment;
-        controllers.remark.updateDisplay();
+        // viewer.remark = editing.featureSelectedGeom.properties.comment;
+        // controllers.remark.updateDisplay();
+        editing.comment = editing.featureSelectedGeom.properties.comment;
+        // controllers.comment.updateDisplay();
 
-        controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'remark', 'delRemark']);
+        controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
       }
     });
 
@@ -450,10 +459,12 @@ async function main() {
         editing.centerOnAlertFeature();
         editing.validated = editing.featureSelectedGeom.properties.status;
         controllers.validated.updateDisplay();
-        viewer.remark = editing.featureSelectedGeom.properties.comment;
-        controllers.remark.updateDisplay();
+        // viewer.remark = editing.featureSelectedGeom.properties.comment;
+        // controllers.remark.updateDisplay();
+        editing.comment = editing.featureSelectedGeom.properties.comment;
+        // controllers.comment.updateDisplay();
       } else {
-        controllers.hide(['progress', 'id', 'validated', 'unchecked', 'remark', 'delRemark']);
+        controllers.hide(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
         controllers.viewer.view.removeLayer('selectedFeature');
       }
     });
@@ -490,7 +501,9 @@ async function main() {
           controllers.id.updateDisplay();
           editing.validated = features[layerTest.id][0].geometry.properties.status;
           controllers.validated.updateDisplay();
-          viewer.remark = features[layerTest.id][0].geometry.properties.comment;
+          // viewer.remark = features[layerTest.id][0].geometry.properties.comment;
+          editing.comment = features[layerTest.id][0].geometry.properties.comment;
+          // controllers.comment.updateDisplay();
 
           editing.highlightSelectedFeature(featureCollec,
             features[layerTest.id][0].geometry,
