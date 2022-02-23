@@ -293,20 +293,14 @@ async function getLayer(pgClient, idVector) {
   } else {
     debug(`    ~~getLayer (idBranch: ${idVector.idBranch}, name: ${idVector.name})`);
   }
-
   const sql = format(
-    "SELECT json_build_object('type', 'FeatureCollection', 'features', json_agg(ST_AsGeoJSON(t.*)::json)) as geojson "
-    + 'FROM'
-    + ' (SELECT f.*, fc.status, fc.comment FROM features f'
-    + ' LEFT JOIN feature_ctrs fc ON f.id=fc.id_feature'
-    // + ' RIGHT JOIN layers l ON l.id=f.id_layer'
-    + '%s'
-    // + ' WHERE f.id_layer=%s ORDER BY f.id) as t',
-    // idVector,
-    + ' WHERE %s ORDER BY f.id) as t',
-    typeof idVector !== 'object' ? '' : ' RIGHT JOIN layers l ON l.id=f.id_layer',
+    "SELECT json_build_object('type', 'FeatureCollection', 'name', name, 'crs', json_build_object('type', substring(crs from '(.+):.'), 'properties', json_build_object('code', substring(crs from '.:(.+)'))), 'features', features) as geojson "
+    + 'FROM features_json f, layers l'
+    + ' WHERE f.id_layer=l.id'
+    + ' AND %s',
     typeof idVector !== 'object' ? `f.id_layer=${idVector}` : `l.id_branch=${idVector.idBranch} AND l.name='${idVector.name}'`,
   );
+
   debug('      ', sql);
 
   const results = await pgClient.query(sql);
@@ -358,16 +352,34 @@ async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
 
   const values = [];
   geojson.features.forEach((feature) => {
-    values.push(`ST_SetSRID(ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}'), ${metadonnees.crs.split(':')[1]}), '${JSON.stringify(feature.properties)}', '${idNewLayer}'`);
+    const properties = JSON.parse(JSON.stringify(feature.properties));
+    // delete properties.comment;
+    values.push(`ST_SetSRID(ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}'), ${metadonnees.crs.split(':')[1]}), '${JSON.stringify(properties)}', '${idNewLayer}'`);
   });
 
   const sqlInsertFeatures = format('INSERT INTO features (geom, properties, id_layer) '
   + 'VALUES (%s) '
-  + 'RETURNING id as id_feature',
+  + 'RETURNING id as id_feature, properties',
   values.join('),('));
 
   debug('      ', sqlInsertFeatures);
   results = await pgClient.query(sqlInsertFeatures);
+
+  if (Object.keys(geojson.features[0].properties).includes('comment')) {
+    const temp = results.rows.map((feature) => ({
+      id_feature: feature.id_feature,
+      comment: JSON.parse(feature.properties).comment,
+    }));
+
+    const sqlInsertFeaturesCtrs = format('INSERT INTO feature_ctrs (comment, id_feature) '
+    + 'SELECT * '
+    + "FROM json_to_recordset('[%s]') as tmp_feature_ctrs(comment text, id_feature int) "
+    + 'RETURNING id as id_featurectr',
+    temp);
+
+    debug('      ', sqlInsertFeaturesCtrs);
+    await pgClient.query(sqlInsertFeaturesCtrs);
+  }
 
   return {
     id: idNewLayer,
