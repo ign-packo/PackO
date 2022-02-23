@@ -349,6 +349,11 @@ class Viewer {
       format: _GEOJSON,
       type: _JSON,
     };
+    extensionsMap.json = {
+      extension: 'json',
+      format: _GEOJSON,
+      type: _JSON,
+    };
     extensionsMap.shp = {
       extension: 'shp',
       format: _SHP,
@@ -389,19 +394,19 @@ class Viewer {
     // Read each file
     for (let i = 0; i < files.length; i += 1) {
       const file = files[i];
-      let extension = extensionsMap[file.name.split('.').pop().toLowerCase()];
+      let fileMtd = extensionsMap[file.name.split('.').pop().toLowerCase()];
       let layerName = file.name.split('.').slice(0, -1).join('.');
       layerName = layerName.charAt(0).toUpperCase() + layerName.slice(1);
 
-      if (!extension) {
-        extension = {};
-        errors.push(new Error('Type of file not supported, please add it using DragNDrop.register'));
+      if (!fileMtd) {
+        fileMtd = {};
+        errors.push(new Error('Type of file not supported.'));
         // throw new Error('Type of file not supported, please add it using DragNDrop.register');
       }
 
       const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
       if (listColorLayer.includes(layerName)) {
-        extension = {};
+        fileMtd = {};
         errors.push(new Error('A layer with the same name has already been added'));
         // throw new Error('A layer with the same name has already been added');
       }
@@ -414,12 +419,15 @@ class Viewer {
         const dataLoaded = e.target.result;
         let resData;
         nbFileLoaded += 1;
-
-        if (extension.format === _GEOJSON) {
+        if (fileMtd.format === _GEOJSON) {
           data = JSON.parse(dataLoaded);
-          resData = data;
-        } else if (extension.format === _SHP) {
-          data[extension.extension] = dataLoaded;
+          if (!data.type || data.type !== 'FeatureCollection' || !data.features) {
+            errors.push(new Error('File is not a valid geoJson'));
+          } else {
+            resData = data;
+          }
+        } else if (fileMtd.format === _SHP) {
+          data[fileMtd.extension] = dataLoaded;
           ListFile[layerName].nbFileLoaded += 1;
           if (ListFile[layerName].nbFileLoaded < 4) {
             if (ListFile[layerName].nbFileLoaded === ListFile[layerName].nbFileDropped) {
@@ -496,7 +504,7 @@ class Viewer {
           throw errors;
         }
       };
-      switch (extension.type) {
+      switch (fileMtd.type) {
         case _TEXT:
         case _JSON:
           fileReader.readAsText(file);
