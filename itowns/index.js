@@ -478,6 +478,11 @@ async function main() {
       }
     });
 
+    view.addEventListener('error', (ev) => {
+      // eslint-disable-next-line no-alert
+      window.alert(ev.msg instanceof Array ? ev.msg.join('') : ev.msg);
+    });
+
     viewerDiv.addEventListener('mousemove', (ev) => {
       ev.preventDefault();
       editing.mousemove(ev);

@@ -388,7 +388,6 @@ class Viewer {
 
       if (Object.keys(extensionsMap).includes(extension)) ListFile[layerName].nbFileDropped += 1;
     }
-    console.log(ListFile);
 
     let data = {};
     // Read each file
@@ -399,15 +398,15 @@ class Viewer {
       layerName = layerName.charAt(0).toUpperCase() + layerName.slice(1);
 
       if (!fileMtd) {
+        errors.push(new Error(`Type of file (.${file.name.split('.').pop().toLowerCase()}) not supported.\n`));
         fileMtd = {};
-        errors.push(new Error('Type of file not supported.'));
         // throw new Error('Type of file not supported, please add it using DragNDrop.register');
       }
 
       const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
       if (listColorLayer.includes(layerName)) {
         fileMtd = {};
-        errors.push(new Error('A layer with the same name has already been added'));
+        errors.push(new Error('A layer with the same name has already been added.\n'));
         // throw new Error('A layer with the same name has already been added');
       }
 
@@ -431,7 +430,7 @@ class Viewer {
           ListFile[layerName].nbFileLoaded += 1;
           if (ListFile[layerName].nbFileLoaded < 4) {
             if (ListFile[layerName].nbFileLoaded === ListFile[layerName].nbFileDropped) {
-              errors.push(new Error('missing file'));
+              errors.push(new Error('Missing file. (A shapefile must be added with the .shp, the .shx, the .prj and the .dbf)\n'));
             }
           } else {
             resData = shp.combine([
@@ -501,7 +500,11 @@ class Viewer {
         }
 
         if (nbFileLoaded === files.length && errors.length > 0) {
-          throw errors;
+          _view.dispatchEvent({
+            type: 'error',
+            msg: errors,
+          });
+          // throw errors;
         }
       };
       switch (fileMtd.type) {
@@ -518,7 +521,12 @@ class Viewer {
         default:
           nbFileLoaded += 1;
           if (nbFileLoaded === files.length && errors.length > 0) {
-            throw errors;
+            this.view.dispatchEvent({
+              type: 'error',
+              msg: errors,
+            });
+            return;
+            // throw errors;
           }
           // throw new Error('Type of file not supported, please add it using DragNDrop.register');
       }
