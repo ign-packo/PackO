@@ -238,40 +238,44 @@ class Editing {
           this.view.notifyChange(this.view.getLayerById('Opi'), true);
         } else if (this.branch.alert.layerName !== ' -'
                    && this.branch.alert.nbTotal > 0) {
-          const { geometries } = this.branch.alert.featureCollection.features[0];
+          // const { geometries } = this.branch.alert.featureCollection.features[0];
           if (e.key === 'ArrowLeft') {
-            this.branch.alert.featureIndex -= 1;
-            if (this.branch.alert.featureIndex === -1) {
-              this.branch.alert.featureIndex = geometries.length - 1;
-            }
+            // this.branch.alert.featureIndex -= 1;
+            // if (this.branch.alert.featureIndex === -1) {
+            //   this.branch.alert.featureIndex = geometries.length - 1;
+            // }
+            this.branch.alert.selectPrevious();
             this.centerOnAlertFeature();
           } else if (e.key === 'ArrowRight') {
-            this.branch.alert.featureIndex += 1;
-            if (this.branch.alert.featureIndex === geometries.length) {
-              this.branch.alert.featureIndex = 0;
-            }
+            // this.branch.alert.featureIndex += 1;
+            // if (this.branch.alert.featureIndex === geometries.length) {
+            //   this.branch.alert.featureIndex = 0;
+            // }
+            this.branch.alert.selectNext();
             this.centerOnAlertFeature();
           } else if (e.key === 'ArrowDown') {
-            let { featureIndex } = this;
-            featureIndex -= 1;
-            if (featureIndex === -1) featureIndex = geometries.length - 1;
-            while (geometries[featureIndex].properties.status !== null
-              && featureIndex !== this.branch.alert.featureIndex) {
-              featureIndex -= 1;
-              if (featureIndex === -1) featureIndex = geometries.length - 1;
-            }
-            this.branch.alert.featureIndex = featureIndex;
+            // let { featureIndex } = this;
+            // featureIndex -= 1;
+            // if (featureIndex === -1) featureIndex = geometries.length - 1;
+            // while (geometries[featureIndex].properties.status !== null
+            //   && featureIndex !== this.branch.alert.featureIndex) {
+            //   featureIndex -= 1;
+            //   if (featureIndex === -1) featureIndex = geometries.length - 1;
+            // }
+            // this.branch.alert.featureIndex = featureIndex;
+            this.branch.alert.selectPrevious(true);
             this.centerOnAlertFeature();
           } else if (e.key === 'ArrowUp') {
-            let { featureIndex } = this;
-            featureIndex += 1;
-            if (featureIndex === geometries.length) featureIndex = 0;
-            while (geometries[featureIndex].properties.status !== null
-              && featureIndex !== this.branch.alert.featureIndex) {
-              featureIndex += 1;
-              if (featureIndex === geometries.length) featureIndex = 0;
-            }
-            this.branch.alert.featureIndex = featureIndex;
+            // let { featureIndex } = this;
+            // featureIndex += 1;
+            // if (featureIndex === geometries.length) featureIndex = 0;
+            // while (geometries[featureIndex].properties.status !== null
+            //   && featureIndex !== this.branch.alert.featureIndex) {
+            //   featureIndex += 1;
+            //   if (featureIndex === geometries.length) featureIndex = 0;
+            // }
+            // this.branch.alert.featureIndex = featureIndex;
+            this.branch.alert.selectNext(true);
             this.centerOnAlertFeature();
           }
         }

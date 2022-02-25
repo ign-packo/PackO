@@ -10,7 +10,7 @@ class Alert {
   reset() {
     this.layerName = ' -';
     this.featureCollection = null;
-    this.featureIndex = 0;
+    this.featureIndex = null;
 
     this.nbChecked = 0;
     this.nbTotal = 0;
@@ -47,6 +47,49 @@ class Alert {
       this.nbChecked -= 1;
       this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
     }
+  }
+
+  selectPrevious(unviewed = false) {
+    const { geometries } = this.featureCollection.features[0];
+    let { featureIndex } = this;
+    featureIndex -= 1;
+    if (featureIndex === -1) featureIndex = this.nbTotal - 1;
+
+    while (unviewed === true
+      && geometries[featureIndex].properties.status !== null
+      && featureIndex !== this.featureIndex) {
+      featureIndex -= 1;
+      if (featureIndex === -1) featureIndex = this.nbTotal - 1;
+    }
+    this.featureIndex = featureIndex;
+  }
+
+  selectNext(unviewed = false) {
+    const { geometries } = this.featureCollection.features[0];
+    let { featureIndex } = this;
+    featureIndex += 1;
+    if (featureIndex === this.nbTotal) featureIndex = 0;
+
+    while (unviewed === true
+      && geometries[featureIndex].properties.status !== null
+      && featureIndex !== this.featureIndex) {
+      featureIndex += 1;
+      if (featureIndex === this.nbTotal) featureIndex = 0;
+    }
+    this.featureIndex = featureIndex;
+  }
+
+  selectLastViewed() {
+    const { geometries } = this.featureCollection.features[0];
+    let featureIndex = 0;
+    if (geometries[featureIndex].properties.status !== null) {
+      while (featureIndex < this.nbTotal
+      && geometries[featureIndex].properties.status !== null) {
+        featureIndex += 1;
+      }
+      featureIndex -= 1;
+    }
+    this.featureIndex = featureIndex;
   }
 }
 
