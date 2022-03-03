@@ -28,7 +28,8 @@ class Branch {
     this.api = viewer.api;
     this.idCache = idCache;
 
-    this.layers = {};
+    // this.layers = {};
+    this.layers = [];
     this.vectorList = [];
 
     this.active = {};
@@ -42,36 +43,47 @@ class Branch {
       getVectorList = this.api.getVectors(this.active.id);
     }
 
-    this.layers = {
-      Ortho: {
+    // this.layers = {
+    this.layers = [
+      // Ortho: {
+      {
+        name: 'Ortho',
         type: 'raster',
         url: `${this.api.url}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
         opacity: 1,
         visible: true,
       },
-      Graph: {
+      // Graph: {
+      {
+        name: 'Graph',
         type: 'raster',
         url: `${this.api.url}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
         opacity: 1,
         visible: true,
       },
-      Contour: {
+      // Contour: {
+      {
+        name: 'Contour',
         type: 'raster',
         url: `${this.api.url}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
         opacity: 0.5,
         visible: true,
       },
-      Opi: {
+      // Opi: {
+      {
+        name: 'Opi',
         type: 'raster',
         url: `${this.api.url}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
         opacity: 0.5,
         visible: false,
       },
-      Patches: {
+      // Patches: {
+      {
+        name: 'Patches',
         type: 'vector',
         url: `${this.api.url}/${this.active.id}/patches`,
         crs: this.viewer.crs,
@@ -87,21 +99,26 @@ class Branch {
           },
         },
       },
-    };
+    // };
+    ];
+
     if (vectorList === null) {
       this.vectorList = await getVectorList;
     }
 
     this.vectorList.forEach((vector) => {
-      this.layers[vector.name] = {
+      this.layers.push({
+        name: vector.name,
         type: 'vector',
         url: `${this.api.url}/vector?idVector=${vector.id}`,
         crs: vector.crs,
         opacity: 1,
         visible: true,
         style: JSON.parse(vector.style_itowns),
-        id: vector.id,
-      };
+        vectorId: vector.id,
+        isAlert: false,
+        isExtra: true,
+      });
     });
   }
 
@@ -166,7 +183,8 @@ class Branch {
           const layer = this.vectorList.filter((elem) => elem.id === id)[0];
           const index = this.vectorList.indexOf(layer);
           this.vectorList.splice(index, 1);
-          delete this.layers[name];
+          // delete this.layers[name];
+          this.setLayers(this.vectorList);
           resolve();
         })
         .catch(() => {
@@ -202,8 +220,8 @@ class Branch {
   }
 
   setAlertLayer(name) {
-    if (this.alert.layerName !== ' -') this.layers[this.alert.layerName].isAlert = false;
-    if (name !== ' -') this.layers[name].isAlert = true;
+    if (this.alert.layerName !== ' -') this.view.getLayerById(this.alert.layerName).isAlert = false;
+    if (name !== ' -') this.view.getLayerById(name).isAlert = true;
     this.alert.layerName = name;
   }
 }

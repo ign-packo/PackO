@@ -162,7 +162,11 @@ async function main() {
 
       branch.setAlertLayer(layerName);
 
+      const layersToRefresh = [];
+      if (branch.alert.layerName !== ' -' || layerName === ' -') layersToRefresh.push(branch.alert.layerName);
+
       if (layerName !== ' -') {
+        layersToRefresh.push(layerName);
         // editing.alertLayerName = name;
         // viewer.alertLayerName = name;
         // branch.alert.layerName = name;
@@ -195,7 +199,8 @@ async function main() {
       }
       controllers.setAlertCtr(layerName === 'Remarques' && branch.alert.featureCollection.features.length === 0 ? ' -' : layerName);
       // branch.setAlert(name);
-      viewer.refresh(branch.layers);
+      // viewer.refresh(branch.layers);
+      viewer.refresh(layersToRefresh);
     });
     branch.alert.id = '';
     controllers.id = viewer.menuGlobe.gui.add(branch.alert, 'id').name('Alert id');
@@ -298,8 +303,8 @@ async function main() {
       console.log(`-> A file (${ev.name}) had been dropped`);
       branch.saveLayer(ev.name, ev.data, ev.style)
         .then(() => {
-          viewer.refresh({ [ev.name]: branch.layers[ev.name] });
-
+          // viewer.refresh({ [ev.name]: branch.layers[ev.name] });
+          viewer.refresh(branch.layers.filter((layer) => layer.name === ev.name));
           controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
         })
         .catch((error) => {
@@ -361,7 +366,8 @@ async function main() {
         viewer.view.removeLayer('selectedFeature');
       }
       // branch.resetAlert();
-      viewer.refresh(branch.layers, true);
+      viewer.cleanUpExtraLayers();
+      viewer.refresh(branch.layers);
     });
 
     view.addEventListener('remark-added', async () => {

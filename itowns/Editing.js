@@ -56,63 +56,6 @@ class Editing {
     }
   }
 
-  update() {
-    console.log('update');
-    if (!this.currentPolygon) {
-      console.log('pas de polygone');
-      return;
-    }
-    this.currentStatus = status.RAS;
-    this.viewer.message = '';
-    const positions = this.currentPolygon.geometry.attributes.position.array;
-    const geojson = {
-      type: 'FeatureCollection',
-      name: 'annotation',
-      crs: { type: 'name', properties: { name: `urn:ogc:def:crs:${this.view.camera.crs.replace(':', '::')}` } },
-      features: [
-        {
-          type: 'Feature',
-          properties: { color: this.color, cliche: this.opiName },
-          geometry:
-                    {
-                      type: 'Polygon',
-                      coordinates: [[]],
-                    },
-        },
-      ],
-    };
-    for (let i = 0; i <= this.nbVertices; i += 1) {
-      geojson.features[0].geometry.coordinates[0].push(
-        [
-          positions[3 * i] + this.currentPolygon.position.x,
-          positions[3 * i + 1] + this.currentPolygon.position.y,
-        ],
-      );
-    }
-
-    // const dataStr = JSON.stringify(geojson);
-    this.view.scene.remove(this.currentPolygon);
-    this.currentStatus = status.WAITING;
-    this.view.controls.setCursor('default', 'wait');
-    this.viewer.message = 'calcul en cours';
-    // On post le geojson sur l'API
-    this.api.postPatch(this.branch.active.id, JSON.stringify(geojson))
-      .then(() => {
-        this.viewer.refresh(this.branch.layers);
-      })
-      .catch((error) => {
-        console.log(error);
-        this.viewer.message = error;
-        this.viewer.view.dispatchEvent({
-          type: 'error',
-          msg: error,
-        });
-      })
-      .finally(() => {
-        this.cancelcurrentPolygon();
-      });
-  }
-
   cancelcurrentPolygon() {
     if (this.currentPolygon) {
       // on annule la saisie en cours
@@ -276,7 +219,8 @@ class Editing {
               // On modifie la couche OPI
               this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
               this.view.getLayerById('Opi').visible = true;
-              this.viewer.refresh(this.branch.layers);
+              // this.viewer.refresh(this.branch.layers);
+              this.viewer.refresh(['Opi']);
               this.validClicheSelected = true;
             }
             if (res.status === 201) {
@@ -336,13 +280,14 @@ class Editing {
           this.viewer.message = 'calcul en cours';
 
           // On post la geometrie sur l'API
-          const remarksLayerId = this.branch.vectorList.filter((elem) => elem.name === 'Remarques')[0].id;
+          const remarksLayerId = this.view.getLayerById('Remarques').vectorId;
           fetch(`${this.api.url}/${remarksLayerId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${remark}`,
             {
               method: 'PUT',
             }).then((res) => {
             if (res.status === 200) {
-              this.viewer.refresh({ Remarques: this.branch.layers.Remarques });
+              // this.viewer.refresh({ Remarques: this.branch.layers.Remarques });
+              this.viewer.refresh(['Remarques']);
               this.view.controls.setCursor('default', 'auto');
               this.currentStatus = status.RAS;
               this.viewer.message = '';
@@ -412,6 +357,65 @@ class Editing {
     this.nbVertices = 0;
   }
 
+  // PATCHES
+  update() {
+    console.log('update');
+    if (!this.currentPolygon) {
+      console.log('pas de polygone');
+      return;
+    }
+    this.currentStatus = status.RAS;
+    this.viewer.message = '';
+    const positions = this.currentPolygon.geometry.attributes.position.array;
+    const geojson = {
+      type: 'FeatureCollection',
+      name: 'annotation',
+      crs: { type: 'name', properties: { name: `urn:ogc:def:crs:${this.view.camera.crs.replace(':', '::')}` } },
+      features: [
+        {
+          type: 'Feature',
+          properties: { color: this.color, cliche: this.opiName },
+          geometry:
+                    {
+                      type: 'Polygon',
+                      coordinates: [[]],
+                    },
+        },
+      ],
+    };
+    for (let i = 0; i <= this.nbVertices; i += 1) {
+      geojson.features[0].geometry.coordinates[0].push(
+        [
+          positions[3 * i] + this.currentPolygon.position.x,
+          positions[3 * i + 1] + this.currentPolygon.position.y,
+        ],
+      );
+    }
+
+    // const dataStr = JSON.stringify(geojson);
+    this.view.scene.remove(this.currentPolygon);
+    this.currentStatus = status.WAITING;
+    this.view.controls.setCursor('default', 'wait');
+    this.viewer.message = 'calcul en cours';
+    // On post le geojson sur l'API
+    this.api.postPatch(this.branch.active.id, JSON.stringify(geojson))
+      .then(() => {
+        // this.viewer.refresh(this.branch.layers);
+        this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+      })
+      .catch((error) => {
+        console.log(error);
+        this.viewer.message = error;
+        this.viewer.view.dispatchEvent({
+          type: 'error',
+          msg: error,
+        });
+      })
+      .finally(() => {
+        this.cancelcurrentPolygon();
+      });
+  }
+
   undo() {
     if (this.currentStatus === status.WAITING) return;
     if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
@@ -430,7 +434,8 @@ class Editing {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.viewer.refresh(this.branch.layers);
+        // this.viewer.refresh(this.branch.layers);
+        this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
       }
       res.text().then((msg) => {
         this.viewer.message = msg;
@@ -456,7 +461,8 @@ class Editing {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.viewer.refresh(this.branch.layers);
+        // this.viewer.refresh(this.branch.layers);
+        this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
       }
       res.text().then((msg) => {
         this.viewer.message = msg;
@@ -479,7 +485,8 @@ class Editing {
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
-        this.viewer.refresh(this.branch.layers);
+        // this.viewer.refresh(this.branch.layers);
+        this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
       }
       res.text().then((msg) => {
         this.viewer.message = msg;
@@ -509,7 +516,7 @@ class Editing {
     this.viewer.message = 'calcul en cours';
 
     // On post la geometrie sur l'API
-    const remarksLayerId = this.branch.vectorList.filter((elem) => elem.name === 'Remarques')[0].id;
+    const remarksLayerId = this.view.getLayerById('Remarques').vectorId;
 
     const alertFC = this.branch.alert.featureCollection;
     const featureSelectedGeom = alertFC.features[0].geometries[this.branch.alert.featureIndex];
@@ -518,7 +525,8 @@ class Editing {
         method: 'DELETE',
       }).then((res) => {
       if (res.status === 200) {
-        this.viewer.refresh({ Remarques: this.branch.layers.Remarques });
+        // this.viewer.refresh({ Remarques: this.branch.layers.Remarques });
+        this.viewer.refresh(['Remarques']);
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
         this.viewer.message = '';
