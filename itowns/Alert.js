@@ -110,6 +110,24 @@ class Alert {
         .applyMatrix4(this.featureCollection.matrixWorld).center(),
     });
   }
+
+  async selectFeatureAt(mouseOrEvt) {
+    if (this.layerName !== ' -') {
+      const layerAlert = this.viewer.view.getLayerById(this.layerName);
+      const features = this.viewer.view.pickFeaturesAt(mouseOrEvt, 5, layerAlert.id);
+
+      if (features[layerAlert.id].length > 0) {
+        this.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
+        const alertFC = this.featureCollection;
+
+        for (let i = 0; i < this.nbTotal; i += 1) {
+          if (alertFC.features[0].geometries[i] === features[layerAlert.id][0].geometry) {
+            this.changeFeature(i);
+          }
+        }
+      }
+    }
+  }
 }
 
 export default Alert;

@@ -459,25 +459,8 @@ async function main() {
       return false;
     }, false);
 
-    viewerDiv.addEventListener('click', async (ev) => {
+    viewerDiv.addEventListener('click', (ev) => {
       ev.preventDefault();
-      if (branch.alert.layerName !== ' -') {
-        const layerAlert = view.getLayerById(branch.alert.layerName);
-        const features = view.pickFeaturesAt(ev, 5, layerAlert.id);
-
-        if (features[layerAlert.id].length > 0) {
-          // const featureCollec = await layerTest.source.loadData(undefined, layerTest);
-          branch.alert.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
-          const alertFC = branch.alert.featureCollection;
-
-          for (let i = 0; i < branch.alert.nbTotal; i += 1) {
-            if (alertFC.features[0].geometries[i] === features[layerAlert.id][0].geometry) {
-              // branch.alert.featureIndex = i;
-              branch.alert.changeFeature(i);
-            }
-          }
-        }
-      }
       editing.click(ev);
       return false;
     }, false);

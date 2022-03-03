@@ -251,12 +251,15 @@ class Editing {
     this.viewer.message = '';
 
     switch (this.currentStatus) {
+      case status.RAS: {
+        this.branch.alert.selectFeatureAt(e);
+        break;
+      }
       case status.SELECT: {
         console.log('get OPI');
         // on selectionne le cliche
-        const pos = this.pickPoint(e);
         this.view.controls.setCursor('default', 'auto');
-        fetch(`${this.api.url}/${this.branch.active.id}/graph?x=${pos.x}&y=${pos.y}`,
+        fetch(`${this.api.url}/${this.branch.active.id}/graph?x=${mousePosition.x}&y=${mousePosition.y}`,
           {
             method: 'GET',
             headers: {
