@@ -15,6 +15,21 @@ const status = {
   ADDREMARK: 6,
 };
 
+function getAllCheckboxes(id, className) {
+  const allCheckboxes = [];
+  let propEls;
+  if (className) {
+    propEls = Array.from(document.getElementById(id).getElementsByClassName(className));
+  } else propEls = Array(document.getElementById(id));
+  if (!propEls) return allCheckboxes;
+  propEls.forEach((elProp) => {
+    const inputEls = Array.from(elProp.getElementsByTagName('input'));
+    const cbx = inputEls.find(((el) => (el.type === 'checkbox')));
+    if (cbx) allCheckboxes.push(cbx);
+  });
+  return allCheckboxes;
+}
+
 class Editing {
   constructor(branch, apiUrl) {
     this.branch = branch;
@@ -32,6 +47,8 @@ class Editing {
     this.featureIndex = 0;
 
     this.STATUS = status;
+
+    this.folderShorcuts = { Ortho: 'm', Opi: 'o', Contour: 'g' };
   }
 
   pickPoint(event) {
@@ -266,6 +283,61 @@ class Editing {
     if (this.currentStatus === status.WAITING) return;
     console.log(e.key, ' down');
     if (this.currentStatus === status.RAS) {
+      // KEYBOARD SHORTCUTS
+      // undo CTRL+z
+      if (e.ctrlKey && (e.key === 'z')) this.undo();
+      // redo CTRL+y
+      if (e.ctrlKey && (e.key === 'y')) this.redo();
+      // select Opi
+      if (e.key === 's') this.select();
+      // start polygon
+      if (e.key === 'p') this.polygon();
+      // change visibility on ColorLayers
+      Object.keys(this.folderShorcuts).forEach((key) => {
+        if (e.key === this.folderShorcuts[key]) {
+          console.log(`Change ${key} visibility`);
+          getAllCheckboxes(key).forEach((c) => (c.click()));
+        }
+      });
+      // change visibility on ExtraLayers
+      if (e.key === 'v') {
+        console.log('Change Extra Layers visibility');
+        getAllCheckboxes('extraLayers', 'visibcbx').forEach((c) => (c.click()));
+      }
+      // change alert validation status
+      if ((this.alertLayerName !== undefined) && (e.key === 'c')) {
+        console.log('Change alert validation status');
+        getAllCheckboxes('validatedAlert').forEach((c) => (c.click()));
+      }
+      // move camera proportional to one screen
+      if (this.alertLayerName === undefined) {
+        const camera = this.view.camera.camera3D;
+        const widthScreen = (camera.right - camera.left) / camera.zoom;
+        const heightScreen = (camera.top - camera.bottom) / camera.zoom;
+        const prop = 0.9;
+        if (e.key === 'ArrowLeft') {
+          console.log('Move view left');
+          camera.position.x -= widthScreen * prop;
+        }
+        if (e.key === 'ArrowRight') {
+          console.log('Move view right');
+          camera.position.x += widthScreen * prop;
+        }
+        if (e.key === 'ArrowUp') {
+          console.log('Move view up');
+          camera.position.y += heightScreen * prop;
+        }
+        if (e.key === 'ArrowDown') {
+          console.log('Move view down');
+          camera.position.y -= heightScreen * prop;
+        }
+        this.viewer.centerCamera(camera.position.x, camera.position.y);
+      }
+      // add remark
+      if (e.key === 'a') this.addRemark();
+      // delete remark
+      if (this.alertLayerName === 'Remarques' && this.alertFC.features.length > 0 && e.key === 'd') this.delRemark();
+
       // L'utilisateur demande à déselectionner l'OPI
       if (this.validClicheSelected && (e.key === 'Escape')) {
         this.validClicheSelected = false;

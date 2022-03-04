@@ -100,7 +100,8 @@ async function main() {
 
     viewer.menuGlobe.colorGui.show();
     viewer.menuGlobe.colorGui.open();
-    viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Extra Layers');
+    viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Extra Layers [v]');
+    viewer.menuGlobe.vectorGui.domElement.id = 'extraLayers';
     viewer.menuGlobe.vectorGui.open();
 
     const branch = new Branch(apiUrl, viewer);
@@ -119,13 +120,20 @@ async function main() {
       if (layer.id === 'selectedFeature') { return; }
 
       const folder = this[typeGui].addFolder(layer.id);
-      folder.add({ visible: layer.visible }, 'visible').onChange(((value) => {
+      if (editing.folderShorcuts[layer.id] !== undefined) {
+        const titles = Array.from(folder.domElement.getElementsByClassName('title'));
+        titles.forEach((title) => {
+          if (title.innerText === layer.id) title.innerText += ` [${editing.folderShorcuts[layer.id]}]`;
+        });
+      }
+      const visib = folder.add({ visible: layer.visible }, 'visible');
+      visib.domElement.setAttribute('id', layer.id);
+      visib.domElement.classList.add('visibcbx');
+      visib.onChange(((value) => {
         layer.visible = value;
-
         if (layer.id === editing.alertLayerName) {
           viewer.view.getLayerById('selectedFeature').visible = value;
         }
-
         viewer.view.notifyChange(layer);
       }));
       folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0).onChange(((value) => {
@@ -197,7 +205,7 @@ async function main() {
     controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch').name('Add new branch');
 
     // Selection OPI
-    controllers.select = viewer.menuGlobe.gui.add(editing, 'select').name('Select an OPI');
+    controllers.select = viewer.menuGlobe.gui.add(editing, 'select').name('Select an OPI [s]');
     controllers.cliche = viewer.menuGlobe.gui.add(editing, 'cliche').name('OPI selected');
     controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
 
@@ -206,9 +214,9 @@ async function main() {
     controllers.coord.listen();
 
     // Saisie
-    controllers.polygon = viewer.menuGlobe.gui.add(editing, 'polygon').name('Start polygon');
-    controllers.undo = viewer.menuGlobe.gui.add(editing, 'undo');
-    controllers.redo = viewer.menuGlobe.gui.add(editing, 'redo');
+    controllers.polygon = viewer.menuGlobe.gui.add(editing, 'polygon').name('Start polygon [p]');
+    controllers.undo = viewer.menuGlobe.gui.add(editing, 'undo').name('undo [CTRL+Z]');
+    controllers.redo = viewer.menuGlobe.gui.add(editing, 'redo').name('redo [CTRL+Y]');
     controllers.clear = viewer.menuGlobe.gui.add(editing, 'clear');
     controllers.hide(['polygon', 'undo', 'redo', 'clear']);
 
@@ -307,7 +315,8 @@ async function main() {
     controllers.hide('unchecked');
 
     editing.validated = false;
-    controllers.validated = viewer.menuGlobe.gui.add(editing, 'validated').name('Validated');
+    controllers.validated = viewer.menuGlobe.gui.add(editing, 'validated').name('Validated [c]');
+    controllers.validated.domElement.id = 'validatedAlert';
     controllers.validated.onChange(async (value) => {
       console.log('change status', value);
       const idFeature = editing.featureSelectedGeom.properties.id;
@@ -345,8 +354,8 @@ async function main() {
     controllers.hide('comment');
 
     // Remarques
-    controllers.addRemark = viewer.menuGlobe.gui.add(editing, 'addRemark').name('Add remark');
-    controllers.delRemark = viewer.menuGlobe.gui.add(editing, 'delRemark').name('Delete remark');
+    controllers.addRemark = viewer.menuGlobe.gui.add(editing, 'addRemark').name('Add remark [a]');
+    controllers.delRemark = viewer.menuGlobe.gui.add(editing, 'delRemark').name('Delete remark [d]');
     controllers.hide('delRemark');
 
     // editing controllers
