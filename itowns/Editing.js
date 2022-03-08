@@ -56,20 +56,13 @@ class Editing {
     }
   }
 
-  cancelcurrentPolygon() {
+  resetCurrentPolygon() {
     if (this.currentPolygon) {
       // on annule la saisie en cours
       this.view.scene.remove(this.currentPolygon);
       this.currentPolygon = null;
-      this.view.notifyChange();
+      this.view.notifyChange(this.currentPolygon);
     }
-    this.view.controls.setCursor('default', 'auto');
-    this.currentStatus = status.RAS;
-    this.viewer.message = '';
-
-    Object.keys(this.controllers).forEach((key) => {
-      if (key !== 'opiName' && this.controllers[key]) this.controllers[key].__li.style.backgroundColor = '';
-    });
   }
 
   keydown(e) {
@@ -110,7 +103,10 @@ class Editing {
       case status.POLYGON: {
         if (e.key === 'Escape') {
           this.view.controls.setCursor('default', 'auto');
-          this.cancelcurrentPolygon();
+          this.resetCurrentPolygon();
+          this.currentStatus = status.RAS;
+          this.controllers.polygon.__li.style.backgroundColor = '';
+          this.viewer.message = '';
         } else if (e.key === 'Shift') {
           if (this.currentPolygon) {
             if (this.branch.active.name === 'orig') {
@@ -200,8 +196,10 @@ class Editing {
       }
       case status.SELECT: {
         console.log('get OPI');
+        this.viewer.message = 'calcul en cours';
+        this.view.controls.setCursor('default', 'wait');
+        this.currentStatus = status.WAITING;
         // on selectionne le cliche
-        this.view.controls.setCursor('default', 'auto');
         fetch(`${this.api.url}/${this.branch.active.id}/graph?x=${mousePosition.x}&y=${mousePosition.y}`,
           {
             method: 'GET',
@@ -211,9 +209,12 @@ class Editing {
             },
           }).then((res) => {
           res.json().then((json) => {
-            this.opiName = json.cliche;
-            this.cancelcurrentPolygon();
             if (res.status === 200) {
+              this.view.controls.setCursor('default', 'auto');
+              this.opiName = json.cliche;
+              this.currentStatus = status.RAS;
+              this.controllers.select.__li.style.backgroundColor = '';
+              this.viewer.message = '';
               this.color = json.color;
               this.controllers.opiName.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
               // On modifie la couche OPI
@@ -225,11 +226,12 @@ class Editing {
             }
             if (res.status === 201) {
               console.log('out of bounds');
-              this.opiName = 'none';
-              this.view.getLayerById('Opi').visible = false;
-              this.validClicheSelected = false;
-              this.controllers.opiName.__li.style.backgroundColor = '';
-              this.view.notifyChange(this.view.getLayerById('Opi'), true);
+              this.viewer.message = 'en dehors de la zone';
+              // this.opiName = 'none';
+              // this.view.getLayerById('Opi').visible = false;
+              // this.validClicheSelected = false;
+              // this.controllers.opiName.__li.style.backgroundColor = '';
+              // this.view.notifyChange(this.view.getLayerById('Opi'), true);
             }
             if (res.status === 202) {
               console.log('Server Error');
@@ -312,8 +314,9 @@ class Editing {
   }
 
   select() {
-    if (this.currentStatus === status.WAITING) return;
-    this.cancelcurrentPolygon();
+    // if (this.currentStatus === status.WAITING) return;
+    if (this.currentStatus !== status.RAS) return;
+    // this.cancelcurrentPolygon();
     this.controllers.select.__li.style.backgroundColor = '#BB0000';
     this.view.controls.setCursor('default', 'crosshair');
     console.log('"select": En attente de sélection');
@@ -348,13 +351,13 @@ class Editing {
       depthWrite: false,
     });
     this.currentPolygon = new THREE.Line(geometry, material);
+    this.nbVertices = 0;
     // Pour eviter que l'object disparaisse dans certains cas
     this.currentPolygon.renderOrder = 1;
     this.currentPolygon.maxMarkers = -1;
     this.view.scene.add(this.currentPolygon);
     this.view.notifyChange(this.currentPolygon);
     this.currentStatus = status.POLYGON;
-    this.nbVertices = 0;
   }
 
   // PATCHES
@@ -364,7 +367,8 @@ class Editing {
       console.log('pas de polygone');
       return;
     }
-    this.currentStatus = status.RAS;
+    this.currentStatus = status.WAITING;
+    this.view.controls.setCursor('default', 'wait');
     this.viewer.message = '';
     const positions = this.currentPolygon.geometry.attributes.position.array;
     const geojson = {
@@ -391,12 +395,8 @@ class Editing {
         ],
       );
     }
-
-    // const dataStr = JSON.stringify(geojson);
-    this.view.scene.remove(this.currentPolygon);
-    this.currentStatus = status.WAITING;
-    this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
+
     // On post le geojson sur l'API
     this.api.postPatch(this.branch.active.id, JSON.stringify(geojson))
       .then(() => {
@@ -412,17 +412,21 @@ class Editing {
         });
       })
       .finally(() => {
-        this.cancelcurrentPolygon();
+        this.resetCurrentPolygon();
+        this.view.controls.setCursor('default', 'auto');
+        this.currentStatus = status.RAS;
+        this.controllers.polygon.__li.style.backgroundColor = '';
       });
   }
 
   undo() {
-    if (this.currentStatus === status.WAITING) return;
+    // if (this.currentStatus === status.WAITING) return;
+    if (this.currentStatus !== status.RAS) return;
     if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
       this.viewer.message = 'Zoom non valide pour annuler';
       return;
     }
-    this.cancelcurrentPolygon();
+    // this.cancelcurrentPolygon();
     this.viewer.message = '';
     console.log('undo');
     this.currentStatus = status.WAITING;
@@ -432,7 +436,10 @@ class Editing {
       {
         method: 'PUT',
       }).then((res) => {
-      this.cancelcurrentPolygon();
+      // this.cancelcurrentPolygon();
+      this.view.controls.setCursor('default', 'auto');
+      this.currentStatus = status.RAS;
+
       if (res.status === 200) {
         // this.viewer.refresh(this.branch.layers);
         this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
@@ -444,12 +451,13 @@ class Editing {
   }
 
   redo() {
-    if (this.currentStatus === status.WAITING) return;
+    // if (this.currentStatus === status.WAITING) return;
+    if (this.currentStatus !== status.RAS) return;
     if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
       this.viewer.message = 'Zoom non valide pour refaire';
       return;
     }
-    this.cancelcurrentPolygon();
+    // this.cancelcurrentPolygon();
     this.viewer.message = '';
     console.log('redo');
     this.currentStatus = status.WAITING;
@@ -459,7 +467,9 @@ class Editing {
       {
         method: 'PUT',
       }).then((res) => {
-      this.cancelcurrentPolygon();
+      // this.cancelcurrentPolygon();
+      this.view.controls.setCursor('default', 'auto');
+      this.currentStatus = status.RAS;
       if (res.status === 200) {
         // this.viewer.refresh(this.branch.layers);
         this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
@@ -471,7 +481,8 @@ class Editing {
   }
 
   clear() {
-    if (this.currentStatus === status.WAITING) return;
+    // if (this.currentStatus === status.WAITING) return;
+    if (this.currentStatus !== status.RAS) return;
     const ok = window.confirm('Voulez-vous effacer toutes les modifications?');
     if (!ok) return;
     console.log('clear');
@@ -483,7 +494,9 @@ class Editing {
       {
         method: 'PUT',
       }).then((res) => {
-      this.cancelcurrentPolygon();
+      // this.cancelcurrentPolygon();
+      this.view.controls.setCursor('default', 'auto');
+      this.currentStatus = status.RAS;
       if (res.status === 200) {
         // this.viewer.refresh(this.branch.layers);
         this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
