@@ -67,7 +67,6 @@ class Editing {
 
   keydown(e) {
     if (this.currentStatus === status.WAITING) return;
-    this.viewer.message = '';
     switch (this.currentStatus) {
       case status.RAS: {
         // L'utilisateur demande à déselectionner l'OPI
@@ -93,20 +92,20 @@ class Editing {
       }
       case status.SELECT: {
         if (e.key === 'Escape') {
+          this.viewer.message = '';
           this.view.controls.setCursor('default', 'auto');
           this.currentStatus = status.RAS;
-          this.viewer.message = '';
           this.controllers.select.__li.style.backgroundColor = '';
         }
         break;
       }
       case status.POLYGON: {
         if (e.key === 'Escape') {
-          this.view.controls.setCursor('default', 'auto');
+          this.viewer.message = '';
           this.resetCurrentPolygon();
+          this.view.controls.setCursor('default', 'auto');
           this.currentStatus = status.RAS;
           this.controllers.polygon.__li.style.backgroundColor = '';
-          this.viewer.message = '';
         } else if (e.key === 'Shift') {
           if (this.currentPolygon) {
             if (this.branch.active.name === 'orig') {
@@ -147,9 +146,9 @@ class Editing {
       }
       case status.ADDREMARK: {
         if (e.key === 'Escape') {
+          this.viewer.message = '';
           this.view.controls.setCursor('default', 'auto');
           this.currentStatus = status.RAS;
-          this.viewer.message = '';
           this.controllers.addRemark.__li.style.backgroundColor = '';
         }
         break;
@@ -187,7 +186,7 @@ class Editing {
     const mousePosition = this.pickPoint(e);
     console.log('Click: ', mousePosition.x, mousePosition.y);
     console.log('currentStatus: ', this.currentStatus);
-    this.viewer.message = '';
+    // this.viewer.message = '';
 
     switch (this.currentStatus) {
       case status.RAS: {
@@ -272,7 +271,7 @@ class Editing {
         break;
       }
       case status.ADDREMARK: {
-        this.viewer.message = 'Add new point';
+        // this.viewer.message = 'Add new point';
 
         const remark = window.prompt('comment:', '');
 
@@ -317,11 +316,11 @@ class Editing {
     // if (this.currentStatus === status.WAITING) return;
     if (this.currentStatus !== status.RAS) return;
     // this.cancelcurrentPolygon();
-    this.controllers.select.__li.style.backgroundColor = '#BB0000';
-    this.view.controls.setCursor('default', 'crosshair');
     console.log('"select": En attente de sélection');
-    this.currentStatus = status.SELECT;
     this.viewer.message = 'choisir un cliche';
+    this.view.controls.setCursor('default', 'crosshair');
+    this.currentStatus = status.SELECT;
+    this.controllers.select.__li.style.backgroundColor = '#BB0000';
   }
 
   polygon() {
@@ -335,11 +334,13 @@ class Editing {
       // saisie deja en cours
       return;
     }
-    this.controllers.select.__li.style.backgroundColor = '';
-    this.controllers.polygon.__li.style.backgroundColor = '#BB0000';
-    this.view.controls.setCursor('default', 'crosshair');
     console.log("saisie d'un polygon");
     this.viewer.message = "saisie d'un polygon";
+    this.view.controls.setCursor('default', 'crosshair');
+    this.currentStatus = status.POLYGON;
+    this.controllers.select.__li.style.backgroundColor = '';
+    this.controllers.polygon.__li.style.backgroundColor = '#BB0000';
+
     const MAX_POINTS = 500;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
@@ -357,7 +358,6 @@ class Editing {
     this.currentPolygon.maxMarkers = -1;
     this.view.scene.add(this.currentPolygon);
     this.view.notifyChange(this.currentPolygon);
-    this.currentStatus = status.POLYGON;
   }
 
   // PATCHES
@@ -367,9 +367,10 @@ class Editing {
       console.log('pas de polygone');
       return;
     }
-    this.currentStatus = status.WAITING;
+    this.viewer.message = 'calcul en cours';
     this.view.controls.setCursor('default', 'wait');
-    this.viewer.message = '';
+    this.currentStatus = status.WAITING;
+
     const positions = this.currentPolygon.geometry.attributes.position.array;
     const geojson = {
       type: 'FeatureCollection',
@@ -395,13 +396,13 @@ class Editing {
         ],
       );
     }
-    this.viewer.message = 'calcul en cours';
 
     // On post le geojson sur l'API
     this.api.postPatch(this.branch.active.id, JSON.stringify(geojson))
       .then(() => {
         // this.viewer.refresh(this.branch.layers);
         this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        this.viewer.message = '';
       })
       .catch((error) => {
         console.log(error);
@@ -427,11 +428,11 @@ class Editing {
       return;
     }
     // this.cancelcurrentPolygon();
-    this.viewer.message = '';
     console.log('undo');
-    this.currentStatus = status.WAITING;
-    this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
+    this.view.controls.setCursor('default', 'wait');
+    this.currentStatus = status.WAITING;
+
     fetch(`${this.api.url}/${this.branch.active.id}/patch/undo?`,
       {
         method: 'PUT',
@@ -458,11 +459,11 @@ class Editing {
       return;
     }
     // this.cancelcurrentPolygon();
-    this.viewer.message = '';
     console.log('redo');
-    this.currentStatus = status.WAITING;
-    this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
+    this.view.controls.setCursor('default', 'wait');
+    this.currentStatus = status.WAITING;
+
     fetch(`${this.api.url}/${this.branch.active.id}/patch/redo?`,
       {
         method: 'PUT',
@@ -486,9 +487,9 @@ class Editing {
     const ok = window.confirm('Voulez-vous effacer toutes les modifications?');
     if (!ok) return;
     console.log('clear');
-    this.currentStatus = status.WAITING;
-    this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
+    this.view.controls.setCursor('default', 'wait');
+    this.currentStatus = status.WAITING;
 
     fetch(`${this.api.url}/${this.branch.active.id}/patches/clear?`,
       {
@@ -510,25 +511,22 @@ class Editing {
   // remarques
   addRemark() {
     if (this.currentStatus !== status.RAS) return;
-
+    console.log("saisie d'une remarque");
+    this.viewer.message = "saisie d'une remarque";
     this.view.controls.setCursor('default', 'crosshair');
     this.currentStatus = status.ADDREMARK;
     this.controllers.addRemark.__li.style.backgroundColor = '#BB0000';
-
-    console.log("saisie d'une remarque");
-    this.viewer.message = "saisie d'une remarque";
   }
 
   delRemark() {
     if (this.currentStatus !== status.RAS) return;
 
     console.log("suppression d'une remarque");
-
-    this.currentStatus = status.WAITING;
-    this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
+    this.view.controls.setCursor('default', 'wait');
+    this.currentStatus = status.WAITING;
 
-    // On post la geometrie sur l'API
+    // On supprime la geometrie sur l'API
     const remarksLayerId = this.view.getLayerById('Remarques').vectorId;
 
     const alertFC = this.branch.alert.featureCollection;
@@ -538,11 +536,11 @@ class Editing {
         method: 'DELETE',
       }).then((res) => {
       if (res.status === 200) {
-        // this.viewer.refresh({ Remarques: this.branch.layers.Remarques });
-        this.viewer.refresh(['Remarques']);
+        this.viewer.message = '';
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
-        this.viewer.message = '';
+
+        this.viewer.refresh(['Remarques']);
 
         this.view.dispatchEvent({
           type: 'remark-deleted',
