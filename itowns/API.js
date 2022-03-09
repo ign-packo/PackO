@@ -184,6 +184,49 @@ class API {
         });
     });
   }
+
+  // Remarks
+  putRemark(remarksLayerId, mousePosition, remark) {
+    return new Promise((resolve, reject) => {
+      fetch(
+        `${this.url}/${remarksLayerId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${remark}`,
+        { method: 'PUT' },
+      ).then((res) => {
+        if (res.status === 200) {
+          resolve();
+        } else {
+          res.json().then((json) => {
+            console.log('-> Database Error');
+            console.log(JSON.stringify(json));
+            const err = new Error('Remark NOT added');
+            err.name = 'Database Error';
+            reject(err);
+          });
+        }
+      });
+    });
+  }
+
+  delRemark(remarksLayerId, remarkId) {
+    return new Promise((resolve, reject) => {
+      fetch(
+        `${this.url}/${remarksLayerId}/feature?id=${remarkId}`,
+        { method: 'DELETE' },
+      ).then((res) => {
+        if (res.status === 200) {
+          resolve();
+        } else {
+          res.json().then((json) => {
+            console.log('-> Database Error');
+            console.log(JSON.stringify(json));
+            const err = new Error('Remark NOT deleted');
+            err.name = 'Database Error';
+            reject(err);
+          });
+        }
+      });
+    });
+  }
 }
 
 export default API;

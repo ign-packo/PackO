@@ -39,7 +39,7 @@ class Controller {
 
   setAlertCtr(layerName) {
     this[layerName !== ' -' ? 'setVisible' : 'hide'](['progress', 'id', 'validated', 'uncheck', 'comment']);
-    this[layerName === 'Remarques' ? 'setVisible' : 'hide'](['delRemark']);
+    this[layerName === 'Remarques' ? 'setVisible' : 'hide'](['suppRemark']);
   }
 
   refreshDropBox(dropBoxName, list, index) {

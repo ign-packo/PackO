@@ -484,12 +484,8 @@ class Editing {
 
     // On post la geometrie sur l'API
     const remarksLayerId = this.view.getLayerById('Remarques').vectorId;
-
-    fetch(`${this.apiUrl}/${remarksLayerId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${remark}`,
-      {
-        method: 'PUT',
-      }).then((res) => {
-      if (res.status === 200) {
+    this.api.putRemark(remarksLayerId, mousePosition, remark)
+      .then(() => {
         this.viewer.message = '';
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
@@ -500,13 +496,17 @@ class Editing {
         this.view.dispatchEvent({
           type: 'remark-added',
         });
-      } else {
+      })
+      .catch((error) => {
         this.viewer.message = 'remark: error during save';
-      }
-    });
+        this.viewer.view.dispatchEvent({
+          type: 'error',
+          msg: error,
+        });
+      });
   }
 
-  delRemark() {
+  suppRemark() {
     if (this.currentStatus !== status.RAS) return;
     console.log("suppression d'une remarque");
     this.viewer.message = 'calcul en cours';
@@ -519,12 +519,8 @@ class Editing {
     const alertFC = this.branch.alert.featureCollection;
     const featureSelectedGeom = alertFC.features[0].geometries[this.branch.alert.featureIndex];
     const remarkId = featureSelectedGeom.properties.id;
-
-    fetch(`${this.api.url}/${remarksLayerId}/feature?id=${remarkId}`,
-      {
-        method: 'DELETE',
-      }).then((res) => {
-      if (res.status === 200) {
+    this.api.delRemark(remarksLayerId, remarkId)
+      .then(() => {
         this.viewer.message = '';
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
@@ -534,10 +530,14 @@ class Editing {
         this.view.dispatchEvent({
           type: 'remark-deleted',
         });
-      } else {
+      })
+      .catch((error) => {
         this.viewer.message = 'remark: error during delete';
-      }
-    });
+        this.viewer.view.dispatchEvent({
+          type: 'error',
+          msg: error,
+        });
+      });
   }
 }
 
