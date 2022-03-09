@@ -342,18 +342,22 @@ gdal_translate -of Jpeg ortho.xml ortho.jpg
 
 ## Export d'un graphe vecteur à partir d'un cache
 
-Le script **vectorise_graphe.py** permet de faire un export vectoriel d'un graphe à partir d'un cache.
 
-Pour le bon fonctionnement du script, il est impératif de mettre la variable d'environnement **GDAL_VRT_ENABLE_PYTHON** à **YES** avant de le lancer.
+Le traitement permettant d'exporter un graphe vecteur à partir d'un cache PackO est divisé en deux parties :
+- une première partie pour créer les paramétrages pour les traitements qui sont parallélisables (fichier JSON compatible avec le service gpao de l'IGN) : ***prep_vectorise_graph.py***
+- une deuxième partie qui permet d'exécuter tous les traitements parallélisables via le service gpao de l'IGN : ***vectorise_graph.py***
+
+Pour le bon fonctionnement du script *prep_vectorise_graph.py*, il est impératif de mettre la variable d'environnement **GDAL_VRT_ENABLE_PYTHON** à **YES** avant de le lancer.
+
 ````
-usage: vectorise_graph.py [-h] -i INPUT [-o OUTPUT] [-b BRANCH] -p PATCHES [-t TILESIZE] [-v VERBOSE]
+usage: prep_vectorise_graph.py [-h] -i INPUT -o OUTPUT [-b BRANCH] -p PATCHES [-t TILESIZE] [-v VERBOSE]
 
 optional arguments:
   -h, --help            show this help message and exit
   -i INPUT, --input INPUT
                         input cache folder
   -o OUTPUT, --output OUTPUT
-                        output folder (default : .)
+                        output folder
   -b BRANCH, --branch BRANCH
                         id of branch of cache to use as source for patches (default: None)
   -p PATCHES, --patches PATCHES
@@ -366,18 +370,38 @@ optional arguments:
 
 La variable "-b" est optionnelle. Si elle n'est pas donnée, alors elle prend la valeur de la branche du fichier json d'export de retouches dans le cas où des retouches ont été effectuées, sinon le calcul se fait sur le graphe initial.
 
-
 A l'heure actuelle, il faut utiliser des chemins absolus pour que le script fonctionne correctement.
 
-Il est nécessaire de recourir à l'API pour récupérer deux de ces informations :
-- l'id de la branche à partir de laquelle on souhaite exporter le graphe vecteur
-- et le résultat de la route GET /{idBranch}/patches sur celle-ci (au format json)
+Il est nécessaire de recourir à l'API pour pouvoir renseigner deux de ces informations :
+- l'id de la branche à partir de laquelle on souhaite exporter le graphe vecteur.
+- et le résultat de la route GET /{idBranch}/patches sur celle-ci (au format json).
 
-Le résultat de l'export est au format GeoPackage.
+Le résultat du script *prep_vectorise_graph.py* est un dossier contenant des fichiers vrt temporaires et un sous-dossier (./tiles) avec les dalles de graphe nécessaires pour le script *vectorise_graph.py*.
 
-#### Spécificité pour exécuter ce script sous Windows
-L'environnement recommandé pour avoir accès à gdal_polygonize est par le moyen de QGis.
+Le script vectorise_graph.py crée un fichier json, utilisable avec le service gpao de l'IGN, pour créer deux chantiers : le premier (chantier_polygonize), le deuxième (chantier_merge) qui dépend du premier.
 
-Pour que le script puisse avoir accès à cet exécutable, il faut initialiser l'environnement QGis via le script inclus. Ce script est à l'emplacement : **{QGis_DIR}\bin\o4w_env.bat**
+Sous Windows, l'environnement recommandé pour avoir accès aux scripts Gdal et Gdal/Ogr est par le moyen de QGis (qui contient une version de Gdal supérieure ou égale à la version minimale demandée, voir plus haut).
+Il faut initialiser l'environnement QGis via le script qui est à l'emplacement : **{QGis_DIR}\bin\o4w_env.bat**
+Pour exécuter *vectorise_graph.py* sous Windows, il est nécessaire d'avoir trois variables d'environnement configurées :
+- OSGEO4W_ROOT qui doit pointer vers la racine de QGis.
+- QGIS_BIN qui doit pointer vers le répertoire *bin* de QGis.
+- QGIS_SCRIPT qui doit pointer vers le répertoire *apps/Python39/Scripts* de QGis. A noter, la version Python peut changer selon la version de QGis utilisée.
+
+````
+usage: vectorise_graph.py [-h] -i INPUT -o OUTPUT [-g GRAPH] [-v VERBOSE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INPUT, --input INPUT
+                        input data folder (created by prep_vectorise_graph.py)
+  -o OUTPUT, --output OUTPUT
+                        output json gpao filepath
+  -g GRAPH, --graph GRAPH
+                        output vectorised graph pathfile (default: OUTPUT.gpkg)
+  -v VERBOSE, --verbose VERBOSE
+                        verbose (default: 0)
+````
+
+Le résultat final du calcul gpao de vectorisation, GRAPH_final.gpkg, est au format GeoPackage. 
 
 [![IGN](images/logo_ign.png)](https://www.ign.fr)
