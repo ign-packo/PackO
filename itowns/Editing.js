@@ -258,36 +258,9 @@ class Editing {
         break;
       }
       case status.ADDREMARK: {
-        // this.viewer.message = 'Add new point';
-
         const remark = window.prompt('comment:', '');
-
         if (remark !== null) {
-          this.currentStatus = status.WAITING;
-          this.view.controls.setCursor('default', 'wait');
-          this.viewer.message = 'calcul en cours';
-
-          // On post la geometrie sur l'API
-          const remarksLayerId = this.view.getLayerById('Remarques').vectorId;
-          fetch(`${this.api.url}/${remarksLayerId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${remark}`,
-            {
-              method: 'PUT',
-            }).then((res) => {
-            if (res.status === 200) {
-              // this.viewer.refresh({ Remarques: this.branch.layers.Remarques });
-              this.viewer.refresh(['Remarques']);
-              this.view.controls.setCursor('default', 'auto');
-              this.currentStatus = status.RAS;
-              this.viewer.message = '';
-              this.controllers.addRemark.__li.style.backgroundColor = '';
-
-              this.view.dispatchEvent({
-                type: 'remark-added',
-              });
-            } else {
-              this.viewer.message = 'remark: error during save';
-            }
-          });
+          this.postRemark(mousePosition, remark);
         }
         break;
       }
@@ -504,9 +477,37 @@ class Editing {
     this.controllers.addRemark.__li.style.backgroundColor = '#BB0000';
   }
 
+  postRemark(mousePosition, remark) {
+    this.viewer.message = 'calcul en cours';
+    this.view.controls.setCursor('default', 'wait');
+    this.currentStatus = status.WAITING;
+
+    // On post la geometrie sur l'API
+    const remarksLayerId = this.view.getLayerById('Remarques').vectorId;
+
+    fetch(`${this.apiUrl}/${remarksLayerId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${remark}`,
+      {
+        method: 'PUT',
+      }).then((res) => {
+      if (res.status === 200) {
+        this.viewer.message = '';
+        this.view.controls.setCursor('default', 'auto');
+        this.currentStatus = status.RAS;
+        this.controllers.addRemark.__li.style.backgroundColor = '';
+
+        this.viewer.refresh(['Remarques']);
+
+        this.view.dispatchEvent({
+          type: 'remark-added',
+        });
+      } else {
+        this.viewer.message = 'remark: error during save';
+      }
+    });
+  }
+
   delRemark() {
     if (this.currentStatus !== status.RAS) return;
-
     console.log("suppression d'une remarque");
     this.viewer.message = 'calcul en cours';
     this.view.controls.setCursor('default', 'wait');
@@ -517,7 +518,9 @@ class Editing {
 
     const alertFC = this.branch.alert.featureCollection;
     const featureSelectedGeom = alertFC.features[0].geometries[this.branch.alert.featureIndex];
-    fetch(`${this.api.url}/${remarksLayerId}/feature?id=${featureSelectedGeom.properties.id}`,
+    const remarkId = featureSelectedGeom.properties.id;
+
+    fetch(`${this.api.url}/${remarksLayerId}/feature?id=${remarkId}`,
       {
         method: 'DELETE',
       }).then((res) => {
