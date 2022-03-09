@@ -159,8 +159,7 @@ async function main() {
     controllers.alert.onChange(async (layerName) => {
       document.activeElement.blur();
       console.log('choosed alert vector layer: ', layerName);
-
-      branch.setAlertLayer(layerName);
+      if (branch.alert.layerName !== ' -') viewer.view.getLayerById(branch.alert.layerName).isAlert = false;
 
       const layersToRefresh = [];
       if (branch.alert.layerName !== ' -' || layerName === ' -') layersToRefresh.push(branch.alert.layerName);
@@ -172,7 +171,9 @@ async function main() {
         // branch.alert.layerName = name;
 
         // const layerTest = viewer.view.getLayerById(editing.alertLayerName);
+        branch.alert.layerName = layerName;
         const layerAlert = viewer.view.getLayerById(branch.alert.layerName);
+        layerAlert.isAlert = true;
         branch.alert.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
         // const featureCollection = branch.alert.featureCollection.features;
         const alertFC = branch.alert.featureCollection;

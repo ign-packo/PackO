@@ -218,11 +218,5 @@ class Branch {
         });
     });
   }
-
-  setAlertLayer(name) {
-    if (this.alert.layerName !== ' -') this.view.getLayerById(this.alert.layerName).isAlert = false;
-    if (name !== ' -') this.view.getLayerById(name).isAlert = true;
-    this.alert.layerName = name;
-  }
 }
 export default Branch;
