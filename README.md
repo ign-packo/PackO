@@ -52,7 +52,7 @@ npm start -- -p [port]
 ```
 - en mode développement (qui autorise la route "clear")
 ```shell
-npm start-dev -- -p [port]
+npm run start-dev -- -p [port]
 ```
 
 Le mode **cluster**:
@@ -139,6 +139,8 @@ Ce service propose:
 - un flux WMTS permettant d'accéder aux OPI: ce flux est déclaré comme une couche unique (opi) et on utilise un paramètre de dimension pour choisir le cliché à afficher.
 - une commande permettant de modifier le graphe en donnant: un geojson + une référence de cliché
 
+Pour le flux WMTS de l'Ortho et des OPI, il est possible de choisir entre RVB, IR ou IRC en spécifiant le style (normal ou RVB pour avoir la couleur, IR pour l'infrarouge seul et IRC pour l'infrarouge coloré). Attention, lorsque le flux demandé n'est pas disponible (par exemple l'IR), la réponse est une image noire.
+
 ## Client web (uniquement si on souhaite le lancer séparément)
 
 ### Installation et lancement
@@ -178,7 +180,7 @@ shp2pgsql graphe.shp | psql -d bd_graphe
 psql -d bd_graphe -c "SELECT UpdateGeometrySRID('graphe','geom',2154)"
 ```
 
-PackO peut gérer des images 3 canaux (RGB), 4 canaux (RGB + IR) ou mono canal (IR).
+PackO peut gérer des images 3 canaux (RGB), 4 canaux (RGB + IR) ou mono canal (IR). Attention: toutes les OPI du cache doivent avoir le même type (RGB, IR ou RGB+IR).
 
 La création du cache est faite à l'aide du script **create_cache.py**:
 ````
@@ -244,6 +246,7 @@ optional arguments:
   -v VERBOSE, --verbose VERBOSE
                         verbose (default: 0)
 ````
+Attention, les OPI qui sont ajoutées doivent avoir le même type que celles déjà présentes dans le cache (RGB, IR ou RGB+IR).
 
 Par exemple, sur les données du dossier **regress**, on peut ajouter l'OPI isolée du dossier **regress/update** dans le cache créé précédemment:
 ````
