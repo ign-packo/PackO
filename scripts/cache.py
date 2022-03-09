@@ -131,6 +131,13 @@ def prep_dict(args, update):
 
         with open(args.cache + '/cache_mtd.json') as json_colors:
             color_dict = json.load(json_colors)
+
+        # on vérifie que le type des OPI est le même
+        with_rgb = args.rgb is not None
+        with_ir = args.ir is not None
+        first_opi = list(overviews_dict["list_OPI"].values())[0]
+        if first_opi['with_ir'] != with_ir or first_opi['with_rgb'] != with_rgb:
+            raise SystemExit("opi type not compatible")
     else:
         with open(args.overviews) as json_overviews:
             overviews_dict = json.load(json_overviews)
