@@ -1,6 +1,4 @@
 /* global setupLoadingScreen, GuiTools */
-/* eslint-disable no-console */
-/* eslint-disable no-underscore-dangle */
 import * as itowns from 'itowns';
 import * as THREE from 'three';
 import shp from 'shpjs';
@@ -390,6 +388,7 @@ class Viewer {
     });
   }
 
+  /* eslint-disable no-underscore-dangle */
   addDnDFiles(eventDnD, files) {
     eventDnD.preventDefault();
 
@@ -473,7 +472,7 @@ class Viewer {
       const fileReader = new FileReader();
       const _view = this.view;
 
-      // eslint-disable-next-line no-loop-func
+      /* eslint-disable-next-line no-loop-func */
       fileReader.onload = function onload(e) {
         const dataLoaded = e.target.result;
         let resData;
@@ -577,6 +576,7 @@ class Viewer {
       }
     }
   }
+  /* eslint-enable no-underscore-dangle */
 
   removeVectorLayer(layerName) {
     if (layerName === undefined) return;

@@ -1,4 +1,3 @@
-/* eslint-disable no-alert */
 /* eslint-disable no-console */
 /* eslint-disable no-underscore-dangle */
 import * as THREE from 'three';
@@ -258,6 +257,7 @@ class Editing {
         break;
       }
       case status.ADDREMARK: {
+        /* eslint-disable-next-line no-alert */
         const remark = window.prompt('comment:', '');
         if (remark !== null) {
           this.postRemark(mousePosition, remark);
@@ -443,6 +443,7 @@ class Editing {
   clear() {
     // if (this.currentStatus === status.WAITING) return;
     if (this.currentStatus !== status.RAS) return;
+    /* eslint-disable-next-line no-alert */
     const ok = window.confirm('Voulez-vous effacer toutes les modifications?');
     if (!ok) return;
     console.log('clear');

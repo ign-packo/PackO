@@ -78,8 +78,6 @@ async function main() {
 
     const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews?cachePath=${activeCache.path}`);
     const getBranches = itowns.Fetcher.json(`${apiUrl}/branches?idCache=${activeCache.id}`);
-    // const getPatches = itowns.Fetcher.json(`${apiUrl}/0/patches`);
-    // const getVectorList = itowns.Fetcher.json(`${apiUrl}/vectors?cachePath=${activeCache.path}`);
 
     const viewerDiv = document.getElementById('viewerDiv');
     const viewer = new Viewer(viewerDiv, api);
@@ -91,33 +89,18 @@ async function main() {
     // FeatureToolTip.init(viewerDiv, viewer.view);
 
     // viewer.view.isDebugMode = true;
-    // viewer.menuGlobe = new GuiTools('menuDiv', viewer.view);
-    // viewer.menuGlobe.gui.width = 300;
-
-    // viewer.menuGlobe.colorGui.show();
-    // viewer.menuGlobe.colorGui.open();
-    // viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Extra Layers');
-    // viewer.menuGlobe.vectorGui.open();
 
     const branch = new Branch(viewer, activeCache.id);
     const editing = new Editing(branch);
 
     const controllers = new Controller(viewer.menuGlobe);
 
-    // const branch = new Branch(apiUrl, viewer);
     branch.list = await getBranches;
 
     [branch.active] = branch.list;
 
-    // const getVectorList = itowns.Fetcher.json(`${apiUrl}/${branch.active.id}/vectors`);
-    // branch.vectorList = await getVectorList;
-
-    // branch.setLayers();
     await branch.setLayers();
     viewer.refresh(branch.layers);
-
-    // const editing = new Editing(branch, apiUrl);
-    // const controllers = new Controller(viewer.menuGlobe, editing);
 
     // Gestion branche
     controllers.branchName = branch.active.name;
@@ -146,7 +129,6 @@ async function main() {
     controllers.undo = viewer.menuGlobe.gui.add(editing, 'undo');
     controllers.redo = viewer.menuGlobe.gui.add(editing, 'redo');
     controllers.clear = viewer.menuGlobe.gui.add(editing, 'clear');
-    // controllers.hide(['polygon', 'undo', 'redo', 'clear']);
 
     // Message
     viewer.message = '';
@@ -166,16 +148,11 @@ async function main() {
 
       if (layerName !== ' -') {
         layersToRefresh.push(layerName);
-        // editing.alertLayerName = name;
-        // viewer.alertLayerName = name;
-        // branch.alert.layerName = name;
 
-        // const layerTest = viewer.view.getLayerById(editing.alertLayerName);
         branch.alert.layerName = layerName;
         const layerAlert = viewer.view.getLayerById(branch.alert.layerName);
         layerAlert.isAlert = true;
         branch.alert.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
-        // const featureCollection = branch.alert.featureCollection.features;
         const alertFC = branch.alert.featureCollection;
 
         if (alertFC.features.length > 0) {
@@ -191,14 +168,12 @@ async function main() {
           branch.alert.selectLastViewed({ centerOnFeature: true });
         }
       } else {
-        // controllers.refreshAlertCtr();
         if (viewer.view.getLayerById('selectedFeature')) {
           viewer.view.removeLayer('selectedFeature');
         }
         branch.alert.reset();
       }
       controllers.setAlertCtr(layerName === 'Remarques' && branch.alert.featureCollection.features.length === 0 ? ' -' : layerName);
-      // viewer.refresh(branch.layers);
       viewer.refresh(layersToRefresh);
     });
     branch.alert.id = '';
@@ -212,24 +187,19 @@ async function main() {
       console.log('Nouvelle id : ', newId);
       editing.currentStatus = editing.STATUS.RAS;
       if (newId >= 0 && newId < branch.alert.nbTotal) {
-        // branch.alert.featureIndex = newId;
         branch.alert.changeFeature(newId, { centerOnFeature: true });
-        // editing.centerOnAlertFeature();
       } else {
         viewer.message = 'id non valide';
         branch.alert.id = branch.alert.featureIndex;
         controllers.id.updateDisplay();
       }
     });
-    // controllers.hide('id');
 
     branch.alert.progress = '';
     controllers.progress = viewer.menuGlobe.gui.add(branch.alert, 'progress').name('Progress');
     controllers.progress.listen().domElement.parentElement.style.pointerEvents = 'none';
-    // controllers.hide('progress');
 
     controllers.uncheck = viewer.menuGlobe.gui.add(branch.alert, 'uncheck').name('Mark as unchecked');
-    // controllers.hide('unchecked');
 
     branch.alert.validated = false;
     controllers.validated = viewer.menuGlobe.gui.add(branch.alert, 'validated').name('Validated');
@@ -251,17 +221,14 @@ async function main() {
       }
       branch.alert.progress = `${branch.alert.nbChecked}/${branch.alert.nbTotal} (${branch.alert.nbValidated} validés)`;
     });
-    // controllers.hide('validated');
 
     branch.alert.comment = '';
     controllers.comment = viewer.menuGlobe.gui.add(branch.alert, 'comment').name('Comment');
     controllers.comment.listen().domElement.parentElement.style.pointerEvents = 'none';
-    // controllers.hide('comment');
 
     // Remarques
     controllers.addRemark = viewer.menuGlobe.gui.add(editing, 'addRemark').name('Add remark');
     controllers.suppRemark = viewer.menuGlobe.gui.add(editing, 'suppRemark').name('Delete remark');
-    // controllers.hide('delRemark');
 
     controllers.setPatchCtr('orig');
     controllers.setAlertCtr(' -');
@@ -271,10 +238,6 @@ async function main() {
       select: controllers.select,
       opiName: controllers.opiName,
       polygon: controllers.polygon,
-      // checked: controllers.checked,
-      // id: controllers.id,
-      // validated: controllers.validated,
-      // comment: controllers.comment,
       addRemark: controllers.addRemark,
     };
     viewerDiv.focus();
@@ -302,7 +265,6 @@ async function main() {
       console.log(`-> A file (${ev.name}) had been dropped`);
       branch.saveLayer(ev.name, ev.data, ev.style)
         .then(() => {
-          // viewer.refresh({ [ev.name]: branch.layers[ev.name] });
           viewer.refresh(branch.layers.filter((layer) => layer.name === ev.name));
           controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
         })
