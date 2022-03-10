@@ -1,7 +1,9 @@
-/* global setupLoadingScreen, GuiTools */
+/* global setupLoadingScreen */
 import * as itowns from 'itowns';
 import * as THREE from 'three';
 import shp from 'shpjs';
+
+import Menu from './Menu';
 
 itowns.ShaderChunk.customHeaderColorLayer(`
 float edge(sampler2D textu, float stepx, float stepy, vec2 center){
@@ -71,7 +73,6 @@ class Viewer {
     this.crs = {};
     this.overview = {};
     this.view = null;
-    // this.menuGlobe = null;
 
     this.dezoomInitial = 4;// to define
     this.zoomFactor = 2;// customizable
@@ -184,66 +185,7 @@ class Viewer {
     this.view.isDebugMode = true;
 
     // menuGlobe
-    this.menuGlobe = new GuiTools('menuDiv', this.view);
-    this.menuGlobe.gui.width = 300;
-
-    this.menuGlobe.colorGui.show();
-    this.menuGlobe.colorGui.open();
-    this.menuGlobe.vectorGui = this.menuGlobe.gui.addFolder('Extra Layers');
-    this.menuGlobe.vectorGui.open();
-
-    const viewer = this;
-    this.menuGlobe.addImageryLayerGUI = function addImageryLayerGUI(layer) {
-      /* eslint-disable no-param-reassign */
-      let typeGui = 'colorGui';
-      if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layer.id)) {
-        typeGui = 'vectorGui';
-      }
-      if (this[typeGui].hasFolder(layer.id)) { return; }
-      if (layer.id === 'selectedFeature') { return; }
-
-      const folder = this[typeGui].addFolder(layer.id);
-      folder.add({ visible: layer.visible }, 'visible').onChange(((value) => {
-        layer.visible = value;
-
-        // if (layer.id === this.alertLayerName) {
-        if (layer.isAlert === true) {
-          this.view.getLayerById('selectedFeature').visible = value;
-        }
-
-        this.view.notifyChange(layer);
-      }));
-      folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0).onChange(((value) => {
-        layer.opacity = value;
-        this.view.notifyChange(layer);
-      }));
-      // Patch pour ajouter la modification de l'epaisseur des contours dans le menu
-      if (layer.effect_parameter) {
-        folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
-          layer.effect_parameter = value;
-          this.view.notifyChange(layer);
-        }));
-      }
-      if (typeGui === 'vectorGui' && layer.id !== 'Remarques') {
-        folder.add(viewer, 'removeVectorLayer').name('delete').onChange(() => {
-          // if (layer.id !== this.alertLayerName) {
-          if (layer.isAlert === false) {
-            viewer.removeVectorLayer(layer);
-          } else {
-            viewer.message = 'Couche en edition';
-          }
-        });
-      }
-    /* eslint-enable no-param-reassign */
-    };
-
-    this.menuGlobe.removeLayersGUI = function removeLayersGUI(nameLayer) {
-      if (this.colorGui.hasFolder(nameLayer)) {
-        this.colorGui.removeFolder(nameLayer);
-      } else {
-        this.vectorGui.removeFolder(nameLayer);
-      }
-    };
+    this.menuGlobe = new Menu(this.viewerDiv, this);
   }
 
   centerCamera(coord = this) {
@@ -262,7 +204,6 @@ class Viewer {
   cleanUpExtraLayers() {
     // Clean up of all the extra layers
     const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
-
     listColorLayer.forEach((layerName) => {
       if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layerName)) {
         this.view.removeLayer(layerName);
