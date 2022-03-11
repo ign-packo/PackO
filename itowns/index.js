@@ -117,17 +117,17 @@ async function main() {
     controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
 
     // Couche d'alertes
-    editing.alert = ' -';
-    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [' -', ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
+    editing.alert = '-';
+    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [editing.alert, ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
     controllers.alert.onChange(async (layerName) => {
       document.activeElement.blur();
       console.log('choosed alert vector layer: ', layerName);
-      if (branch.alert.layerName !== ' -') viewer.view.getLayerById(branch.alert.layerName).isAlert = false;
+      if (branch.alert.layerName !== '-') viewer.view.getLayerById(branch.alert.layerName).isAlert = false;
 
       const layersToRefresh = [];
-      if (branch.alert.layerName !== ' -' || layerName === ' -') layersToRefresh.push(branch.alert.layerName);
+      if (branch.alert.layerName !== '-' || layerName === '-') layersToRefresh.push(branch.alert.layerName);
 
-      if (layerName !== ' -') {
+      if (layerName !== '-') {
         layersToRefresh.push(layerName);
 
         branch.alert.layerName = layerName;
@@ -154,7 +154,7 @@ async function main() {
         }
         branch.alert.reset();
       }
-      controllers.setAlertCtr(layerName === 'Remarques' && branch.alert.featureCollection.features.length === 0 ? ' -' : layerName);
+      controllers.setAlertCtr(layerName === 'Remarques' && branch.alert.featureCollection.features.length === 0 ? '-' : layerName);
       viewer.refresh(layersToRefresh);
     });
     branch.alert.id = '';
@@ -212,7 +212,7 @@ async function main() {
     controllers.suppRemark = viewer.menuGlobe.gui.add(editing, 'suppRemark').name('Delete remark');
 
     controllers.setPatchCtr('orig');
-    controllers.setAlertCtr(' -');
+    controllers.setAlertCtr('-');
 
     // editing controllers
     editing.controllers = {
@@ -247,7 +247,7 @@ async function main() {
       branch.saveLayer(ev.name, ev.data, ev.style)
         .then(() => {
           viewer.refresh(branch.layers.filter((layer) => layer.name === ev.name));
-          controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+          controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
         })
         .catch((error) => {
           view.dispatchEvent({
@@ -267,7 +267,7 @@ async function main() {
           // branch.vectorList.splice(index, 1);
           // delete branch.layers[layer.name];
 
-          controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+          controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
         })
         .catch((error) => {
           view.dispatchEvent({
@@ -286,9 +286,9 @@ async function main() {
     view.addEventListener('branch-changed', (newBranch) => {
       console.log(`branche changed to '${newBranch.name}'`);
       controllers.setPatchCtr(newBranch.name);
-      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)], 0);
+      controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)], 0);
       // controllers.refreshAlertCtr();
-      controllers.setAlertCtr(' -');
+      controllers.setAlertCtr('-');
       if (viewer.view.getLayerById('selectedFeature')) {
         viewer.view.removeLayer('selectedFeature');
       }
@@ -359,7 +359,7 @@ async function main() {
       } else {
         // controllers.hide(['progress', 'id', 'validated', 'unchecked', 'remark', 'delRemark'])
         branch.alert.featureIndex = null;
-        controllers.setAlertCtr(' -');
+        controllers.setAlertCtr('-');
         viewer.view.removeLayer('selectedFeature');
       }
     });

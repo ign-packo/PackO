@@ -8,7 +8,7 @@ class Alert {
   }
 
   reset() {
-    this.layerName = ' -';
+    this.layerName = '-';
     this.featureCollection = null;
     this.featureIndex = null;
 
@@ -112,7 +112,7 @@ class Alert {
   }
 
   async selectFeatureAt(mouseOrEvt) {
-    if (this.layerName !== ' -') {
+    if (this.layerName !== '-') {
       const layerAlert = this.viewer.view.getLayerById(this.layerName);
       const features = this.viewer.view.pickFeaturesAt(mouseOrEvt, 5, layerAlert.id);
 

@@ -29,6 +29,7 @@ class Editing {
     this.STATUS = status;
   }
 
+  // move to viewer
   pickPoint(event) {
     const pointUnderCursor = new THREE.Vector3();
     const coords = this.view.eventToViewCoords(event);
@@ -75,7 +76,7 @@ class Editing {
           this.controllers.opiName.__li.style.backgroundColor = '';
           this.view.getLayerById('Opi').visible = false;
           this.view.notifyChange(this.view.getLayerById('Opi'), true);
-        } else if (this.branch.alert.layerName !== ' -'
+        } else if (this.branch.alert.layerName !== '-'
                    && this.branch.alert.nbTotal > 0) {
           if (e.key === 'ArrowLeft') {
             this.branch.alert.selectPrevious({ centerOnFeature: true });
