@@ -147,9 +147,24 @@ class Branch {
     const branchName = window.prompt('Choose a new branch name:', '');
     if (branchName === null) return;
     if (branchName.length === 0) {
-      this.viewer.message = "le nom n'est pas valide";
+      const error = new Error('le nom ne peut être vide');
+      error.name = "Erreur lors de l'ajout d'une branche ";
+      this.view.dispatchEvent({
+        type: 'error',
+        msg: error,
+      });
       return;
     }
+    if (!branchName[0].match(/[a-z0-9]/i)) {
+      const error = new Error('le nom doit commencer par une lettre ou un chiffre');
+      error.name = "Erreur lors de l'ajout d'une branche ";
+      this.view.dispatchEvent({
+        type: 'error',
+        msg: error,
+      });
+      return;
+    }
+
     this.addBranch(branchName);
   }
 
