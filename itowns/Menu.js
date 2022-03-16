@@ -8,6 +8,15 @@ class Menu extends GuiTools {
     this.colorGui.open();
     this.vectorGui = this.gui.addFolder('Extra Layers');
     this.vectorGui.open();
+
+    view.addEventListener('layers-order-changed', ((ev) => {
+      for (let i = 0; i < ev.new.sequence.length; i += 1) {
+        const colorLayer = view.getLayerById(ev.new.sequence[i]);
+
+        this.removeLayersGUI(colorLayer.id);
+        this.addImageryLayerGUI(colorLayer);
+      }
+    }));
   }
 
   addImageryLayerGUI(layer) {
@@ -35,14 +44,18 @@ class Menu extends GuiTools {
         this.view.notifyChange(layer);
       }));
     }
-    if (typeGui === 'vectorGui' && layer.id !== 'Remarques') {
+    if (typeGui === 'vectorGui' && layer.id !== 'Remarques' && layer.isAlert === false) {
       folder.add(this.view, 'removeVectorLayer').name('delete').onChange(() => {
         if (layer.isAlert === false) {
           this.view.removeVectorLayer(layer.id);
           this.removeLayersGUI(layer.id);
-        } else {
-          this.viewer.message = 'Couche en edition';
         }
+        // } else {
+        //   // eslint-disable-next-line no-underscore-dangle
+        //   this.gui.__controllers.filter((controller) => {
+        //  // controller.property === 'message')[0].setValue('Couche en edition');
+        //   // this.viewer.message = 'Couche en edition';
+        // }
       });
     }
   /* eslint-enable no-param-reassign */
