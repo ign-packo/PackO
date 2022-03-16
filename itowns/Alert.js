@@ -21,8 +21,7 @@ class Alert {
   postValue(idFeature, variable, value) {
     this.api.updateAlert(idFeature, variable, value)
       .then(() => {
-        // this.viewer.refresh({ [this.layerName]: this.branch.layers[this.layerName] });
-        this.viewer.refresh([this.layerName]);
+        this.viewer.view.refresh([this.layerName]);
         this.featureCollection.features[0]
           .geometries[this.featureIndex].properties[variable] = value;
       })

@@ -1,9 +1,7 @@
 /* global GuiTools */
 class Menu extends GuiTools {
-  constructor(viewerDiv, viewer) {
-    super(viewerDiv.id, viewer.view);
-    this.viewer = viewer;
-    this.view = viewer.view;
+  constructor(viewerDiv, view) {
+    super(viewerDiv.id, view);
 
     this.gui.width = 300;
     this.colorGui.show();
@@ -44,9 +42,9 @@ class Menu extends GuiTools {
       }));
     }
     if (typeGui === 'vectorGui' && layer.id !== 'Remarques') {
-      folder.add(this.viewer, 'removeVectorLayer').name('delete').onChange(() => {
+      folder.add(this.view, 'removeVectorLayer').name('delete').onChange(() => {
         if (layer.isAlert === false) {
-          this.viewer.removeVectorLayer(layer.id);
+          this.view.removeVectorLayer(layer.id);
           this.removeLayersGUI(layer.id);
         } else {
           this.viewer.message = 'Couche en edition';

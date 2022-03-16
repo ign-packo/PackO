@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+/* global setupLoadingScreen */
 // /* global setupLoadingScreen, GuiTools */
 import * as itowns from 'itowns';
 import Viewer from './Viewer';
@@ -6,6 +7,8 @@ import Editing from './Editing';
 import Branch from './Branch';
 import Controller from './Controller';
 import API from './API';
+import View from './View';
+import Menu from './Menu';
 
 // Global itowns pour GuiTools -> peut être améliorer
 global.itowns = itowns;
@@ -61,10 +64,15 @@ async function main() {
     const getBranches = itowns.Fetcher.json(`${apiUrl}/branches?idCache=${activeCache.id}`);
 
     const viewerDiv = document.getElementById('viewerDiv');
-    const viewer = new Viewer(viewerDiv, api);
+
+    const dezoomInitial = 4;// to define
 
     // const overviews = await getOverviews;
-    viewer.createView(await getOverviews);
+    const view = new View(viewerDiv, await getOverviews, dezoomInitial);
+    setupLoadingScreen(viewerDiv, view);
+
+    const menuGlobe = new Menu(viewerDiv, view);
+    const viewer = new Viewer(viewerDiv, view, menuGlobe, api);
 
     // setupLoadingScreen(viewerDiv, viewer.view);
     // FeatureToolTip.init(viewerDiv, viewer.view);
@@ -81,7 +89,7 @@ async function main() {
     [branch.active] = branch.list;
 
     await branch.setLayers();
-    viewer.refresh(branch.layers);
+    view.refresh(branch.layers);
 
     // Gestion branche
     controllers.branchName = branch.active.name;
@@ -101,7 +109,7 @@ async function main() {
     controllers.opiName.listen().domElement.parentElement.style.pointerEvents = 'none';
 
     // Coord
-    editing.coord = `${viewer.x.toFixed(2)},${viewer.y.toFixed(2)}`;
+    editing.coord = `${view.x0.toFixed(2)},${view.y0.toFixed(2)}`;
     controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord').name('Coordinates');
     controllers.coord.listen();
 
@@ -155,7 +163,7 @@ async function main() {
         branch.alert.reset();
       }
       controllers.setAlertCtr(layerName === 'Remarques' && branch.alert.featureCollection.features.length === 0 ? '-' : layerName);
-      viewer.refresh(layersToRefresh);
+      view.refresh(layersToRefresh);
     });
     branch.alert.id = '';
     controllers.id = viewer.menuGlobe.gui.add(branch.alert, 'id').name('Alert id');
@@ -230,7 +238,7 @@ async function main() {
     document.addEventListener('drop', (e) => { viewer.addDnDFiles(e, e.dataTransfer.files); }, false);
     document.addEventListener('paste', (e) => { viewer.addDnDFiles(e, e.clipboardData.files); }, false);
 
-    const { view } = viewer;
+    // const { view } = viewer;
     view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
       console.info('-> View initialized');
       viewer.updateScaleWidget();
@@ -246,7 +254,7 @@ async function main() {
       console.log(`-> A file (${ev.name}) had been dropped`);
       branch.saveLayer(ev.name, ev.data, ev.style)
         .then(() => {
-          viewer.refresh(branch.layers.filter((layer) => layer.name === ev.name));
+          view.refresh(branch.layers.filter((layer) => layer.name === ev.name));
           controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
         })
         .catch((error) => {
@@ -293,8 +301,8 @@ async function main() {
         viewer.view.removeLayer('selectedFeature');
       }
       // branch.resetAlert();
-      viewer.cleanUpExtraLayers();
-      viewer.refresh(branch.layers);
+      view.cleanUpExtraLayers(menuGlobe);
+      view.refresh(branch.layers);
     });
 
     view.addEventListener('remark-added', async () => {
@@ -365,10 +373,10 @@ async function main() {
     });
 
     view.addEventListener('alert-selected', (ev) => {
-      viewer.highlightSelectedFeature(branch.alert);
+      view.highlightSelectedFeature(branch.alert);
 
       if (ev.option.centerOnFeature) {
-        viewer.centerCamera(ev.featureCenter);
+        viewer.centerCameraOn(ev.featureCenter);
       }
 
       const featureSelectedGeom = branch.alert.featureCollection.features[0]
@@ -398,7 +406,7 @@ async function main() {
     controllers.coord.onFinishChange(() => {
       const coords = checkCoordString(editing.coord);
       if (coords) {
-        viewer.centerCamera(coords);
+        viewer.centerCameraOn(coords);
       }
       editing.message = '';
       return false;
@@ -430,25 +438,13 @@ async function main() {
     });
 
     document.getElementById('recenterBtn').addEventListener('click', () => {
-      viewer.centerCamera();
+      viewer.centerCameraOn();
     }, false);
     document.getElementById('zoomInBtn').addEventListener('click', () => {
-      console.log('Zoom-In');
-      if ((view.getPixelsToMeters() / 2) > viewer.resolLvMax) {
-        view.camera.camera3D.zoom *= 2;
-        view.camera.camera3D.updateProjectionMatrix();
-        view.notifyChange(view.camera.camera3D);
-        viewer.updateScaleWidget();
-      }
+      viewer.zoomIn();
     });
     document.getElementById('zoomOutBtn').addEventListener('click', () => {
-      console.log('Zoom-Out');
-      if ((view.getPixelsToMeters() * 2) < viewer.resolLvMin) {
-        view.camera.camera3D.zoom *= 0.5;
-        view.camera.camera3D.updateProjectionMatrix();
-        view.notifyChange(view.camera.camera3D);
-        viewer.updateScaleWidget();
-      }
+      viewer.zoomOut();
     });
 
     const helpContent = document.getElementById('help-content');

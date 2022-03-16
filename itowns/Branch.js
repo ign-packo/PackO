@@ -50,7 +50,7 @@ class Branch {
         name: 'Ortho',
         type: 'raster',
         url: `${this.api.url}/${this.active.id}/wmts`,
-        crs: this.viewer.crs,
+        // crs: this.view.crs,
         opacity: 1,
         visible: true,
       },
@@ -59,7 +59,7 @@ class Branch {
         name: 'Graph',
         type: 'raster',
         url: `${this.api.url}/${this.active.id}/wmts`,
-        crs: this.viewer.crs,
+        // crs: this.view.crs,
         opacity: 1,
         visible: true,
       },
@@ -68,7 +68,7 @@ class Branch {
         name: 'Contour',
         type: 'raster',
         url: `${this.api.url}/${this.active.id}/wmts`,
-        crs: this.viewer.crs,
+        // crs: this.view.crs,
         opacity: 0.5,
         visible: true,
       },
@@ -77,7 +77,7 @@ class Branch {
         name: 'Opi',
         type: 'raster',
         url: `${this.api.url}/${this.active.id}/wmts`,
-        crs: this.viewer.crs,
+        // crs: this.view.crs,
         opacity: 0.5,
         visible: false,
       },
@@ -86,7 +86,7 @@ class Branch {
         name: 'Patches',
         type: 'vector',
         url: `${this.api.url}/${this.active.id}/patches`,
-        crs: this.viewer.crs,
+        // crs: this.view.crs,
         opacity: 1,
         visible: false,
         style: {
@@ -117,7 +117,7 @@ class Branch {
         style: JSON.parse(vector.style_itowns),
         vectorId: vector.id,
         isAlert: false,
-        isExtra: true,
+        // isExtra: true,
       });
     });
   }

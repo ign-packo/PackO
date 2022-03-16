@@ -214,7 +214,7 @@ class Editing {
             // On modifie la couche OPI
             this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${opi.cliche}&FORMAT`);
             this.view.getLayerById('Opi').visible = true;
-            this.viewer.refresh(['Opi']);
+            this.view.refresh(['Opi']);
           })
           .catch((error) => {
             if (error.name === 'Server Error') {
@@ -336,7 +336,7 @@ class Editing {
     const geojson = {
       type: 'FeatureCollection',
       name: 'annotation',
-      crs: { type: 'name', properties: { name: `urn:ogc:def:crs:${this.view.camera.crs.replace(':', '::')}` } },
+      crs: { type: 'name', properties: { name: `urn:ogc:def:crs:${this.view.crs.replace(':', '::')}` } },
       features: [
         {
           type: 'Feature',
@@ -362,7 +362,7 @@ class Editing {
     this.api.postPatch(this.branch.active.id, JSON.stringify(geojson))
       .then(() => {
         // this.viewer.refresh(this.branch.layers);
-        this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        this.view.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
         this.viewer.message = '';
       })
       .catch((error) => {
@@ -404,7 +404,7 @@ class Editing {
 
       if (res.status === 200) {
         // this.viewer.refresh(this.branch.layers);
-        this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        this.view.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
       }
       res.text().then((msg) => {
         this.viewer.message = msg;
@@ -433,7 +433,7 @@ class Editing {
       this.currentStatus = status.RAS;
       if (res.status === 200) {
         // this.viewer.refresh(this.branch.layers);
-        this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        this.view.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
       }
       res.text().then((msg) => {
         this.viewer.message = msg;
@@ -461,7 +461,7 @@ class Editing {
       this.currentStatus = status.RAS;
       if (res.status === 200) {
         // this.viewer.refresh(this.branch.layers);
-        this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        this.view.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
       }
       res.text().then((msg) => {
         this.viewer.message = msg;
@@ -493,7 +493,7 @@ class Editing {
         this.currentStatus = status.RAS;
         this.controllers.addRemark.__li.style.backgroundColor = '';
 
-        this.viewer.refresh(['Remarques']);
+        this.view.refresh(['Remarques']);
 
         this.view.dispatchEvent({
           type: 'remark-added',
@@ -527,7 +527,7 @@ class Editing {
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
 
-        this.viewer.refresh(['Remarques']);
+        this.view.refresh(['Remarques']);
 
         this.view.dispatchEvent({
           type: 'remark-deleted',
