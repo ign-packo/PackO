@@ -132,12 +132,12 @@ async function main() {
       console.log('choosed alert vector layer: ', layerName);
       if (branch.alert.layerName !== '-') viewer.view.getLayerById(branch.alert.layerName).isAlert = false;
 
-      const layersToRefresh = [];
-      if (branch.alert.layerName !== '-' || layerName === '-') layersToRefresh.push(branch.alert.layerName);
+      viewer.layersToRefresh = [];
+      if (branch.alert.nbTotal > 0 && (branch.alert.layerName !== '-' || layerName === '-')) {
+        viewer.layersToRefresh.push(branch.alert.layerName);
+      }
 
       if (layerName !== '-') {
-        layersToRefresh.push(layerName);
-
         branch.alert.layerName = layerName;
         const layerAlert = viewer.view.getLayerById(branch.alert.layerName);
         layerAlert.isAlert = true;
@@ -155,15 +155,16 @@ async function main() {
           branch.alert.progress = `${branch.alert.nbChecked}/${branch.alert.nbTotal} (${branch.alert.nbValidated} validés)`;
 
           branch.alert.selectLastViewed({ centerOnFeature: true });
+        } else {
+          branch.alert.nbTotal = 0;
+          view.refresh(viewer.layersToRefresh);
         }
       } else {
-        if (viewer.view.getLayerById('selectedFeature')) {
-          viewer.view.removeLayer('selectedFeature');
-        }
         branch.alert.reset();
+        view.refresh(viewer.layersToRefresh);
       }
       controllers.setAlertCtr(layerName === 'Remarques' && branch.alert.featureCollection.features.length === 0 ? '-' : layerName);
-      view.refresh(layersToRefresh);
+      // view.refresh(viewer.layersToRefresh);
     });
     branch.alert.id = '';
     controllers.id = viewer.menuGlobe.gui.add(branch.alert, 'id').name('Alert id');
@@ -192,24 +193,7 @@ async function main() {
 
     branch.alert.validated = false;
     controllers.validated = viewer.menuGlobe.gui.add(branch.alert, 'validated').name('Validated');
-    controllers.validated.onChange((value) => {
-      console.log('change status', value);
-
-      const featureSelectedGeom = branch.alert.featureCollection.features[0]
-        .geometries[branch.alert.featureIndex];
-
-      branch.alert.postValue(featureSelectedGeom.properties.id, 'status', value);
-      if (value === true) {
-        branch.alert.nbValidated += 1;
-        if (branch.alert.featureCollection.features[0].geometries[branch.alert.featureIndex]
-          .properties.status === null) {
-          branch.alert.nbChecked += 1;
-        }
-      } else {
-        branch.alert.nbValidated -= 1;
-      }
-      branch.alert.progress = `${branch.alert.nbChecked}/${branch.alert.nbTotal} (${branch.alert.nbValidated} validés)`;
-    });
+    controllers.validated.onChange((value) => { branch.alert.setValidation(value); });
 
     branch.alert.comment = '';
     controllers.comment = viewer.menuGlobe.gui.add(branch.alert, 'comment').name('Comment');
@@ -297,9 +281,6 @@ async function main() {
       controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)], 0);
       // controllers.refreshAlertCtr();
       controllers.setAlertCtr('-');
-      if (viewer.view.getLayerById('selectedFeature')) {
-        viewer.view.removeLayer('selectedFeature');
-      }
       // branch.resetAlert();
       view.cleanUpExtraLayers(menuGlobe);
       view.refresh(branch.layers);
@@ -368,25 +349,27 @@ async function main() {
         // controllers.hide(['progress', 'id', 'validated', 'unchecked', 'remark', 'delRemark'])
         branch.alert.featureIndex = null;
         controllers.setAlertCtr('-');
-        viewer.view.removeLayer('selectedFeature');
       }
     });
 
     view.addEventListener('alert-selected', (ev) => {
-      view.highlightSelectedFeature(branch.alert);
+      const layerAlert = viewer.view.getLayerById(branch.alert.layerName);
+      layerAlert.idSelected = ev.properties.id;
+
+      // console.log(layerAlert.idSelected)
+
+      view.refresh([...viewer.layersToRefresh, branch.alert.layerName]);
+      viewer.layersToRefresh = [];
 
       if (ev.option.centerOnFeature) {
         viewer.centerCameraOn(ev.featureCenter);
       }
 
-      const featureSelectedGeom = branch.alert.featureCollection.features[0]
-        .geometries[branch.alert.featureIndex];
-
       branch.alert.id = branch.alert.featureIndex;
       controllers.id.updateDisplay();
-      branch.alert.validated = featureSelectedGeom.properties.status;
+      branch.alert.validated = ev.properties.status;
       controllers.validated.updateDisplay();
-      branch.alert.comment = featureSelectedGeom.properties.comment;
+      branch.alert.comment = ev.properties.comment;
     });
 
     view.addEventListener('error', (ev) => {

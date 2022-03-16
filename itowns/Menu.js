@@ -17,16 +17,10 @@ class Menu extends GuiTools {
       typeGui = 'vectorGui';
     }
     if (this[typeGui].hasFolder(layer.id)) { return; }
-    if (layer.id === 'selectedFeature') { return; }
 
     const folder = this[typeGui].addFolder(layer.id);
     folder.add({ visible: layer.visible }, 'visible').onChange(((value) => {
       layer.visible = value;
-
-      // if (layer.id === this.alertLayerName) {
-      if (layer.isAlert === true) {
-        this.view.getLayerById('selectedFeature').visible = value;
-      }
 
       this.view.notifyChange(layer);
     }));

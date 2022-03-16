@@ -18,10 +18,10 @@ class Alert {
     this.progress = 0;
   }
 
-  postValue(idFeature, variable, value) {
+  postValue(idFeature, variable, value, option = { refresh: true }) {
     this.api.updateAlert(idFeature, variable, value)
       .then(() => {
-        this.viewer.view.refresh([this.layerName]);
+        if (option.refresh) this.viewer.view.refresh([this.layerName]);
         this.featureCollection.features[0]
           .geometries[this.featureIndex].properties[variable] = value;
       })
@@ -41,11 +41,50 @@ class Alert {
     if (featureSelectedGeom.properties.status === true) {
       this.viewer.message = 'alerte déjà validée';
     } else if (featureSelectedGeom.properties.status === false) {
-      this.postValue(featureSelectedGeom.properties.id, 'status', null);
-
+      // this.postValue(featureSelectedGeom.properties.id, 'status', null);
+      this.api.updateAlert(featureSelectedGeom.properties.id, 'status', null)
+        .then(() => {
+          this.viewer.view.refresh([this.layerName]);
+          featureSelectedGeom.properties.status = null;
+        })
+        .catch((error) => {
+          this.viewer.message = 'PB with updating the database';
+          this.viewer.view.dispatchEvent({
+            type: 'error',
+            msg: error,
+          });
+        });
       this.nbChecked -= 1;
       this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
     }
+  }
+
+  setValidation(value) {
+    const featureSelectedGeom = this.featureCollection.features[0].geometries[this.featureIndex];
+    if (value === true) {
+      this.nbValidated += 1;
+      if (featureSelectedGeom.properties.status === null) {
+        this.nbChecked += 1;
+      }
+    } else {
+      this.nbValidated -= 1;
+    }
+    // on le fait apres pour etre sur que le status n'a pas encore été modifié
+    // this.postValue(featureSelectedGeom.properties.id, 'status', value);
+    this.api.updateAlert(featureSelectedGeom.properties.id, 'status', value)
+      .then(() => {
+        this.viewer.view.refresh([this.layerName]);
+        featureSelectedGeom.properties.status = value;
+      })
+      .catch((error) => {
+        this.viewer.message = 'PB with updating the database';
+        this.viewer.view.dispatchEvent({
+          type: 'error',
+          msg: error,
+        });
+      });
+
+    this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
   }
 
   selectPrevious(option = { unviewed: false }) {
@@ -95,19 +134,38 @@ class Alert {
   }
 
   changeFeature(featureIndex, option = { centerOnFeature: false }) {
+    // const layerAlert = this.viewer.view.getLayerById(this.layerName);
+    // layerAlert.idSelected = this.featureCollection.features[0].geometries[featureIndex]
+    //   .properties.id;
+    const promises = [];
     this.featureIndex = featureIndex;
     const featureSelectedGeom = this.featureCollection.features[0].geometries[this.featureIndex];
     if (featureSelectedGeom.properties.status === null) {
-      this.postValue(featureSelectedGeom.properties.id, 'status', false);
+      // this.postValue(featureSelectedGeom.properties.id, 'status', false, { refresh: false });
+      promises.push(this.api.updateAlert(featureSelectedGeom.properties.id, 'status', false));
       this.nbChecked += 1;
       this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
     }
-    this.viewer.view.dispatchEvent({
-      type: 'alert-selected',
-      option,
-      featureCenter: featureSelectedGeom.extent.clone()
-        .applyMatrix4(this.featureCollection.matrixWorld).center(),
-    });
+    Promise.all(promises)
+      .then(() => {
+        if (promises.length === 1) {
+          featureSelectedGeom.properties.status = false;
+        }
+        this.viewer.view.dispatchEvent({
+          type: 'alert-selected',
+          option,
+          properties: featureSelectedGeom.properties,
+          featureCenter: featureSelectedGeom.extent.clone()
+            .applyMatrix4(this.featureCollection.matrixWorld).center(),
+        });
+      })
+      .catch((error) => {
+        this.viewer.message = 'PB with updating the database';
+        this.viewer.view.dispatchEvent({
+          type: 'error',
+          msg: error,
+        });
+      });
   }
 
   async selectFeatureAt(mouseOrEvt) {
