@@ -313,7 +313,7 @@ class Viewer {
           this.layerIndex[layerName] = Math.max(...Object.values(this.layerIndex)) + 1;
         }
       }
-      if (layerList[layerName].id) {
+      if (layerList[layerName].id !== undefined) {
         layer.colorLayer.vectorId = layerList[layerName].id;
       }
     });
