@@ -1,22 +1,42 @@
-/* global GuiTools */
-class Menu extends GuiTools {
-  constructor(viewerDiv, view) {
-    super(viewerDiv.id, view);
+/* global dat */
 
-    this.gui.width = 300;
-    this.colorGui.show();
-    this.colorGui.open();
-    this.vectorGui = this.gui.addFolder('Extra Layers');
-    this.vectorGui.open();
+/* eslint-disable no-underscore-dangle */
+dat.GUI.prototype.removeFolder = function removeFolder(name) {
+  const folder = this.__folders[name];
+  if (!folder) return;
+  folder.close();
+  this.__ul.removeChild(folder.domElement.parentNode);
+  delete this.__folders[name];
+  this.onResize();
+};
+dat.GUI.prototype.hasFolder = function hasFolder(name) {
+  return this.__folders[name];
+};
+/* eslint-enable no-underscore-dangle */
 
-    view.addEventListener('layers-order-changed', ((ev) => {
-      for (let i = 0; i < ev.new.sequence.length; i += 1) {
-        const colorLayer = view.getLayerById(ev.new.sequence[i]);
+class Menu {
+  constructor(menuDiv, view) {
+    const width = 300;
 
-        this.removeLayersGUI(colorLayer.id);
-        this.addImageryLayerGUI(colorLayer);
-      }
-    }));
+    if (view) {
+      this.gui = new dat.GUI({ autoPlace: false, width });
+      menuDiv.appendChild(this.gui.domElement);
+
+      this.colorGui = this.gui.addFolder('Color Layers');
+      this.colorGui.open();
+      this.vectorGui = this.gui.addFolder('Extra Layers');
+      this.vectorGui.open();
+      this.view = view;
+
+      view.addEventListener('layers-order-changed', ((ev) => {
+        for (let i = 0; i < ev.new.sequence.length; i += 1) {
+          const colorLayer = view.getLayerById(ev.new.sequence[i]);
+
+          this.removeLayersGUI(colorLayer.id);
+          this.addImageryLayerGUI(colorLayer);
+        }
+      }));
+    }
   }
 
   addImageryLayerGUI(layer) {

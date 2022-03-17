@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 /* global setupLoadingScreen */
-// /* global setupLoadingScreen, GuiTools */
 import * as itowns from 'itowns';
 import Viewer from './Viewer';
 import Editing from './Editing';
@@ -10,7 +9,7 @@ import API from './API';
 import View from './View';
 import Menu from './Menu';
 
-// Global itowns pour GuiTools -> peut être améliorer
+// Global itowns pour setupLoadingScreen -> peut être améliorer
 global.itowns = itowns;
 
 // check if string is in "x,y" format with x and y positive floats
@@ -71,7 +70,7 @@ async function main() {
     const view = new View(viewerDiv, await getOverviews, dezoomInitial);
     setupLoadingScreen(viewerDiv, view);
 
-    const menuGlobe = new Menu(viewerDiv, view);
+    const menuGlobe = new Menu(document.getElementById('menuDiv'), view);
     const viewer = new Viewer(viewerDiv, view, menuGlobe, api);
 
     // setupLoadingScreen(viewerDiv, viewer.view);
