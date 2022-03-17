@@ -1,10 +1,5 @@
-// /* global setupLoadingScreen */
 import * as itowns from 'itowns';
-// import * as THREE from 'three';
 import shp from 'shpjs';
-
-// import Menu from './Menu';
-// import View from './View';
 
 itowns.ShaderChunk.customHeaderColorLayer(`
 float edge(sampler2D textu, float stepx, float stepy, vec2 center){
@@ -36,36 +31,6 @@ else {
 }
 `);
 
-// let alertUncheckedColor = '';
-// let alertCheckedColor = '';
-// let alertValidatedColor = '';
-
-// function initAlertColor() {
-//   Array.from(document.styleSheets).forEach((sheet) => {
-//     Array.from(sheet.cssRules).forEach((rule) => {
-//       if (rule.selectorText === '.alertUnchecked') {
-//         alertUncheckedColor = rule.style.color;
-//       } else if (rule.selectorText === '.alertChecked') {
-//         alertCheckedColor = rule.style.color;
-//       } else if (rule.selectorText === '.alertValidated') {
-//         alertValidatedColor = rule.style.color;
-//       }
-//     });
-//   });
-// }
-
-// initAlertColor();
-
-// function coloringAlerts(properties) {
-//   if (properties.status === false) {
-//     return alertCheckedColor;
-//   }
-//   if (properties.status === true) {
-//     return alertValidatedColor;
-//   }
-//   return alertUncheckedColor;
-// }
-
 class Viewer {
   constructor(viewerDiv, view, menuGlobe, api) {
     this.viewerDiv = viewerDiv;
@@ -82,24 +47,7 @@ class Viewer {
 
     // this.resolLvMax = 0;
     // this.resolLvMin = 0;
-    // this.layerIndex = {
-    //   Ortho: 1,
-    //   Opi: 2,
-    //   Graph: 0,
-    //   Contour: 3,
-    //   Patches: 4,
-    // };
-    // this.oldStyle = {};
   }
-
-  // createView(overviews) {
-  //   this.overviews = overviews;
-
-  //   this.view = new View(this.viewerDiv, overviews);
-
-  //   // menuGlobe
-  //   this.menuGlobe = new Menu(this.viewerDiv.id, this);
-  // }
 
   centerCameraOn(coord = { x: this.view.x0, y: this.view.y0 }) {
     // bug itowns...
@@ -151,134 +99,6 @@ class Viewer {
     document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
     document.getElementById('spanGraphVisibWidget').classList.toggle('not_displayed', this.dezoom > maxGraphDezoom);
   }
-
-  // cleanUpExtraLayers(menuGlobe) {
-  //   // Clean up of all the extra layers
-  //   const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
-  //   listColorLayer.forEach((layerName) => {
-  //     if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layerName)) {
-  //       this.view.removeLayer(layerName);
-  //       menuGlobe.removeLayersGUI(layerName);
-  //       delete this.view.layerIndex[layerName];
-  //     }
-  //   });
-  // }
-
-  // refresh(layerList) {
-  //   const layerNames = [];
-  //   layerList.forEach((layer) => {
-  //     layerNames.push(typeof layer === 'string' ? layer : layer.name);
-  //   });
-
-  //   layerNames.forEach((layerName) => {
-  //     let newLayer;
-  //     let config = {};
-
-  //     const layer = {};
-  //     layer.config = {};
-
-  //     if (this.view.getLayerById(layerName)) {
-  //       // la couche existe avant le refresh
-
-  //       newLayer = this.view.getLayerById(layerName);
-  //       config = {
-  //         source: newLayer.source,
-  //         transparent: newLayer.transparent,
-  //         // opacity: newLayer.opacity,
-  //         style: newLayer.style,
-  //         zoom: newLayer.zoom,
-  //       };
-
-  //       if (newLayer.source.isVectorSource) {
-  //         // Attendre itowns pour evolution ?
-  //         config.source = new itowns.FileSource({
-  //           url: newLayer.source.url,
-  //           fetcher: itowns.Fetcher.json,
-  //           crs: newLayer.source.crs,
-  //           parser: itowns.GeoJsonParser.parse,
-  //         });
-
-  //         if (this.oldStyle[layerName]) {
-  //           config.style = this.oldStyle[layerName];
-  //         }
-  //         if (newLayer.isAlert === true) {
-  //           this.oldStyle[layerName] = newLayer.style.clone();
-  //           /* eslint-disable no-param-reassign */
-  //           config.style.fill.color = coloringAlerts;
-  //           config.style.point.color = coloringAlerts;
-  //           config.style.stroke.color = coloringAlerts;
-  //           /* eslint-enable no-param-reassign */
-  //         }
-  //       }
-  //       this.view.removeLayer(layerName);
-  //     } else {
-  //       // nouvelle couche
-  //       [newLayer] = layerList.filter((l) => l.name === layerName);
-  //       if (newLayer.type === 'raster') {
-  //         config.source = new itowns.WMTSSource({
-  //           url: newLayer.url,
-  //           crs: newLayer.crs ? newLayer.crs : this.view.crs,
-  //           format: 'image/png',
-  //           name: layerName !== 'Contour' ? layerName.toLowerCase() : 'graph',
-  //           tileMatrixSet: this.overviews.identifier,
-  //           tileMatrixSetLimits:
-  //             (layerName === 'Contour') || (layerName === 'Graph')
-  //               ? this.overviews.dataSet.limitsForGraph : this.overviews.dataSet.limits,
-  //         });
-  //       } else if (newLayer.type === 'vector') {
-  //         config.source = new itowns.FileSource({
-  //           url: newLayer.url,
-  //           fetcher: itowns.Fetcher.json,
-  //           crs: newLayer.crs ? newLayer.crs : this.view.crs,
-  //           parser: itowns.GeoJsonParser.parse,
-  //         });
-
-  //         config.style = new itowns.Style(newLayer.style);
-  //         config.zoom = {
-  //           // min: this.overviews.dataSet.level.min,
-  //           min: layerName === 'Patches' ? this.zoomMinPatch : this.overviews.dataSet.level.min,
-  //           max: this.overviews.dataSet.level.max,
-  //         };
-  //       }
-
-  //       if (this.layerIndex[layerName] === undefined) {
-  //         this.layerIndex[layerName] = Math.max(...Object.values(this.layerIndex)) + 1;
-  //       }
-  //     }
-
-  //     // Dans les 2 cas
-  //     config.opacity = newLayer.opacity;
-  //     const colorLayer = new itowns.ColorLayer(
-  //       layerName,
-  //       config,
-  //     );
-
-  //     colorLayer.visible = newLayer.visible;
-
-  //     if (layerName === 'Contour') {
-  //       colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
-  //       colorLayer.effect_parameter = 1.0;
-  //       colorLayer.magFilter = THREE.NearestFilter;
-  //       colorLayer.minFilter = THREE.NearestFilter;
-  //     }
-
-  //     this.view.addLayer(colorLayer);
-
-  //     if (colorLayer.vectorId === undefined) {
-  //       colorLayer.vectorId = newLayer.vectorId;
-  //     }
-  //     if (colorLayer.isAlert === undefined) {
-  //       colorLayer.isAlert = newLayer.isAlert;
-  //     }
-
-  //     itowns.ColorLayersOrdering.moveLayerToIndex(
-  //       this.view,
-  //       layerName,
-  //       this.layerIndex[layerName] === undefined
-  //         ? Math.max(...Object.values(this.layerIndex)) + 1 : this.layerIndex[layerName],
-  //     );
-  //   });
-  // }
 
   /* eslint-disable no-underscore-dangle */
   addDnDFiles(eventDnD, files) {
@@ -351,14 +171,12 @@ class Viewer {
       if (!fileMtd) {
         errors.push(new Error(`Type of file (.${file.name.split('.').pop().toLowerCase()}) not supported.\n`));
         fileMtd = {};
-        // throw new Error('Type of file not supported, please add it using DragNDrop.register');
       }
 
       const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
       if (listColorLayer.includes(layerName)) {
         fileMtd = {};
         errors.push(new Error('A layer with the same name has already been added.\n'));
-        // throw new Error('A layer with the same name has already been added');
       }
 
       const fileReader = new FileReader();
@@ -404,12 +222,7 @@ class Viewer {
             },
           };
 
-          // itowns.GeoJsonParser.parse(resData, options).then((features) => {
           itowns.GeoJsonParser.parse(resData, options).then(() => {
-            // const source = new itowns.FileSource({
-            //   features,
-            // });
-
             const randomColor = Math.round(Math.random() * 0xffffff);
 
             const style = {
@@ -440,7 +253,6 @@ class Viewer {
             type: 'error',
             msg: errors,
           });
-          // throw errors;
         }
       };
       switch (fileMtd.type) {
@@ -469,78 +281,5 @@ class Viewer {
     }
   }
   /* eslint-enable no-underscore-dangle */
-
-  // removeVectorLayer(layerName) {
-  //   if (layerName === undefined) return;
-  //   const layerId = this.view.getLayerById(layerName).vectorId;
-  //   this.view.removeLayer(layerName);
-  //   delete this.layerIndex[layerName];
-  //   this.view.dispatchEvent({
-  //     type: 'vectorLayer-removed',
-  //     layerId,
-  //     layerName,
-  //   });
-  // }
-
-  // highlightSelectedFeature(alert) {
-  //   const alertFC = alert.featureCollection;
-  //   const featureGeometry = alertFC.features[0].geometries[alert.featureIndex];
-  //   const { type } = alertFC.features[0];
-  //   const layerFeatureSelected = this.view.getLayerById('selectedFeature');
-  //   if (layerFeatureSelected) {
-  //     this.view.removeLayer('selectedFeature');
-  //   }
-  //   const layerTest = this.view.getLayerById(alert.layerName);
-  //   const newFeatureCollec = new itowns.FeatureCollection(layerTest);
-
-  //   const feature = alertFC.requestFeatureByType(type);
-  //   const newFeature = newFeatureCollec.requestFeatureByType(type);
-  //   const newFeatureGeometry = newFeature.bindNewGeometry();
-
-  //   const coord = new itowns.Coordinates(newFeatureCollec.crs, 0, 0, 0);
-
-  //   const vector = new THREE.Vector2();
-  //   const vector3 = new THREE.Vector3();
-  //   const { count, offset } = featureGeometry.indices[0];
-
-  //   newFeatureGeometry.startSubGeometry(count, newFeature);
-  //   const { vertices } = feature;
-  //   for (let v = offset * 2; v < (offset + count) * 2; v += 2) {
-  //     vector.fromArray(vertices, v);
-  //     vector3.copy(vector).setZ(0).applyMatrix4(alertFC.matrixWorld);
-  //     coord.x = vector3.x;
-  //     coord.y = vector3.y;
-  //     newFeatureGeometry.pushCoordinates(coord, newFeature);
-  //   }
-
-  //   newFeatureGeometry.updateExtent();
-
-  //   const newColorLayer = new itowns.ColorLayer('selectedFeature', {
-  //     // Use a FileSource to load a single file once
-  //     source: new itowns.FileSource({
-  //       features: newFeatureCollec,
-  //     }),
-  //     transparent: true,
-  //     opacity: 0.7,
-  //     zoom: {
-  //       min: this.overviews.dataSet.level.min,
-  //       max: this.overviews.dataSet.level.max,
-  //     },
-  //     style: new itowns.Style({
-  //       stroke: {
-  //         color: 'yellow',
-  //         width: 5,
-  //       },
-  //       point: {
-  //         color: '#66666600',
-  //         radius: 7,
-  //         line: 'yellow',
-  //         width: 5,
-  //       },
-  //     }),
-  //   });
-
-  //   this.view.addLayer(newColorLayer);
-  // }
 }
 export default Viewer;
