@@ -292,7 +292,6 @@ class Editing {
     }
     if (this.currentPolygon) {
       this.viewer.message = 'saisie déjà en cours';
-      // saisie deja en cours
       return;
     }
     console.log("saisie d'un polygon");

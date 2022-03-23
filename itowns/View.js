@@ -105,9 +105,9 @@ class View extends itowns.PlanarView {
     this.dezoomInitial = dezoomInitial;
 
     this.layerIndex = {
+      Graph: 0,
       Ortho: 1,
       Opi: 2,
-      Graph: 0,
       Contour: 3,
       Patches: 4,
     };
@@ -185,9 +185,6 @@ class View extends itowns.PlanarView {
             /* eslint-disable no-param-reassign */
             config.style.fill.color = coloringAlerts;
             config.style.point.color = (properties) => {
-              // if (properties.id === newLayer.idSelected) {
-              //   return '#66666600';
-              // }
               if (properties.status === false) {
                 return alertCheckedColor;
               }
@@ -303,6 +300,7 @@ class View extends itowns.PlanarView {
 
       // this.addLayer(colorLayer);
 
+      // attente evolution itowns
       itowns.ColorLayersOrdering.moveLayerToIndex(
         this,
         layerName,

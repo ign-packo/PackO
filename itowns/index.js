@@ -63,7 +63,6 @@ async function main() {
     const getBranches = itowns.Fetcher.json(`${apiUrl}/branches?idCache=${activeCache.id}`);
 
     const viewerDiv = document.getElementById('viewerDiv');
-
     const dezoomInitial = 4;// to define
 
     // const overviews = await getOverviews;
@@ -71,12 +70,9 @@ async function main() {
     setupLoadingScreen(viewerDiv, view);
 
     const menuGlobe = new Menu(document.getElementById('menuDiv'), view);
-    const viewer = new Viewer(viewerDiv, view, menuGlobe, api);
+    const viewer = new Viewer(view, menuGlobe, api);
 
-    // setupLoadingScreen(viewerDiv, viewer.view);
     // FeatureToolTip.init(viewerDiv, viewer.view);
-
-    // viewer.view.isDebugMode = true;
 
     const branch = new Branch(viewer, activeCache.id);
     const editing = new Editing(branch);
@@ -104,13 +100,12 @@ async function main() {
     // Selection OPI
     controllers.select = viewer.menuGlobe.gui.add(editing, 'select').name('Select an OPI');
     editing.opiName = 'none';
-    controllers.opiName = viewer.menuGlobe.gui.add(editing, 'opiName').name('OPI selected');
-    controllers.opiName.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.opiName = viewer.menuGlobe.gui.add(editing, 'opiName').name('OPI selected').listen();
+    controllers.opiName.domElement.parentElement.style.pointerEvents = 'none';
 
     // Coord
     editing.coord = `${view.x0.toFixed(2)},${view.y0.toFixed(2)}`;
-    controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord').name('Coordinates');
-    controllers.coord.listen();
+    controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord').name('Coordinates').listen();
 
     // Saisie
     controllers.polygon = viewer.menuGlobe.gui.add(editing, 'polygon').name('Start polygon');
@@ -120,8 +115,8 @@ async function main() {
 
     // Message
     viewer.message = '';
-    controllers.message = viewer.menuGlobe.gui.add(viewer, 'message').name('Message');
-    controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.message = viewer.menuGlobe.gui.add(viewer, 'message').name('Message').listen();
+    controllers.message.domElement.parentElement.style.pointerEvents = 'none';
 
     // Couche d'alertes
     editing.alert = '-';
@@ -129,16 +124,15 @@ async function main() {
     controllers.alert.onChange(async (layerName) => {
       document.activeElement.blur();
       console.log('choosed alert vector layer: ', layerName);
-      if (branch.alert.layerName !== '-') viewer.view.getLayerById(branch.alert.layerName).isAlert = false;
+      if (branch.alert.layerName !== '-') view.getLayerById(branch.alert.layerName).isAlert = false;
 
-      viewer.layersToRefresh = [];
-      if (branch.alert.nbTotal > 0 && (branch.alert.layerName !== '-' || layerName === '-')) {
-        viewer.layersToRefresh.push(branch.alert.layerName);
-      }
+      view.layersToRefresh = [];
+      // if (branch.alert.nbTotal > 0 && (branch.alert.layerName !== '-' || layerName === '-')) {
+      if (branch.alert.nbTotal > 0) view.layersToRefresh.push(branch.alert.layerName);
 
       if (layerName !== '-') {
         branch.alert.layerName = layerName;
-        const layerAlert = viewer.view.getLayerById(branch.alert.layerName);
+        const layerAlert = view.getLayerById(branch.alert.layerName);
         layerAlert.isAlert = true;
         branch.alert.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
         const alertFC = branch.alert.featureCollection;
@@ -153,20 +147,21 @@ async function main() {
           branch.alert.nbTotal = alertFC.features[0].geometries.length;
           branch.alert.progress = `${branch.alert.nbChecked}/${branch.alert.nbTotal} (${branch.alert.nbValidated} validés)`;
 
+          // view.layersToRefresh.push(branch.alert.layerName);
           branch.alert.selectLastViewed({ centerOnFeature: true });
         } else {
           branch.alert.nbTotal = 0;
-          view.refresh(viewer.layersToRefresh);
+          view.refresh(view.layersToRefresh);
         }
       } else {
         branch.alert.reset();
-        view.refresh(viewer.layersToRefresh);
+        view.refresh(view.layersToRefresh);
       }
       controllers.setAlertCtr(layerName === 'Remarques' && branch.alert.featureCollection.features.length === 0 ? '-' : layerName);
-      // view.refresh(viewer.layersToRefresh);
+      // view.refresh(view.layersToRefresh);
     });
     branch.alert.id = '';
-    controllers.id = viewer.menuGlobe.gui.add(branch.alert, 'id').name('Alert id');
+    controllers.id = viewer.menuGlobe.gui.add(branch.alert, 'id').name('Alert id').listen();
     controllers.id.onChange(() => {
       console.log("saisie d'une id");
       editing.currentStatus = editing.STATUS.WRITING;
@@ -180,23 +175,23 @@ async function main() {
       } else {
         viewer.message = 'id non valide';
         branch.alert.id = branch.alert.featureIndex;
-        controllers.id.updateDisplay();
+        // controllers.id.updateDisplay();
       }
     });
 
     branch.alert.progress = '';
-    controllers.progress = viewer.menuGlobe.gui.add(branch.alert, 'progress').name('Progress');
-    controllers.progress.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.progress = viewer.menuGlobe.gui.add(branch.alert, 'progress').name('Progress').listen();
+    controllers.progress.domElement.parentElement.style.pointerEvents = 'none';
 
     controllers.uncheck = viewer.menuGlobe.gui.add(branch.alert, 'uncheck').name('Mark as unchecked');
 
     branch.alert.validated = false;
-    controllers.validated = viewer.menuGlobe.gui.add(branch.alert, 'validated').name('Validated');
+    controllers.validated = viewer.menuGlobe.gui.add(branch.alert, 'validated').name('Validated').listen();
     controllers.validated.onChange((value) => { branch.alert.setValidation(value); });
 
     branch.alert.comment = '';
-    controllers.comment = viewer.menuGlobe.gui.add(branch.alert, 'comment').name('Comment');
-    controllers.comment.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.comment = viewer.menuGlobe.gui.add(branch.alert, 'comment').name('Comment').listen();
+    controllers.comment.domElement.parentElement.style.pointerEvents = 'none';
 
     // Remarques
     controllers.addRemark = viewer.menuGlobe.gui.add(editing, 'addRemark').name('Add remark');
@@ -253,11 +248,6 @@ async function main() {
       branch.deleteLayer(event.layerName, event.layerId)
         .then(() => {
           console.log(`-> Vector '${event.layerName} (id: ${event.layerId}) had been deleted`);
-          // const layer = branch.vectorList.filter((elem) => elem.id === event.layerId)[0];
-          // const index = branch.vectorList.indexOf(layer);
-          // branch.vectorList.splice(index, 1);
-          // delete branch.layers[layer.name];
-
           controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
         })
         .catch((error) => {
@@ -278,9 +268,7 @@ async function main() {
       console.log(`branche changed to '${newBranch.name}'`);
       controllers.setPatchCtr(newBranch.name);
       controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)], 0);
-      // controllers.refreshAlertCtr();
       controllers.setAlertCtr('-');
-      // branch.resetAlert();
       view.cleanUpExtraLayers(menuGlobe);
       view.refresh(branch.layers);
     });
@@ -290,7 +278,7 @@ async function main() {
       // if (editing.alertLayerName === 'Remarques') {
       //   const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
       if (branch.alert.layerName === 'Remarques') {
-        const layerAlert = viewer.view.getLayerById(branch.alert.layerName);
+        const layerAlert = view.getLayerById(branch.alert.layerName);
         await layerAlert.whenReady;
         branch.alert.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
         // const featureCollection = branch.alert.featureCollection.features;
@@ -311,17 +299,13 @@ async function main() {
           // editing.centerOnAlertFeature();
           controllers.setAlertCtr('Remarques');
         }
-        // branch.alert.validated = editing.featureSelectedGeom.properties.status;
-        // controllers.validated.updateDisplay();
-        // branch.alert.comment = editing.featureSelectedGeom.properties.comment;
-        // controllers.comment.updateDisplay();
       }
     });
 
     view.addEventListener('remark-deleted', async () => {
       console.log('-> A remark had been deleted');
       // const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
-      const layerAlert = viewer.view.getLayerById(branch.alert.layerName);
+      const layerAlert = view.getLayerById(branch.alert.layerName);
       await layerAlert.whenReady;
       branch.alert.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
       // const featureCollection = branch.alert.featureCollection.features;
@@ -339,11 +323,6 @@ async function main() {
 
         branch.alert.selectPrevious({ centerOnFeature: true });
         // branch.alert.centerOnAlertFeature();
-
-        // branch.alert.validated = editing.featureSelectedGeom.properties.status;
-        // controllers.validated.updateDisplay();
-        // branch.alert.comment = editing.featureSelectedGeom.properties.comment;
-        // controllers.comment.updateDisplay();
       } else {
         // controllers.hide(['progress', 'id', 'validated', 'unchecked', 'remark', 'delRemark'])
         branch.alert.featureIndex = null;
@@ -352,23 +331,20 @@ async function main() {
     });
 
     view.addEventListener('alert-selected', (ev) => {
-      const layerAlert = viewer.view.getLayerById(branch.alert.layerName);
-      layerAlert.idSelected = ev.properties.id;
+      // const layerAlert = view.getLayerById(branch.alert.layerName);
+      // layerAlert.idSelected = ev.properties.id;
+      view.getLayerById(ev.layerName).idSelected = ev.id;
 
-      // console.log(layerAlert.idSelected)
+      if (ev.option.centerOnFeature) viewer.centerCameraOn(ev.featureCenter);
 
-      view.refresh([...viewer.layersToRefresh, branch.alert.layerName]);
-      viewer.layersToRefresh = [];
+      view.refresh([...view.layersToRefresh, ev.layerName]);
+      view.layersToRefresh = [];
 
-      if (ev.option.centerOnFeature) {
-        viewer.centerCameraOn(ev.featureCenter);
-      }
-
-      branch.alert.id = branch.alert.featureIndex;
-      controllers.id.updateDisplay();
-      branch.alert.validated = ev.properties.status;
-      controllers.validated.updateDisplay();
-      branch.alert.comment = ev.properties.comment;
+      // branch.alert.id = ev.featureIndex;
+      // // controllers.id.updateDisplay();
+      // branch.alert.validated = ev.properties.status;
+      // // controllers.validated.updateDisplay();
+      // branch.alert.comment = ev.properties.comment;
     });
 
     view.addEventListener('error', (ev) => {

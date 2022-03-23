@@ -1,7 +1,6 @@
 class Alert {
-  constructor(branch) {
-    this.branch = branch;
-    this.viewer = this.branch.viewer;
+  constructor(viewer) {
+    this.viewer = viewer;
     this.api = this.viewer.api;
 
     this.reset();
@@ -9,6 +8,7 @@ class Alert {
 
   reset() {
     this.layerName = '-';
+
     this.featureCollection = null;
     this.featureIndex = null;
 
@@ -16,24 +16,6 @@ class Alert {
     this.nbTotal = 0;
     this.nbValidated = 0;
     this.progress = 0;
-  }
-
-  postValue(idFeature, variable, value, option = { refresh: true }) {
-    this.api.updateAlert(idFeature, variable, value)
-      .then(() => {
-        if (option.refresh) this.viewer.view.refresh([this.layerName]);
-        this.featureCollection.features[0]
-          .geometries[this.featureIndex].properties[variable] = value;
-      })
-      .catch(() => {
-        this.viewer.message = 'PB with updating the database';
-        const err = new Error(`Feature.${variable} NOT modified`);
-        err.name = 'Database Error';
-        this.viewer.view.dispatchEvent({
-          type: 'error',
-          msg: err,
-        });
-      });
   }
 
   uncheck() {
@@ -44,47 +26,51 @@ class Alert {
       // this.postValue(featureSelectedGeom.properties.id, 'status', null);
       this.api.updateAlert(featureSelectedGeom.properties.id, 'status', null)
         .then(() => {
-          this.viewer.view.refresh([this.layerName]);
+          this.nbChecked -= 1;
+          this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
           featureSelectedGeom.properties.status = null;
+
+          this.viewer.view.refresh([this.layerName]);
         })
-        .catch((error) => {
+        .catch(() => {
           this.viewer.message = 'PB with updating the database';
+          const err = new Error('Feature.status NOT modified');
+          err.name = 'Database Error';
           this.viewer.view.dispatchEvent({
             type: 'error',
-            msg: error,
+            msg: err,
           });
         });
-      this.nbChecked -= 1;
-      this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
     }
   }
 
   setValidation(value) {
     const featureSelectedGeom = this.featureCollection.features[0].geometries[this.featureIndex];
-    if (value === true) {
-      this.nbValidated += 1;
-      if (featureSelectedGeom.properties.status === null) {
-        this.nbChecked += 1;
-      }
-    } else {
-      this.nbValidated -= 1;
-    }
-    // on le fait apres pour etre sur que le status n'a pas encore été modifié
     // this.postValue(featureSelectedGeom.properties.id, 'status', value);
     this.api.updateAlert(featureSelectedGeom.properties.id, 'status', value)
       .then(() => {
-        this.viewer.view.refresh([this.layerName]);
+        if (value === true) {
+          this.nbValidated += 1;
+          if (featureSelectedGeom.properties.status === null) {
+            this.nbChecked += 1;
+          }
+        } else {
+          this.nbValidated -= 1;
+        }
+        this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
         featureSelectedGeom.properties.status = value;
+
+        this.viewer.view.refresh([this.layerName]);
       })
-      .catch((error) => {
+      .catch(() => {
         this.viewer.message = 'PB with updating the database';
+        const err = new Error('Feature.status NOT modified');
+        err.name = 'Database Error';
         this.viewer.view.dispatchEvent({
           type: 'error',
-          msg: error,
+          msg: err,
         });
       });
-
-    this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
   }
 
   selectPrevious(option = { unviewed: false }) {
@@ -134,14 +120,10 @@ class Alert {
   }
 
   changeFeature(featureIndex, option = { centerOnFeature: false }) {
-    // const layerAlert = this.viewer.view.getLayerById(this.layerName);
-    // layerAlert.idSelected = this.featureCollection.features[0].geometries[featureIndex]
-    //   .properties.id;
     const promises = [];
     this.featureIndex = featureIndex;
     const featureSelectedGeom = this.featureCollection.features[0].geometries[this.featureIndex];
     if (featureSelectedGeom.properties.status === null) {
-      // this.postValue(featureSelectedGeom.properties.id, 'status', false, { refresh: false });
       promises.push(this.api.updateAlert(featureSelectedGeom.properties.id, 'status', false));
       this.nbChecked += 1;
       this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
@@ -151,19 +133,27 @@ class Alert {
         if (promises.length === 1) {
           featureSelectedGeom.properties.status = false;
         }
+        this.id = featureIndex;
+        this.validated = featureSelectedGeom.properties.status;
+        this.comment = featureSelectedGeom.properties.comment;
         this.viewer.view.dispatchEvent({
           type: 'alert-selected',
           option,
-          properties: featureSelectedGeom.properties,
+          layerName: this.layerName,
+          id: featureSelectedGeom.properties.id,
+          // featureIndex,
+          // properties: featureSelectedGeom.properties,
           featureCenter: featureSelectedGeom.extent.clone()
             .applyMatrix4(this.featureCollection.matrixWorld).center(),
         });
       })
-      .catch((error) => {
+      .catch(() => {
         this.viewer.message = 'PB with updating the database';
+        const err = new Error('Feature.status NOT modified');
+        err.name = 'Database Error';
         this.viewer.view.dispatchEvent({
           type: 'error',
-          msg: error,
+          msg: err,
         });
       });
   }

@@ -34,7 +34,7 @@ class Branch {
 
     this.active = {};
     this.list = {};
-    this.alert = new Alert(this);
+    this.alert = new Alert(viewer);
   }
 
   async setLayers(vectorList = null) {
@@ -45,15 +45,6 @@ class Branch {
 
     // this.layers = {
     this.layers = [
-      // Ortho: {
-      {
-        name: 'Ortho',
-        type: 'raster',
-        url: `${this.api.url}/${this.active.id}/wmts`,
-        // crs: this.view.crs,
-        opacity: 1,
-        visible: true,
-      },
       // Graph: {
       {
         name: 'Graph',
@@ -63,13 +54,13 @@ class Branch {
         opacity: 1,
         visible: true,
       },
-      // Contour: {
+      // Ortho: {
       {
-        name: 'Contour',
+        name: 'Ortho',
         type: 'raster',
         url: `${this.api.url}/${this.active.id}/wmts`,
         // crs: this.view.crs,
-        opacity: 0.5,
+        opacity: 1,
         visible: true,
       },
       // Opi: {
@@ -80,6 +71,15 @@ class Branch {
         // crs: this.view.crs,
         opacity: 0.5,
         visible: false,
+      },
+      // Contour: {
+      {
+        name: 'Contour',
+        type: 'raster',
+        url: `${this.api.url}/${this.active.id}/wmts`,
+        // crs: this.view.crs,
+        opacity: 0.5,
+        visible: true,
       },
       // Patches: {
       {
@@ -133,9 +133,8 @@ class Branch {
       this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url
         .replace(regex, `${this.api.url}/${this.active.id}/`);
     });
-    await this.setLayers();
-
     this.alert.reset();
+    await this.setLayers();
     this.view.dispatchEvent({
       type: 'branch-changed',
       name: this.active.name,

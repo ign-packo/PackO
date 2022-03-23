@@ -126,7 +126,7 @@ class API {
           } else {
             res.text().then((msg) => {
               console.log(msg);
-              reject(msg);
+              reject();
             });
           }
         });

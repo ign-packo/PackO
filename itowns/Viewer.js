@@ -32,8 +32,7 @@ else {
 `);
 
 class Viewer {
-  constructor(viewerDiv, view, menuGlobe, api) {
-    this.viewerDiv = viewerDiv;
+  constructor(view, menuGlobe, api) {
     this.view = view;
     this.api = api;
     this.menuGlobe = menuGlobe;
