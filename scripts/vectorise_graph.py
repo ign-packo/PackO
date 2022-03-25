@@ -79,9 +79,6 @@ if not os.path.exists(gpkg_dir):
 # on recupere la liste des tuiles creees
 list_tiles_graph = os.listdir(tiles_dir)
 
-QGIS_BIN=os.environ.get('QGIS_BIN')
-QGIS_SCRIPT=os.environ.get('QGIS_SCRIPT')
-
 # on vectorise chaque tuile separement
 for tile in list_tiles_graph:
     if args.verbose > 0:
@@ -91,9 +88,7 @@ for tile in list_tiles_graph:
         print('Le fichier '+gpkg_path+' existe déjà. On le supprime avant de relancer le calcul.')
         os.remove(gpkg_path)
     cmd_polygonize = (
-            '\"'
-            + os.path.join(QGIS_SCRIPT, script)
-            + '\"' + ' '
+            script + ' '
             + os.path.join(tiles_dir, tile) + ' '
             + gpkg_path
             + ' -f "GPKG" '
@@ -120,9 +115,7 @@ merge_file = chantier_name + '_merge.gpkg'
 merge_path = os.path.join(args.input, merge_file)
 all_gpkg = os.path.join(gpkg_dir, '*.gpkg')
 cmd_merge = (
-    '\"'
-    + os.path.join(QGIS_SCRIPT, script_merge)
-    + '\"'
+    script_merge
     + ' -o ' + merge_path
     + ' ' + all_gpkg
     + ' -single'
@@ -136,9 +129,7 @@ dict_cmd["projects"][1]["jobs"].append({"name": "ogrmerge", "command": cmd_merge
 dissolve_file = chantier_name + '_dissolve.gpkg'
 dissolve_path = os.path.join(args.input, dissolve_file)
 cmd_dissolve = (
-    '\"'
-    + os.path.join(QGIS_BIN, 'ogr2ogr')
-    + '\"' + ' '
+    'ogr2ogr '
     + dissolve_path + ' '
     + merge_path
     + ' -nlt PROMOTE_TO_MULTI'
@@ -150,9 +141,7 @@ if args.verbose > 0:
 dict_cmd["projects"][1]["jobs"].append({"name": "dissolve", "command": cmd_dissolve, "deps": [{"id": 0}]})
 
 cmd_make_valid = (
-    '\"'
-    + os.path.join(QGIS_BIN, 'ogr2ogr')
-    + '\"' + ' '
+    'ogr2ogr '
     + args.output.split('.')[0] + '_final.gpkg '
     + dissolve_path
     + ' -overwrite'
