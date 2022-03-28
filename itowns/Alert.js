@@ -120,42 +120,46 @@ class Alert {
   }
 
   changeFeature(featureIndex, option = { centerOnFeature: false }) {
-    const promises = [];
-    this.featureIndex = featureIndex;
-    const featureSelectedGeom = this.featureCollection.features[0].geometries[this.featureIndex];
-    if (featureSelectedGeom.properties.status === null) {
-      promises.push(this.api.updateAlert(featureSelectedGeom.properties.id, 'status', false));
-      this.nbChecked += 1;
-      this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
+    if (featureIndex !== this.featureIndex) {
+      const promises = [];
+      this.featureIndex = featureIndex;
+      const featureSelectedGeom = this.featureCollection.features[0].geometries[this.featureIndex];
+      if (featureSelectedGeom.properties.status === null) {
+        promises.push(this.api.updateAlert(featureSelectedGeom.properties.id, 'status', false));
+        this.nbChecked += 1;
+        this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
+      }
+      Promise.all(promises)
+        .then(() => {
+          if (promises.length === 1) {
+            featureSelectedGeom.properties.status = false;
+          }
+          this.id = featureIndex;
+          this.validated = featureSelectedGeom.properties.status;
+          this.comment = featureSelectedGeom.properties.comment;
+          this.viewer.view.dispatchEvent({
+            type: 'alert-selected',
+            option,
+            layerName: this.layerName,
+            id: featureSelectedGeom.properties.id,
+            // featureIndex,
+            // properties: featureSelectedGeom.properties,
+            featureCenter: featureSelectedGeom.extent.clone()
+              .applyMatrix4(this.featureCollection.matrixWorld).center(),
+          });
+        })
+        .catch(() => {
+          this.nbChecked -= 1;
+          this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
+          this.viewer.message = 'PB with updating the database';
+          const err = new Error('Feature.status NOT modified');
+          err.name = 'Database Error';
+          this.viewer.view.dispatchEvent({
+            type: 'error',
+            msg: err,
+          });
+        });
     }
-    Promise.all(promises)
-      .then(() => {
-        if (promises.length === 1) {
-          featureSelectedGeom.properties.status = false;
-        }
-        this.id = featureIndex;
-        this.validated = featureSelectedGeom.properties.status;
-        this.comment = featureSelectedGeom.properties.comment;
-        this.viewer.view.dispatchEvent({
-          type: 'alert-selected',
-          option,
-          layerName: this.layerName,
-          id: featureSelectedGeom.properties.id,
-          // featureIndex,
-          // properties: featureSelectedGeom.properties,
-          featureCenter: featureSelectedGeom.extent.clone()
-            .applyMatrix4(this.featureCollection.matrixWorld).center(),
-        });
-      })
-      .catch(() => {
-        this.viewer.message = 'PB with updating the database';
-        const err = new Error('Feature.status NOT modified');
-        err.name = 'Database Error';
-        this.viewer.view.dispatchEvent({
-          type: 'error',
-          msg: err,
-        });
-      });
   }
 
   async selectFeatureAt(mouseOrEvt) {
