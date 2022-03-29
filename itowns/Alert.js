@@ -18,6 +18,39 @@ class Alert {
     this.progress = 0;
   }
 
+  async changeLayer(layerName) {
+    if (this.layerName !== '-') this.viewer.view.getLayerById(this.layerName).isAlert = false;
+    this.viewer.view.layersToRefresh = [];
+    if (this.nbTotal > 0) this.viewer.view.layersToRefresh.push(this.layerName);
+    this.reset();
+    this.layerName = layerName;
+
+    if (layerName !== '-') {
+      const layerAlert = this.viewer.view.getLayerById(layerName);
+      layerAlert.isAlert = true;
+      this.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
+
+      const alertFC = this.featureCollection;
+      if (alertFC.features.length > 0) {
+        this.nbValidated = alertFC.features[0].geometries.filter(
+          (elem) => elem.properties.status === true,
+        ).length;
+        this.nbChecked = alertFC.features[0].geometries.filter(
+          (elem) => elem.properties.status !== null,
+        ).length;
+        this.nbTotal = alertFC.features[0].geometries.length;
+        this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
+
+        // view.layersToRefresh.push(branch.alert.layerName);
+        this.selectLastViewed({ centerOnFeature: true });
+      }
+    }
+
+    if (this.nbTotal === 0) {
+      this.viewer.view.refresh(this.viewer.view.layersToRefresh);
+    }
+  }
+
   uncheck() {
     const featureSelectedGeom = this.featureCollection.features[0].geometries[this.featureIndex];
     if (featureSelectedGeom.properties.status === true) {

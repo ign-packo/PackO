@@ -123,42 +123,8 @@ async function main() {
     controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [editing.alert, ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
     controllers.alert.onChange(async (layerName) => {
       document.activeElement.blur();
-      console.log('choosed alert vector layer: ', layerName);
-      if (branch.alert.layerName !== '-') view.getLayerById(branch.alert.layerName).isAlert = false;
-
-      view.layersToRefresh = [];
-      // if (branch.alert.nbTotal > 0 && (branch.alert.layerName !== '-' || layerName === '-')) {
-      if (branch.alert.nbTotal > 0) view.layersToRefresh.push(branch.alert.layerName);
-
-      if (layerName !== '-') {
-        branch.alert.layerName = layerName;
-        const layerAlert = view.getLayerById(branch.alert.layerName);
-        layerAlert.isAlert = true;
-        branch.alert.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
-        const alertFC = branch.alert.featureCollection;
-
-        if (alertFC.features.length > 0) {
-          branch.alert.nbValidated = alertFC.features[0].geometries.filter(
-            (elem) => elem.properties.status === true,
-          ).length;
-          branch.alert.nbChecked = alertFC.features[0].geometries.filter(
-            (elem) => elem.properties.status !== null,
-          ).length;
-          branch.alert.nbTotal = alertFC.features[0].geometries.length;
-          branch.alert.progress = `${branch.alert.nbChecked}/${branch.alert.nbTotal} (${branch.alert.nbValidated} validés)`;
-
-          // view.layersToRefresh.push(branch.alert.layerName);
-          branch.alert.selectLastViewed({ centerOnFeature: true });
-        } else {
-          branch.alert.nbTotal = 0;
-          view.refresh(view.layersToRefresh);
-        }
-      } else {
-        branch.alert.reset();
-        view.refresh(view.layersToRefresh);
-      }
-      controllers.setAlertCtr(layerName === 'Remarques' && branch.alert.featureCollection.features.length === 0 ? '-' : layerName);
-      // view.refresh(view.layersToRefresh);
+      await branch.alert.changeLayer(layerName);
+      controllers.setAlertCtr(branch.alert.nbTotal === 0 ? '-' : layerName);
     });
     branch.alert.id = '';
     controllers.id = viewer.menuGlobe.gui.add(branch.alert, 'id').name('Alert id').listen();
