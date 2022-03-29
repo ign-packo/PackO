@@ -140,7 +140,7 @@ router.delete('/vector',
   pgClient.close,
   returnMsg);
 
-router.put('/alert/:idFeature',
+router.put('/vector/:idFeature',
   pgClient.open,
   vector.getFeatures.bind({ column: 'id' }),
   param('idFeature')

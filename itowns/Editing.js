@@ -210,7 +210,7 @@ class Editing {
   //   const fc = await layerTest.source.loadData(undefined, layerTest);
 
   async postValue(idFeature, variable, value) {
-    const res = await fetch(`${this.apiUrl}/alert/${idFeature}?${variable}=${value}`,
+    const res = await fetch(`${this.apiUrl}/vector/${idFeature}?${variable}=${value}`,
       {
         method: 'PUT',
       });

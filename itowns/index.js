@@ -311,7 +311,7 @@ async function main() {
     controllers.validated.onChange(async (value) => {
       console.log('change status', value);
       const idFeature = editing.featureSelectedGeom.properties.id;
-      const res = await fetch(`${apiUrl}/alert/${idFeature}?status=${value}`,
+      const res = await fetch(`${apiUrl}/vector/${idFeature}?status=${value}`,
         {
           method: 'PUT',
         });

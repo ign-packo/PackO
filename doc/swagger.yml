@@ -521,63 +521,15 @@ paths:
         '200':
           description: OK
 
-# Alerts
-  '/alert/{idFeature}?status={status}':
+  '/{idVector}/feature':
     put:
       tags:
         - vector
-      summary: "Modification de l'attribut 'status' d'une feature donnée"
+      summary: "Ajout d'un ponctuel sur la couche {idVector}"
       description: ""
       parameters:
         - in: path
-          name: idFeature
-          description: l'identifiant de la feature à modifier
-          required: true
-          schema:
-            type: integer
-        - in: path
-          name: status
-          description: nouvelle valeur
-          required: true
-          schema:
-            type: boolean
-      responses:
-        '200':
-          description: OK
-
-  '/alert/{idFeature}?comment={comment}':
-    put:
-      deprecated: true
-      tags:
-        - vector
-      summary: "Modification de l'attribut 'comment' d'une feature donnée"
-      description: ""
-      parameters:
-        - in: path
-          name: idFeature
-          description: l'identifiant de la feature à modifier
-          required: true
-          schema:
-            type: integer
-        - in: path
-          name: comment
-          description: nouvelle valeur
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OK
-
-  '/{idLayer}/feature':
-    put:
-      tags:
-        - vector
-      summary: "Ajout d'un ponctuel sur la couche {idLayer}"
-      description: ""
-      parameters:
-        - in: path
-          name: idLayer
+          name: idVector
           description: l'identifiant de la couche à modifier
           required: true
           schema:
@@ -607,11 +559,11 @@ paths:
     delete:
       tags:
         - vector
-      summary: "Suppression d'un ponctuel sur la couche {idLayer}"
+      summary: "Suppression d'un ponctuel sur la couche {idVector}"
       description: ""
       parameters:
         - in: path
-          name: idLayer
+          name: idVector
           description: l'identifiant de la couche à modifier
           required: true
           schema:
@@ -622,6 +574,53 @@ paths:
           required: true
           schema:
             type: integer
+      responses:
+        '200':
+          description: OK
+
+# Alerts
+  '/vector/{idFeature}?status={status}':
+    put:
+      tags:
+        - vector
+      summary: "Modification de l'attribut 'status' d'une entité donnée"
+      description: ""
+      parameters:
+        - in: path
+          name: idFeature
+          description: l'identifiant de la feature à modifier
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: status
+          description: nouvelle valeur
+          required: true
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: OK
+
+  '/vector/{idFeature}?comment={comment}':
+    put:
+      tags:
+        - vector
+      summary: "Modification de l'attribut 'comment' d'une entité donnée"
+      description: ""
+      parameters:
+        - in: path
+          name: idFeature
+          description: l'identifiant de la feature à modifier
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: comment
+          description: nouvelle valeur
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: OK
