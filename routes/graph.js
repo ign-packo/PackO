@@ -15,7 +15,7 @@ router.get('/:idBranch/graph',
   [
     param('idBranch')
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
     query('x')
       .exists().withMessage(createErrMsg.missingParameter('x'))

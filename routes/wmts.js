@@ -26,7 +26,7 @@ router.get('/:idBranch/wmts',
   [
     param('idBranch')
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
     query('SERVICE')
       .exists().withMessage(createErrMsg.missingParameter('SERVICE'))

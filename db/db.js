@@ -439,6 +439,22 @@ async function finishProcess(pgClient, status, idProcess, result) {
   );
 }
 
+async function getFeatures(pgClient, idLayer) {
+  debug('    ~~getFeatures');
+  let results;
+  if (idLayer) {
+    results = await pgClient.query(
+      'SELECT id FROM features WHERE id_layer=$1 ORDER BY id ASC',
+      [idLayer],
+    );
+  } else {
+    results = await pgClient.query(
+      'SELECT id, id_layer FROM features',
+    );
+  }
+  return results.rows;
+}
+
 async function updateAlert(pgClient, idFeature, status, comment) {
   debug(`~~updateAlert (idFeature: ${idFeature})`);
   let column;
@@ -456,7 +472,7 @@ async function updateAlert(pgClient, idFeature, status, comment) {
     + 'ON CONFLICT (id_feature) DO '
     + 'UPDATE '
     + `SET ${column}=%s `
-    + 'RETURNING id as feature_ctrs_id',
+    + 'RETURNING id as id_feature_ctrs, id_feature',
     value,
     idFeature,
     value,
@@ -531,6 +547,7 @@ module.exports = {
   getProcesses,
   createProcess,
   finishProcess,
+  getFeatures,
   updateAlert,
   insertFeature,
   deleteFeature,
