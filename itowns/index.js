@@ -541,6 +541,16 @@ async function main() {
       return false;
     });
 
+    const commentDiv = controllers.comment.domElement.parentElement.parentElement;
+    commentDiv.addEventListener('mouseover', () => {
+      if (editing.comment && editing.comment.length >= 22) {
+        controllers.resize('comment', editing.comment);
+      }
+    });
+    commentDiv.addEventListener('mouseout', () => {
+      controllers.resize('comment');
+    });
+
     window.addEventListener('keydown', (ev) => {
       editing.keydown(ev);
       return false;

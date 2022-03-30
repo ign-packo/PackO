@@ -60,5 +60,28 @@ class Controller {
       this.getController(controller).__li.style.display = 'none';
     });
   }
+
+  resize(controllerName, text) {
+    if (controllerName === 'comment') {
+      if (text !== undefined) {
+        const spanDiv = this.comment.domElement.parentElement.children[0];
+        this.comment.domElement.parentElement.parentElement.style.width = `${text.length * 2}em`;
+        spanDiv.innerText = text;
+        spanDiv.style.width = 'fit-content';
+
+        const width = window.getComputedStyle(spanDiv, null).getPropertyValue('width');
+        const sizeDiv = parseFloat(width) * 1.25;
+
+        spanDiv.innerText = 'Comment';
+        spanDiv.style.width = 115.19;
+        this.comment.domElement.style.width = sizeDiv;
+        this.comment.domElement.parentElement.parentElement.style.width = sizeDiv + 115.19;
+      } else {
+        this.comment.domElement.parentElement.parentElement.style.width = '';
+        this.comment.domElement.style.width = '';
+        this.comment.domElement.parentElement.children[0].style.width = '';
+      }
+    }
+  }
 }
 export default Controller;
