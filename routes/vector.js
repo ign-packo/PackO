@@ -158,13 +158,13 @@ router.put('/vector/:idFeature',
   pgClient.close,
   returnMsg);
 
-router.put('/:idLayer/feature',
+router.put('/:idRemarksVector/feature',
   pgClient.open,
-  vector.getVectors.bind({ column: 'id' }),
-  param('idLayer')
-    .exists().withMessage(createErrMsg.missingParameter('idLayer'))
+  vector.getVectors.bind({ column: 'id', selection: { column: 'name', value: 'Remarques' } }),
+  param('idRemarksVector')
+    .exists().withMessage(createErrMsg.missingParameter('idRemarksVector'))
     .custom((value, { req }) => req.result.getVectors.includes(Number(value)))
-    .withMessage(createErrMsg.invalidParameter('idLayer')),
+    .withMessage(createErrMsg.invalidParameter('idRemarksVector')),
   query('x')
     .exists().withMessage(createErrMsg.missingParameter('x')),
   query('y')
@@ -176,13 +176,13 @@ router.put('/:idLayer/feature',
   pgClient.close,
   returnMsg);
 
-router.delete('/:idLayer/feature',
+router.delete('/:idRemarksVector/feature',
   pgClient.open,
-  vector.getVectors.bind({ column: 'id' }),
-  param('idLayer')
-    .exists().withMessage(createErrMsg.missingParameter('idLayer'))
+  vector.getVectors.bind({ column: 'id', selection: { column: 'name', value: 'Remarques' } }),
+  param('idRemarksVector')
+    .exists().withMessage(createErrMsg.missingParameter('idRemarksVector'))
     .custom((value, { req }) => req.result.getVectors.includes(Number(value)))
-    .withMessage(createErrMsg.invalidParameter('idLayer')),
+    .withMessage(createErrMsg.invalidParameter('idRemarksVector')),
   query('id')
     .exists().withMessage(createErrMsg.missingParameter('id')),
   validateParams,

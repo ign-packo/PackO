@@ -262,23 +262,25 @@ describe('Vector', () => {
             res.should.have.status(400);
             const resJson = JSON.parse(res.text);
             resJson.should.be.an('array').to.have.lengthOf(1);
-            resJson[0].should.have.property('status').equal("Le paramètre 'idLayer' n'est pas valide.");
+            resJson[0].should.have.property('status').equal("Le paramètre 'idRemarksVector' n'est pas valide.");
             done();
           });
       });
     });
     describe('should return the id on the newly created feature', () => {
       it('should succeed', (done) => {
+        const x = 0;
+        const y = 0;
         chai.request(app)
           .put(`/${idRemarksVector}/feature`)
-          .query({ x: 0, y: 0, comment: 'test' })
+          .query({ x, y, comment: 'test' })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
-            // Faire plus proprement
-            setIdFeature(resJson.split("'")[1]);
-            resJson.should.equal(`remarque '${idFeature}' ajoutée`);
+            resJson.should.have.property('idFeature');
+            setIdFeature(resJson.idFeature);
+            resJson.should.have.property('msg').equal(`un point a été ajouté aux coordonnées ${x},${y} sur la couche 'Remarques' (id : ${idRemarksVector})`);
             done();
           });
       });
@@ -342,7 +344,7 @@ describe('Vector', () => {
             res.should.have.status(400);
             const resJson = JSON.parse(res.text);
             resJson.should.be.an('array').to.have.lengthOf(1);
-            resJson[0].should.have.property('status').equal("Le paramètre 'idLayer' n'est pas valide.");
+            resJson[0].should.have.property('status').equal("Le paramètre 'idRemarksVector' n'est pas valide.");
             done();
           });
       });
@@ -356,7 +358,8 @@ describe('Vector', () => {
             should.not.exist(err);
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
-            resJson.should.equal(`remarque '${idFeature}' supprimée`);
+            resJson.should.have.property('idLayer');
+            resJson.should.have.property('msg').equal(`le point '${idFeature}' a été supprimé de la couche 'Remarques' (id : ${resJson.idLayer})`);
             done();
           });
       });
