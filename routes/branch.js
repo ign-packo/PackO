@@ -45,7 +45,7 @@ router.delete('/branch',
   [
     query('idBranch')
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
   ],
   validateParams,
@@ -61,11 +61,11 @@ router.post('/:idBranch/rebase',
       .exists().withMessage(createErrMsg.missingParameter('name')),
     query('idBase')
       .exists().withMessage(createErrMsg.missingParameter('idBase'))
-      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBase')),
     param('idBranch')
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
   ],
   validateParams,

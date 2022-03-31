@@ -4,6 +4,7 @@
 
 -- Dumped from database version 13.2
 -- Dumped by pg_dump version 13.1
+-- edited by F_Toromanoff
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -165,12 +166,32 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: create_remarks_layer(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.create_remarks_layer() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+	INSERT INTO layers (name, crs, id_branch, id_style)
+		SELECT 'Remarques', Caches.crs, NEW.id, 0
+			FROM Caches
+			WHERE Caches.id = NEW.id_cache;
+	RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.create_remarks_layer() OWNER TO postgres;
+
+--
 -- Name: auto_num_layers(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
 CREATE FUNCTION public.auto_num_layers() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$BEGIN
+    AS $$
+BEGIN
 	NEW.num = (
 		SELECT  
 	CASE WHEN max(num) IS NULL THEN 1
@@ -181,7 +202,8 @@ CREATE FUNCTION public.auto_num_layers() RETURNS trigger
 		id_branch=NEW.id_branch 
 	);
 	RETURN NEW;
-END;$$;
+END;
+$$;
 
 
 ALTER FUNCTION public.auto_num_layers() OWNER TO postgres;
@@ -220,6 +242,7 @@ ALTER TABLE public.branches ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 CREATE TABLE public.caches (
     id integer NOT NULL,
     name character varying NOT NULL,
+    crs character varying NOT NULL,
     v_packo character varying,
     date date,
     path character varying NOT NULL
@@ -611,6 +634,13 @@ CREATE TRIGGER insert_newcache AFTER INSERT ON public.caches FOR EACH ROW EXECUT
 
 
 --
+-- Name: branches insert_newbranch; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER insert_newbranch AFTER INSERT ON public.branches FOR EACH ROW EXECUTE FUNCTION public.create_remarks_layer();
+
+
+--
 -- Name: patches on_patch_activation; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -707,3 +737,40 @@ ALTER TABLE ONLY public.feature_ctrs
 -- PostgreSQL database dump complete
 --
 
+
+--
+-- Name: features_json; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.features_json AS
+ SELECT l.id AS id_layer,
+    COALESCE(feature_json.features, '[]'::jsonb) AS features
+   FROM (public.layers l
+     LEFT JOIN ( SELECT t.id_layer,
+            jsonb_agg(jsonb_build_object('type', 'Feature', 'geometry', (public.st_asgeojson(t.geom,9,0))::jsonb, 'properties', ((to_jsonb(t.*) - 'id_layer'::text) - 'geom'::text))) AS features
+           FROM ( SELECT t1.id_layer,
+                    t1.id,
+                    t1.geom,
+                    t1.properties,
+                    t1.status,
+                    t1.comment
+                   FROM ( SELECT f.id_layer,
+                            f.id,
+                            f.geom,
+                            f.properties,
+                            fc.status,
+                            fc.comment
+                           FROM (public.features f
+                             LEFT JOIN public.feature_ctrs fc ON ((f.id = fc.id_feature)))
+                          ORDER BY f.id) t1) t
+          GROUP BY t.id_layer) feature_json ON ((l.id = feature_json.id_layer)));
+
+
+ALTER TABLE public.features_json OWNER TO postgres;
+
+
+--
+-- Import données base Packo
+--
+
+INSERT INTO public.styles (name,opacity,visibility,style_itowns) VALUES ('Remarques',1,true,'{"fill": {"color": "#ee6d03", "opacity": 0.7}, "point": {"color": "#ee6d03", "radius": 5}, "stroke": {"color": "#ee6d03"}}') returning id;

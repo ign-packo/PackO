@@ -409,6 +409,29 @@ paths:
           description: OK
 
   '/{idBranch}/vector':
+    get:
+      tags:
+        - vector
+      summary: "Récuperation d'un vecteur annexe à partir de son nom"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: name
+          description: le nom de la couche vecteur
+          required: true
+          schema:
+            type: string
+          example: Remarques
+      responses:
+        '200':
+          description: OK
+  
     post:
       tags:
         - vector
@@ -469,7 +492,7 @@ paths:
     get:
       tags:
         - vector
-      summary: "Récupération d'un vecteur annexe donné"
+      summary: "Récupération d'un vecteur annexe donné à partir de son identifiant"
       description: ""
       parameters:
         - in: query
@@ -498,12 +521,69 @@ paths:
         '200':
           description: OK
 
-# Alerts
-  '/alert/{idFeature}?status={status}':
+  '/{idVector}/feature':
     put:
       tags:
         - vector
-      summary: "Modification de l'attribut 'status' d'une feature donnée"
+      summary: "Ajout d'un ponctuel sur la couche {idVector}"
+      description: ""
+      parameters:
+        - in: path
+          name: idVector
+          description: l'identifiant de la couche à modifier
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: x
+          description: coordonnées x
+          required: true
+          schema:
+            type: number
+        - in: query
+          name: y
+          description: coordonnées y
+          required: true
+          schema:
+            type: number
+        - in: query
+          name: comment
+          description: commentaire
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+
+    delete:
+      tags:
+        - vector
+      summary: "Suppression d'un ponctuel sur la couche {idVector}"
+      description: ""
+      parameters:
+        - in: path
+          name: idVector
+          description: l'identifiant de la couche à modifier
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: id
+          description: id de la feature à supprimer
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+
+# Alerts
+  '/vector/{idFeature}?status={status}':
+    put:
+      tags:
+        - vector
+      summary: "Modification de l'attribut 'status' d'une entité donnée"
       description: ""
       parameters:
         - in: path
@@ -522,11 +602,11 @@ paths:
         '200':
           description: OK
 
-  '/alert/{idFeature}?comment={comment}':
+  '/vector/{idFeature}?comment={comment}':
     put:
       tags:
         - vector
-      summary: "Modification de l'attribut 'comment' d'une feature donnée"
+      summary: "Modification de l'attribut 'comment' d'une entité donnée"
       description: ""
       parameters:
         - in: path

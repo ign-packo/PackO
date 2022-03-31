@@ -43,7 +43,7 @@ router.get('/:idBranch/patches',
   [
     param('idBranch')
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
   ],
   validateParams,
@@ -59,7 +59,7 @@ router.post('/:idBranch/patch',
   [
     param('idBranch')
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
     ...geoJsonAPatcher,
   ],
@@ -76,7 +76,7 @@ router.put('/:idBranch/patch/undo',
   [
     param('idBranch')
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
   ],
   validateParams,
@@ -92,7 +92,7 @@ router.put('/:idBranch/patch/redo',
   [
     param('idBranch')
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
   ],
   validateParams,
@@ -108,7 +108,7 @@ router.put('/:idBranch/patches/clear',
   [
     param('idBranch')
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
   ],
   validateParams,

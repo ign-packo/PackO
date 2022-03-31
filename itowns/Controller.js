@@ -41,7 +41,7 @@ class Controller {
     delete this.editing.alertLayerName;
     delete this.viewer.alertLayerName;
     this.alert.__select.options.selectedIndex = 0;
-    this.hide(['progress', 'id', 'validated', 'unchecked', 'comment']);
+    this.hide(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
     if (this.viewer.view.getLayerById('selectedFeature')) {
       this.viewer.view.removeLayer('selectedFeature');
     }

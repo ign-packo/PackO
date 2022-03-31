@@ -24,11 +24,11 @@ async function getCaches(pgClient) {
   return results.rows;
 }
 
-async function insertCache(pgClient, name, path) {
-  debug(`    ~~insertCache (name: ${name}, path: ${path})`);
+async function insertCache(pgClient, name, path, crs) {
+  debug(`    ~~insertCache (name: ${name}, path: ${path}, crs: ${crs})`);
   const results = await pgClient.query(
-    'INSERT INTO caches (name, path) values ($1, $2) RETURNING id, name, path',
-    [name, path],
+    'INSERT INTO caches (name, path, crs) values ($1, $2, $3) RETURNING id, name, path',
+    [name, path, crs],
   );
   if (results.rowCount === 1) return results.rows[0];
   throw new Error('failed to insert');
@@ -288,34 +288,29 @@ async function getLayers(pgClient, idBranch) {
 }
 
 async function getLayer(pgClient, idVector) {
-  debug(`    ~~getLayer (idVector: ${idVector})`);
-  // const sql = format(
-  //   "SELECT json_build_object("
-  //   + "'type', 'FeatureCollection', 'features', json_agg(ST_AsGeoJSON(t.*)::json)"
-  //   + ") as geojson "
-  //   + 'FROM'
-  //   + '(SELECT f.* FROM features f'
-  //   + ' WHERE f.id_layer=%s ORDER BY f.id) as t',
-  //   idVector,
-  // );
+  if (typeof idVector !== 'object') {
+    debug(`    ~~getLayer (idVector: ${idVector})`);
+  } else {
+    debug(`    ~~getLayer (idBranch: ${idVector.idBranch}, name: ${idVector.name})`);
+  }
   const sql = format(
-    "SELECT json_build_object('type', 'FeatureCollection', 'features', json_agg(ST_AsGeoJSON(t.*)::json)) as geojson "
-    + 'FROM'
-    + ' (SELECT f.*, fc.status, fc.comment FROM features f'
-    + ' LEFT JOIN feature_ctrs fc ON f.id=fc.id_feature'
-    + ' WHERE f.id_layer=%s ORDER BY f.id) as t',
-    idVector,
+    "SELECT json_build_object('type', 'FeatureCollection', 'name', name, 'crs', json_build_object('type', substring(crs from '(.+):.'), 'properties', json_build_object('code', substring(crs from '.:(.+)'))), 'features', features) as geojson "
+    + 'FROM features_json f, layers l'
+    + ' WHERE f.id_layer=l.id'
+    + ' AND %s',
+    typeof idVector !== 'object' ? `f.id_layer=${idVector}` : `l.id_branch=${idVector.idBranch} AND l.name='${idVector.name}'`,
   );
+
   debug('      ', sql);
 
   const results = await pgClient.query(sql);
 
-  // // cas ou il n'y a pas de patches actifs en base
-  // if (results.rows[0].json_build_object.features === null) {
-  //   results.rows[0].json_build_object.features = [];
-  // }
   if (results.rowCount !== 1) {
     throw new Error(`layer ${idVector} non trouvé`);
+  }
+  // cas ou il n'y a pas de feature en base
+  if (results.rows[0].geojson.features === null) {
+    results.rows[0].geojson.features = [];
   }
   return results.rows[0].geojson;
 }
@@ -357,16 +352,34 @@ async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
 
   const values = [];
   geojson.features.forEach((feature) => {
-    values.push(`ST_SetSRID(ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}'), ${metadonnees.crs.split(':')[1]}), '${JSON.stringify(feature.properties)}', '${idNewLayer}'`);
+    const properties = JSON.parse(JSON.stringify(feature.properties));
+    // delete properties.comment;
+    values.push(`ST_SetSRID(ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}'), ${metadonnees.crs.split(':')[1]}), '${JSON.stringify(properties)}', '${idNewLayer}'`);
   });
 
   const sqlInsertFeatures = format('INSERT INTO features (geom, properties, id_layer) '
   + 'VALUES (%s) '
-  + 'RETURNING id as id_feature',
+  + 'RETURNING id as id_feature, properties',
   values.join('),('));
 
   debug('      ', sqlInsertFeatures);
   results = await pgClient.query(sqlInsertFeatures);
+
+  if (Object.keys(geojson.features[0].properties).includes('comment')) {
+    const temp = results.rows.map((feature) => ({
+      id_feature: feature.id_feature,
+      comment: JSON.parse(feature.properties).comment,
+    }));
+
+    const sqlInsertFeaturesCtrs = format('INSERT INTO feature_ctrs (comment, id_feature) '
+    + 'SELECT * '
+    + "FROM json_to_recordset('[%s]') as tmp_feature_ctrs(comment text, id_feature int) "
+    + 'RETURNING id as id_featurectr',
+    temp);
+
+    debug('      ', sqlInsertFeaturesCtrs);
+    await pgClient.query(sqlInsertFeaturesCtrs);
+  }
 
   return {
     id: idNewLayer,
@@ -439,6 +452,22 @@ async function finishProcess(pgClient, status, idProcess, result) {
   );
 }
 
+async function getFeatures(pgClient, idLayer) {
+  debug('    ~~getFeatures');
+  let results;
+  if (idLayer) {
+    results = await pgClient.query(
+      'SELECT id FROM features WHERE id_layer=$1 ORDER BY id ASC',
+      [idLayer],
+    );
+  } else {
+    results = await pgClient.query(
+      'SELECT id, id_layer FROM features',
+    );
+  }
+  return results.rows;
+}
+
 async function updateAlert(pgClient, idFeature, status, comment) {
   debug(`~~updateAlert (idFeature: ${idFeature})`);
   let column;
@@ -456,13 +485,47 @@ async function updateAlert(pgClient, idFeature, status, comment) {
     + 'ON CONFLICT (id_feature) DO '
     + 'UPDATE '
     + `SET ${column}=%s `
-    + 'RETURNING id as feature_ctrs_id',
+    + 'RETURNING id as id_feature_ctrs, id_feature',
     value,
     idFeature,
     value,
   );
   debug(sqlInsertFeatureCtr);
   const results = await pgClient.query(sqlInsertFeatureCtr);
+
+  return results.rows[0];
+}
+
+async function insertFeature(pgClient, idLayer, geometry) {
+  debug(`~~insertFeature (idLayer: ${idLayer})`);
+
+  const sqlInsertFeature = format(
+    'INSERT INTO features (geom, id_layer) '
+      + "SELECT ST_SetSRID(ST_GeomFromGeoJSON('%s'), substring(layers.crs from '.:(.+)')::int), layers.id "
+      + 'FROM layers WHERE layers.id=%s '
+      + 'RETURNING id as id_feature',
+    JSON.stringify(geometry),
+    idLayer,
+  );
+
+  debug('      ', sqlInsertFeature);
+  const results = await pgClient.query(sqlInsertFeature);
+
+  return results.rows[0];
+}
+
+async function deleteFeature(pgClient, idFeature) {
+  debug(`~~deleteFeature (idFeature: ${idFeature})`);
+
+  const sqlDeleteFeature = format(
+    'DELETE FROM features '
+      + 'WHERE id = %s '
+      + 'RETURNING id as id_feature',
+    idFeature,
+  );
+
+  debug('      ', sqlDeleteFeature);
+  const results = await pgClient.query(sqlDeleteFeature);
 
   return results.rows[0];
 }
@@ -497,5 +560,8 @@ module.exports = {
   getProcesses,
   createProcess,
   finishProcess,
+  getFeatures,
   updateAlert,
+  insertFeature,
+  deleteFeature,
 };

@@ -60,8 +60,8 @@ router.get('/:idBranch/vectors',
   branch.getBranches.bind({ column: 'id' }),
   [
     param('idBranch')
-      // .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
   ],
   validateParams,
@@ -69,13 +69,19 @@ router.get('/:idBranch/vectors',
   pgClient.close,
   returnMsg);
 
-router.get('/vector',
+router.get('/:idBranch/vector',
   pgClient.open,
-  vector.getVectors.bind({ column: 'id' }),
-  query('idVector')
-    .exists().withMessage(createErrMsg.missingParameter('idVector'))
-    .custom((value, { req }) => req.result.json.includes(Number(value)))
-    .withMessage(createErrMsg.invalidParameter('idVector')),
+  branch.getBranches.bind({ column: 'id' }),
+  param('idBranch')
+    .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+    .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
+    .withMessage(createErrMsg.invalidParameter('idBranch')),
+  validateParams,
+  vector.getVectors.bind({ column: 'name' }),
+  query('name')
+    .exists().withMessage(createErrMsg.missingParameter('name'))
+    .custom((value, { req }) => req.result.getVectors.includes(value))
+    .withMessage(createErrMsg.invalidParameter('name')),
   validateParams,
   vector.getVector,
   pgClient.close,
@@ -86,8 +92,8 @@ router.post('/:idBranch/vector', encapBody.bind({ keyName: 'json' }),
   branch.getBranches.bind({ column: 'id' }),
   [
     param('idBranch')
-      // .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .custom((value, { req }) => req.result.json.includes(Number(value)))
+      .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
     body('json')
       .exists().withMessage(createErrMsg.missingBody),
@@ -110,25 +116,37 @@ router.post('/:idBranch/vector', encapBody.bind({ keyName: 'json' }),
   pgClient.close,
   returnMsg);
 
+router.get('/vector',
+  pgClient.open,
+  vector.getVectors.bind({ column: 'id' }),
+  query('idVector')
+    .exists().withMessage(createErrMsg.missingParameter('idVector'))
+    .custom((value, { req }) => req.result.getVectors.includes(Number(value)))
+    .withMessage(createErrMsg.invalidParameter('idVector')),
+  validateParams,
+  vector.getVector,
+  pgClient.close,
+  returnMsg);
+
 router.delete('/vector',
   pgClient.open,
   vector.getVectors.bind({ column: 'id' }),
   query('idVector')
     .exists().withMessage(createErrMsg.missingParameter('idVector'))
-    .custom((value, { req }) => req.result.json.includes(Number(value)))
+    .custom((value, { req }) => req.result.getVectors.includes(Number(value)))
     .withMessage(createErrMsg.invalidParameter('idVector')),
   validateParams,
   vector.deleteVector,
   pgClient.close,
   returnMsg);
 
-router.put('/alert/:idFeature',
+router.put('/vector/:idFeature',
   pgClient.open,
-  branch.getBranches.bind({ column: 'id' }),
-  param('idFeature'),
-  // .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-  // .custom((value, { req }) => req.result.json.includes(Number(value)))
-  // .withMessage(createErrMsg.invalidParameter('idBranch')),
+  vector.getFeatures.bind({ column: 'id' }),
+  param('idFeature')
+    .exists().withMessage(createErrMsg.missingParameter('idFeature'))
+    .custom((value, { req }) => req.result.getFeatures.includes(Number(value)))
+    .withMessage(createErrMsg.invalidParameter('idFeature')),
   oneOf([
     query('status')
       .exists().withMessage(createErrMsg.missingParameter('status')),
@@ -137,6 +155,38 @@ router.put('/alert/:idFeature',
   ]),
   validateParams,
   vector.updateAlert,
+  pgClient.close,
+  returnMsg);
+
+router.put('/:idLayer/feature',
+  pgClient.open,
+  vector.getVectors.bind({ column: 'id' }),
+  param('idLayer')
+    .exists().withMessage(createErrMsg.missingParameter('idLayer'))
+    .custom((value, { req }) => req.result.getVectors.includes(Number(value)))
+    .withMessage(createErrMsg.invalidParameter('idLayer')),
+  query('x')
+    .exists().withMessage(createErrMsg.missingParameter('x')),
+  query('y')
+    .exists().withMessage(createErrMsg.missingParameter('y')),
+  query('comment')
+    .exists().withMessage(createErrMsg.missingParameter('comment')),
+  validateParams,
+  vector.addRemark,
+  pgClient.close,
+  returnMsg);
+
+router.delete('/:idLayer/feature',
+  pgClient.open,
+  vector.getVectors.bind({ column: 'id' }),
+  param('idLayer')
+    .exists().withMessage(createErrMsg.missingParameter('idLayer'))
+    .custom((value, { req }) => req.result.getVectors.includes(Number(value)))
+    .withMessage(createErrMsg.invalidParameter('idLayer')),
+  query('id')
+    .exists().withMessage(createErrMsg.missingParameter('id')),
+  validateParams,
+  vector.delRemark,
   pgClient.close,
   returnMsg);
 

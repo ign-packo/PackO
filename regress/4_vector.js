@@ -29,6 +29,16 @@ function setIdVector(id) {
   idVector = id;
 }
 
+let idRemarksVector = null;
+function setIdRemarksVector(id) {
+  idRemarksVector = id;
+}
+
+let idFeature = null;
+function setIdFeature(id) {
+  idFeature = id;
+}
+
 describe('Vector', () => {
   after((done) => {
     app.server.close();
@@ -78,7 +88,7 @@ describe('Vector', () => {
 
   describe('GET /{idBranch}/vectors', () => {
     describe('on the new created branch', () => {
-      it('should return an empty list of vectors', (done) => {
+      it("should return an empty list of vectors but 'Remarques'", (done) => {
         chai.request(app)
           .get(`/${idBranch}/vectors`)
           .end((err, res) => {
@@ -86,6 +96,9 @@ describe('Vector', () => {
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
             resJson.should.be.a('array');
+            resJson.should.have.length(1);
+            resJson[0].should.have.property('name').equal('Remarques');
+            setIdRemarksVector(resJson[0].id);
             done();
           });
       });
@@ -132,7 +145,7 @@ describe('Vector', () => {
             const resJson = JSON.parse(res.text);
             resJson.should.have.property('id');
             setIdVector(resJson.id);
-            resJson.should.have.property('msg').equal("vector 'vector_example' (1 feature(s)) ajouté.");
+            resJson.should.have.property('msg').equal(`vector '${vectorName}' (1 feature(s)) ajouté.`);
             done();
           });
       });
@@ -152,9 +165,10 @@ describe('Vector', () => {
       });
     });
   });
+
   describe('GET/vector', () => {
     describe('idVector = id New Vector', () => {
-      it('should return an empty list of vectors', (done) => {
+      it('should return a geojson', (done) => {
         chai.request(app)
           .get('/vector')
           .query({ idVector })
@@ -164,6 +178,7 @@ describe('Vector', () => {
             const resJson = JSON.parse(res.text);
             GJV.isGeoJSONObject(resJson).should.be.a('boolean').equal(true);
             GJV.isFeatureCollection(resJson).should.be.a('boolean').equal(true);
+            resJson.should.have.property('name').equal(vectorName);
             done();
           });
       });
@@ -184,6 +199,26 @@ describe('Vector', () => {
       });
     });
   });
+
+  describe('GET/{idBranch}/vector', () => {
+    describe('idVector = id New Vector', () => {
+      it('should return a geojson', (done) => {
+        chai.request(app)
+          .get(`/${idBranch}/vector`)
+          .query({ name: vectorName })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(200);
+            const resJson = JSON.parse(res.text);
+            GJV.isGeoJSONObject(resJson).should.be.a('boolean').equal(true);
+            GJV.isFeatureCollection(resJson).should.be.a('boolean').equal(true);
+            resJson.should.have.property('name').equal(vectorName);
+            done();
+          });
+      });
+    });
+  });
+
   describe('DELETE/vector', () => {
     describe('Vector valid: vector_example', () => {
       it('should succeed', (done) => {
@@ -210,6 +245,118 @@ describe('Vector', () => {
             const resJson = JSON.parse(res.text);
             resJson.should.be.an('array').to.have.lengthOf(1);
             resJson[0].should.have.property('status').equal("Le paramètre 'idVector' n'est pas valide.");
+            done();
+          });
+      });
+    });
+  });
+
+  describe('PUT/{idRemarksVector}/feature', () => {
+    describe('idRemarksVector non valid', () => {
+      it('should fail', (done) => {
+        chai.request(app)
+          .put('/99999/feature')
+          .query({ x: 0, y: 0, comment: 'test' })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'idLayer' n'est pas valide.");
+            done();
+          });
+      });
+    });
+    describe('should return the id on the newly created feature', () => {
+      it('should succeed', (done) => {
+        chai.request(app)
+          .put(`/${idRemarksVector}/feature`)
+          .query({ x: 0, y: 0, comment: 'test' })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(200);
+            const resJson = JSON.parse(res.text);
+            // Faire plus proprement
+            setIdFeature(resJson.split("'")[1]);
+            resJson.should.equal(`remarque '${idFeature}' ajoutée`);
+            done();
+          });
+      });
+    });
+  });
+
+  describe('PUT/vector/{idFeature}', () => {
+    describe('idFeature non valid', () => {
+      it('should fail', (done) => {
+        chai.request(app)
+          .put('/vector/99999')
+          .query({ status: 'true' })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'idFeature' n'est pas valide.");
+            done();
+          });
+      });
+    });
+    describe('should change the status of the feature', () => {
+      it('should succeed', (done) => {
+        chai.request(app)
+          .put(`/vector/${idFeature}`)
+          .query({ status: 'true' })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(200);
+            const resJson = JSON.parse(res.text);
+            resJson.should.equal(`feature '${idFeature}' mis à jour`);
+            done();
+          });
+      });
+    });
+    describe('should change the comment of the feature', () => {
+      it('should succeed', (done) => {
+        chai.request(app)
+          .put(`/vector/${idFeature}`)
+          .query({ comment: 'test modified' })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(200);
+            const resJson = JSON.parse(res.text);
+            resJson.should.equal(`feature '${idFeature}' mis à jour`);
+            done();
+          });
+      });
+    });
+  });
+
+  describe('DELETE/{idRemarksVector}/feature', () => {
+    describe('idRemarksVector non valid', () => {
+      it('should fail', (done) => {
+        chai.request(app)
+          .delete('/99999/feature')
+          .query({ id: idFeature })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'idLayer' n'est pas valide.");
+            done();
+          });
+      });
+    });
+    describe("on 'Remarques' layer", () => {
+      it('should succeed', (done) => {
+        chai.request(app)
+          .delete(`/${idRemarksVector}/feature`)
+          .query({ id: idFeature })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(200);
+            const resJson = JSON.parse(res.text);
+            resJson.should.equal(`remarque '${idFeature}' supprimée`);
             done();
           });
       });
