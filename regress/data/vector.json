@@ -33,7 +33,8 @@
               175,
               143
             ],
-            "cliche": "19FD5606Ax00020_16371"
+            "cliche": "19FD5606Ax00020_16371",
+            "comment": "test_regress"
           },
           "geometry": {
             "type": "Polygon",
