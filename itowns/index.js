@@ -102,7 +102,7 @@ async function main() {
     const branch = new Branch(viewer, activeCache.id);
     const editing = new Editing(branch);
 
-    const controllers = new Controller(viewer.menuGlobe, editing);
+    const controllers = new Controller(viewer.menuGlobe);
 
     // const branch = new Branch(apiUrl, viewer);
     branch.list = await getBranches;
@@ -148,7 +148,7 @@ async function main() {
     controllers.undo = viewer.menuGlobe.gui.add(editing, 'undo');
     controllers.redo = viewer.menuGlobe.gui.add(editing, 'redo');
     controllers.clear = viewer.menuGlobe.gui.add(editing, 'clear');
-    controllers.hide(['polygon', 'undo', 'redo', 'clear']);
+    // controllers.hide(['polygon', 'undo', 'redo', 'clear']);
 
     // Message
     viewer.message = '';
@@ -158,13 +158,13 @@ async function main() {
     // Couche d'alertes
     editing.alert = ' -';
     controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [' -', ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
-    controllers.alert.onChange(async (name) => {
+    controllers.alert.onChange(async (layerName) => {
       document.activeElement.blur();
-      console.log('choosed alert vector layer: ', name);
+      console.log('choosed alert vector layer: ', layerName);
 
-      branch.setAlertLayer(name);
+      branch.setAlertLayer(layerName);
 
-      if (name !== ' -') {
+      if (layerName !== ' -') {
         // editing.alertLayerName = name;
         // viewer.alertLayerName = name;
         // branch.alert.layerName = name;
@@ -202,23 +202,17 @@ async function main() {
           editing.centerOnAlertFeature();
           branch.alert.validated = editing.featureSelectedGeom.properties.status;
           controllers.validated.updateDisplay();
-          // viewer.remark = editing.featureSelectedGeom.properties.comment;
-          // controllers.remark.updateDisplay();
-
           branch.alert.comment = editing.featureSelectedGeom.properties.comment;
-          // controllers.comment.updateDisplay();
-
-          controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'comment']);
-          if (name === 'Remarques') {
-            controllers.setVisible(['delRemark']);
-          } else {
-            controllers.hide(['delRemark']);
-          }
+          // controllers.remark.updateDisplay();
         }
       } else {
-        controllers.refreshAlert();
+        // controllers.refreshAlertCtr();
+        if (viewer.view.getLayerById('selectedFeature')) {
+          viewer.view.removeLayer('selectedFeature');
+        }
         branch.resetAlert();
       }
+      controllers.setAlertCtr(layerName === 'Remarques' && branch.alert.featureCollection.features.length === 0 ? ' -' : layerName);
       // branch.setAlert(name);
       viewer.refresh(branch.layers);
     });
@@ -242,15 +236,15 @@ async function main() {
         controllers.id.updateDisplay();
       }
     });
-    controllers.hide('id');
+    // controllers.hide('id');
 
     branch.alert.progress = '';
     controllers.progress = viewer.menuGlobe.gui.add(branch.alert, 'progress').name('Progress');
     controllers.progress.listen().domElement.parentElement.style.pointerEvents = 'none';
-    controllers.hide('progress');
+    // controllers.hide('progress');
 
     controllers.unchecked = viewer.menuGlobe.gui.add(editing, 'unchecked').name('Mark as unchecked');
-    controllers.hide('unchecked');
+    // controllers.hide('unchecked');
 
     branch.alert.validated = false;
     controllers.validated = viewer.menuGlobe.gui.add(branch.alert, 'validated').name('Validated');
@@ -269,21 +263,20 @@ async function main() {
       }
       branch.alert.progress = `${branch.alert.nbChecked}/${branch.alert.nbTotal} (${branch.alert.nbValidated} validés)`;
     });
-    controllers.hide('validated');
+    // controllers.hide('validated');
 
-    // viewer.remark = '';
-    // controllers.remark = viewer.menuGlobe.gui.add(viewer, 'remark').name('Remark');
-    // controllers.remark.listen().domElement.parentElement.style.pointerEvents = 'none';
-    // controllers.hide('remark');
     branch.alert.comment = '';
-    controllers.comment = viewer.menuGlobe.gui.add(branch.alert, 'comment').name('comment');
+    controllers.comment = viewer.menuGlobe.gui.add(branch.alert, 'comment').name('Comment');
     controllers.comment.listen().domElement.parentElement.style.pointerEvents = 'none';
-    controllers.hide('comment');
+    // controllers.hide('comment');
 
     // Remarques
     controllers.addRemark = viewer.menuGlobe.gui.add(editing, 'addRemark').name('Add remark');
     controllers.delRemark = viewer.menuGlobe.gui.add(editing, 'delRemark').name('Delete remark');
-    controllers.hide('delRemark');
+    // controllers.hide('delRemark');
+
+    controllers.setPatchCtr('orig');
+    controllers.setAlertCtr(' -');
 
     // editing controllers
     editing.controllers = {
@@ -376,9 +369,13 @@ async function main() {
 
     view.addEventListener('branch-changed', (newBranch) => {
       console.log(`branche changed to '${newBranch.name}'`);
-      controllers.setEditingController(newBranch.name);
+      controllers.setPatchCtr(newBranch.name);
       controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)], 0);
-      controllers.refreshAlert();
+      // controllers.refreshAlertCtr();
+      controllers.setAlertCtr(' -');
+      if (viewer.view.getLayerById('selectedFeature')) {
+        viewer.view.removeLayer('selectedFeature');
+      }
       // branch.resetAlert();
       viewer.refresh(branch.layers, true);
     });
@@ -406,15 +403,14 @@ async function main() {
         if (branch.alert.nbTotal === 1) {
           branch.alert.featureIndex = 0;
           editing.centerOnAlertFeature();
+          controllers.setAlertCtr('Remarques');
         }
         branch.alert.validated = editing.featureSelectedGeom.properties.status;
         controllers.validated.updateDisplay();
-        // viewer.remark = editing.featureSelectedGeom.properties.comment;
-        // controllers.remark.updateDisplay();
         branch.alert.comment = editing.featureSelectedGeom.properties.comment;
         // controllers.comment.updateDisplay();
 
-        controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
+        // controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark'])
       }
     });
 
@@ -449,8 +445,9 @@ async function main() {
         branch.alert.comment = editing.featureSelectedGeom.properties.comment;
         // controllers.comment.updateDisplay();
       } else {
-        controllers.hide(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
-        controllers.viewer.view.removeLayer('selectedFeature');
+        // controllers.hide(['progress', 'id', 'validated', 'unchecked', 'remark', 'delRemark'])
+        controllers.setAlertCtr(' -');
+        viewer.view.removeLayer('selectedFeature');
       }
     });
 
