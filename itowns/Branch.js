@@ -1,6 +1,26 @@
 import * as itowns from 'itowns';
 import Alert from './Alert';
 
+function readCRS(json) {
+  if (json.crs) {
+    if (json.crs.type.toLowerCase() === 'epsg') {
+      return `EPSG:${json.crs.properties.code}`;
+    } if (json.crs.type.toLowerCase() === 'name') {
+      const epsgIdx = json.crs.properties.name.toLowerCase().indexOf('epsg:');
+      if (epsgIdx >= 0) {
+        // authority:version:code => EPSG:[...]:code
+        const codeStart = json.crs.properties.name.indexOf(':', epsgIdx + 5);
+        if (codeStart > 0) {
+          return `EPSG:${json.crs.properties.name.substr(codeStart + 1)}`;
+        }
+      }
+    }
+    throw new Error(`Unsupported CRS type '${json.crs}'`);
+  }
+  // assume default crs
+  return 'EPSG:4326';
+}
+
 class Branch {
   constructor(viewer, idCache) {
     // this.apiUrl = apiUrl;
@@ -143,6 +163,10 @@ class Branch {
     return new Promise((resolve, reject) => {
       this.api.deleteVector(name, id)
         .then(() => {
+          const layer = this.vectorList.filter((elem) => elem.id === id)[0];
+          const index = this.vectorList.indexOf(layer);
+          this.vectorList.splice(index, 1);
+          delete this.layers[name];
           resolve();
         })
         .catch(() => {
@@ -156,8 +180,16 @@ class Branch {
 
   saveLayer(name, geojson, style) {
     return new Promise((resolve, reject) => {
-      this.api.saveVector(this.active.id, name, geojson, style)
-        .then(() => {
+      const crs = readCRS(geojson);
+      this.api.saveVector(this.active.id, name, geojson, crs, style)
+        .then((id) => {
+          this.vectorList.push({
+            name,
+            id,
+            style_itowns: JSON.stringify(style),
+            crs,
+          });
+          this.setLayers();
           resolve();
         })
         .catch(() => {

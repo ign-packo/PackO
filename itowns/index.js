@@ -316,14 +316,11 @@ async function main() {
       }
     });
 
-    view.addEventListener('file-dropped', (event) => {
-      console.log(`-> A file (${event.name}) had been dropped`);
-      branch.saveLayer(event.name, event.data, event.style)
-        .then(async () => {
-          // console.log('-> A vector layer had been added');
-          branch.vectorList = await itowns.Fetcher.json(`${apiUrl}/${branch.active.id}/vectors`);
-          branch.setLayers();
-          branch.viewer.refresh(branch.layers);
+    view.addEventListener('file-dropped', (ev) => {
+      console.log(`-> A file (${ev.name}) had been dropped`);
+      branch.saveLayer(ev.name, ev.data, ev.style)
+        .then(() => {
+          viewer.refresh({ [ev.name]: branch.layers[ev.name] });
 
           controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
         })
@@ -340,10 +337,10 @@ async function main() {
       branch.deleteLayer(event.layerName, event.layerId)
         .then(() => {
           console.log(`-> Vector '${event.layerName} (id: ${event.layerId}) had been deleted`);
-          const layer = branch.vectorList.filter((elem) => elem.id === event.layerId)[0];
-          const index = branch.vectorList.indexOf(layer);
-          branch.vectorList.splice(index, 1);
-          delete branch.layers[layer.name];
+          // const layer = branch.vectorList.filter((elem) => elem.id === event.layerId)[0];
+          // const index = branch.vectorList.indexOf(layer);
+          // branch.vectorList.splice(index, 1);
+          // delete branch.layers[layer.name];
 
           controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
         })

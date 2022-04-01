@@ -1,24 +1,4 @@
 /* eslint-disable no-console */
-function readCRS(json) {
-  if (json.crs) {
-    if (json.crs.type.toLowerCase() === 'epsg') {
-      return `EPSG:${json.crs.properties.code}`;
-    } if (json.crs.type.toLowerCase() === 'name') {
-      const epsgIdx = json.crs.properties.name.toLowerCase().indexOf('epsg:');
-      if (epsgIdx >= 0) {
-        // authority:version:code => EPSG:[...]:code
-        const codeStart = json.crs.properties.name.indexOf(':', epsgIdx + 5);
-        if (codeStart > 0) {
-          return `EPSG:${json.crs.properties.name.substr(codeStart + 1)}`;
-        }
-      }
-    }
-    throw new Error(`Unsupported CRS type '${json.crs}'`);
-  }
-  // assume default crs
-  return 'EPSG:4326';
-}
-
 class API {
   constructor(url) {
     this.url = url;
@@ -76,9 +56,8 @@ class API {
     });
   }
 
-  saveVector(idBranch, name, geojson, style) {
+  saveVector(idBranch, name, geojson, crs, style) {
     return new Promise((resolve, reject) => {
-      const crs = readCRS(geojson);
       fetch(`${this.url}/${idBranch}/vector`,
         {
           method: 'POST',
@@ -95,20 +74,20 @@ class API {
             data: geojson,
           }),
         }).then((res) => {
-        if (res.status === 200) {
-          console.log(`-> Layer '${name}' succesfully saved`);
-          resolve();
-        } else {
-          console.log(`-> Database Error: Layer '${name}' NOT saved`);
-          // this.view.dispatchEvent({
-          //   type: 'error',
-          //   msg: `Error Serveur: Layer '${name}' NOT saved`,
-          // });
-          res.text().then((msg) => {
-            console.log(msg);
+        res.json().then((json) => {
+          if (res.status === 200) {
+            console.log(`-> Layer '${name}' succesfully saved`);
+            resolve(json.id);
+          } else {
+            console.log(`-> Database Error: Layer '${name}' NOT saved`);
+            // this.view.dispatchEvent({
+            //   type: 'error',
+            //   msg: `Error Serveur: Layer '${name}' NOT saved`,
+            // });
+            console.log(json.msg);
             reject();
-          });
-        }
+          }
+        });
       });
     });
   }
