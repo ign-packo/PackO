@@ -263,7 +263,7 @@ class Viewer {
 
   refresh(layerList, cleanUpExtraLayer = false) {
     const layerNames = Array.isArray(layerList) ? layerList : Object.keys(layerList);
-    let listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
+    const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
 
     if (cleanUpExtraLayer) {
       // Clean up of all the extra layers
@@ -350,12 +350,6 @@ class Viewer {
             parser: itowns.GeoJsonParser.parse,
           });
 
-          // if (layerName === this.alertLayerName) {
-          //   // eslint-disable-next-line no-param-reassign
-          //   layerList[layerName].style.fill.color = coloringAlerts;
-          //   // eslint-disable-next-line no-param-reassign
-          //   layerList[layerName].style.point.color = coloringAlerts;
-          // }
           layer.config.style = new itowns.Style(layerList[layerName].style);
           layer.config.zoom = {
             min: this.overviews.dataSet.level.min,
@@ -397,18 +391,29 @@ class Viewer {
 
       layer.colorLayer.isAlert = layerList[layerName].isAlert === undefined
         ? false : layerList[layerName].isAlert;
+
+      this.view.getLayerById(layerName);
+
+      itowns.ColorLayersOrdering.moveLayerToIndex(
+        this.view,
+        layerName,
+        this.layerIndex[layerName] === undefined
+          ? Math.max(...Object.values(this.layerIndex)) + 1 : this.layerIndex[layerName],
+      );
     });
 
-    // Layer ordering
-    listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
-    listColorLayer.forEach((layerId) => {
-      if (this.layerIndex[layerId] === undefined) {
-        const extrIndex = Math.max(...Object.values(this.layerIndex)) + 1;
-        itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, extrIndex);
-      } else {
-        itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, this.layerIndex[layerId]);
-      }
-    });
+    // // Layer ordering
+    // console.log(this.view.getLayers((l) => l.isColorLayer))
+    // listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
+    // listColorLayer.forEach((layerId) => {
+    //   if (this.layerIndex[layerId] === undefined) {
+    //     const extrIndex = Math.max(...Object.values(this.layerIndex)) + 1;
+    //     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, extrIndex);
+    //   } else {
+    //     itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId,
+    //       this.layerIndex[layerId]);
+    //   }
+    // });
   }
 
   addDnDFiles(eventDnD, files) {
