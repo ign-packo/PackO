@@ -31,6 +31,27 @@ class API {
     });
   }
 
+  getVectors(idBranch) {
+    return new Promise((resolve, reject) => {
+      fetch(`${this.url}/${idBranch}/vectors`,
+        {
+          method: 'GET',
+        }).then((res) => {
+        res.json().then((json) => {
+          if (res.status === 200) {
+            resolve(json);
+          } else {
+            console.log('-> Database Error');
+            console.log(JSON.stringify(json));
+            const err = new Error();
+            err.name = 'Database Error';
+            reject(err);
+          }
+        });
+      });
+    });
+  }
+
   // branch
   deleteVector(name, id) {
     return new Promise((resolve, reject) => {
