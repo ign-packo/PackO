@@ -501,9 +501,17 @@ async function main() {
           controllers.validated.updateDisplay();
           branch.alert.comment = featureSelectedGeom.properties.comment;
 
-          editing.highlightSelectedFeature(alertFC,
-            features[layerAlert.id][0].geometry,
-            features[layerAlert.id][0].type);
+          // editing.featureSelectedGeom = features[layerAlert.id][0].geometry;
+          editing.featureSelectedGeom = featureSelectedGeom;
+
+          // editing.highlightSelectedFeature(
+          //   // alertFC,
+          //   // // features[layerAlert.id][0].geometry,
+          //   // alertFC.features[0].geometries[branch.alert.featureIndex],
+          //   // // features[layerAlert.id][0].type,
+          //   // alertFC.features[0].type,
+          // );
+          viewer.highlightSelectedFeature(branch.alert);
         }
       }
 

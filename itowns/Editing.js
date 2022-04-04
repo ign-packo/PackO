@@ -2,8 +2,6 @@
 /* eslint-disable no-console */
 /* eslint-disable no-underscore-dangle */
 import * as THREE from 'three';
-// alerts
-import * as itowns from 'itowns';
 
 const status = {
   RAS: 0,
@@ -131,72 +129,6 @@ class Editing {
     });
   }
 
-  // Highlighing selected features
-  highlightSelectedFeature(featureCollec, featureGeometry, type) {
-    this.featureSelectedGeom = featureGeometry;
-    this.type = type;
-    // console.log(this.featureSelectedGeom);
-    const layerFeatureSelected = this.viewer.view.getLayerById('selectedFeature');
-    if (layerFeatureSelected) {
-      this.viewer.view.removeLayer('selectedFeature');
-    }
-    const layerTest = this.viewer.view.getLayerById(this.branch.alert.layerName);
-    // const featureCollec = await layerTest.source.loadData(undefined, layerTest);
-    const newFeatureCollec = new itowns.FeatureCollection(layerTest);
-
-    // const featureGeometry = featureTemp.geometry;
-    // const featureGeometry = fc.features[0].geometries[this.featureIndex];
-
-    const feature = featureCollec.requestFeatureByType(type);
-    const newFeature = newFeatureCollec.requestFeatureByType(type);
-    const newFeatureGeometry = newFeature.bindNewGeometry();
-
-    const coord = new itowns.Coordinates(newFeatureCollec.crs, 0, 0, 0);
-
-    const vector = new THREE.Vector2();
-    const vector3 = new THREE.Vector3();
-    const { count, offset } = featureGeometry.indices[0];
-
-    newFeatureGeometry.startSubGeometry(count, newFeature);
-    const { vertices } = feature;
-    for (let v = offset * 2; v < (offset + count) * 2; v += 2) {
-      vector.fromArray(vertices, v);
-      vector3.copy(vector).setZ(0).applyMatrix4(featureCollec.matrixWorld);
-      coord.x = vector3.x;
-      coord.y = vector3.y;
-      newFeatureGeometry.pushCoordinates(coord, newFeature);
-    }
-
-    newFeatureGeometry.updateExtent();
-
-    const newColorLayer = new itowns.ColorLayer('selectedFeature', {
-      // Use a FileSource to load a single file once
-      source: new itowns.FileSource({
-        features: newFeatureCollec,
-      }),
-      transparent: true,
-      opacity: 0.7,
-      zoom: {
-        min: this.viewer.overviews.dataSet.level.min,
-        max: this.viewer.overviews.dataSet.level.max,
-      },
-      style: new itowns.Style({
-        stroke: {
-          color: 'yellow',
-          width: 5,
-        },
-        point: {
-          color: '#66666600',
-          radius: 7,
-          line: 'yellow',
-          width: 5,
-        },
-      }),
-    });
-
-    this.viewer.view.addLayer(newColorLayer);
-  }
-
   centerOnAlertFeature() {
     this.viewer.message = '';
     const alertFC = this.branch.alert.featureCollection;
@@ -219,9 +151,12 @@ class Editing {
     this.controllers.validated.updateDisplay();
     this.branch.alert.comment = this.featureSelectedGeom.properties.comment;
 
-    this.highlightSelectedFeature(alertFC,
-      this.featureSelectedGeom,
-      alertFC.features[0].type);
+    this.highlightSelectedFeature(
+      alertFC,
+      // this.featureSelectedGeom,
+      alertFC.features[0].geometries[this.branch.alert.featureIndex],
+      alertFC.features[0].type,
+    );
   }
 
   keydown(e) {

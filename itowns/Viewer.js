@@ -616,5 +616,66 @@ class Viewer {
       layerName,
     });
   }
+
+  highlightSelectedFeature(alert) {
+    const alertFC = alert.featureCollection;
+    const featureGeometry = alertFC.features[0].geometries[alert.featureIndex];
+    const { type } = alertFC.features[0];
+    const layerFeatureSelected = this.view.getLayerById('selectedFeature');
+    if (layerFeatureSelected) {
+      this.view.removeLayer('selectedFeature');
+    }
+    const layerTest = this.view.getLayerById(alert.layerName);
+    const newFeatureCollec = new itowns.FeatureCollection(layerTest);
+
+    const feature = alertFC.requestFeatureByType(type);
+    const newFeature = newFeatureCollec.requestFeatureByType(type);
+    const newFeatureGeometry = newFeature.bindNewGeometry();
+
+    const coord = new itowns.Coordinates(newFeatureCollec.crs, 0, 0, 0);
+
+    const vector = new THREE.Vector2();
+    const vector3 = new THREE.Vector3();
+    const { count, offset } = featureGeometry.indices[0];
+
+    newFeatureGeometry.startSubGeometry(count, newFeature);
+    const { vertices } = feature;
+    for (let v = offset * 2; v < (offset + count) * 2; v += 2) {
+      vector.fromArray(vertices, v);
+      vector3.copy(vector).setZ(0).applyMatrix4(alertFC.matrixWorld);
+      coord.x = vector3.x;
+      coord.y = vector3.y;
+      newFeatureGeometry.pushCoordinates(coord, newFeature);
+    }
+
+    newFeatureGeometry.updateExtent();
+
+    const newColorLayer = new itowns.ColorLayer('selectedFeature', {
+      // Use a FileSource to load a single file once
+      source: new itowns.FileSource({
+        features: newFeatureCollec,
+      }),
+      transparent: true,
+      opacity: 0.7,
+      zoom: {
+        min: this.overviews.dataSet.level.min,
+        max: this.overviews.dataSet.level.max,
+      },
+      style: new itowns.Style({
+        stroke: {
+          color: 'yellow',
+          width: 5,
+        },
+        point: {
+          color: '#66666600',
+          radius: 7,
+          line: 'yellow',
+          width: 5,
+        },
+      }),
+    });
+
+    this.view.addLayer(newColorLayer);
+  }
 }
 export default Viewer;
