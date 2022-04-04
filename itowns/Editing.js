@@ -29,8 +29,6 @@ class Editing {
     this.lastPos = null;
     this.mousePosition = null;
 
-    // this.featureIndex = 0;
-
     this.STATUS = status;
   }
 
@@ -313,6 +311,15 @@ class Editing {
         }
         break;
       }
+      case status.SELECT: {
+        if (e.key === 'Escape') {
+          this.view.controls.setCursor('default', 'auto');
+          this.currentStatus = status.RAS;
+          this.viewer.message = '';
+          this.controllers.select.__li.style.backgroundColor = '';
+        }
+        break;
+      }
       case status.POLYGON: {
         if (e.key === 'Escape') {
           this.view.controls.setCursor('default', 'auto');
@@ -352,6 +359,15 @@ class Editing {
 
             this.nbVertices -= 1;
           }
+        }
+        break;
+      }
+      case status.ADDREMARK: {
+        if (e.key === 'Escape') {
+          this.view.controls.setCursor('default', 'auto');
+          this.currentStatus = status.RAS;
+          this.viewer.message = '';
+          this.controllers.addRemark.__li.style.backgroundColor = '';
         }
         break;
       }
