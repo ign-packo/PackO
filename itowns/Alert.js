@@ -4,6 +4,10 @@ class Alert {
     this.viewer = this.branch.viewer;
     this.api = this.viewer.api;
 
+    this.reset();
+  }
+
+  reset() {
     this.layerName = ' -';
     this.featureCollection = null;
     this.featureIndex = 0;

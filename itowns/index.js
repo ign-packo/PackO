@@ -210,7 +210,8 @@ async function main() {
         if (viewer.view.getLayerById('selectedFeature')) {
           viewer.view.removeLayer('selectedFeature');
         }
-        branch.resetAlert();
+        // branch.resetAlert();
+        branch.alert.reset();
       }
       controllers.setAlertCtr(layerName === 'Remarques' && branch.alert.featureCollection.features.length === 0 ? ' -' : layerName);
       // branch.setAlert(name);

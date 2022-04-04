@@ -118,7 +118,7 @@ class Branch {
     });
     await this.setLayers();
 
-    this.resetAlert();
+    this.alert.reset();
     this.view.dispatchEvent({
       type: 'branch-changed',
       name: this.active.name,
@@ -205,10 +205,6 @@ class Branch {
     if (this.alert.layerName !== ' -') this.layers[this.alert.layerName].isAlert = false;
     if (name !== ' -') this.layers[name].isAlert = true;
     this.alert.layerName = name;
-  }
-
-  resetAlert() {
-    this.alert = new Alert(this);
   }
 }
 export default Branch;
