@@ -32,6 +32,18 @@ class Alert {
         });
       });
   }
+
+  uncheck() {
+    const featureSelectedGeom = this.featureCollection.features[0].geometries[this.featureIndex];
+    if (featureSelectedGeom.properties.status === true) {
+      this.viewer.message = 'alerte déjà validée';
+    } else if (featureSelectedGeom.properties.status === false) {
+      this.postValue(featureSelectedGeom.properties.id, 'status', null);
+
+      this.nbChecked -= 1;
+      this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
+    }
+  }
 }
 
 export default Alert;

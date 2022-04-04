@@ -38,7 +38,7 @@ class Controller {
   }
 
   setAlertCtr(layerName) {
-    this[layerName !== ' -' ? 'setVisible' : 'hide'](['progress', 'id', 'validated', 'unchecked', 'comment']);
+    this[layerName !== ' -' ? 'setVisible' : 'hide'](['progress', 'id', 'validated', 'uncheck', 'comment']);
     this[layerName === 'Remarques' ? 'setVisible' : 'hide'](['delRemark']);
   }
 

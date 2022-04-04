@@ -243,7 +243,7 @@ async function main() {
     controllers.progress.listen().domElement.parentElement.style.pointerEvents = 'none';
     // controllers.hide('progress');
 
-    controllers.unchecked = viewer.menuGlobe.gui.add(editing, 'unchecked').name('Mark as unchecked');
+    controllers.uncheck = viewer.menuGlobe.gui.add(branch.alert, 'uncheck').name('Mark as unchecked');
     // controllers.hide('unchecked');
 
     branch.alert.validated = false;

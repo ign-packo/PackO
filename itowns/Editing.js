@@ -245,19 +245,6 @@ class Editing {
       alertFC.features[0].type);
   }
 
-  unchecked() {
-    if (this.featureSelectedGeom.properties.status === true) {
-      this.viewer.message = 'alerte déjà validée';
-    } else if (this.featureSelectedGeom.properties.status === false) {
-      this.branch.alert.postValue(this.featureSelectedGeom.properties.id, 'status', null);
-      // this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
-      // this.alertFC.features[0].geometries[this.featureIndex].properties[status] = value;
-
-      this.branch.alert.nbChecked -= 1;
-      this.branch.alert.progress = `${this.branch.alert.nbChecked}/${this.branch.alert.nbTotal} (${this.branch.alert.nbValidated} validés)`;
-    }
-  }
-
   keydown(e) {
     if (this.currentStatus === status.WAITING) return;
     this.viewer.message = '';
