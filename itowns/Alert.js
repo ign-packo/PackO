@@ -49,37 +49,39 @@ class Alert {
     }
   }
 
-  selectPrevious(unviewed = false) {
+  selectPrevious(option = { unviewed: false }) {
     const { geometries } = this.featureCollection.features[0];
     let { featureIndex } = this;
     featureIndex -= 1;
     if (featureIndex === -1) featureIndex = this.nbTotal - 1;
 
-    while (unviewed === true
+    while (option.unviewed === true
       && geometries[featureIndex].properties.status !== null
       && featureIndex !== this.featureIndex) {
       featureIndex -= 1;
       if (featureIndex === -1) featureIndex = this.nbTotal - 1;
     }
-    this.featureIndex = featureIndex;
+    // this.featureIndex = featureIndex;
+    this.changeFeature(featureIndex, option);
   }
 
-  selectNext(unviewed = false) {
+  selectNext(option = { unviewed: false }) {
     const { geometries } = this.featureCollection.features[0];
     let { featureIndex } = this;
     featureIndex += 1;
     if (featureIndex === this.nbTotal) featureIndex = 0;
 
-    while (unviewed === true
+    while (option.unviewed === true
       && geometries[featureIndex].properties.status !== null
       && featureIndex !== this.featureIndex) {
       featureIndex += 1;
       if (featureIndex === this.nbTotal) featureIndex = 0;
     }
-    this.featureIndex = featureIndex;
+    // this.featureIndex = featureIndex;
+    this.changeFeature(featureIndex, option);
   }
 
-  selectLastViewed() {
+  selectLastViewed(option) {
     const { geometries } = this.featureCollection.features[0];
     let featureIndex = 0;
     if (geometries[featureIndex].properties.status !== null) {
@@ -89,7 +91,24 @@ class Alert {
       }
       featureIndex -= 1;
     }
+    // this.featureIndex = featureIndex;
+    this.changeFeature(featureIndex, option);
+  }
+
+  changeFeature(featureIndex, option = { centerOnFeature: false }) {
     this.featureIndex = featureIndex;
+    const featureSelectedGeom = this.featureCollection.features[0].geometries[this.featureIndex];
+    if (featureSelectedGeom.properties.status === null) {
+      this.postValue(featureSelectedGeom.properties.id, 'status', false);
+      this.nbChecked += 1;
+      this.progress = `${this.nbChecked}/${this.nbTotal} (${this.nbValidated} validés)`;
+    }
+    this.viewer.view.dispatchEvent({
+      type: 'alert-selected',
+      option,
+      featureCenter: featureSelectedGeom.extent.clone()
+        .applyMatrix4(this.featureCollection.matrixWorld).center(),
+    });
   }
 }
 

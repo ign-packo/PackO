@@ -129,36 +129,6 @@ class Editing {
     });
   }
 
-  centerOnAlertFeature() {
-    this.viewer.message = '';
-    const alertFC = this.branch.alert.featureCollection;
-    const coordcenter = alertFC.features[0].geometries[this.branch.alert.featureIndex]
-      .extent.clone().applyMatrix4(alertFC.matrixWorld).center();
-
-    this.viewer.centerCamera(coordcenter.x, coordcenter.y);
-
-    this.featureSelectedGeom = alertFC.features[0].geometries[this.branch.alert.featureIndex];
-
-    if (this.featureSelectedGeom.properties.status === null) {
-      this.branch.alert.postValue(this.featureSelectedGeom.properties.id, 'status', false);
-      this.branch.alert.nbChecked += 1;
-      this.branch.alert.progress = `${this.branch.alert.nbChecked}/${this.branch.alert.nbTotal} (${this.branch.alert.nbValidated} validés)`;
-    }
-
-    this.branch.alert.id = this.branch.alert.featureIndex;
-    this.controllers.id.updateDisplay();
-    this.branch.alert.validated = this.featureSelectedGeom.properties.status;
-    this.controllers.validated.updateDisplay();
-    this.branch.alert.comment = this.featureSelectedGeom.properties.comment;
-
-    this.highlightSelectedFeature(
-      alertFC,
-      // this.featureSelectedGeom,
-      alertFC.features[0].geometries[this.branch.alert.featureIndex],
-      alertFC.features[0].type,
-    );
-  }
-
   keydown(e) {
     if (this.currentStatus === status.WAITING) return;
     this.viewer.message = '';
@@ -173,45 +143,14 @@ class Editing {
           this.view.notifyChange(this.view.getLayerById('Opi'), true);
         } else if (this.branch.alert.layerName !== ' -'
                    && this.branch.alert.nbTotal > 0) {
-          // const { geometries } = this.branch.alert.featureCollection.features[0];
           if (e.key === 'ArrowLeft') {
-            // this.branch.alert.featureIndex -= 1;
-            // if (this.branch.alert.featureIndex === -1) {
-            //   this.branch.alert.featureIndex = geometries.length - 1;
-            // }
-            this.branch.alert.selectPrevious();
-            this.centerOnAlertFeature();
+            this.branch.alert.selectPrevious({ centerOnFeature: true });
           } else if (e.key === 'ArrowRight') {
-            // this.branch.alert.featureIndex += 1;
-            // if (this.branch.alert.featureIndex === geometries.length) {
-            //   this.branch.alert.featureIndex = 0;
-            // }
-            this.branch.alert.selectNext();
-            this.centerOnAlertFeature();
+            this.branch.alert.selectNext({ centerOnFeature: true });
           } else if (e.key === 'ArrowDown') {
-            // let { featureIndex } = this;
-            // featureIndex -= 1;
-            // if (featureIndex === -1) featureIndex = geometries.length - 1;
-            // while (geometries[featureIndex].properties.status !== null
-            //   && featureIndex !== this.branch.alert.featureIndex) {
-            //   featureIndex -= 1;
-            //   if (featureIndex === -1) featureIndex = geometries.length - 1;
-            // }
-            // this.branch.alert.featureIndex = featureIndex;
-            this.branch.alert.selectPrevious(true);
-            this.centerOnAlertFeature();
+            this.branch.alert.selectPrevious({ unviewed: true, centerOnFeature: true });
           } else if (e.key === 'ArrowUp') {
-            // let { featureIndex } = this;
-            // featureIndex += 1;
-            // if (featureIndex === geometries.length) featureIndex = 0;
-            // while (geometries[featureIndex].properties.status !== null
-            //   && featureIndex !== this.branch.alert.featureIndex) {
-            //   featureIndex += 1;
-            //   if (featureIndex === geometries.length) featureIndex = 0;
-            // }
-            // this.branch.alert.featureIndex = featureIndex;
-            this.branch.alert.selectNext(true);
-            this.centerOnAlertFeature();
+            this.branch.alert.selectNext({ unviewed: true, centerOnFeature: true });
           }
         }
         break;
@@ -568,7 +507,10 @@ class Editing {
 
     // On post la geometrie sur l'API
     const remarksLayerId = this.branch.vectorList.filter((elem) => elem.name === 'Remarques')[0].id;
-    fetch(`${this.api.url}/${remarksLayerId}/feature?id=${this.featureSelectedGeom.properties.id}`,
+
+    const alertFC = this.branch.alert.featureCollection;
+    const featureSelectedGeom = alertFC.features[0].geometries[this.branch.alert.featureIndex];
+    fetch(`${this.api.url}/${remarksLayerId}/feature?id=${featureSelectedGeom.properties.id}`,
       {
         method: 'DELETE',
       }).then((res) => {
