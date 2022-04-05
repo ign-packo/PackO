@@ -117,10 +117,6 @@ async function main() {
     viewer.refresh(branch.layers);
 
     // const editing = new Editing(branch, apiUrl);
-    editing.cliche = 'none';
-    editing.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
-    editing.color = [0, 0, 0];
-
     // const controllers = new Controller(viewer.menuGlobe, editing);
 
     // Gestion branche
@@ -136,10 +132,12 @@ async function main() {
 
     // Selection OPI
     controllers.select = viewer.menuGlobe.gui.add(editing, 'select').name('Select an OPI');
-    controllers.cliche = viewer.menuGlobe.gui.add(editing, 'cliche').name('OPI selected');
-    controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
+    editing.opiName = 'none';
+    controllers.opiName = viewer.menuGlobe.gui.add(editing, 'opiName').name('OPI selected');
+    controllers.opiName.listen().domElement.parentElement.style.pointerEvents = 'none';
 
     // Coord
+    editing.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
     controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord').name('Coordinates');
     controllers.coord.listen();
 
@@ -282,7 +280,7 @@ async function main() {
     // editing controllers
     editing.controllers = {
       select: controllers.select,
-      cliche: controllers.cliche,
+      opiName: controllers.opiName,
       polygon: controllers.polygon,
       // checked: controllers.checked,
       id: controllers.id,
@@ -441,8 +439,6 @@ async function main() {
         editing.centerOnAlertFeature();
         branch.alert.validated = editing.featureSelectedGeom.properties.status;
         controllers.validated.updateDisplay();
-        // viewer.remark = editing.featureSelectedGeom.properties.comment;
-        // controllers.remark.updateDisplay();
         branch.alert.comment = editing.featureSelectedGeom.properties.comment;
         // controllers.comment.updateDisplay();
       } else {
@@ -501,9 +497,7 @@ async function main() {
           // branch.alert.validated = features[layerAlert.id][0].geometry.properties.status;
           branch.alert.validated = featureSelectedGeom.properties.status;
           controllers.validated.updateDisplay();
-          // viewer.remark = features[layerTest.id][0].geometry.properties.comment;
           branch.alert.comment = featureSelectedGeom.properties.comment;
-          // controllers.comment.updateDisplay();
 
           editing.highlightSelectedFeature(alertFC,
             features[layerAlert.id][0].geometry,
