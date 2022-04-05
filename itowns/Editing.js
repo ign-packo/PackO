@@ -199,48 +199,35 @@ class Editing {
         this.view.controls.setCursor('default', 'wait');
         this.currentStatus = status.WAITING;
         // on selectionne le cliche
-        fetch(`${this.api.url}/${this.branch.active.id}/graph?x=${mousePosition.x}&y=${mousePosition.y}`,
-          {
-            method: 'GET',
-            headers: {
-              Accept: 'application/json',
-              'Content-Type': 'application/json',
-            },
-          }).then((res) => {
-          res.json().then((json) => {
-            if (res.status === 200) {
-              this.view.controls.setCursor('default', 'auto');
-              this.opiName = json.cliche;
-              this.currentStatus = status.RAS;
-              this.controllers.select.__li.style.backgroundColor = '';
-              this.viewer.message = '';
-              this.color = json.color;
-              this.controllers.opiName.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
-              // On modifie la couche OPI
-              this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
-              this.view.getLayerById('Opi').visible = true;
-              // this.viewer.refresh(this.branch.layers);
-              this.viewer.refresh(['Opi']);
-              this.validClicheSelected = true;
-            }
-            if (res.status === 201) {
-              console.log('out of bounds');
+        this.api.getGraph(this.branch.active.id, mousePosition)
+          .then((opi) => {
+            this.viewer.message = '';
+            this.view.controls.setCursor('default', 'auto');
+            this.currentStatus = status.RAS;
+            this.controllers.select.__li.style.backgroundColor = '';
+
+            this.validClicheSelected = true;
+
+            this.opiName = opi.cliche;
+            this.color = opi.color;
+            this.controllers.opiName.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
+            // On modifie la couche OPI
+            this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${opi.cliche}&FORMAT`);
+            this.view.getLayerById('Opi').visible = true;
+            this.viewer.refresh(['Opi']);
+          })
+          .catch((error) => {
+            if (error.name === 'Server Error') {
               this.viewer.message = 'en dehors de la zone';
-              // this.opiName = 'none';
-              // this.view.getLayerById('Opi').visible = false;
-              // this.validClicheSelected = false;
-              // this.controllers.opiName.__li.style.backgroundColor = '';
-              // this.view.notifyChange(this.view.getLayerById('Opi'), true);
-            }
-            if (res.status === 202) {
-              console.log('Server Error');
-              console.log(json);
-              const err = new Error('cache corrompu');
-              err.name = 'Server Error';
-              window.alert(`${err}\n${JSON.stringify(json)}`);
+            } else {
+              this.viewer.message = 'PB de mise à jour de la BdD';
+              this.view.dispatchEvent({
+                type: 'error',
+                msg: error,
+              });
             }
           });
-        });
+
         break;
       }
       case status.POLYGON: {
@@ -458,7 +445,6 @@ class Editing {
       this.viewer.message = 'Zoom non valide pour refaire';
       return;
     }
-    // this.cancelcurrentPolygon();
     console.log('redo');
     this.viewer.message = 'calcul en cours';
     this.view.controls.setCursor('default', 'wait');

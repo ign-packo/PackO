@@ -44,7 +44,7 @@ function getGraph(req, _res, next) {
     }
     debug(url);
     if (!fs.existsSync(url)) {
-      req.result = { json: { color: [0, 0, 0], cliche: 'out of bounds' }, code: 201 };
+      req.result = { json: { color: [0, 0, 0], cliche: 'out of bounds' }, code: 202 };
       next();
       return;
     }
@@ -57,7 +57,7 @@ function getGraph(req, _res, next) {
           req.result = { json: out, code: 200 };
         } catch (error) {
           out.cliche = 'not found';
-          req.result = { json: out, code: 202 };
+          req.result = { json: out, code: 404 };
         }
       } else {
         req.result = { json: { color: [0, 0, 0], cliche: 'out of graph' }, code: 201 };
@@ -67,7 +67,7 @@ function getGraph(req, _res, next) {
     });
   } catch (error) {
     debug(error);
-    req.result = { json: { color: [0, 0, 0], cliche: 'out of bounds' }, code: 201 };
+    req.result = { json: { color: [0, 0, 0], cliche: 'out of bounds' }, code: 202 };
     next();
   }
 }

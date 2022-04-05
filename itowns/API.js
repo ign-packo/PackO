@@ -134,6 +134,36 @@ class API {
   }
 
   // editing
+  getGraph(idBranch, position) {
+    return new Promise((resolve, reject) => {
+      fetch(
+        `${this.url}/${idBranch}/graph?x=${position.x}&y=${position.y}`,
+        { method: 'GET' },
+      ).then((res) => {
+        res.json().then((json) => {
+          // 201-> out of graph; 202-> out of bounds; 404-> cache corrompu
+          if (res.status === 200) {
+            resolve(json);
+          } else {
+            console.log('-> Database Error: No OPI found');
+            console.log(JSON.stringify(json));
+            const err = new Error();
+            if (res.status === 201 || res.status === 202) {
+              err.name = 'Server Error';
+              err.message = json.cliche;
+            } else {
+              err.name = 'Database Error';
+              if (res.status === 404) {
+                err.message = 'cache corrupted';
+              }
+            }
+            reject(err);
+          }
+        });
+      });
+    });
+  }
+
   postPatch(idBranch, dataStr) {
     return new Promise((resolve, reject) => {
       fetch(`${this.url}/${idBranch}/patch?`,
