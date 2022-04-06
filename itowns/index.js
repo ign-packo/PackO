@@ -40,6 +40,24 @@ function checkCoordString(coordStr) {
   return null;
 }
 
+function createCacheDialog(listCaches) {
+  const dial = document.getElementById('dialogCaches');
+  const sel = document.getElementById('dialogCachesSelect');
+  listCaches.forEach((c) => {
+    const opt = document.createElement('option');
+    opt.innerText = c;
+    sel.appendChild(opt);
+  });
+
+  dial.addEventListener('close', () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('namecache', sel.value);
+    window.location.href = url.href;
+  });
+
+  dial.showModal();
+}
+
 async function main() {
   console.log(`Client in '${process.env.NODE_ENV}' mode.`);
 
@@ -60,18 +78,19 @@ async function main() {
     const getCaches = await itowns.Fetcher.json(`${apiUrl}/caches`);
     if (getCaches.length === 0) throw new Error('Pas de cache en base');
 
-    let [activeCache] = getCaches.filter((cache) => cache.name === nameCache);
+    const listCaches = [];
+    Object.keys(getCaches).forEach((key) => {
+      listCaches.push(getCaches[key].name);
+    });
+
+    const [activeCache] = getCaches.filter((cache) => cache.name === nameCache);
 
     if (activeCache === undefined) {
-      if (nameCache === null) {
-        [activeCache] = getCaches;
-        /* eslint-disable no-alert */
-        if (!window.confirm(`Pas de nom de cache indiqué. Voulez-vous charger le cache '${activeCache.name}'?`)) {
-          throw new Error('Pas de cache indiqué');
-        }
-        console.log(activeCache);
-      } else throw new Error(`Cache '${nameCache}' inexistant`);
-    } else console.log(activeCache);
+      createCacheDialog(listCaches);
+      return;
+    }
+
+    console.log(activeCache);
 
     const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews?cachePath=${activeCache.path}`);
     const getBranches = itowns.Fetcher.json(`${apiUrl}/branches?idCache=${activeCache.id}`);
