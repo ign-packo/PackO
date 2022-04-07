@@ -78,8 +78,8 @@ class Viewer {
     this.dezoomInitial = 4;// to define
     this.zoomFactor = 2;// customizable
 
-    this.xcenter = 0;
-    this.ycenter = 0;
+    this.x = 0;
+    this.y = 0;
     this.resolution = 0;
     this.resolLvMax = 0;
     this.resolLvMin = 0;
@@ -141,17 +141,17 @@ class Viewer {
     );
 
     const resolInit = resolution * 2 ** this.dezoomInitial;
-    this.xcenter = (xmin + xmax) * 0.5;
-    this.ycenter = (ymin + ymax) * 0.5;
+    this.x = (xmin + xmax) * 0.5;
+    this.y = (ymin + ymax) * 0.5;
 
     this.viewerDiv.height = this.viewerDiv.clientHeight;
     this.viewerDiv.width = this.viewerDiv.clientWidth;
     const placement = new itowns.Extent(
       this.crs,
-      this.xcenter - this.viewerDiv.width * resolInit * 0.5,
-      this.xcenter + this.viewerDiv.width * resolInit * 0.5,
-      this.ycenter - this.viewerDiv.height * resolInit * 0.5,
-      this.ycenter + this.viewerDiv.height * resolInit * 0.5,
+      this.x - this.viewerDiv.width * resolInit * 0.5,
+      this.x + this.viewerDiv.width * resolInit * 0.5,
+      this.y - this.viewerDiv.height * resolInit * 0.5,
+      this.y + this.viewerDiv.height * resolInit * 0.5,
     );
 
     const levelMax = overviews.dataSet.level.max;
@@ -248,14 +248,14 @@ class Viewer {
     };
   }
 
-  centerCamera(coordX, coordY) {
+  centerCamera(coord = this) {
     // bug itowns...
     // itowns.CameraUtils.animateCameraToLookAtTarget( ... )
     itowns.CameraUtils.transformCameraToLookAtTarget(
       this.view,
       this.view.camera.camera3D,
       {
-        coord: new itowns.Coordinates(this.crs, coordX, coordY),
+        coord: new itowns.Coordinates(this.crs, coord.x, coord.y),
         heading: 0,
       },
     );

@@ -36,7 +36,7 @@ function checkCoordString(coordStr) {
   const rgxCoord = new RegExp(`^${rgxFloat},${rgxFloat}$`);
   const rgxCatch = rgxCoord.exec(coordStr);
   if (rgxCatch) {
-    return [parseFloat(rgxCatch[1]), parseFloat(rgxCatch[2])];
+    return { x: parseFloat(rgxCatch[1]), y: parseFloat(rgxCatch[2]) };
   }
   return null;
 }
@@ -137,7 +137,7 @@ async function main() {
     controllers.opiName.listen().domElement.parentElement.style.pointerEvents = 'none';
 
     // Coord
-    editing.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
+    editing.coord = `${viewer.x.toFixed(2)},${viewer.y.toFixed(2)}`;
     controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord').name('Coordinates');
     controllers.coord.listen();
 
@@ -435,7 +435,7 @@ async function main() {
       viewer.highlightSelectedFeature(branch.alert);
 
       if (ev.option.centerOnFeature) {
-        viewer.centerCamera(ev.featureCenter.x, ev.featureCenter.y);
+        viewer.centerCamera(ev.featureCenter);
       }
 
       const featureSelectedGeom = branch.alert.featureCollection.features[0]
@@ -502,7 +502,7 @@ async function main() {
     controllers.coord.onFinishChange(() => {
       const coords = checkCoordString(editing.coord);
       if (coords) {
-        viewer.centerCamera(coords[0], coords[1]);
+        viewer.centerCamera(coords);
       }
       editing.message = '';
       return false;
@@ -518,7 +518,7 @@ async function main() {
     });
 
     document.getElementById('recenterBtn').addEventListener('click', () => {
-      viewer.centerCamera(viewer.xcenter, viewer.ycenter);
+      viewer.centerCamera();
       return false;
     }, false);
     document.getElementById('zoomInBtn').addEventListener('click', () => {
