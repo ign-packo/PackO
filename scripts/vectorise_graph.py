@@ -57,14 +57,14 @@ if not os.path.exists(args.input):
 
 t_start = time.perf_counter()
 
-chantier_name = os.path.basename(args.output.split('.')[0])
+project_name = os.path.basename(args.output.split('.')[0])
 if args.verbose > 0:
-    print('Chantier name = ' + chantier_name)
+    print('Chantier name = ' + project_name)
 
 dict_cmd = {"projects": []}
 
 # debut chantier polygonize
-dict_cmd["projects"].append({"name": str(chantier_name+'_polygonize'), "jobs": []})
+dict_cmd["projects"].append({"name": str(project_name+'_polygonize'), "jobs": []})
 
 script = "gdal_polygonize.py"
 if platform.system() == "Windows":
@@ -96,7 +96,7 @@ for tile in list_tiles_graph:
     )
     if args.verbose > 0:
         print(cmd_polygonize)
-    dict_cmd["projects"][0]["jobs"].append({"name": "polygonize", "command": cmd_polygonize})
+    dict_cmd["projects"][0]["jobs"].append({"name": "polygonize_"+tile.split('.')[0], "command": cmd_polygonize})
 
 # fin chantier polygonize
 
@@ -105,19 +105,21 @@ for tile in list_tiles_graph:
 # le premier (chantier polygonize) contient l'ensemble des gdal_polygonize
 # le second (chantier merge) va contenir les traitements permettant de passer des geopackages calcules par dalle
 # a un geopackage global pour toute l'emprise de notre chantier
-dict_cmd["projects"].append({"name": str(chantier_name+'_merge'), "jobs": [], "deps": [{"id": 0}]})
+dict_cmd["projects"].append({"name": str(project_name+'_merge'), "jobs": [], "deps": [{"id": 0}]})
 
 script_merge = "ogrmerge.py"
 if platform.system() == "Windows":
     script_merge = script_merge.split('.')[0]+".bat"
 
-merge_file = chantier_name + '_merge.gpkg'
+merge_file = project_name + '_merge.gpkg'
 merge_path = os.path.join(args.input, merge_file)
 all_gpkg = os.path.join(gpkg_dir, '*.gpkg')
 cmd_merge = (
     script_merge
     + ' -o ' + merge_path
     + ' ' + all_gpkg
+    + ' -a_srs EPSG:2154'
+    + ' -nln data'
     + ' -single'
     + ' -field_strategy Union'
     + ' -overwrite_ds'
@@ -126,19 +128,38 @@ if args.verbose > 0:
     print(cmd_merge)
 dict_cmd["projects"][1]["jobs"].append({"name": "ogrmerge", "command": cmd_merge})
 
-dissolve_file = chantier_name + '_dissolve.gpkg'
+clean_file = project_name + '_clean.gpkg'
+clean_path = os.path.join(args.input, clean_file)
+cmd_clean = (
+        'ogr2ogr '
+        + clean_path
+        + merge_path
+        + ' -overwrite'
+        + ' -nlt PROMOTE_TO_MULTI'
+        + ' -makevalid'
+)
+if args.verbose > 0:
+    print(cmd_clean)
+dict_cmd["projects"][1]["jobs"].append(
+    {"name": "dissolve", "command": cmd_clean, "deps": [{"id": 0}]}
+)
+
+dissolve_file = project_name + '_dissolve.gpkg'
 dissolve_path = os.path.join(args.input, dissolve_file)
 cmd_dissolve = (
     'ogr2ogr '
     + dissolve_path + ' '
     + merge_path
     + ' -nlt PROMOTE_TO_MULTI'
+    + ' -nln data'
     + ' -dialect sqlite'
-    + ' -sql "SELECT DN, ST_union(geom) as geom FROM merged GROUP BY DN"'
+    + ' -sql "SELECT DN as color, ST_union(geom) as geom FROM data GROUP BY DN"'
 )
 if args.verbose > 0:
     print(cmd_dissolve)
-dict_cmd["projects"][1]["jobs"].append({"name": "dissolve", "command": cmd_dissolve, "deps": [{"id": 0}]})
+dict_cmd["projects"][1]["jobs"].append(
+    {"name": "dissolve", "command": cmd_dissolve, "deps": [{"id": 1}]}
+)
 
 cmd_make_valid = (
     'ogr2ogr '
@@ -150,7 +171,9 @@ cmd_make_valid = (
 )
 if args.verbose > 0:
     print(cmd_make_valid)
-dict_cmd["projects"][1]["jobs"].append({"name": "make_valid", "command": cmd_make_valid, "deps": [{"id": 1}]})
+dict_cmd["projects"][1]["jobs"].append(
+    {"name": "make_valid", "command": cmd_make_valid, "deps": [{"id": 2}]}
+)
 
 # fin chantier merge
 
