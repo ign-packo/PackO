@@ -417,4 +417,20 @@ optional arguments:
 
 Le résultat final du calcul gpao de vectorisation, GRAPH_final.gpkg, est au format GeoPackage. 
 
+## Raccourcis clavier
+
+Les raccourcis clavier disponibles dans l'interface sont :
+- Sélectionner une OPI (*Select an OPI*) : **s**
+- Démarrer polygone (*Start polygon*) : **p**
+- Annuler polygone (*Undo*) : **Ctrl + Z**
+- Refaire polygone (*Redo*) : **Ctrl + Y**
+- Masquer/Afficher l’Ortho mosaïquée: **m**
+- Masquer/Afficher les contours : **g**
+- Masquer/Afficher l’Opi selectionnée : **o**
+- Masquer/Afficher tous les vecteurs : **v**
+- Valider/Invalider une alerte (*Validated*) : **c**
+- Déplacer la vue d'un peu moins qu'un écran à l'aide des quatre flèches, lorsqu'on n'est pas en mode alerte
+- Ajouter une remarque (*Add remark*) : **a**
+- Supprimer une remarque (*Delete remark*): **d**
+
 [![IGN](images/logo_ign.png)](https://www.ign.fr)
