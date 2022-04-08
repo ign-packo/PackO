@@ -61,8 +61,17 @@ async function main() {
     if (getCaches.length === 0) throw new Error('Pas de cache en base');
 
     let [activeCache] = getCaches.filter((cache) => cache.name === nameCache);
-    if (!activeCache) [activeCache] = getCaches;
-    console.log(activeCache);
+
+    if (activeCache === undefined) {
+      if (nameCache === null) {
+        [activeCache] = getCaches;
+        /* eslint-disable no-alert */
+        if (!window.confirm(`Pas de nom de cache indiqué. Voulez-vous charger le cache '${activeCache.name}'?`)) {
+          throw new Error('Pas de cache indiqué');
+        }
+        console.log(activeCache);
+      } else throw new Error(`Cache '${nameCache}' inexistant`);
+    } else console.log(activeCache);
 
     const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews?cachePath=${activeCache.path}`);
     const getBranches = itowns.Fetcher.json(`${apiUrl}/branches?idCache=${activeCache.id}`);
