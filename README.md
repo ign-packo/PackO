@@ -397,10 +397,8 @@ Le script vectorise_graph.py crée un fichier json, utilisable avec le service g
 
 Sous Windows, l'environnement recommandé pour avoir accès aux scripts Gdal et Gdal/Ogr est par le moyen de QGis (qui contient une version de Gdal supérieure ou égale à la version minimale demandée, voir plus haut).
 Il faut initialiser l'environnement QGis via le script qui est à l'emplacement : **{QGis_DIR}\bin\o4w_env.bat**
-Pour exécuter *vectorise_graph.py* sous Windows, il est nécessaire d'avoir trois variables d'environnement configurées :
-- OSGEO4W_ROOT qui doit pointer vers la racine de QGis.
-- QGIS_BIN qui doit pointer vers le répertoire *bin* de QGis.
-- QGIS_SCRIPT qui doit pointer vers le répertoire *apps/Python39/Scripts* de QGis. A noter, la version Python peut changer selon la version de QGis utilisée.
+Pour exécuter *vectorise_graph.py* sous Windows, il est nécessaire d'avoir configuré la variable d'environnement OSGEO4W_ROOT qui doit pointer vers la racine de QGis.
+Il est également nécessaire d'ajouter dans le PATH les emplacements des exécutables et scripts utilisant Gdal et Gdal/Ogr de QGis : *%OSGEO4W_ROOT%\bin* ainsi que *%OSGEO4W_ROOT%\apps\Python\*\Scripts*.
 
 ````
 usage: vectorise_graph.py [-h] -i INPUT -o OUTPUT [-g GRAPH] [-v VERBOSE]
