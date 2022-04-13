@@ -33,11 +33,16 @@ function getTile(url, x, y, z, blocSize, cacheKey, bands) {
   const b = bands || [0, 1, 2];
   debug('~~~getTile : ', url, x, y, z, blocSize, cacheKey, b);
 
-  // url correspond au chemin de l'image RGB
+  // url correspond au chemin de l'image RGB sauf
+  // dans le cas des OPI avec un cache purement IR (présence de _ix)
   // en cas de besoin (bands contient 3), il faut construire le chemin vers l'image IR
   // pour les OPIs (YB_OPI_20FD6925x00001_00588.tif -> YB_OPI_20FD6925ix00001_00588.tif)
   // pour les Ortho (UP.tif -> IPi.tif)
-  const urlIr = url.includes('x') ? url.replace('x', '_ix') : url.replace('.', 'i.');
+  let urlIr = url;
+  if (url.includes('_ix') === false) {
+    urlIr = url.includes('x') ? url.replace('x', '_ix') : url.replace('.', 'i.');
+  }
+
   debug(url, urlIr);
   const cacheKeyIr = `${cacheKey}_ir`;
 
