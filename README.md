@@ -116,7 +116,7 @@ par défaut:
 - port: 8081
 - serverapi: la même valeur que le serveur
 - portapi: la même valeur que le port
-- namecache: pas de valeur par défaut, mais si le paramètre n'est pas renseigné c'est le premier cache mis en base qui sera utilisé
+- namecache: pas de valeur par défaut, mais si le paramètre n'est pas renseigné ou si il est mal renseigné, choisir un cache dans la liste des caches disponibles
 
 La doc de l'API est publiée directement par le service et est disponible à l'adresse : http://[serveur]:[port]/doc
 
