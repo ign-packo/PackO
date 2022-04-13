@@ -593,6 +593,10 @@ async function main() {
       return false;
     });
 
+    // disable itowns shortcuts because of conflicts with endogenous shortcuts
+    /* eslint-disable-next-line no-underscore-dangle */
+    view.domElement.removeEventListener('keydown', view.controls._handlerOnKeyDown, false);
+
     const helpContent = document.getElementById('help-content');
     helpContent.style.visibility = 'hidden';
     document.getElementById('help').addEventListener('click', () => {
