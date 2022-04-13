@@ -101,6 +101,13 @@ async function main() {
     const viewer = new Viewer(viewerDiv);
 
     const overviews = await getOverviews;
+    overviews.with_rgb = true;
+    overviews.with_ir = true;
+    const tabOpi = Object.keys(overviews.list_OPI);
+    if (tabOpi.length > 0) {
+      overviews.with_rgb = overviews.list_OPI[tabOpi[0]].with_rgb;
+      overviews.with_ir = overviews.list_OPI[tabOpi[0]].with_ir;
+    }
 
     // on ajoute les dataset.limits pour les layers graph/contour
     // avec uniquement les niveaux correspondants au COG mis à jour par les patchs
@@ -169,7 +176,12 @@ async function main() {
         viewer.view.notifyChange(layer);
       }));
       if (layer.source.wmtsStyle) {
-        const styles = ['RVB', 'IRC', 'IR'];
+        let styles;
+        if (overviews.with_rgb) {
+          styles = overviews.with_ir ? ['RVB', 'IRC', 'IR'] : ['RVB'];
+        } else {
+          styles = ['IR'];
+        }
         folder.add({ style: layer.source.wmtsStyle }, 'style', styles).onChange((value) => {
           const regex = /STYLE=.*TILEMATRIXSET/;
           layer.source.url = layer.source.url.replace(regex, `STYLE=${value}&TILEMATRIXSET`);

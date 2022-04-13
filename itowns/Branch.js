@@ -42,7 +42,7 @@ class Branch {
         crs: this.viewer.crs,
         opacity: 1,
         visible: true,
-        wmtsStyle: 'RVB',
+        wmtsStyle: this.viewer.overviews.with_rgb ? 'RVB' : 'IR',
       },
       Graph: {
         type: 'raster',
@@ -64,7 +64,7 @@ class Branch {
         crs: this.viewer.crs,
         opacity: 0.5,
         visible: false,
-        wmtsStyle: 'RVB',
+        wmtsStyle: this.viewer.overviews.with_rgb ? 'RVB' : 'IR',
       },
       Patches: {
         type: 'vector',
