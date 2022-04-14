@@ -561,12 +561,12 @@ async function main() {
     });
 
     controllers.coord.onChange(() => {
+      editing.currentStatus = editing.STATUS.WRITING;
       if (!checkCoordString(editing.coord)) {
-        editing.message = 'Coordonnees non valides';
+        viewer.message = 'Coordonnees non valides';
       } else {
-        editing.message = '';
+        viewer.message = '';
       }
-      return false;
     });
 
     controllers.coord.onFinishChange(() => {
@@ -574,8 +574,8 @@ async function main() {
       if (coords) {
         viewer.centerCamera(coords[0], coords[1]);
       }
-      editing.message = '';
-      return false;
+      editing.currentStatus = editing.STATUS.RAS;
+      viewer.message = '';
     });
 
     window.addEventListener('keydown', (ev) => {
