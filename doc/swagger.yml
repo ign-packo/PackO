@@ -521,16 +521,16 @@ paths:
         '200':
           description: OK
 
-  '/{idVector}/feature':
+  '/{idRemarksVector}/feature':
     put:
       tags:
         - vector
-      summary: "Ajout d'un ponctuel sur la couche {idVector}"
-      description: ""
+      summary: "Ajout d'un ponctuel sur une couche 'Remarques'"
+      description: "Ne permet d'ajouter un ponctuel que sur une couche 'Remarques'."
       parameters:
         - in: path
-          name: idVector
-          description: l'identifiant de la couche à modifier
+          name: idRemarksVector
+          description: l'identifiant de la couche 'Remarques' à modifier
           required: true
           schema:
             type: integer
@@ -559,12 +559,12 @@ paths:
     delete:
       tags:
         - vector
-      summary: "Suppression d'un ponctuel sur la couche {idVector}"
-      description: ""
+      summary: "Suppression d'un ponctuel sur une couche 'Remarques'"
+      description: "Ne permet de supprimer un ponctuel que sur une couche 'Remarques'."
       parameters:
         - in: path
-          name: idVector
-          description: l'identifiant de la couche à modifier
+          name: idRemarksVector
+          description: l'identifiant de la couche 'Remarques' à modifier
           required: true
           schema:
             type: integer

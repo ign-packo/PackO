@@ -13,11 +13,15 @@ async function getVectors(req, _res, next) {
   const params = matchedData(req);
   const { idBranch } = params;
   try {
-    const vectors = await db.getLayers(req.client, idBranch);
+    let vectors = await db.getLayers(req.client, idBranch);
     if (this.column) {
       // req.result = { json: vectors.map((vector) => vector[this.column]), code: 200 };
       if (!req.result) req.result = {};
-      req.result.getVectors = vectors.map((vector) => vector[this.column]);
+      if (this.selection) {
+        vectors = vectors.filter((vect) => vect[this.selection.column] === this.selection.value);
+      }
+      req.result.getVectors = vectors
+        .map((vector) => vector[this.column]);
     } else {
       req.result = { json: vectors, code: 200 };
     }
@@ -189,9 +193,8 @@ async function addRemark(req, _res, next) {
   }
   const params = matchedData(req);
 
-  const {
-    idLayer, x, y, comment,
-  } = params;
+  const { x, y, comment } = params;
+  const idLayer = params.idRemarksVector;
 
   const geometry = {
     type: 'Point',
@@ -202,7 +205,13 @@ async function addRemark(req, _res, next) {
     const remark = await db.insertFeature(req.client, idLayer, geometry, comment);
 
     await db.updateAlert(req.client, remark.id_feature, undefined, comment);
-    req.result = { json: `remarque '${remark.id_feature}' ajoutée`, code: 200 };
+    req.result = {
+      json: {
+        msg: `un point a été ajouté aux coordonnées ${x},${y} sur la couche 'Remarques' (id : ${idLayer})`,
+        idFeature: remark.id_feature,
+      },
+      code: 200,
+    };
   } catch (error) {
     debug(error);
     req.error = error;
@@ -219,14 +228,18 @@ async function delRemark(req, _res, next) {
   }
   const params = matchedData(req);
 
-  const {
-    id,
-  } = params;
+  const { id } = params;
 
   try {
     const remark = await db.deleteFeature(req.client, id);
 
-    req.result = { json: `remarque '${remark.id_feature}' supprimée`, code: 200 };
+    req.result = {
+      json: {
+        msg: `le point '${remark.id_feature}' a été supprimé de la couche 'Remarques' (id : ${remark.id_layer})`,
+        idLayer: remark.id_layer,
+      },
+      code: 200,
+    };
   } catch (error) {
     debug(error);
     req.error = error;

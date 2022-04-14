@@ -275,7 +275,8 @@ async function insertSlabs(pgClient, idPatch, slabs) {
 async function getLayers(pgClient, idBranch) {
   debug(`    ~~getLayers (idBranch: ${idBranch})`);
   const sql = format(
-    'SELECT layers.id, layers.name, num, crs, style_itowns, opacity, visibility FROM layers, styles WHERE layers.id_style=styles.id %s',
+    'SELECT layers.id, layers.name, num, crs, style_itowns, opacity, visibility '
+    + 'FROM layers, styles WHERE layers.id_style=styles.id %s',
     idBranch !== undefined ? `AND id_Branch=${idBranch}` : '',
   );
   debug('      ', sql);
@@ -520,7 +521,7 @@ async function deleteFeature(pgClient, idFeature) {
   const sqlDeleteFeature = format(
     'DELETE FROM features '
       + 'WHERE id = %s '
-      + 'RETURNING id as id_feature',
+      + 'RETURNING id as id_feature, id_layer',
     idFeature,
   );
 
