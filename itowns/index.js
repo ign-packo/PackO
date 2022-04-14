@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-/* global setupLoadingScreen, GuiTools */
+// /* global setupLoadingScreen, GuiTools */
 import * as itowns from 'itowns';
 import Viewer from './Viewer';
 import Editing from './Editing';
@@ -83,93 +83,23 @@ async function main() {
 
     const overviews = await getOverviews;
 
-    // on ajoute les dataset.limits pour les layers graph/contour
-    // avec uniquement les niveaux correspondants au COG mis à jour par les patchs
-    // c'est-a-dire un seul niveau de COG
-    // on a donc besoin de connaitre le nombre de niveaux inclus dans un COG
-    const slabSize = Math.min(overviews.slabSize.width, overviews.slabSize.height);
-    const nbSubLevelsPerCOG = Math.floor(Math.log2(slabSize));
-    overviews.dataSet.limitsForGraph = {};
-    // on copie les limites des (nbSubLevelsPerCOG + 1) derniers niveaux
-    for (let l = overviews.dataSet.level.max - nbSubLevelsPerCOG;
-      l <= overviews.dataSet.level.max; l += 1) {
-      overviews.dataSet.limitsForGraph[l] = overviews.dataSet.limits[l];
-    }
-    viewer.zoomMinPatch = overviews.dataSet.level.max - nbSubLevelsPerCOG;
-    // pour la fonction updateScaleWidget
-    viewer.maxGraphDezoom = 2 ** nbSubLevelsPerCOG;
-
     viewer.createView(overviews, activeCache.id);
-    setupLoadingScreen(viewerDiv, viewer.view);
+    // setupLoadingScreen(viewerDiv, viewer.view);
     // FeatureToolTip.init(viewerDiv, viewer.view);
 
-    viewer.view.isDebugMode = true;
-    viewer.menuGlobe = new GuiTools('menuDiv', viewer.view);
-    viewer.menuGlobe.gui.width = 300;
+    // viewer.view.isDebugMode = true;
+    // viewer.menuGlobe = new GuiTools('menuDiv', viewer.view);
+    // viewer.menuGlobe.gui.width = 300;
 
-    viewer.menuGlobe.colorGui.show();
-    viewer.menuGlobe.colorGui.open();
-    viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Extra Layers');
-    viewer.menuGlobe.vectorGui.open();
+    // viewer.menuGlobe.colorGui.show();
+    // viewer.menuGlobe.colorGui.open();
+    // viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Extra Layers');
+    // viewer.menuGlobe.vectorGui.open();
 
     const branch = new Branch(apiUrl, viewer);
     const editing = new Editing(branch, apiUrl);
 
     const controllers = new Controller(viewer.menuGlobe, editing);
-
-    // Patch pour ajouter la modification de l'epaisseur des contours dans le menu
-    viewer.menuGlobe.addImageryLayerGUI = function addImageryLayerGUI(layer) {
-    /* eslint-disable no-param-reassign */
-      let typeGui = 'colorGui';
-      if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layer.id)) {
-        typeGui = 'vectorGui';
-      }
-      if (this[typeGui].hasFolder(layer.id)) { return; }
-      if (layer.id === 'selectedFeature') { return; }
-
-      const folder = this[typeGui].addFolder(layer.id);
-      folder.add({ visible: layer.visible }, 'visible').onChange(((value) => {
-        layer.visible = value;
-
-        if (layer.id === editing.alertLayerName) {
-          viewer.view.getLayerById('selectedFeature').visible = value;
-        }
-
-        viewer.view.notifyChange(layer);
-      }));
-      folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0).onChange(((value) => {
-        layer.opacity = value;
-        viewer.view.notifyChange(layer);
-      }));
-      if (layer.effect_parameter) {
-        folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
-          layer.effect_parameter = value;
-          viewer.view.notifyChange(layer);
-        }));
-      }
-      if (typeGui === 'vectorGui' && layer.id !== 'Remarques') {
-        folder.add(branch, 'deleteVectorLayer').name('delete').onChange(() => {
-          if (layer.id !== editing.alertLayerName) {
-            branch.deleteVectorLayer(layer);
-            viewer.view.notifyChange(layer);
-            controllers.refreshDropBox('alert', [' -', ...branch.vectorList
-              .filter((elem) => elem.name !== layer.id)
-              .map((elem) => elem.name)]);
-          } else {
-            viewer.message = 'Couche en edition';
-          }
-        });
-      }
-    /* eslint-enable no-param-reassign */
-    };
-
-    viewer.menuGlobe.removeLayersGUI = function removeLayersGUI(nameLayer) {
-      if (this.colorGui.hasFolder(nameLayer)) {
-        this.colorGui.removeFolder(nameLayer);
-      } else {
-        this.vectorGui.removeFolder(nameLayer);
-      }
-    };
 
     // const branch = new Branch(apiUrl, viewer);
     branch.list = await getBranches;

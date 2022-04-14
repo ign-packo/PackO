@@ -1,3 +1,4 @@
+/* global setupLoadingScreen, GuiTools */
 /* eslint-disable no-console */
 /* eslint-disable no-underscore-dangle */
 import * as itowns from 'itowns';
@@ -73,6 +74,9 @@ class Viewer {
     this.view = null;
     this.menuGlobe = null;
 
+    this.dezoomInitial = 4;// to define
+    this.zoomFactor = 2;// customizable
+
     this.xcenter = 0;
     this.ycenter = 0;
     this.resolution = 0;
@@ -91,6 +95,22 @@ class Viewer {
   createView(overviews, idCache) {
     this.overviews = overviews;
     this.idCache = idCache;
+
+    // on ajoute les dataset.limits pour les layers graph/contour
+    // avec uniquement les niveaux correspondants au COG mis à jour par les patchs
+    // c'est-a-dire un seul niveau de COG
+    // on a donc besoin de connaitre le nombre de niveaux inclus dans un COG
+    const slabSize = Math.min(overviews.slabSize.width, overviews.slabSize.height);
+    const nbSubLevelsPerCOG = Math.floor(Math.log2(slabSize));
+    this.overviews.dataSet.limitsForGraph = {};
+    // on copie les limites des (nbSubLevelsPerCOG + 1) derniers niveaux
+    for (let l = overviews.dataSet.level.max - nbSubLevelsPerCOG;
+      l <= overviews.dataSet.level.max; l += 1) {
+      this.overviews.dataSet.limitsForGraph[l] = overviews.dataSet.limits[l];
+    }
+    this.zoomMinPatch = overviews.dataSet.level.max - nbSubLevelsPerCOG;
+    // pour la fonction updateScaleWidget
+    this.maxGraphDezoom = 2 ** nbSubLevelsPerCOG;
 
     // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
     this.crs = `${overviews.crs.type}:${overviews.crs.code}`;
@@ -120,13 +140,10 @@ class Viewer {
       yOrigin - (overviews.tileSize.height * resolutionLv0), yOrigin,
     );
 
-    const dezoomInitial = 4;// to define
-    const resolInit = resolution * 2 ** dezoomInitial;
+    const resolInit = resolution * 2 ** this.dezoomInitial;
     this.xcenter = (xmin + xmax) * 0.5;
     this.ycenter = (ymin + ymax) * 0.5;
 
-    // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
-    // const viewerDiv = document.getElementById('viewerDiv');
     this.viewerDiv.height = this.viewerDiv.clientHeight;
     this.viewerDiv.width = this.viewerDiv.clientWidth;
     const placement = new itowns.Extent(
@@ -149,7 +166,6 @@ class Viewer {
     this.resolLvMin = resolution * 2 ** (overviews.level.max - levelMin) + 0.01;
     // console.log('resol min/max : ', this.resolLvMin, this.resolLvMax);
     // Instanciate PlanarView*
-    const zoomFactor = 2;// customizable
 
     this.view = new itowns.PlanarView(this.viewerDiv, extent, {
       camera: {
@@ -160,11 +176,76 @@ class Viewer {
       minSubdivisionLevel: levelMin,
       controls: {
         enableSmartTravel: false,
-        zoomFactor,
+        zoomFactor: this.zoomFactor,
         maxResolution: this.resolLvMax,
         minResolution: this.resolLvMin,
       },
     });
+
+    setupLoadingScreen(this.viewerDiv, this.view);
+    this.view.isDebugMode = true;
+
+    // menuGlobe
+    this.menuGlobe = new GuiTools('menuDiv', this.view);
+    this.menuGlobe.gui.width = 300;
+
+    this.menuGlobe.colorGui.show();
+    this.menuGlobe.colorGui.open();
+    this.menuGlobe.vectorGui = this.menuGlobe.gui.addFolder('Extra Layers');
+    this.menuGlobe.vectorGui.open();
+
+    const viewer = this;
+    this.menuGlobe.addImageryLayerGUI = function addImageryLayerGUI(layer) {
+      /* eslint-disable no-param-reassign */
+      let typeGui = 'colorGui';
+      if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layer.id)) {
+        typeGui = 'vectorGui';
+      }
+      if (this[typeGui].hasFolder(layer.id)) { return; }
+      if (layer.id === 'selectedFeature') { return; }
+
+      const folder = this[typeGui].addFolder(layer.id);
+      folder.add({ visible: layer.visible }, 'visible').onChange(((value) => {
+        layer.visible = value;
+
+        // if (layer.id === this.alertLayerName) {
+        if (layer.isAlert === true) {
+          this.view.getLayerById('selectedFeature').visible = value;
+        }
+
+        this.view.notifyChange(layer);
+      }));
+      folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0).onChange(((value) => {
+        layer.opacity = value;
+        this.view.notifyChange(layer);
+      }));
+      // Patch pour ajouter la modification de l'epaisseur des contours dans le menu
+      if (layer.effect_parameter) {
+        folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
+          layer.effect_parameter = value;
+          this.view.notifyChange(layer);
+        }));
+      }
+      if (typeGui === 'vectorGui' && layer.id !== 'Remarques') {
+        folder.add(viewer, 'removeVectorLayer').name('delete').onChange(() => {
+          // if (layer.id !== this.alertLayerName) {
+          if (layer.isAlert === false) {
+            viewer.removeVectorLayer(layer);
+          } else {
+            viewer.message = 'Couche en edition';
+          }
+        });
+      }
+    /* eslint-enable no-param-reassign */
+    };
+
+    this.menuGlobe.removeLayersGUI = function removeLayersGUI(nameLayer) {
+      if (this.colorGui.hasFolder(nameLayer)) {
+        this.colorGui.removeFolder(nameLayer);
+      } else {
+        this.vectorGui.removeFolder(nameLayer);
+      }
+    };
   }
 
   centerCamera(coordX, coordY) {
@@ -287,10 +368,6 @@ class Viewer {
           layer.config,
         );
 
-        // if (layerName === 'Patch') {
-        //   layer.buildExtent = false;
-        // }
-
         layer.colorLayer.visible = layerList[layerName].visible;
         if (layerName === 'Contour') {
           layer.colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
@@ -412,7 +489,7 @@ class Viewer {
 
       const fileReader = new FileReader();
       const _view = this.view;
-      // const _index = this.layerIndex;
+
       // eslint-disable-next-line no-loop-func
       fileReader.onload = function onload(e) {
         const dataLoaded = e.target.result;
@@ -474,21 +551,6 @@ class Viewer {
                 radius: 5,
               },
             };
-            // const layer = new itowns.ColorLayer(layerName, {
-            //   transparent: true,
-            //   style: new itowns.Style(style),
-            //   source,
-            // });
-
-            // _view.addLayer(layer);
-
-            // console.log(`-> Layer '${layer.id}' added`);
-
-            // _index[layer.id] = Object.keys(_index).length;
-            // itowns.ColorLayersOrdering.moveLayerToIndex(_view,
-            //   layer.id, _index[layer.id]);
-
-            console.log(`-> Layer '${layerName}' dropped`);
 
             _view.dispatchEvent({
               type: 'file-dropped',
@@ -531,6 +593,19 @@ class Viewer {
           // throw new Error('Type of file not supported, please add it using DragNDrop.register');
       }
     }
+  }
+
+  removeVectorLayer(layerName) {
+    if (layerName === undefined) return;
+    const layerId = this.view.getLayerById(layerName).vectorId;
+    this.view.removeLayer(layerName);
+    // this.menuGlobe.removeLayersGUI(layerName);
+    delete this.layerIndex[layerName];
+    this.view.dispatchEvent({
+      type: 'vectorLayer-removed',
+      layerId,
+      layerName,
+    });
   }
 }
 export default Viewer;
