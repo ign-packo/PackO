@@ -172,3 +172,26 @@ body {
 .alertValidated {
     color: #3cd25f99;
 }
+
+#dialogCaches {
+    font-size: large;
+    font-weight: bold;
+    border-radius: 14px;
+    border-style: outset;
+}
+
+#dialogCaches select {
+    font-size: large;
+    font-style: italic;
+    border-style: hidden;
+    border-radius: 10px;
+    padding: 12px 20px;
+    background-color: #e9e2dc;
+}
+#dialogCaches button {
+    float: right;
+    background-color: #ffbf25;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: inherit;
+}
