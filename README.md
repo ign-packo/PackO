@@ -431,6 +431,7 @@ Les raccourcis clavier disponibles dans l'interface sont :
 - Masquer/Afficher les contours : **g**
 - Masquer/Afficher l’Opi selectionnée : **o**
 - Masquer/Afficher tous les vecteurs : **v**
+- Basculer l'ortho et l'opi entre RVB/IR/IRC :  **i**
 - Valider/Invalider une alerte (*Validated*) : **c**
 - Déplacer la vue d'un peu moins qu'un écran à l'aide des quatre flèches, lorsqu'on n'est pas en mode alerte
 - Ajouter une remarque (*Add remark*) : **a**
