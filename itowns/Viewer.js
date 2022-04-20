@@ -201,6 +201,27 @@ class Viewer {
     );
   }
 
+  // fonction permettant d'afficher la valeur de l'echelle et du niveau de dezoom
+  updateScaleWidget() {
+    const { resolution } = this;
+    const { maxGraphDezoom } = this;
+
+    let distance = this.view.getPixelsToMeters(200);
+    let unit = 'm';
+    this.dezoom = Math.fround(distance / (200 * resolution));
+    if (distance >= 1000) {
+      distance /= 1000;
+      unit = 'km';
+    }
+    if (distance <= 1) {
+      distance *= 100;
+      unit = 'cm';
+    }
+    document.getElementById('spanZoomWidget').innerHTML = this.dezoom <= 1 ? `zoom: ${1 / this.dezoom}` : `zoom: 1/${this.dezoom}`;
+    document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
+    document.getElementById('spanGraphVisibWidget').classList.toggle('not_displayed', this.dezoom > maxGraphDezoom);
+  }
+
   cleanUpExtraLayers() {
     // Clean up of all the extra layers
     const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
@@ -523,7 +544,6 @@ class Viewer {
     if (layerName === undefined) return;
     const layerId = this.view.getLayerById(layerName).vectorId;
     this.view.removeLayer(layerName);
-    // this.menuGlobe.removeLayersGUI(layerName);
     delete this.layerIndex[layerName];
     this.view.dispatchEvent({
       type: 'vectorLayer-removed',

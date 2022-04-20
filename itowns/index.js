@@ -10,25 +10,6 @@ import API from './API';
 // Global itowns pour GuiTools -> peut être améliorer
 global.itowns = itowns;
 
-// fonction permettant d'afficher la valeur de l'echelle et du niveau de dezoom
-function updateScaleWidget(view, resolution, maxGraphDezoom) {
-  let distance = view.getPixelsToMeters(200);
-  let unit = 'm';
-  const dezoom = Math.fround(distance / (200 * resolution));
-  if (distance >= 1000) {
-    distance /= 1000;
-    unit = 'km';
-  }
-  if (distance <= 1) {
-    distance *= 100;
-    unit = 'cm';
-  }
-  document.getElementById('spanZoomWidget').innerHTML = dezoom <= 1 ? `zoom: ${1 / dezoom}` : `zoom: 1/${dezoom}`;
-  document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
-  document.getElementById('spanGraphVisibWidget').classList.toggle('not_displayed', dezoom > maxGraphDezoom);
-  return dezoom;
-}
-
 // check if string is in "x,y" format with x and y positive floats
 // return "null" if incorrect string format, otherwise [x, y] array
 function checkCoordString(coordStr) {
@@ -82,9 +63,9 @@ async function main() {
     const viewerDiv = document.getElementById('viewerDiv');
     const viewer = new Viewer(viewerDiv, api);
 
-    const overviews = await getOverviews;
+    // const overviews = await getOverviews;
+    viewer.createView(await getOverviews);
 
-    viewer.createView(overviews);
     // setupLoadingScreen(viewerDiv, viewer.view);
     // FeatureToolTip.init(viewerDiv, viewer.view);
 
@@ -252,12 +233,12 @@ async function main() {
     const { view } = viewer;
     view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
       console.info('-> View initialized');
-      viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+      viewer.updateScaleWidget();
     });
     view.addEventListener(itowns.PLANAR_CONTROL_EVENT.MOVED, () => {
       console.info('-> View moved');
       if (view.controls.state === -1) {
-        viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+        viewer.updateScaleWidget();
       }
     });
 
@@ -299,22 +280,7 @@ async function main() {
     view.addEventListener('branch-created', (newBranch) => {
       console.log(`-> New branch created (name: '${newBranch.name}', id: ${newBranch.id})`);
       branch.changeBranch(newBranch.name);
-      // controllers.setEditingController();
-      // controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
-      // controllers.resetAlerts();
-
       controllers.refreshDropBox('activeBranch', [...branch.list.map((elem) => elem.name)], Object.keys(branch.list).length - 1);
-      // controllers.activeBranch = controllers.activeBranch
-      //   .options(branch.list.map((elem) => elem.name))
-      //   .setValue(branch.active.name);
-      // controllers.activeBranch.onChange((name) => {
-      //   console.log('choosed branch: ', name);
-      //   branch.changeBranch(name);
-      //   // controllers.setEditingController();
-      //   // controllers.refreshDropBox('alert',
-      //   //   [' -', ...branch.vectorList.map((elem) => elem.name)]);
-      //   // controllers.resetAlerts();
-      // });
     });
 
     view.addEventListener('branch-changed', (newBranch) => {
@@ -420,26 +386,6 @@ async function main() {
       window.alert(ev.msg instanceof Array ? ev.msg.join('') : ev.msg);
     });
 
-    viewerDiv.addEventListener('mousemove', (ev) => {
-      ev.preventDefault();
-      editing.mousemove(ev);
-      return false;
-    }, false);
-
-    viewerDiv.addEventListener('click', (ev) => {
-      ev.preventDefault();
-      editing.click(ev);
-      return false;
-    }, false);
-
-    viewerDiv.addEventListener('mousedown', (ev) => {
-      if (ev.button === 1) {
-        console.log('middle button clicked');
-        view.controls.initiateDrag();
-        view.controls.updateMouseCursorType();
-      }
-    });
-
     controllers.coord.onChange(() => {
       if (!checkCoordString(editing.coord)) {
         editing.message = 'Coordonnees non valides';
@@ -460,16 +406,31 @@ async function main() {
 
     window.addEventListener('keydown', (ev) => {
       editing.keydown(ev);
-      return false;
     });
     window.addEventListener('keyup', (ev) => {
       editing.keyup(ev);
-      return false;
+    });
+
+    viewerDiv.addEventListener('mousemove', (ev) => {
+      ev.preventDefault();
+      editing.mousemove(ev);
+    }, false);
+
+    viewerDiv.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      editing.click(ev);
+    }, false);
+
+    viewerDiv.addEventListener('mousedown', (ev) => {
+      if (ev.button === 1) {
+        console.log('middle button clicked');
+        view.controls.initiateDrag();
+        view.controls.updateMouseCursorType();
+      }
     });
 
     document.getElementById('recenterBtn').addEventListener('click', () => {
       viewer.centerCamera();
-      return false;
     }, false);
     document.getElementById('zoomInBtn').addEventListener('click', () => {
       console.log('Zoom-In');
@@ -477,9 +438,8 @@ async function main() {
         view.camera.camera3D.zoom *= 2;
         view.camera.camera3D.updateProjectionMatrix();
         view.notifyChange(view.camera.camera3D);
-        viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+        viewer.updateScaleWidget();
       }
-      return false;
     });
     document.getElementById('zoomOutBtn').addEventListener('click', () => {
       console.log('Zoom-Out');
@@ -487,9 +447,8 @@ async function main() {
         view.camera.camera3D.zoom *= 0.5;
         view.camera.camera3D.updateProjectionMatrix();
         view.notifyChange(view.camera.camera3D);
-        viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+        viewer.updateScaleWidget();
       }
-      return false;
     });
 
     const helpContent = document.getElementById('help-content');
