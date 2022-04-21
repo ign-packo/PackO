@@ -118,9 +118,24 @@ class Branch {
     console.log(branchName);
     if (branchName === null) return;
     if (branchName.length === 0) {
-      this.viewer.message = 'le nom n\'est pas valide';
+      const error = new Error('Ajout nouvelle branche -> le nom ne peut être vide');
+      error.name = 'Erreur ';
+      this.view.dispatchEvent({
+        type: 'error',
+        error,
+      });
       return;
     }
+    // pour l'issue #227
+    // if (!branchName[0].match(/[a-z0-9]/i)) {
+    //   const error = new Error('le nom doit commencer par une lettre ou un chiffre');
+    //   error.name = 'Erreur ';
+    //   this.view.dispatchEvent({
+    //     type: 'error',
+    //     error,
+    //   });
+    //   return;
+    // }
     this.addBranch(branchName);
   }
 

@@ -527,6 +527,12 @@ async function main() {
       }
     });
 
+    view.addEventListener('error', (ev) => {
+      // eslint-disable-next-line no-alert
+      console.log(ev.error instanceof Array ? ev.error.map((error) => error.message).join('') : ev.error.message);
+      window.alert(ev.error instanceof Array ? ev.error.join('') : ev.error);
+    });
+
     viewerDiv.addEventListener('mousemove', (ev) => {
       ev.preventDefault();
       editing.mousemove(ev);

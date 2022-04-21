@@ -377,7 +377,7 @@ class Viewer {
       type: _TEXT,
     };
 
-    const errors = [];
+    const errors = {};
     let nbFileLoaded = 0;
     const ListFile = {};
     for (let i = 0; i < files.length; i += 1) {
@@ -390,7 +390,6 @@ class Viewer {
 
       if (Object.keys(extensionsMap).includes(extension)) ListFile[layerName].nbFileDropped += 1;
     }
-    console.log(ListFile);
 
     let data = {};
     // Read each file
@@ -401,21 +400,26 @@ class Viewer {
       layerName = layerName.charAt(0).toUpperCase() + layerName.slice(1);
 
       if (!fileMtd) {
+        if (!errors[layerName]) {
+          errors[layerName] = [`Type of file (.${file.name.split('.').pop().toLowerCase()}) not supported.`];
+        } else {
+          errors[layerName].push(`Type of file (.${file.name.split('.').pop().toLowerCase()}) not supported.`);
+        }
         fileMtd = {};
-        errors.push(new Error('Type of file not supported.'));
-        // throw new Error('Type of file not supported, please add it using DragNDrop.register');
       }
 
       const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
       if (listColorLayer.includes(layerName)) {
         fileMtd = {};
-        errors.push(new Error('A layer with the same name has already been added'));
-        // throw new Error('A layer with the same name has already been added');
+        if (!errors[layerName]) {
+          errors[layerName] = ['A layer with the same name has already been added.'];
+        } else {
+          errors[layerName].push('A layer with the same name has already been added.');
+        }
       }
 
       const fileReader = new FileReader();
       const _view = this.view;
-      // const _index = this.layerIndex;
       // eslint-disable-next-line no-loop-func
       fileReader.onload = function onload(e) {
         const dataLoaded = e.target.result;
@@ -424,7 +428,11 @@ class Viewer {
         if (fileMtd.format === _GEOJSON) {
           data = JSON.parse(dataLoaded);
           if (!data.type || data.type !== 'FeatureCollection' || !data.features) {
-            errors.push(new Error('File is not a valid geoJson'));
+            if (!errors[layerName]) {
+              errors[layerName] = ['File is not a valid geoJson'];
+            } else {
+              errors[layerName].push('File is not a valid geoJson');
+            }
           } else {
             resData = data;
           }
@@ -433,7 +441,12 @@ class Viewer {
           ListFile[layerName].nbFileLoaded += 1;
           if (ListFile[layerName].nbFileLoaded < 4) {
             if (ListFile[layerName].nbFileLoaded === ListFile[layerName].nbFileDropped) {
-              errors.push(new Error('missing file'));
+              const message = 'file(s) missing. (A shapefile must be added with the .shp, the .shx, the .prj and the .dbf)';
+              if (!errors[layerName]) {
+                errors[layerName] = [message];
+              } else {
+                errors[layerName].push(message);
+              }
             }
           } else {
             resData = shp.combine([
@@ -502,8 +515,16 @@ class Viewer {
           });
         }
 
-        if (nbFileLoaded === files.length && errors.length > 0) {
-          throw errors;
+        if (nbFileLoaded === files.length && Object.keys(errors).length > 0) {
+          const error = [];
+          Object.keys(errors).forEach((layer) => {
+            error.push(new Error(` ${[`Adding ${layer}`, ...errors[layer]].join('\n    -> ')}\n`));
+          });
+
+          _view.dispatchEvent({
+            type: 'error',
+            error,
+          });
         }
       };
       switch (fileMtd.type) {
@@ -519,10 +540,17 @@ class Viewer {
           break;
         default:
           nbFileLoaded += 1;
-          if (nbFileLoaded === files.length && errors.length > 0) {
-            throw errors;
+          if (nbFileLoaded === files.length && Object.keys(errors).length > 0) {
+            const error = [];
+            Object.keys(errors).forEach((layer) => {
+              error.push(new Error(` ${[`Adding ${layer}`, ...errors[layer]].join('\n    -> ')}\n`));
+            });
+
+            this.view.dispatchEvent({
+              type: 'error',
+              error,
+            });
           }
-          // throw new Error('Type of file not supported, please add it using DragNDrop.register');
       }
     }
   }
