@@ -241,6 +241,7 @@ async function main() {
     branch.branch = branch.active.name;
     controllers.branch = viewer.menuGlobe.gui.add(branch, 'branch', branch.list.map((elem) => elem.name)).name('Active branch');
     controllers.branch.onChange(async (name) => {
+      document.activeElement.blur();
       console.log('choosed branch: ', name);
       branch.active = {
         name,
@@ -278,6 +279,7 @@ async function main() {
     editing.alert = ' -';
     controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [' -', ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
     controllers.alert.onChange(async (name) => {
+      document.activeElement.blur();
       console.log('choosed alert vector layer: ', name);
 
       if (name !== ' -') {
