@@ -359,7 +359,7 @@ async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
   geojson.features.forEach((feature) => {
     const properties = JSON.parse(JSON.stringify(feature.properties));
     // delete properties.comment;
-    values.push(`ST_SetSRID(ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}'), ${metadonnees.crs.split(':')[1]}), '${JSON.stringify(properties)}', '${idNewLayer}'`);
+    values.push(`ST_SetSRID(ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}'), ${metadonnees.crs.split(':')[1]}), '${JSON.stringify(properties).replace(/'/g, "''")}', '${idNewLayer}'`);
   });
 
   const sqlInsertFeatures = format('INSERT INTO features (geom, properties, id_layer) '
@@ -373,7 +373,7 @@ async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
   if (Object.keys(geojson.features[0].properties).includes('comment')) {
     const temp = results.rows.map((feature) => ({
       id_feature: feature.id_feature,
-      comment: JSON.parse(feature.properties).comment,
+      comment: JSON.parse(feature.properties).comment.replace(/'/g, "''"),
     }));
 
     const sqlInsertFeaturesCtrs = format('INSERT INTO feature_ctrs (comment, id_feature) '
@@ -482,7 +482,7 @@ async function updateAlert(pgClient, idFeature, status, comment) {
     value = status;
   } else {
     column = 'comment';
-    value = `'${comment}'`;
+    value = `'${comment.replace(/'/g, "''")}'`;
   }
   const sqlInsertFeatureCtr = format(
     `INSERT INTO feature_ctrs (${column}, id_feature) `

@@ -545,7 +545,7 @@ class Editing {
 
           // On post la geometrie sur l'API
           const remarksLayerId = this.branch.vectorList.filter((elem) => elem.name === 'Remarques')[0].id;
-          fetch(`${this.apiUrl}/${remarksLayerId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${remark}`,
+          fetch(`${this.apiUrl}/${remarksLayerId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${encodeURIComponent(remark)}`,
             {
               method: 'PUT',
             }).then(async (res) => {
