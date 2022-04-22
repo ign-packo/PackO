@@ -403,7 +403,7 @@ Le script vectorise_graph.py crée un fichier json, utilisable avec le service g
 Sous Windows, l'environnement recommandé pour avoir accès aux scripts Gdal et Gdal/Ogr est par le moyen de QGis (qui contient une version de Gdal supérieure ou égale à la version minimale demandée, voir plus haut).
 Il faut initialiser l'environnement QGis via le script qui est à l'emplacement : **{QGis_DIR}\bin\o4w_env.bat**
 Pour exécuter *vectorise_graph.py* sous Windows, il est nécessaire d'avoir configuré la variable d'environnement OSGEO4W_ROOT qui doit pointer vers la racine de QGis.
-Il est également nécessaire d'ajouter dans le PATH les emplacements des exécutables et scripts utilisant Gdal et Gdal/Ogr de QGis : *%OSGEO4W_ROOT%\bin* ainsi que *%OSGEO4W_ROOT%\apps\Python\*\Scripts*.
+Il est également nécessaire d'ajouter dans le PATH les emplacements des exécutables et scripts utilisant Gdal et Gdal/Ogr de QGis : *%OSGEO4W_ROOT%\bin* ainsi que *%OSGEO4W_ROOT%\apps\Python\*\Scripts*. * étant la version de Python embarqué par QGis.
 
 ````
 usage: vectorise_graph.py [-h] -i INPUT -o OUTPUT [-g GRAPH] [-v VERBOSE]
@@ -421,6 +421,25 @@ optional arguments:
 ````
 
 Le résultat final du calcul gpao de vectorisation, GRAPH_final.gpkg, est au format GeoPackage. 
+
+### Récupération des métadonnées dans le graphe
+
+Le script export_mtd.py crée un fichier json, utilisable avec le service gpao de l'IGN pour ajouter les métadonnées au graphe vecteur exporté précédemment. L'environnement nécessaire à son exécution est le même que pour les deux premiers scripts.
+
+````
+usage: export_mtd.py [-h] -g GRAPH -c CACHE -o OUTPUT [-v VERBOSE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -g GRAPH, --graph GRAPH
+                        input graph
+  -c CACHE, --cache CACHE
+                        cache associated with the graph
+  -o OUTPUT, --output OUTPUT
+                        output json gpao filepath
+  -v VERBOSE, --verbose VERBOSE
+                        verbose (default: 0)
+````
 
 ## Raccourcis clavier
 
