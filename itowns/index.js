@@ -279,6 +279,8 @@ async function main() {
     controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [' -', ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
     controllers.alert.onChange(async (name) => {
       console.log('choosed alert vector layer: ', name);
+      const keepName = true;
+      controllers.resetAlerts(keepName);
 
       if (name !== ' -') {
         editing.alertLayerName = name;
@@ -327,8 +329,6 @@ async function main() {
             controllers.hide(['delRemark']);
           }
         }
-      } else {
-        controllers.resetAlerts();
       }
       viewer.message = '';
       viewer.refresh(branch.layers);
