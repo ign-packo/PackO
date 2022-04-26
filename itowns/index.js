@@ -155,12 +155,19 @@ async function main() {
       if (layer.id === 'selectedFeature') { return; }
 
       const folder = this[typeGui].addFolder(layer.id);
-      if (editing.folderShorcuts[layer.id] !== undefined) {
+      if (editing.folderVisibleShortcuts[layer.id] !== undefined) {
         const titles = Array.from(folder.domElement.getElementsByClassName('title'));
         titles.forEach((title) => {
-          if (title.innerText === layer.id) title.innerText += ` [${editing.folderShorcuts[layer.id]}]`;
+          if (title.innerText.startsWith(layer.id)) title.innerText += ` [${editing.folderVisibleShortcuts[layer.id]}]`;
         });
       }
+      if (editing.folderStyleShortcuts[layer.id] !== undefined) {
+        const titles = Array.from(folder.domElement.getElementsByClassName('title'));
+        titles.forEach((title) => {
+          if (title.innerText.startsWith(layer.id)) title.innerText += ` [${editing.folderStyleShortcuts[layer.id]}]`;
+        });
+      }
+
       const visib = folder.add({ visible: layer.visible }, 'visible');
       visib.domElement.setAttribute('id', layer.id);
       visib.domElement.classList.add('visibcbx');
@@ -182,11 +189,14 @@ async function main() {
         } else {
           styles = ['IR'];
         }
-        folder.add({ style: layer.source.wmtsStyle }, 'style', styles).onChange((value) => {
+        const chgStyle = folder.add({ style: layer.source.wmtsStyle }, 'style', styles);
+        chgStyle.domElement.id = `${layer.id}_chgStyle`;
+        chgStyle.onChange((value) => {
+          console.log('Change style', value);
           const regex = /STYLE=.*TILEMATRIXSET/;
           layer.source.url = layer.source.url.replace(regex, `STYLE=${value}&TILEMATRIXSET`);
           layer.source.wmtsStyle = value;
-          viewer.refresh(branch.layers);
+          setTimeout(() => { viewer.refresh(branch.layers); }, 1);
         });
       }
       if (layer.effect_parameter) {
