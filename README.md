@@ -286,7 +286,9 @@ On peut ensuite naviguer à travers les différentes entités :
 - en utilisant les flèches droite et gauche (ou haut et bas),
 - en cliquant directement sur l'entité voulue,
 - en entrant l'id de l'entité voulue dans le champ "Alert id".
+
 Les champs "Alert id", "Progress", "Validated" (et "Remark" pour la couche 'Remarques') sont rafraichis avec les valeurs de l'entité selectionnée.
+
 Les flèches haut et bas proposent le même principe que droite et gauche avec pour seule différence de ne naviguer qu'à travers les entités non-vues.
 
 Une entité peut se retrouver sous 3 statuts différents : *non-vu*, *vu* et *validé*. Par défaut le statut de chaque entité est *non-vu*. Dés que celle ci se retrouve selectionnée (par une des 3 methodes citées ci dessus) son statut passe à *vu*. Le bouton "Validated" permet de changer le statut de l'entité à *validé* et le bouton "Mark as unchecked" permet de revenir au statut *non-vu* (ne marche pas si l'entité à déja été validée).
