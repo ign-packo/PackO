@@ -153,7 +153,9 @@ async function rebase(req, res, next) {
       arrayLinkOrtho.forEach((file) => {
         const newName = file.replace(regex, `${idNewBranch}_`);
         debug('copy ', file, newName);
-        fs.copyFileSync(path.join(orthoDir, file), path.join(orthoDir, newName));
+        // fs.copyFileSync(path.join(orthoDir, file), path.join(orthoDir, newName));
+        const data = fs.readFileSync(path.join(orthoDir, file));
+        fs.writeFileSync(path.join(orthoDir, newName), data);
       });
       debug(graphDir);
       const arrayLinkGraph = fs.readdirSync(graphDir).filter(
@@ -162,7 +164,9 @@ async function rebase(req, res, next) {
       arrayLinkGraph.forEach((file) => {
         const newName = file.replace(regex, `${idNewBranch}_`);
         debug('copy ', file, newName);
-        fs.copyFileSync(path.join(graphDir, file), path.join(graphDir, newName));
+        // fs.copyFileSync(path.join(graphDir, file), path.join(graphDir, newName));
+        const data = fs.readFileSync(path.join(graphDir, file));
+        fs.writeFileSync(path.join(graphDir, newName), data);
       });
       debug(opiDir);
       const arrayLinkOpi = fs.readdirSync(opiDir).filter(
@@ -171,7 +175,9 @@ async function rebase(req, res, next) {
       arrayLinkOpi.forEach((file) => {
         const newName = file.replace(regex, `${idNewBranch}_`);
         debug('copy ', file, newName);
-        fs.copyFileSync(path.join(opiDir, file), path.join(opiDir, newName));
+        // fs.copyFileSync(path.join(opiDir, file), path.join(opiDir, newName));
+        const data = fs.readFileSync(path.join(opiDir, file));
+        fs.writeFileSync(path.join(opiDir, newName), data);
       });
     });
     // on ajoute les patchs dans la BD sur cette nouvelle branche
