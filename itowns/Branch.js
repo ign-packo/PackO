@@ -115,10 +115,18 @@ class Branch {
     this.viewer.message = '';
     // eslint-disable-next-line no-alert
     const branchName = window.prompt('Choose a new branch name:', '');
-    console.log(branchName);
+    const errors = [];
     if (branchName === null) return;
     if (branchName.length === 0) {
-      const error = new Error('Ajout nouvelle branche -> le nom ne peut être vide');
+      errors.push('le nom ne peut être vide');
+    } else if (!branchName[0].match(/[a-z0-9]/i)) {
+      errors.push('le nom doit commencer par une lettre ou un chiffre');
+    }
+    if (!branchName.match(/^[a-z0-9_-]*$/i)) {
+      errors.push('le nom ne peut contenir que des caractères alphanumériques non accentués ainsi que - et _');
+    }
+    if (errors.length > 0) {
+      const error = new Error(`${[`Ajout d'une branche "${branchName}"`, ...errors].join('\n    -> ')}\n`);
       error.name = 'Erreur ';
       this.view.dispatchEvent({
         type: 'error',
@@ -126,16 +134,6 @@ class Branch {
       });
       return;
     }
-    // pour l'issue #227
-    // if (!branchName[0].match(/[a-z0-9]/i)) {
-    //   const error = new Error('le nom doit commencer par une lettre ou un chiffre');
-    //   error.name = 'Erreur ';
-    //   this.view.dispatchEvent({
-    //     type: 'error',
-    //     error,
-    //   });
-    //   return;
-    // }
     this.addBranch(branchName);
   }
 
