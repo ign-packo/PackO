@@ -37,10 +37,10 @@ class Controller {
     this[dropBoxName].updateDisplay();
   }
 
-  resetAlerts() {
+  resetAlerts(keepName = false) {
     delete this.editing.alertLayerName;
     delete this.viewer.alertLayerName;
-    this.alert.__select.options.selectedIndex = 0;
+    if (!keepName) this.alert.__select.options.selectedIndex = 0;
     this.hide(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
     if (this.viewer.view.getLayerById('selectedFeature')) {
       this.viewer.view.removeLayer('selectedFeature');
