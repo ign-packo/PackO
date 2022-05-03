@@ -210,7 +210,7 @@ async function main() {
           if (layer.id !== editing.alertLayerName) {
             branch.deleteVectorLayer(layer);
             viewer.view.notifyChange(layer);
-            controllers.refreshDropBox('alert', [' -', ...branch.vectorList
+            controllers.refreshDropBox('alert', ['-', ...branch.vectorList
               .filter((elem) => elem.name !== layer.id)
               .map((elem) => elem.name)]);
           } else {
@@ -258,7 +258,7 @@ async function main() {
       };
       await branch.changeBranch();
       controllers.setEditingController();
-      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+      controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
       controllers.resetAlerts();
     });
     controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch').name('Add new branch');
@@ -285,14 +285,14 @@ async function main() {
     controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
 
     // Couche d'alertes
-    editing.alert = ' -';
-    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [' -', ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
+    editing.alert = '-';
+    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [editing.alert, ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
     controllers.alert.onChange(async (name) => {
       console.log('choosed alert vector layer: ', name);
       const keepName = true;
       controllers.resetAlerts(keepName);
 
-      if (name !== ' -') {
+      if (name !== '-') {
         editing.alertLayerName = name;
         viewer.alertLayerName = name;
 
@@ -453,13 +453,13 @@ async function main() {
       console.log('-> A file had been dropped');
       // controllers.resetAlerts();
       await branch.saveLayer(event.name, event.data, event.style);
-      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+      controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
     });
 
     view.addEventListener('branch-created', () => {
       console.log('-> New branch created');
       controllers.setEditingController();
-      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+      controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
       controllers.resetAlerts();
       controllers.branch = controllers.branch.options(branch.list.map((elem) => elem.name))
         .setValue(branch.active.name);
@@ -471,7 +471,7 @@ async function main() {
         };
         await branch.changeBranch();
         controllers.setEditingController();
-        controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+        controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
         controllers.resetAlerts();
       });
     });
