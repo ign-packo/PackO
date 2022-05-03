@@ -233,7 +233,7 @@ def prep_tiling(list_filename_rgb,
             opi_tmp = opi_rgb
             if with_ir and not with_rgb:
                 opi_tmp = opi.replace('_ix', 'x')
-            layer.SetAttributeFilter("CLICHE LIKE '" + opi_tmp + "'")
+            layer.SetAttributeFilter("CLICHE LIKE '" + opi_tmp.replace('OPI_', '') + "'")
             feature = layer.GetNextFeature()
             date = feature.GetField('DATE')
             time_ut = feature.GetField('HEURE_TU')
