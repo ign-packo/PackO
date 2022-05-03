@@ -99,7 +99,7 @@ const branchName = 'graphRegress';
 const schema = {
   title: 'test',
   type: 'object',
-  required: ['color', 'cliche'],
+  required: ['color', 'opiName'],
   properties: {
     color: {
       type: 'array',
@@ -109,7 +109,7 @@ const schema = {
         type: 'integer',
       },
     },
-    cliche: {
+    opiName: {
       type: 'string',
     },
   },
@@ -174,7 +174,7 @@ describe('Graph', () => {
                 const resJson = JSON.parse(res.text);
 
                 resJson.should.be.jsonSchema(schema);
-                resJson.should.have.property('cliche').equal('out of bounds');
+                resJson.should.have.property('opiName').equal('out of bounds');
 
                 done();
               });
@@ -191,13 +191,13 @@ describe('Graph', () => {
                 res.should.have.status(201);
                 const resJson = JSON.parse(res.text);
                 resJson.should.be.jsonSchema(schema);
-                resJson.should.have.property('cliche').equal('out of graph');
+                resJson.should.have.property('opiName').equal('out of graph');
                 done();
               });
           });
         });
         describe('query: x=230755 & y=6759650', () => {
-          it(`should return a Json { "color": Array(3), "cliche": ${param.testOPI1} }`, (done) => {
+          it(`should return a Json { "color": Array(3), "opiName": ${param.testOPI1} }`, (done) => {
             chai.request(app)
               .get(`/${param.idBranch[branchName]}/graph`)
               .query({ x: 230755, y: 6759650 })
@@ -206,13 +206,13 @@ describe('Graph', () => {
                 res.should.have.status(200);
                 const resJson = JSON.parse(res.text);
                 resJson.should.be.jsonSchema(schema);
-                resJson.should.have.property('cliche').equal(param.testOPI1);
+                resJson.should.have.property('opiName').equal(param.testOPI1);
                 done();
               });
           });
         });
         describe('query: x=230749.8 & y=6759645.1', () => {
-          it(`should return a Json { "color": Array(3), "cliche": ${param.testOPI2} }`, (done) => {
+          it(`should return a Json { "color": Array(3), "opiName": ${param.testOPI2} }`, (done) => {
             chai.request(app)
               .get(`/${param.idBranch[branchName]}/graph`)
               .query({ x: 230749.8, y: 6759645.1 })
@@ -221,7 +221,7 @@ describe('Graph', () => {
                 res.should.have.status(200);
                 const resJson = JSON.parse(res.text);
                 resJson.should.be.jsonSchema(schema);
-                resJson.should.have.property('cliche').equal(param.testOPI2);
+                resJson.should.have.property('opiName').equal(param.testOPI2);
                 done();
               });
           });
@@ -238,7 +238,7 @@ describe('Graph', () => {
                 const resJson = JSON.parse(res.text);
 
                 resJson.should.be.jsonSchema(schema);
-                resJson.should.have.property('cliche').equal('out of graph');
+                resJson.should.have.property('opiName').equal('out of graph');
 
                 done();
               });

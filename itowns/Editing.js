@@ -117,7 +117,7 @@ class Editing {
       features: [
         {
           type: 'Feature',
-          properties: this.json,
+          properties: { color: this.color, opiName: this.opiName },
           geometry:
                     {
                       type: 'Polygon',
@@ -135,7 +135,6 @@ class Editing {
       );
     }
 
-    const dataStr = JSON.stringify(geojson);
     this.view.scene.remove(this.currentPolygon);
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
@@ -148,7 +147,7 @@ class Editing {
           Accept: 'application/json',
           'Content-Type': 'application/json',
         },
-        body: dataStr,
+        body: JSON.stringify(geojson),
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
@@ -173,7 +172,7 @@ class Editing {
     this.viewer.message = '';
 
     Object.keys(this.controllers).forEach((key) => {
-      if (key !== 'cliche' && this.controllers[key]) this.controllers[key].__li.style.backgroundColor = '';
+      if (key !== 'opiName' && this.controllers[key]) this.controllers[key].__li.style.backgroundColor = '';
     });
   }
 
@@ -365,8 +364,8 @@ class Editing {
       // L'utilisateur demande à déselectionner l'OPI
       if (this.validClicheSelected && (e.key === 'Escape')) {
         this.validClicheSelected = false;
-        this.cliche = 'none';
-        this.controllers.cliche.__li.style.backgroundColor = '';
+        this.opiName = 'none';
+        this.controllers.opiName.__li.style.backgroundColor = '';
         this.view.getLayerById('Opi').visible = false;
         this.view.notifyChange(this.view.getLayerById('Opi'), true);
       } else if (this.alertLayerName && this.alertFC.features.length > 0) {
@@ -499,24 +498,23 @@ class Editing {
             },
           }).then((res) => {
           res.json().then((json) => {
-            this.cliche = json.cliche;
+            this.opiName = json.opiName;
             this.cancelcurrentPolygon();
             if (res.status === 200) {
-              this.json = json;
               this.color = json.color;
-              this.controllers.cliche.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
+              this.controllers.opiName.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
               // On modifie la couche OPI
-              this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
+              this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${this.opiName}&FORMAT`);
               this.view.getLayerById('Opi').visible = true;
               this.viewer.refresh(this.branch.layers);
               this.validClicheSelected = true;
             }
             if (res.status === 201) {
               console.log('out of bounds');
-              this.cliche = 'none';
+              this.opiName = 'none';
               this.view.getLayerById('Opi').visible = false;
               this.validClicheSelected = false;
-              this.controllers.cliche.__li.style.backgroundColor = '';
+              this.controllers.opiName.__li.style.backgroundColor = '';
               this.view.notifyChange(this.view.getLayerById('Opi'), true);
             }
             if (res.status === 202) {

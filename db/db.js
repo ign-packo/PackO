@@ -121,7 +121,7 @@ async function getActivePatches(pgClient, idBranch) {
 
   const sql = "SELECT json_build_object('type', 'FeatureCollection', "
   + "'features', json_agg(ST_AsGeoJSON(s.*)::json)) FROM "
-  + '(SELECT t.*, o.name as cliche, o.color FROM '
+  + '(SELECT t.*, o.name as opiName, o.color FROM '
   + '(SELECT p.*, ARRAY_AGG(ARRAY[s.x, s.y, s.z]) as slabs '
   + 'FROM patches p LEFT JOIN slabs s ON p.id = s.id_patch WHERE p.id_branch = $1 '
   + 'AND p.active=True '
@@ -145,7 +145,7 @@ async function getUnactivePatches(pgClient, idBranch) {
 
   const sql = "SELECT json_build_object('type', 'FeatureCollection', "
   + "'features', json_agg(ST_AsGeoJSON(s.*)::json)) FROM "
-  + '(SELECT t.*, o.name as cliche, o.color FROM '
+  + '(SELECT t.*, o.name as opiName, o.color FROM '
   + '(SELECT p.*, ARRAY_AGG(ARRAY[s.x, s.y, s.z]) as slabs '
   + 'FROM patches p LEFT JOIN slabs s ON p.id = s.id_patch WHERE p.id_branch = $1 '
   + 'AND p.active=False '

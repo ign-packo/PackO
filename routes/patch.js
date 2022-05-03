@@ -31,10 +31,10 @@ const geoJsonAPatcher = [
     .exists().withMessage(createErrMsg.missingParameter('properties.color'))
     .custom(validator.isColor)
     .withMessage(createErrMsg.invalidParameter('properties.color')),
-  body('geoJSON.features.*.properties.cliche')
-    .exists().withMessage(createErrMsg.missingParameter('properties.cliche'))
+  body('geoJSON.features.*.properties.opiName')
+    .exists().withMessage(createErrMsg.missingParameter('properties.opiName'))
     .matches(/^[a-zA-Z0-9-_]+$/i)
-    .withMessage(createErrMsg.invalidParameter('properties.cliche')),
+    .withMessage(createErrMsg.invalidParameter('properties.opiName')),
 ];
 
 router.get('/:idBranch/patches',

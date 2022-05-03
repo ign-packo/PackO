@@ -157,7 +157,7 @@ describe('Patch', () => {
                   type: 'Feature',
                   properties: {
                     color: param.overviews.list_OPI[param.testCliche].color,
-                    cliche: param.testCliche,
+                    opiName: param.testCliche,
                   },
                   geometry: { type: 'Polygon', coordinates: [[[230749, 6759646], [230752, 6759646], [230752, 6759644], [230749, 6759644], [230749, 6759646]]] },
                 }],
@@ -181,7 +181,7 @@ describe('Patch', () => {
                   type: 'Feature',
                   properties: {
                     color: param.overviews.list_OPI[param.testCliche].color,
-                    cliche: param.testCliche,
+                    opiName: param.testCliche,
                   },
                   geometry: { type: 'Polygon', coordinates: [[[230748, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230748, 6759736]]] },
                 }],
@@ -278,7 +278,7 @@ describe('Patch', () => {
                 type: 'Feature',
                 properties: {
                   color: param.overviews.list_OPI[param.testCliche].color,
-                  cliche: param.testCliche,
+                  opiName: param.testCliche,
                 },
                 geometry: { type: 'Polygon', coordinates: [[[230748, 6759646], [230752, 6759646], [230752, 6759644], [230748, 6759644], [230748, 6759646]]] },
               }],
@@ -346,7 +346,7 @@ describe('Patch', () => {
                 type: 'Feature',
                 properties: {
                   color: param.overviews.list_OPI[param.testCliche].color,
-                  cliche: param.testCliche,
+                  opiName: param.testCliche,
                 },
                 geometry: { type: 'Polygon', coordinates: [[[230748, 6759646], [230752, 6759646], [230752, 6759644], [230748, 6759644], [230748, 6759646]]] },
               }],
