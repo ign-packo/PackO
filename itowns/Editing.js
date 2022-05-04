@@ -478,7 +478,6 @@ class Editing {
     if (this.currentStatus === status.WAITING) return;
     const mousePosition = this.pickPoint(e);
     console.log('Click: ', mousePosition.x, mousePosition.y);
-    console.log('currentStatus: ', this.currentStatus);
     this.viewer.message = '';
 
     switch (this.currentStatus) {
@@ -496,29 +495,31 @@ class Editing {
             },
           }).then((res) => {
           res.json().then((json) => {
-            this.opiName = json.opiName;
             this.cancelcurrentPolygon();
             if (res.status === 200) {
+              this.opiName = json.opiName;
               this.color = json.color;
               this.controllers.opiName.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
               // On modifie la couche OPI
               this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${this.opiName}&FORMAT`);
               this.view.getLayerById('Opi').visible = true;
               this.viewer.refresh(this.branch.layers);
-            }
-            if (res.status === 201) {
-              console.log('out of bounds');
-              this.opiName = 'none';
-              this.view.getLayerById('Opi').visible = false;
-              this.controllers.opiName.__li.style.backgroundColor = '';
-              this.view.notifyChange(this.view.getLayerById('Opi'), true);
-            }
-            if (res.status === 202) {
-              console.log('Server Error');
-              console.log(json);
-              const err = new Error('cache corrompu');
-              err.name = 'Server Error';
-              window.alert(`${err}\n${JSON.stringify(json)}`);
+            } else {
+              console.log(`-> No OPI found (${json.msg})`);
+              // 244-> no OPI at x, y (out of graph OR out of bounds)
+              // 404-> no OPI corresponding to the color found at x, y (corrupted cache)
+              if (res.status === 244) {
+                this.viewer.message = 'en dehors de la zone';
+              }
+              if (res.status === 404) {
+                const error = new Error("Sélection d'une OPI\n    -> cache corrompu");
+                error.name = 'Erreur de Cache ';
+                this.viewer.message = json.msg;
+                this.view.dispatchEvent({
+                  type: 'error',
+                  error,
+                });
+              }
             }
           });
         });

@@ -44,7 +44,7 @@ function getGraph(req, _res, next) {
     }
     debug(url);
     if (!fs.existsSync(url)) {
-      req.result = { json: { color: [0, 0, 0], opiName: 'out of bounds' }, code: 201 };
+      req.result = { json: { msg: 'out of bounds' }, code: 244 };
       next();
       return;
     }
@@ -60,16 +60,16 @@ function getGraph(req, _res, next) {
               code: 200,
             };
           } catch (error) {
-            req.result = { json: { color, opiName: 'not found' }, code: 202 };
+            req.result = { json: { msg: error.message }, code: 404 };
           }
         } else {
-          req.result = { json: { color: [0, 0, 0], opiName: 'out of graph' }, code: 201 };
+          req.result = { json: { msg: 'out of graph' }, code: 244 };
         }
         next();
       });
   } catch (error) {
     debug(error);
-    req.result = { json: { color: [0, 0, 0], opiName: 'out of bounds' }, code: 201 };
+    req.error = error;
     next();
   }
 }
