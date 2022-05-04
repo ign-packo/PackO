@@ -427,8 +427,8 @@ describe('Wmts', () => {
             TILEMATRIX: 21,
             TILEROW: 34402,
             TILECOL: 18027,
-            I: 44,
-            J: 215,
+            I: 54,
+            J: 227,
           })
           .end((err, res) => {
             should.not.exist(err);

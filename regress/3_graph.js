@@ -226,12 +226,12 @@ describe('Graph', () => {
               });
           });
         });
-        describe('query: x=230747 & y=6759643', () => {
+        describe('query: x=230748 & y=6759643', () => {
           // image not yet in the cache
           it("should return a 'out of graph'", (done) => {
             chai.request(app)
               .get(`/${param.idBranch[branchName]}/graph`)
-              .query({ x: 230747, y: 6759643 })
+              .query({ x: 230748, y: 6759643 })
               .end((err, res) => {
                 should.not.exist(err);
                 res.should.have.status(201);

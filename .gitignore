@@ -117,3 +117,6 @@ itowns/ortho.json
 
 #Ignore les xml dans le fichier cache_test
 cache_test/**/*.png.aux.xml
+
+#Ignore les log.txt dans cache_test
+cache_test/**/log.txt
