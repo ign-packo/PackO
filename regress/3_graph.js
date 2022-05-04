@@ -14,8 +14,8 @@ const params = [
     cachePath: 'cache_regress_RGB',
     idCache: null,
     idBranch: {},
-    testOPI1: '19FD5606Ax00020_16371',
-    testOPI2: '19FD5606Ax00020_16372',
+    testOpi1: '19FD5606Ax00020_16371',
+    testOpi2: '19FD5606Ax00020_16372',
   },
   {
     overviews: JSON.parse(fs.readFileSync('./cache_regress_RGBIR/overviews.json', 'utf8')),
@@ -23,8 +23,8 @@ const params = [
     cachePath: 'cache_regress_RGBIR',
     idCache: null,
     idBranch: {},
-    testOPI1: '19FD5606Ax00020_16371',
-    testOPI2: '19FD5606Ax00020_16372',
+    testOpi1: '19FD5606Ax00020_16371',
+    testOpi2: '19FD5606Ax00020_16372',
   },
   {
     overviews: JSON.parse(fs.readFileSync('./cache_regress_IR/overviews.json', 'utf8')),
@@ -32,8 +32,8 @@ const params = [
     cachePath: 'cache_regress_IR',
     idCache: null,
     idBranch: {},
-    testOPI1: '19FD5606A_ix00020_16371',
-    testOPI2: '19FD5606A_ix00020_16372',
+    testOpi1: '19FD5606A_ix00020_16371',
+    testOpi2: '19FD5606A_ix00020_16372',
   },
   // Les caches présents dans le dépôt
   {
@@ -42,8 +42,8 @@ const params = [
     cachePath: 'cache_test/cache_test_RGB/',
     idCache: null,
     idBranch: {},
-    testOPI1: '19FD5606Ax00020_16371',
-    testOPI2: '19FD5606Ax00020_16372',
+    testOpi1: '19FD5606Ax00020_16371',
+    testOpi2: '19FD5606Ax00020_16372',
   },
   {
     overviews: JSON.parse(fs.readFileSync('./cache_test/cache_test_RGBIR/overviews.json', 'utf8')),
@@ -51,8 +51,8 @@ const params = [
     cachePath: 'cache_test/cache_test_RGBIR/',
     idCache: null,
     idBranch: {},
-    testOPI1: '19FD5606Ax00020_16371',
-    testOPI2: '19FD5606Ax00020_16372',
+    testOpi1: '19FD5606Ax00020_16371',
+    testOpi2: '19FD5606Ax00020_16372',
   },
   {
     overviews: JSON.parse(fs.readFileSync('./cache_test/cache_test_IR/overviews.json', 'utf8')),
@@ -60,8 +60,8 @@ const params = [
     cachePath: 'cache_test/cache_test_IR/',
     idCache: null,
     idBranch: {},
-    testOPI1: '19FD5606A_ix00020_16371',
-    testOPI2: '19FD5606A_ix00020_16372',
+    testOpi1: '19FD5606A_ix00020_16371',
+    testOpi2: '19FD5606A_ix00020_16372',
   },
 ];
 
@@ -197,7 +197,7 @@ describe('Graph', () => {
           });
         });
         describe('query: x=230755 & y=6759650', () => {
-          it(`should return a Json { "color": Array(3), "opiName": ${param.testOPI1} }`, (done) => {
+          it(`should return a Json { "color": Array(3), "opiName": ${param.testOpi1} }`, (done) => {
             chai.request(app)
               .get(`/${param.idBranch[branchName]}/graph`)
               .query({ x: 230755, y: 6759650 })
@@ -206,13 +206,13 @@ describe('Graph', () => {
                 res.should.have.status(200);
                 const resJson = JSON.parse(res.text);
                 resJson.should.be.jsonSchema(schema);
-                resJson.should.have.property('opiName').equal(param.testOPI1);
+                resJson.should.have.property('opiName').equal(param.testOpi1);
                 done();
               });
           });
         });
         describe('query: x=230749.8 & y=6759645.1', () => {
-          it(`should return a Json { "color": Array(3), "opiName": ${param.testOPI2} }`, (done) => {
+          it(`should return a Json { "color": Array(3), "opiName": ${param.testOpi2} }`, (done) => {
             chai.request(app)
               .get(`/${param.idBranch[branchName]}/graph`)
               .query({ x: 230749.8, y: 6759645.1 })
@@ -221,7 +221,7 @@ describe('Graph', () => {
                 res.should.have.status(200);
                 const resJson = JSON.parse(res.text);
                 resJson.should.be.jsonSchema(schema);
-                resJson.should.have.property('opiName').equal(param.testOPI2);
+                resJson.should.have.property('opiName').equal(param.testOpi2);
                 done();
               });
           });

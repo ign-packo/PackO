@@ -58,7 +58,6 @@ class Editing {
     this.view = this.viewer.view;
     this.apiUrl = apiUrl;
 
-    this.validClicheSelected = false;
     this.currentStatus = status.RAS;
     this.currentPolygon = null;
     this.nbVertices = 0;
@@ -362,8 +361,7 @@ class Editing {
       if (e.key === 'i') nextStyleLayers(['Ortho_chgStyle', 'Opi_chgStyle']);
 
       // L'utilisateur demande à déselectionner l'OPI
-      if (this.validClicheSelected && (e.key === 'Escape')) {
-        this.validClicheSelected = false;
+      if (this.opiName !== 'none' && (e.key === 'Escape')) {
         this.opiName = 'none';
         this.controllers.opiName.__li.style.backgroundColor = '';
         this.view.getLayerById('Opi').visible = false;
@@ -507,13 +505,11 @@ class Editing {
               this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${this.opiName}&FORMAT`);
               this.view.getLayerById('Opi').visible = true;
               this.viewer.refresh(this.branch.layers);
-              this.validClicheSelected = true;
             }
             if (res.status === 201) {
               console.log('out of bounds');
               this.opiName = 'none';
               this.view.getLayerById('Opi').visible = false;
-              this.validClicheSelected = false;
               this.controllers.opiName.__li.style.backgroundColor = '';
               this.view.notifyChange(this.view.getLayerById('Opi'), true);
             }
@@ -603,13 +599,13 @@ class Editing {
     this.view.controls.setCursor('default', 'crosshair');
     console.log('"select": En attente de sélection');
     this.currentStatus = status.SELECT;
-    this.viewer.message = 'choisir un cliche';
+    this.viewer.message = 'choisir une Opi';
   }
 
   polygon() {
     if (this.currentStatus === status.WAITING) return;
-    if (!this.validClicheSelected) {
-      this.viewer.message = (this.currentStatus === status.MOVE_POINT) ? 'choisir un cliche valide' : 'cliche non valide';
+    if (this.opiName === 'none') {
+      this.viewer.message = (this.currentStatus === status.SELECT) ? 'Opi pas encore choisie' : "pas d'Opi sélectionnée";
       return;
     }
     if (this.currentPolygon) {
