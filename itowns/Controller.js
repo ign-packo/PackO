@@ -5,12 +5,11 @@ class Controller {
     this.controllers = {};
     this.menuGlobe = menuGlobe;
     this.editing = editing;
-    this.viewer = this.editing.viewer;
   }
 
   getController(name) {
     let controller = null;
-    const controllers = this.viewer.menuGlobe.gui.__controllers;
+    const controllers = this.menuGlobe.gui.__controllers;
     for (let i = 0; i < controllers.length; i += 1) {
       const c = controllers[i];
       if (c.property === name || c.name === name) {
@@ -38,12 +37,11 @@ class Controller {
   }
 
   resetAlerts(keepName = false) {
-    delete this.editing.alertLayerName;
-    delete this.viewer.alertLayerName;
+    this.editing.alertLayerName = '-';
     if (!keepName) this.alert.__select.options.selectedIndex = 0;
     this.hide(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
-    if (this.viewer.view.getLayerById('selectedFeature')) {
-      this.viewer.view.removeLayer('selectedFeature');
+    if (this.editing.viewer.view.getLayerById('selectedFeature')) {
+      this.editing.viewer.view.removeLayer('selectedFeature');
     }
   }
 
