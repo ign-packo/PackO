@@ -20,31 +20,6 @@ class Controller {
     return controller;
   }
 
-  setEditingController() {
-    const brancheName = this.editing.branch.active.name;
-    this[brancheName !== 'orig' ? 'setVisible' : 'hide'](['polygon', 'undo', 'redo']);
-    if (process.env.NODE_ENV === 'development') this[brancheName !== 'orig' ? 'setVisible' : 'hide']('clear');
-  }
-
-  refreshDropBox(dropBoxName, list) {
-    let innerHTML = '';
-    list.forEach((element) => {
-      innerHTML += `<option value='${element}'>${element}</option>`;
-    });
-    this[dropBoxName].domElement.children[0].innerHTML = innerHTML;
-    // this.editing.alert = value;
-    this[dropBoxName].updateDisplay();
-  }
-
-  resetAlerts(keepName = false) {
-    this.editing.alertLayerName = '-';
-    if (!keepName) this.alert.__select.options.selectedIndex = 0;
-    this.hide(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
-    if (this.editing.viewer.view.getLayerById('selectedFeature')) {
-      this.editing.viewer.view.removeLayer('selectedFeature');
-    }
-  }
-
   setVisible(controllerName) {
     const controllers = (typeof controllerName === 'string' || controllerName instanceof String) ? [controllerName] : controllerName;
     controllers.forEach((controller) => {
@@ -58,5 +33,38 @@ class Controller {
       this.getController(controller).__li.style.display = 'none';
     });
   }
+
+  setPatchCtr(branchName) {
+    this[branchName !== 'orig' ? 'setVisible' : 'hide'](['polygon', 'undo', 'redo']);
+    if (process.env.NODE_ENV === 'development') this[branchName !== 'orig' ? 'setVisible' : 'hide']('clear');
+  }
+
+  setAlertCtr(layerName) {
+    this[layerName !== '-' ? 'setVisible' : 'hide'](['progress', 'id', 'validated', 'unchecked', 'comment']);
+    this[layerName === 'Remarques' ? 'setVisible' : 'hide'](['delRemark']);
+  }
+
+  refreshDropBox(dropBoxName, listOfValues, valueToSelect = this[dropBoxName].getValue()) {
+    // by default (valueToSelect = undefined) the value before the refresh is kept
+    let selectedIndex = 0;
+    let innerHTML = '';
+    listOfValues.forEach((element, i) => {
+      innerHTML += `<option value='${element}'>${element}</option>`;
+      if (element === valueToSelect) {
+        selectedIndex = i;
+      }
+    });
+    this[dropBoxName].domElement.children[0].innerHTML = innerHTML;
+    this[dropBoxName].__select.options.selectedIndex = selectedIndex;
+  }
+
+  resetAlerts() {
+    this.editing.alertLayerName = '-';
+
+    if (this.editing.viewer.view.getLayerById('selectedFeature')) {
+      this.editing.viewer.view.removeLayer('selectedFeature');
+    }
+  }
 }
+
 export default Controller;
