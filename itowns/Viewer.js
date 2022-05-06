@@ -199,106 +199,104 @@ class Viewer {
     }
 
     layerNames.forEach((layerName) => {
-      const newLayer = {};
-      newLayer.config = {};
+      let config = {};
 
-      let layerConfig = {};
+      let layer = {};
 
       if (this.view.getLayerById(layerName)) {
         // la couche existe avant le refresh
-        layerConfig = this.view.getLayerById(layerName);
-        const {
-          opacity, transparent, visible,
-        } = this.view.getLayerById(layerName);
-        let { style } = this.view.getLayerById(layerName);
-        let { source } = this.view.getLayerById(layerName);
-        if (source.isVectorSource) {
-          source = new itowns.FileSource({
-            url: source.url,
+        layer = this.view.getLayerById(layerName);
+
+        config = {
+          source: layer.source,
+          opacity: layer.opacity,
+          style: layer.style,
+          zoom: layer.zoom,
+          transparent: layer.transparent,
+        };
+
+        if (layer.source.isVectorSource) {
+          config.source = new itowns.FileSource({
+            url: layer.source.url,
             fetcher: itowns.Fetcher.json,
-            crs: source.crs,
+            crs: layer.source.crs,
             parser: itowns.GeoJsonParser.parse,
           });
           if (this.oldStyle[layerName]) {
-            style = this.oldStyle[layerName];
+            config.style = this.oldStyle[layerName];
           }
           if (layerName === this.alertLayerName) {
-            this.oldStyle[layerName] = style.clone();
+            this.oldStyle[layerName] = config.style.clone();
             /* eslint-disable no-param-reassign */
-            style.fill.color = coloringAlerts;
-            style.point.color = coloringAlerts;
-            style.stroke.color = coloringAlerts;
+            config.style.fill.color = coloringAlerts;
+            config.style.point.color = coloringAlerts;
+            config.style.stroke.color = coloringAlerts;
             /* eslint-enable no-param-reassign */
           }
         }
         this.view.removeLayer(layerName);
-        newLayer.colorLayer = new itowns.ColorLayer(layerName,
-          {
-            source,
-            transparent,
-            opacity,
-            style,
-            zoom: {
-              min: layerName === 'Patches' ? this.zoomMinPatch : this.overviews.dataSet.level.min,
-              // min: this.overviews.dataSet.level.min,
-              max: this.overviews.dataSet.level.max,
-            },
-          });
 
-        if (layerName === 'Contour') {
-          newLayer.colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
-          newLayer.colorLayer.effect_parameter = 1.0;
-          newLayer.colorLayer.magFilter = THREE.NearestFilter;
-          newLayer.colorLayer.minFilter = THREE.NearestFilter;
-        }
-        newLayer.colorLayer.visible = visible;
-        this.view.addLayer(newLayer.colorLayer);
+        // newColorLayer = new itowns.ColorLayer(
+        //   layerName,
+        //   config,
+        // );
+
+        // newColorLayer.visible = layer.visible;
+        // if (layerName === 'Contour') {
+        //   newColorLayer.effect_type = itowns.colorLayerEffects.customEffect;
+        //   newColorLayer.effect_parameter = 1.0;
+        //   newColorLayer.magFilter = THREE.NearestFilter;
+        //   newColorLayer.minFilter = THREE.NearestFilter;
+        // }
+
+        // this.view.addLayer(newColorLayer);
       } else {
         // nouvelle couche
-        [layerConfig] = layerList.filter((l) => l.name === layerName);
-        if (layerConfig.type === 'raster') {
-          newLayer.config.source = new itowns.WMTSSource({
-            url: layerConfig.url,
-            crs: layerConfig.crs,
+        [layer] = layerList.filter((l) => l.name === layerName);
+        if (layer.type === 'raster') {
+          config.source = new itowns.WMTSSource({
+            url: layer.url,
+            crs: layer.crs,
             format: 'image/png',
-            style: layerConfig.wmtsStyle,
+            style: layer.wmtsStyle,
             name: layerName !== 'Contour' ? layerName.toLowerCase() : 'graph',
             tileMatrixSet: this.overviews.identifier,
             tileMatrixSetLimits:
               (layerName === 'Contour') || (layerName === 'Graph')
                 ? this.overviews.dataSet.limitsForGraph : this.overviews.dataSet.limits,
           });
-          newLayer.config.source.wmtsStyle = layerConfig.wmtsStyle;
-        } else if (layerConfig.type === 'vector') {
-          newLayer.config.source = new itowns.FileSource({
-            url: layerConfig.url,
+          config.source.wmtsStyle = layer.wmtsStyle;
+        } else if (layer.type === 'vector') {
+          config.source = new itowns.FileSource({
+            url: layer.url,
             fetcher: itowns.Fetcher.json,
-            crs: layerConfig.crs ? layerConfig.crs : this.crs,
+            crs: layer.crs ? layer.crs : this.crs,
             parser: itowns.GeoJsonParser.parse,
           });
 
-          newLayer.config.style = new itowns.Style(layerConfig.style);
-          newLayer.config.zoom = {
+          config.style = new itowns.Style(layer.style);
+          config.zoom = {
             min: this.overviews.dataSet.level.min,
             max: this.overviews.dataSet.level.max,
           };
           // pas besoin de definir le zoom min pour patches car il y en a jamais sur la couche orig
         }
-        newLayer.config.opacity = layerConfig.opacity;
-        newLayer.colorLayer = new itowns.ColorLayer(
-          layerName,
-          newLayer.config,
-        );
+        config.opacity = layer.opacity;
 
-        newLayer.colorLayer.visible = layerConfig.visible;
-        if (layerName === 'Contour') {
-          newLayer.colorLayer.effect_type = itowns.colorLayerEffects.customEffect;
-          newLayer.colorLayer.effect_parameter = 1.0;
-          newLayer.colorLayer.magFilter = THREE.NearestFilter;
-          newLayer.colorLayer.minFilter = THREE.NearestFilter;
-        }
+        // newColorLayer = new itowns.ColorLayer(
+        //   layerName,
+        //   config,
+        // );
 
-        this.view.addLayer(newLayer.colorLayer);
+        // newColorLayer.visible = layer.visible;
+        // if (layerName === 'Contour') {
+        //   newColorLayer.effect_type = itowns.colorLayerEffects.customEffect;
+        //   newColorLayer.effect_parameter = 1.0;
+        //   newColorLayer.magFilter = THREE.NearestFilter;
+        //   newColorLayer.minFilter = THREE.NearestFilter;
+        // }
+
+        // this.view.addLayer(newColorLayer);
 
         if (this.layerIndex[layerName] === undefined) {
           this.layerIndex[layerName] = Math.max(...Object.values(this.layerIndex)) + 1;
@@ -306,8 +304,23 @@ class Viewer {
       }
 
       // Dans les 2 cas
-      if (newLayer.colorLayer.vectorId === undefined) {
-        newLayer.colorLayer.vectorId = layerConfig.vectorId;
+      const newColorLayer = new itowns.ColorLayer(
+        layerName,
+        config,
+      );
+
+      newColorLayer.visible = layer.visible;
+      if (layerName === 'Contour') {
+        newColorLayer.effect_type = itowns.colorLayerEffects.customEffect;
+        newColorLayer.effect_parameter = 1.0;
+        newColorLayer.magFilter = THREE.NearestFilter;
+        newColorLayer.minFilter = THREE.NearestFilter;
+      }
+
+      this.view.addLayer(newColorLayer);
+
+      if (newColorLayer.vectorId === undefined) {
+        newColorLayer.vectorId = layer.vectorId;
       }
     });
 
