@@ -234,10 +234,10 @@ async function main() {
 
     [branch.active] = branch.list;
 
-    const getVectorList = itowns.Fetcher.json(`${apiUrl}/${branch.active.id}/vectors`);
-    branch.vectorList = await getVectorList;
+    // const getVectorList = itowns.Fetcher.json(`${apiUrl}/${branch.active.id}/vectors`);
+    // branch.vectorList = await getVectorList;
 
-    branch.setLayers();
+    await branch.setLayers();
     viewer.refresh(branch.layers);
 
     // const editing = new Editing(branch, apiUrl);
@@ -385,7 +385,7 @@ async function main() {
         });
       if (res.status === 200) {
         // viewer.refresh(branch.layers);
-        viewer.refresh({ [editing.alertLayerName]: branch.layers[editing.alertLayerName] });
+        viewer.refresh([editing.alertLayerName]);
         if (value === true) {
           editing.nbValidated += 1;
           if (editing.alertFC.features[0].geometries[editing.featureIndex]

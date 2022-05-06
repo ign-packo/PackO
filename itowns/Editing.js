@@ -254,7 +254,7 @@ class Editing {
         method: 'PUT',
       });
     if (res.status === 200) {
-      this.viewer.refresh({ [this.alertLayerName]: this.branch.layers[this.alertLayerName] });
+      this.viewer.refresh([this.alertLayerName]);
       this.alertFC.features[0].geometries[this.featureIndex].properties[variable] = value;
     } else {
       this.viewer.message = 'PB with validate';
@@ -574,7 +574,7 @@ class Editing {
               method: 'PUT',
             }).then(async (res) => {
             if (res.status === 200) {
-              this.viewer.refresh({ Remarques: this.branch.layers.Remarques });
+              this.viewer.refresh(['Remarques']);
               this.view.controls.setCursor('default', 'auto');
               this.currentStatus = status.RAS;
               this.viewer.message = '';
@@ -747,7 +747,7 @@ class Editing {
         method: 'DELETE',
       }).then(async (res) => {
       if (res.status === 200) {
-        this.viewer.refresh({ Remarques: this.branch.layers.Remarques });
+        this.viewer.refresh(['Remarques']);
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
         this.viewer.message = '';
