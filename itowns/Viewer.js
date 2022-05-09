@@ -71,7 +71,6 @@ class Viewer {
     this.crs = {};
     this.overview = {};
     this.view = null;
-    this.menuGlobe = null;
 
     this.xcenter = 0;
     this.ycenter = 0;
@@ -180,23 +179,22 @@ class Viewer {
     );
   }
 
-  refresh(layerList, changeBranch = false) {
+  removeExtraLayers(menuGlobe) {
+    // Clean up of all the extra layers
+    this.view.getLayers((l) => l.isColorLayer).map((l) => l.id).forEach((layerName) => {
+      if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layerName)) {
+        this.view.removeLayer(layerName);
+        menuGlobe.removeLayersGUI(layerName);
+        delete this.layerIndex[layerName];
+      }
+    });
+  }
+
+  refresh(layerList) {
     const layerNames = [];
     layerList.forEach((layer) => {
       layerNames.push(typeof layer === 'string' ? layer : layer.name);
     });
-
-    const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
-    if (changeBranch) {
-      // Clean up of all the extra layers
-      listColorLayer.forEach((layerName) => {
-        if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layerName)) {
-          this.view.removeLayer(layerName);
-          this.menuGlobe.removeLayersGUI(layerName);
-          delete this.layerIndex[layerName];
-        }
-      });
-    }
 
     layerNames.forEach((layerName) => {
       let config = {};
