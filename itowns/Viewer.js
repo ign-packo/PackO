@@ -186,7 +186,7 @@ class Viewer {
       layerNames.push(typeof layer === 'string' ? layer : layer.name);
     });
 
-    let listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
+    const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
     if (changeBranch) {
       // Clean up of all the extra layers
       listColorLayer.forEach((layerName) => {
@@ -297,10 +297,6 @@ class Viewer {
         // }
 
         // this.view.addLayer(newColorLayer);
-
-        if (this.layerIndex[layerName] === undefined) {
-          this.layerIndex[layerName] = Math.max(...Object.values(this.layerIndex)) + 1;
-        }
       }
 
       // Dans les 2 cas
@@ -322,17 +318,14 @@ class Viewer {
       if (newColorLayer.vectorId === undefined) {
         newColorLayer.vectorId = layer.vectorId;
       }
-    });
 
-    // Layer ordering
-    listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
-    listColorLayer.forEach((layerId) => {
-      if (this.layerIndex[layerId] === undefined) {
-        const extrIndex = Math.max(...Object.values(this.layerIndex)) + 1;
-        itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, extrIndex);
-      } else {
-        itowns.ColorLayersOrdering.moveLayerToIndex(this.view, layerId, this.layerIndex[layerId]);
-      }
+      // Layer ordering
+      itowns.ColorLayersOrdering.moveLayerToIndex(
+        this.view,
+        layerName,
+        this.layerIndex[layerName] === undefined
+          ? Math.max(...Object.values(this.layerIndex)) + 1 : this.layerIndex[layerName],
+      );
     });
   }
 
