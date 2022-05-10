@@ -484,7 +484,7 @@ class Editing {
     switch (this.currentStatus) {
       case status.SELECT: {
         console.log('get OPI');
-        // on selectionne le cliche
+        // on selectionne l'Opi
         const pos = this.pickPoint(e);
         this.view.controls.setCursor('default', 'auto');
         fetch(`${this.apiUrl}/${this.branch.active.id}/graph?x=${pos.x}&y=${pos.y}`,

@@ -336,7 +336,7 @@ paths:
                   features:
                     type: object
                     example:
-                      [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [[[230748, 6759653], [230746, 6759653], [230746, 6759651], [230748, 6759651], [230748, 6759653]]] } } ]
+                      [ { type: 'Feature', properties: { color: [254, 175, 143], opiName: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [[[230748, 6759653], [230746, 6759653], [230746, 6759651], [230748, 6759651], [230748, 6759653]]] } } ]
 
       responses:
         '200':
@@ -485,7 +485,7 @@ paths:
                       features:
                         type: object
                         example:
-                          [ { type: 'Feature', properties: { color: [254, 175, 143], cliche: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [[[230748, 6759653], [230746, 6759653], [230746, 6759651], [230748, 6759651], [230748, 6759653]]] } } ]
+                          [ { type: 'Feature', properties: { color: [254, 175, 143], opiName: '19FD5606Ax00020_16371' }, geometry: { type: 'Polygon', coordinates: [[[230748, 6759653], [230746, 6759653], [230746, 6759651], [230748, 6759651], [230748, 6759653]]] } } ]
 
       responses:
         '200':

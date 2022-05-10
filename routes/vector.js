@@ -45,14 +45,6 @@ const vectorToSave = [
   //   .withMessage(createErrMsg.invalidParameter('crs')),
   body('json.data.features.*.geometry')
     .custom(GJV.isPolygon).withMessage(createErrMsg.InvalidEntite('data.features.*.geometry', 'polygon')),
-  // body('geoJSON.features.*.properties.color')
-  //   .exists().withMessage(createErrMsg.missingParameter('properties.color'))
-  //   .custom(validator.isColor)
-  //   .withMessage(createErrMsg.invalidParameter('properties.color')),
-  // body('geoJSON.features.*.properties.cliche')
-  //   .exists().withMessage(createErrMsg.missingParameter('properties.cliche'))
-  //   .matches(/^[a-zA-Z0-9-_]+$/i)
-  //   .withMessage(createErrMsg.invalidParameter('properties.cliche')),
 ];
 
 router.get('/:idBranch/vectors',
