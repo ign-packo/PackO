@@ -259,7 +259,7 @@ paths:
     get:
       tags:
         - graph
-      summary: "Récupération de l'identifiant du cliché"
+      summary: "Récupération du nom de cliché, couleur du label, date et heure d'acquisition"
       description: ""
       parameters:
         - in: path

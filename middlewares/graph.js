@@ -54,6 +54,8 @@ function getGraph(req, _res, next) {
         try {
           const opi = await db.getOPIFromColor(req.client, idBranch, out.color);
           out.opiName = opi.name;
+          out.date = opi.date;
+          out.time = opi.time_ut;
           req.result = { json: out, code: 200 };
         } catch (error) {
           out.opiName = 'not found';
