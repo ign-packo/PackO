@@ -259,7 +259,7 @@ paths:
     get:
       tags:
         - graph
-      summary: "Récupération du nom de cliché, couleur du label, date et heure d'acquisition"
+      summary: "Récupération du nom de l'OPI, couleur du label, date et heure d'acquisition"
       description: ""
       parameters:
         - in: path

@@ -182,7 +182,7 @@ async function getOPIFromColor(pgClient, idBranch, color) {
 async function getOPIFromName(pgClient, idBranch, name) {
   debug(`    ~~getOpiId (name: ${name})`);
   const results = await pgClient.query(
-    'SELECT o.name, o.date, o.time_ut, o.color, o.id, o.with_rgb, o.with_ir FROM opi o, branches b WHERE b.id_cache = o.id_cache AND b.id = $1 AND o.name=$2',
+    'SELECT o.name, to_char(o.date,\'YYYY-mm-dd\') as date, o.time_ut, o.color, o.id, o.with_rgb, o.with_ir FROM opi o, branches b WHERE b.id_cache = o.id_cache AND b.id = $1 AND o.name=$2',
     [idBranch, name],
   );
   debug(results.rows);

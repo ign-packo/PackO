@@ -14,30 +14,24 @@ def read_args():
     """Gestion des arguments"""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input", required=True, help="input cache folder")
-    parser.add_argument(
-        "-o", "--output", required=True, help="output folder"
-    )
-    parser.add_argument(
-        "-b", "--branch", help="id of branch of cache to use as source for patches (default: None)",
-        default=None
-    )
-    parser.add_argument(
-        "-p", "--patches", required=True, help="file containing patches on the branch to export"
-    )
-    parser.add_argument(
-        "-t", "--tilesize", help="tile size (in pixels) for vectorising graph tiles (default: 100000)", type=int,
-        default=100000
-    )
-    parser.add_argument(
-        "-v", "--verbose", help="verbose (default: 0)", type=int, default=0
-    )
-    args = parser.parse_args()
+    parser.add_argument("-c", "--cache", required=True, help="input cache folder")
+    parser.add_argument("-o", "--output", required=True, help="output folder")
+    parser.add_argument("-b", "--branch",
+                        help="id of branch of cache to use as source for patches (default: None)",
+                        default=None)
+    parser.add_argument("-p", "--patches",
+                        required=True,
+                        help="file containing patches on the branch to export")
+    parser.add_argument("-t", "--tilesize",
+                        help="tile size (in pixels) for vectorising graph tiles (default: 100000)",
+                        type=int, default=100000)
+    parser.add_argument("-v", "--verbose", help="verbose (default: 0)", type=int, default=0)
+    args_prep = parser.parse_args()
 
-    if args.verbose >= 1:
-        print("\nArguments: ", args)
+    if args_prep.verbose >= 1:
+        print("\nArguments: ", args_prep)
 
-    return args
+    return args_prep
 
 
 args = read_args()
@@ -45,46 +39,61 @@ args = read_args()
 try:
     os.mkdir(args.output)
 except FileExistsError:
-    print("Output dir already exists")
+    print("ERREUR : Le dossier de sortie existe déjà.")
 
 # define working dir
 os.chdir(args.output)
-print("Working directory: '" + os.getcwd() + "'")
+print(f"INFO : Le répertoire de travail est '{os.getcwd()}'")
 # redefine input directory
 try:
-    args.input = os.path.relpath(args.input, start=args.output)
+    args.cache = os.path.relpath(args.cache, start=args.output)
 except ValueError:
     print("No relative path, absolute path is used instead")
-    args.input = os.path.abspath(args.input)
-print("Updated input path relative to working dir: '" + args.input + "'")
+    args.cache = os.path.abspath(args.cache)
+print("Updated input path relative to working dir: '" + args.cache + "'")
 
 # check if input dir exists
-if not os.path.exists(args.input):
-    raise SystemExit("Directory " + args.input + " does not exist.")
+if not os.path.exists(args.cache):
+    raise SystemExit("ERREUR : Le répertoire " + args.cache + " n'existe pas.")
 
 t_start = time.perf_counter()
 
-# lecture du fichier overviews pour recuperer les infos du cache
-fileOverviews = open(os.path.join(args.input, "overviews.json"))
-overviews = json.load(fileOverviews)
-fileOverviews.close()
+overviews_path = os.path.join(args.cache, "overviews.json")
 
+# lecture du fichier overviews pour recuperer les infos du cache
+try:
+    with open(overviews_path, encoding='utf-8') as fileOverviews:
+        overviews = json.load(fileOverviews)
+except IOError:
+    print(f"ERREUR: Le fichier '{overviews_path}' n'existe pas.")
+
+if 'pathDepth' not in overviews:
+    raise SystemExit(f"ERREUR: L'attribut 'pathDepth' n'existe pas dans '{overviews_path}'.")
 path_depth = overviews['pathDepth']
+
+if 'level' not in overviews:
+    raise SystemExit(f"ERREUR: L'attribut 'level' n'existe pas dans '{overviews_path}'.")
+if 'max' not in overviews['level']:
+    raise SystemExit(f"ERREUR: L'attribut 'max' n'existe pas dans '{overviews_path}'.")
 level = overviews['level']['max']
+
+if 'resolution' not in overviews:
+    raise SystemExit(f"ERREUR: L'attribut 'resolution' n'existe pas dans '{overviews_path}.")
 resol = overviews['resolution']
 
-cache_name = os.path.basename((os.path.normpath(args.input)))
+cache_name = os.path.basename((os.path.normpath(args.cache)))
 if args.verbose > 0:
-    print('Cache name = ' + cache_name)
+    print(f"Cache name = '{cache_name}'")
 
 # on recupere les infos concernant les patches dans le json en entree
-file_patches = open(args.patches)
-patches_data = json.load(file_patches)
-file_patches.close()
+with open(args.patches, encoding='utf-8') as file_patches:
+    patches_data = json.load(file_patches)
+if 'features' not in patches_data:
+    raise SystemExit(f"ERROR: Attribute 'features' does not exist in '{args.patches}'.")
 patches = patches_data['features']
 
 id_branch_patch = None
-list_patches = list()
+list_patches = []
 for patch in patches:
     if patch['properties']['active'] is True:
         slabs = patch['properties']['slabs']
@@ -94,54 +103,51 @@ for patch in patches:
             y = slab[1]
 
             slab_path = get_slab_path(int(x), int(y), int(path_depth))
-            tile_path = os.path.join(args.input, 'graph', str(level), slab_path[1:])
+            tile_path = os.path.join(args.cache, 'graph', str(level), slab_path[1:])
             list_patches.append(os.path.abspath(tile_path+'.tif'))
 
 if args.branch and id_branch_patch and int(args.branch) != id_branch_patch:
-    raise SystemExit('** ERREUR: '
-                     'Pas de correspondance entre la branche indiquée (%s) '
-                     'et celle des retouches (%s) !' % (args.branch, id_branch_patch))
+    raise SystemExit(f"** ERREUR: "
+                     f"Pas de correspondance entre la branche indiquée '{args.branch}' "
+                     f"et celle des retouches '{id_branch_patch}' !")
 
 if args.branch and not id_branch_patch:
-    raise SystemExit('** ERREUR: '
-                     'Branche de retouches indiquée (%s), mais aucune retouche !'
-                     % args.branch)
+    raise SystemExit(f"** ERREUR: "
+                     f"Branche de retouches indiquée '{args.branch}', mais aucune retouche !")
 
 if not args.branch and id_branch_patch:
-    print("** La branche de retouches traitée est : " + str(id_branch_patch))
+    print(f"** La branche de retouches traitée est : '{id_branch_patch}'")
     args.branch = str(id_branch_patch)
 
-graph_dir = os.path.join(args.input, 'graph', str(level))
+graph_dir = os.path.join(args.cache, 'graph', str(level))
 
 # on parcourt le repertoire graph du cache pour recuperer l'ensemble des images de graphe
-list_tiles = list()
+list_tiles = []
 for (root, dirs, files) in os.walk(graph_dir):
     for file in files:
         file = os.path.join(root, file)
         list_tiles.append(os.path.abspath(file))
 
 # fichier intermediaire contenant la liste de images pour le vrt
-path_out = os.path.join(args.output, os.path.basename(args.input))
-f_out = open(path_out + '.txt', 'w')
+path_out = os.path.join(args.output, os.path.basename(args.cache))
+with open(path_out + '.txt', 'w', encoding='utf-8') as f_out:
+    for tile in list_tiles:
+        if args.verbose > 0:
+            print(f"tile : '{tile}'")
+        # il faut filtrer uniquement les tuiles presentes a l'origine
+        # on recupere juste le nom de la dalle sans extension -> 2 caracteres
+        filename = os.path.basename(tile).split('.')[0]
 
-for tile in list_tiles:
-    if args.verbose > 0:
-        print("tile : "+tile)
-    # il faut filtrer uniquement les tuiles presente a l'origine
-    # on recupere juste le nom de la dalle sans extension -> 2 caracteres
-    filename = os.path.basename(tile).split('.')[0]
-
-    if len(filename) > 2:  # cas des tuiles avec retouche
-        continue
-    if tile in list_patches:
-        # dans ce cas il faut ajouter la tuile index_branche + tilename a la liste
-        tile_path = os.path.join(os.path.dirname(tile), str(args.branch)+'_'+os.path.basename(tile))
-        f_out.write(tile_path+'\n')
-    else:
-        # on ajoute la tuile d'origine dans la liste pour creer le vrt
-        f_out.write(tile+'\n')
-
-f_out.close()
+        if len(filename) > 2:  # cas des tuiles avec retouche
+            continue
+        if tile in list_patches:
+            # dans ce cas il faut ajouter la tuile index_branche + tilename a la liste
+            tilename = os.path.basename(tile)
+            tile_path = os.path.join(os.path.dirname(tile), str(args.branch)+'_'+tilename)
+            f_out.write(tile_path+'\n')
+        else:
+            # on ajoute la tuile d'origine dans la liste pour creer le vrt
+            f_out.write(tile+'\n')
 
 # on construit un vrt a partir de la liste des images recuperee precedemment
 cmd_buildvrt = (
@@ -156,8 +162,8 @@ if args.verbose > 0:
     print(cmd_buildvrt)
 os.system(cmd_buildvrt)
 
-# on construit un 2eme vrt à partir du premier (pour avoir la bonne structure avec les bons parametres :
-# notamment l emprise)
+# on construit un 2eme vrt à partir du premier
+# (pour avoir la bonne structure avec les bons parametres : notamment l'emprise)
 cmd_buildvrt2 = (
     'gdalbuildvrt '
     + path_out + '_tmp.vrt '
@@ -168,9 +174,9 @@ if args.verbose > 0:
 os.system(cmd_buildvrt2)
 
 # modification du VRT pour passage 32bits
-with open(path_out + '_tmp.vrt', 'r') as f:
+with open(path_out + '_tmp.vrt', 'r', encoding='utf-8') as f:
     lines = f.readlines()
-with open(path_out + '_32bits.vrt', 'w') as f:
+with open(path_out + '_32bits.vrt', 'w', encoding='utf-8') as f:
     for line in lines:
         # on ecrit le code python au bon endroit dans le VRT
         if 'band="1"' in line:
@@ -233,10 +239,9 @@ tile_size = int(resol * args.tilesize)
 
 for x in range(x_min, x_max, tile_size):
     for y in range(y_min, y_max, tile_size):
-        file = str(x) + '_' + str(y) + '.vrt'
         cmd_vrt = (
             'gdalbuildvrt '
-            + os.path.join(tiles_dir, file) + ' '
+            + os.path.join(tiles_dir, str(x) + '_' + str(y) + '.vrt') + ' '
             + path_out + '_32bits.vrt'
             + ' -tr ' + str(resol) + ' ' + str(resol)
             + ' -te ' + str(x) + ' ' + str(y) + ' ' + str(x+tile_size) + ' ' + str(y+tile_size)
@@ -249,4 +254,4 @@ t_end = time.perf_counter()
 
 # temps de calcul total
 if args.verbose > 0:
-    print('Temps global du calcul :'+str(round(t_end-t_start, 2)))
+    print(f"Temps global du calcul : {str(round(t_end-t_start, 2))}")
