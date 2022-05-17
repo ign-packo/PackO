@@ -15,7 +15,7 @@ const params = [
     cachePath: 'cache_regress_RGB',
     idCache: null,
     idBranch: {},
-    testCliche: '19FD5606Ax00020_16371',
+    testOpi: '19FD5606Ax00020_16371',
   },
   {
     overviews: JSON.parse(fs.readFileSync('./cache_regress_RGBIR/overviews.json', 'utf8')),
@@ -23,7 +23,7 @@ const params = [
     cachePath: 'cache_regress_RGBIR',
     idCache: null,
     idBranch: {},
-    testCliche: '19FD5606Ax00020_16371',
+    testOpi: '19FD5606Ax00020_16371',
   },
   {
     overviews: JSON.parse(fs.readFileSync('./cache_regress_IR/overviews.json', 'utf8')),
@@ -31,7 +31,7 @@ const params = [
     cachePath: 'cache_regress_IR',
     idCache: null,
     idBranch: {},
-    testCliche: '19FD5606A_ix00020_16371',
+    testOpi: '19FD5606A_ix00020_16371',
   },
   // Les caches présents dans le dépôt
   {
@@ -40,7 +40,7 @@ const params = [
     cachePath: 'cache_test/cache_test_RGB/',
     idCache: null,
     idBranch: {},
-    testCliche: '19FD5606Ax00020_16371',
+    testOpi: '19FD5606Ax00020_16371',
   },
   {
     overviews: JSON.parse(fs.readFileSync('./cache_test/cache_test_RGBIR/overviews.json', 'utf8')),
@@ -48,7 +48,7 @@ const params = [
     cachePath: 'cache_test/cache_test_RGBIR/',
     idCache: null,
     idBranch: {},
-    testCliche: '19FD5606Ax00020_16371',
+    testOpi: '19FD5606Ax00020_16371',
   },
   {
     overviews: JSON.parse(fs.readFileSync('./cache_test/cache_test_IR/overviews.json', 'utf8')),
@@ -56,7 +56,7 @@ const params = [
     cachePath: 'cache_test/cache_test_IR/',
     idCache: null,
     idBranch: {},
-    testCliche: '19FD5606A_ix00020_16371',
+    testOpi: '19FD5606A_ix00020_16371',
   },
 ];
 
@@ -156,8 +156,8 @@ describe('Patch', () => {
                 {
                   type: 'Feature',
                   properties: {
-                    color: param.overviews.list_OPI[param.testCliche].color,
-                    cliche: param.testCliche,
+                    color: param.overviews.list_OPI[param.testOpi].color,
+                    opiName: param.testOpi,
                   },
                   geometry: { type: 'Polygon', coordinates: [[[230749, 6759646], [230752, 6759646], [230752, 6759644], [230749, 6759644], [230749, 6759646]]] },
                 }],
@@ -180,8 +180,8 @@ describe('Patch', () => {
                 {
                   type: 'Feature',
                   properties: {
-                    color: param.overviews.list_OPI[param.testCliche].color,
-                    cliche: param.testCliche,
+                    color: param.overviews.list_OPI[param.testOpi].color,
+                    opiName: param.testOpi,
                   },
                   geometry: { type: 'Polygon', coordinates: [[[230748, 6759736], [230746, 6759736], [230746, 6759734], [230748, 6759734], [230748, 6759736]]] },
                 }],
@@ -277,8 +277,8 @@ describe('Patch', () => {
               {
                 type: 'Feature',
                 properties: {
-                  color: param.overviews.list_OPI[param.testCliche].color,
-                  cliche: param.testCliche,
+                  color: param.overviews.list_OPI[param.testOpi].color,
+                  opiName: param.testOpi,
                 },
                 geometry: { type: 'Polygon', coordinates: [[[230748, 6759646], [230752, 6759646], [230752, 6759644], [230748, 6759644], [230748, 6759646]]] },
               }],
@@ -345,8 +345,8 @@ describe('Patch', () => {
               {
                 type: 'Feature',
                 properties: {
-                  color: param.overviews.list_OPI[param.testCliche].color,
-                  cliche: param.testCliche,
+                  color: param.overviews.list_OPI[param.testOpi].color,
+                  opiName: param.testOpi,
                 },
                 geometry: { type: 'Polygon', coordinates: [[[230748, 6759646], [230752, 6759646], [230752, 6759644], [230748, 6759644], [230748, 6759646]]] },
               }],

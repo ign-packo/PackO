@@ -558,7 +558,7 @@ async function clear(req, _res, next) {
 async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
   debug('applyPatch', feature);
 
-  const opi = (await db.getOPIFromName(pgClient, idBranch, feature.properties.cliche));
+  const opi = (await db.getOPIFromName(pgClient, idBranch, feature.properties.opiName));
   const patchInserted = await db.insertPatch(pgClient, idBranch, feature.geometry, opi.id);
   const patchId = patchInserted.id_patch;
   const newPatchNum = patchInserted.num;
@@ -570,7 +570,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
     promisesCreatePatch.push(createPatch(aCog,
       feature,
       feature.properties.color,
-      feature.properties.cliche,
+      feature.properties.opiName,
       opi.with_rgb,
       opi.with_ir,
       overviews,

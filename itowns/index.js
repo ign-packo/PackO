@@ -210,7 +210,7 @@ async function main() {
           if (layer.id !== editing.alertLayerName) {
             branch.deleteVectorLayer(layer);
             viewer.view.notifyChange(layer);
-            controllers.refreshDropBox('alert', [' -', ...branch.vectorList
+            controllers.refreshDropBox('alert', ['-', ...branch.vectorList
               .filter((elem) => elem.name !== layer.id)
               .map((elem) => elem.name)]);
           } else {
@@ -241,9 +241,6 @@ async function main() {
     viewer.refresh(branch.layers);
 
     // const editing = new Editing(branch, apiUrl);
-    editing.cliche = 'none';
-    editing.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
-    editing.color = [0, 0, 0];
 
     // const controllers = new Controller(viewer.menuGlobe, editing);
 
@@ -259,17 +256,19 @@ async function main() {
       };
       await branch.changeBranch();
       controllers.setEditingController();
-      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+      controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
       controllers.resetAlerts();
     });
     controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch').name('Add new branch');
 
     // Selection OPI
     controllers.select = viewer.menuGlobe.gui.add(editing, 'select').name('Select an OPI [s]');
-    controllers.cliche = viewer.menuGlobe.gui.add(editing, 'cliche').name('OPI selected');
-    controllers.cliche.listen().domElement.parentElement.style.pointerEvents = 'none';
+    editing.opiName = 'none';
+    controllers.opiName = viewer.menuGlobe.gui.add(editing, 'opiName').name('OPI selected');
+    controllers.opiName.listen().domElement.parentElement.style.pointerEvents = 'none';
 
     // Coord
+    editing.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
     controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord').name('Coordinates');
     controllers.coord.listen();
 
@@ -286,15 +285,15 @@ async function main() {
     controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
 
     // Couche d'alertes
-    editing.alert = ' -';
-    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [' -', ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
+    editing.alert = '-';
+    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [editing.alert, ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
     controllers.alert.onChange(async (name) => {
       document.activeElement.blur();
       console.log('choosed alert vector layer: ', name);
       const keepName = true;
       controllers.resetAlerts(keepName);
 
-      if (name !== ' -') {
+      if (name !== '-') {
         editing.alertLayerName = name;
         viewer.alertLayerName = name;
 
@@ -422,7 +421,7 @@ async function main() {
     // editing controllers
     editing.controllers = {
       select: controllers.select,
-      cliche: controllers.cliche,
+      opiName: controllers.opiName,
       polygon: controllers.polygon,
       // checked: controllers.checked,
       id: controllers.id,
@@ -455,13 +454,13 @@ async function main() {
       console.log('-> A file had been dropped');
       // controllers.resetAlerts();
       await branch.saveLayer(event.name, event.data, event.style);
-      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+      controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
     });
 
     view.addEventListener('branch-created', () => {
       console.log('-> New branch created');
       controllers.setEditingController();
-      controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+      controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
       controllers.resetAlerts();
       controllers.branch = controllers.branch.options(branch.list.map((elem) => elem.name))
         .setValue(branch.active.name);
@@ -473,7 +472,7 @@ async function main() {
         };
         await branch.changeBranch();
         controllers.setEditingController();
-        controllers.refreshDropBox('alert', [' -', ...branch.vectorList.map((elem) => elem.name)]);
+        controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
         controllers.resetAlerts();
       });
     });

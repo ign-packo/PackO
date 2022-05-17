@@ -58,7 +58,6 @@ class Editing {
     this.view = this.viewer.view;
     this.apiUrl = apiUrl;
 
-    this.validClicheSelected = false;
     this.currentStatus = status.RAS;
     this.currentPolygon = null;
     this.nbVertices = 0;
@@ -117,7 +116,7 @@ class Editing {
       features: [
         {
           type: 'Feature',
-          properties: this.json,
+          properties: { color: this.color, opiName: this.opiName },
           geometry:
                     {
                       type: 'Polygon',
@@ -135,7 +134,6 @@ class Editing {
       );
     }
 
-    const dataStr = JSON.stringify(geojson);
     this.view.scene.remove(this.currentPolygon);
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
@@ -148,7 +146,7 @@ class Editing {
           Accept: 'application/json',
           'Content-Type': 'application/json',
         },
-        body: dataStr,
+        body: JSON.stringify(geojson),
       }).then((res) => {
       this.cancelcurrentPolygon();
       if (res.status === 200) {
@@ -173,7 +171,7 @@ class Editing {
     this.viewer.message = '';
 
     Object.keys(this.controllers).forEach((key) => {
-      if (key !== 'cliche' && this.controllers[key]) this.controllers[key].__li.style.backgroundColor = '';
+      if (key !== 'opiName' && this.controllers[key]) this.controllers[key].__li.style.backgroundColor = '';
     });
   }
 
@@ -363,10 +361,9 @@ class Editing {
       if (e.key === 'i') nextStyleLayers(['Ortho_chgStyle', 'Opi_chgStyle']);
 
       // L'utilisateur demande à déselectionner l'OPI
-      if (this.validClicheSelected && (e.key === 'Escape')) {
-        this.validClicheSelected = false;
-        this.cliche = 'none';
-        this.controllers.cliche.__li.style.backgroundColor = '';
+      if (this.opiName !== 'none' && (e.key === 'Escape')) {
+        this.opiName = 'none';
+        this.controllers.opiName.__li.style.backgroundColor = '';
         this.view.getLayerById('Opi').visible = false;
         this.view.notifyChange(this.view.getLayerById('Opi'), true);
       } else if (this.alertLayerName && this.alertFC.features.length > 0) {
@@ -487,7 +484,7 @@ class Editing {
     switch (this.currentStatus) {
       case status.SELECT: {
         console.log('get OPI');
-        // on selectionne le cliche
+        // on selectionne l'Opi
         const pos = this.pickPoint(e);
         this.view.controls.setCursor('default', 'auto');
         fetch(`${this.apiUrl}/${this.branch.active.id}/graph?x=${pos.x}&y=${pos.y}`,
@@ -499,24 +496,21 @@ class Editing {
             },
           }).then((res) => {
           res.json().then((json) => {
-            this.cliche = json.cliche;
+            this.opiName = json.opiName;
             this.cancelcurrentPolygon();
             if (res.status === 200) {
-              this.json = json;
               this.color = json.color;
-              this.controllers.cliche.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
+              this.controllers.opiName.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
               // On modifie la couche OPI
-              this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${json.cliche}&FORMAT`);
+              this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${this.opiName}&FORMAT`);
               this.view.getLayerById('Opi').visible = true;
               this.viewer.refresh(this.branch.layers);
-              this.validClicheSelected = true;
             }
             if (res.status === 201) {
               console.log('out of bounds');
-              this.cliche = 'none';
+              this.opiName = 'none';
               this.view.getLayerById('Opi').visible = false;
-              this.validClicheSelected = false;
-              this.controllers.cliche.__li.style.backgroundColor = '';
+              this.controllers.opiName.__li.style.backgroundColor = '';
               this.view.notifyChange(this.view.getLayerById('Opi'), true);
             }
             if (res.status === 202) {
@@ -605,13 +599,13 @@ class Editing {
     this.view.controls.setCursor('default', 'crosshair');
     console.log('"select": En attente de sélection');
     this.currentStatus = status.SELECT;
-    this.viewer.message = 'choisir un cliche';
+    this.viewer.message = 'choisir une Opi';
   }
 
   polygon() {
     if (this.currentStatus === status.WAITING) return;
-    if (!this.validClicheSelected) {
-      this.viewer.message = (this.currentStatus === status.MOVE_POINT) ? 'choisir un cliche valide' : 'cliche non valide';
+    if (this.opiName === 'none') {
+      this.viewer.message = (this.currentStatus === status.SELECT) ? 'Opi pas encore choisie' : "pas d'Opi sélectionnée";
       return;
     }
     if (this.currentPolygon) {

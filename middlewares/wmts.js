@@ -315,9 +315,9 @@ function wmts(req, _res, next) {
           /* eslint-disable no-param-reassign */
           try {
             const opi = await db.getOPIFromColor(req.client, idBranch, out.color);
-            out.cliche = opi.name;
+            out.opiName = opi.name;
           } catch (error) {
-            out.cliche = 'missing';
+            out.opiName = 'missing';
             resCode = 201;
           }
           /* eslint-enable no-param-reassign */
@@ -328,7 +328,7 @@ function wmts(req, _res, next) {
                                        + ' xsi:schemaLocation="http://www.maps.bob/etopo2  GetFeatureInfoExampleSchema.xsd">'
                 + '<featureMember>'
                   + `<${LAYER}>`
-                    + `<ortho>${out.cliche}</ortho>`
+                    + `<ortho>${out.opiName}</ortho>`
                     + `<graph>${out.color}</graph>`
                     + `<TileRow>${TILEROW}</TileRow>`
                     + `<TileCol>${TILECOL}</TileCol>`

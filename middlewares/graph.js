@@ -44,7 +44,7 @@ function getGraph(req, _res, next) {
     }
     debug(url);
     if (!fs.existsSync(url)) {
-      req.result = { json: { color: [0, 0, 0], cliche: 'out of bounds' }, code: 201 };
+      req.result = { json: { color: [0, 0, 0], opiName: 'out of bounds' }, code: 201 };
       next();
       return;
     }
@@ -53,21 +53,21 @@ function getGraph(req, _res, next) {
         /* eslint-disable no-param-reassign */
         try {
           const opi = await db.getOPIFromColor(req.client, idBranch, out.color);
-          out.cliche = opi.name;
+          out.opiName = opi.name;
           req.result = { json: out, code: 200 };
         } catch (error) {
-          out.cliche = 'not found';
+          out.opiName = 'not found';
           req.result = { json: out, code: 202 };
         }
       } else {
-        req.result = { json: { color: [0, 0, 0], cliche: 'out of graph' }, code: 201 };
+        req.result = { json: { color: [0, 0, 0], opiName: 'out of graph' }, code: 201 };
       }
       next();
       /* eslint-enable no-param-reassign */
     });
   } catch (error) {
     debug(error);
-    req.result = { json: { color: [0, 0, 0], cliche: 'out of bounds' }, code: 201 };
+    req.result = { json: { color: [0, 0, 0], opiName: 'out of bounds' }, code: 201 };
     next();
   }
 }
