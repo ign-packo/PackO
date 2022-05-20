@@ -129,16 +129,15 @@ function getTileEncoded(url, x, y, z, mime, blocSize, cacheKey, bands) {
     .then((image) => image.getBufferAsync(mime));
 }
 
-function getPixel(url, x, y, z, col, lig, blocSize, cacheKey) {
-  debug(getPixel, url, x, y, z, col, lig, blocSize, cacheKey);
+function getColor(url, x, y, z, col, lig, blocSize, cacheKey) {
+  debug('getColor', url, x, y, z, col, lig, blocSize, cacheKey);
   return getTile(url, x, y, z, blocSize).then((image) => {
     const index = image.getPixelIndex(col, lig);
-    const out = {
-      color: [image.bitmap.data[index],
-        image.bitmap.data[index + 1],
-        image.bitmap.data[index + 2]],
-    };
-    return out;
+    return [
+      image.bitmap.data[index],
+      image.bitmap.data[index + 1],
+      image.bitmap.data[index + 2],
+    ];
   });
 }
 
@@ -320,7 +319,7 @@ function processPatchAsync(patch, blocSize) {
 }
 
 exports.getTileEncoded = getTileEncoded;
-exports.getPixel = getPixel;
+exports.getColor = getColor;
 exports.getDefaultEncoded = getDefaultEncoded;
 exports.processPatch = processPatchAsync;
 exports.clearCache = clearCache;

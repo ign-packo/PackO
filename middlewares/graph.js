@@ -48,25 +48,25 @@ function getGraph(req, _res, next) {
       next();
       return;
     }
-    gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, I, J, overviews.tileSize.width, 'graph').then(async (out) => {
-      if (out.color.some((item) => item !== 0)) {
-        /* eslint-disable no-param-reassign */
-        try {
-          const opi = await db.getOPIFromColor(req.client, idBranch, out.color);
-          out.opiName = opi.name;
-          out.date = opi.date;
-          out.time = opi.time_ut;
-          req.result = { json: out, code: 200 };
-        } catch (error) {
-          out.opiName = 'not found';
-          req.result = { json: out, code: 202 };
+    gdalProcessing.getColor(url, cogPath.x, cogPath.y, cogPath.z, I, J, overviews.tileSize.width, 'graph')
+      .then(async (color) => {
+        if (color.some((item) => item !== 0)) {
+          try {
+            const opi = await db.getOPIFromColor(req.client, idBranch, color);
+            req.result = {
+              json: {
+                color, opiName: opi.name, date: opi.date, time: opi.time_ut,
+              },
+              code: 200,
+            };
+          } catch (error) {
+            req.result = { json: { color, opiName: 'not found' }, code: 202 };
+          }
+        } else {
+          req.result = { json: { color: [0, 0, 0], opiName: 'out of graph' }, code: 201 };
         }
-      } else {
-        req.result = { json: { color: [0, 0, 0], opiName: 'out of graph' }, code: 201 };
-      }
-      next();
-      /* eslint-enable no-param-reassign */
-    });
+        next();
+      });
   } catch (error) {
     debug(error);
     req.result = { json: { color: [0, 0, 0], opiName: 'out of bounds' }, code: 201 };
