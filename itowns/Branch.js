@@ -28,7 +28,6 @@ class Branch {
     this.view = viewer.view;
 
     this.layers = [];
-    // this.vectorList = null;
 
     this.active = {};
     this.list = {};
@@ -121,8 +120,6 @@ class Branch {
       const regex = new RegExp(`^${this.apiUrl}\\/[0-9]+\\/`);
       this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url.replace(regex, `${this.apiUrl}/${this.active.id}/`);
     });
-    // const getVectorList = itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
-    // this.vectorList = await getVectorList;
     await this.setLayers();
     this.viewer.removeExtraLayers(this.viewer.menuGlobe);
     this.viewer.refresh(this.layers);
@@ -158,7 +155,7 @@ class Branch {
     const res = await fetch(`${this.apiUrl}/branch?name=${branchName}&idCache=${this.viewer.idCache}`,
       {
         method: 'POST',
-      });// .then((res) => {
+      });
     if (res.status === 200) {
       const branches = await itowns.Fetcher.json(`${this.apiUrl}/branches?idCache=${this.viewer.idCache}`);// .then((branches) => {
       this.list = branches;
@@ -168,14 +165,12 @@ class Branch {
       this.view.dispatchEvent({
         type: 'branch-created',
       });
-      // });
     } else {
       res.text().then((err) => {
         console.log(err);
         this.viewer.message = 'le nom n\'est pas valide';
       });
     }
-    // });
   }
 
   async saveLayer(name, geojson, style) {
@@ -197,7 +192,6 @@ class Branch {
         }),
       });
     if (res.status === 200) {
-      // this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
       const json = await res.json();
       this.vectorList.push({
         name,
@@ -206,16 +200,6 @@ class Branch {
         crs,
       });
       this.setLayers(this.vectorList);
-      // const json = await res.json();
-      // this.layers[name] = {
-      //   type: 'vector',
-      //   url: `${this.apiUrl}/vector?idVector=${json.id}`,
-      //   crs,
-      //   opacity: 1,
-      //   style,
-      //   visible: true,
-      //   id: json.id,
-      // };
       console.log(`-> Layer '${name}' saved`);
       this.viewer.refresh(this.layers);
     } else {

@@ -124,8 +124,6 @@ class Viewer {
     this.xcenter = (xmin + xmax) * 0.5;
     this.ycenter = (ymin + ymax) * 0.5;
 
-    // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
-    // const viewerDiv = document.getElementById('viewerDiv');
     this.viewerDiv.height = this.viewerDiv.clientHeight;
     this.viewerDiv.width = this.viewerDiv.clientWidth;
     const placement = new itowns.Extent(
@@ -147,9 +145,9 @@ class Viewer {
     this.resolLvMax = resolution * 2 ** (overviews.level.max - levelMax - 1) - 0.01;
     this.resolLvMin = resolution * 2 ** (overviews.level.max - levelMin) + 0.01;
     // console.log('resol min/max : ', this.resolLvMin, this.resolLvMax);
-    // Instanciate PlanarView*
-    const zoomFactor = 2;// customizable
 
+    const zoomFactor = 2;// customizable
+    // Instanciate PlanarView
     this.view = new itowns.PlanarView(this.viewerDiv, extent, {
       camera: {
         type: itowns.CAMERA_TYPE.ORTHOGRAPHIC,
@@ -233,21 +231,6 @@ class Viewer {
           }
         }
         this.view.removeLayer(layerName);
-
-        // newColorLayer = new itowns.ColorLayer(
-        //   layerName,
-        //   config,
-        // );
-
-        // newColorLayer.visible = layer.visible;
-        // if (layerName === 'Contour') {
-        //   newColorLayer.effect_type = itowns.colorLayerEffects.customEffect;
-        //   newColorLayer.effect_parameter = 1.0;
-        //   newColorLayer.magFilter = THREE.NearestFilter;
-        //   newColorLayer.minFilter = THREE.NearestFilter;
-        // }
-
-        // this.view.addLayer(newColorLayer);
       } else {
         // nouvelle couche
         [layer] = layerList.filter((l) => l.name === layerName);
@@ -280,21 +263,6 @@ class Viewer {
           // pas besoin de definir le zoom min pour patches car il y en a jamais sur la couche orig
         }
         config.opacity = layer.opacity;
-
-        // newColorLayer = new itowns.ColorLayer(
-        //   layerName,
-        //   config,
-        // );
-
-        // newColorLayer.visible = layer.visible;
-        // if (layerName === 'Contour') {
-        //   newColorLayer.effect_type = itowns.colorLayerEffects.customEffect;
-        //   newColorLayer.effect_parameter = 1.0;
-        //   newColorLayer.magFilter = THREE.NearestFilter;
-        //   newColorLayer.minFilter = THREE.NearestFilter;
-        // }
-
-        // this.view.addLayer(newColorLayer);
       }
 
       // Dans les 2 cas
@@ -466,10 +434,6 @@ class Viewer {
 
           // itowns.GeoJsonParser.parse(resData, options).then((features) => {
           itowns.GeoJsonParser.parse(resData, options).then(() => {
-            // const source = new itowns.FileSource({
-            //   features,
-            // });
-
             const randomColor = Math.round(Math.random() * 0xffffff);
 
             const style = {
@@ -485,19 +449,6 @@ class Viewer {
                 radius: 5,
               },
             };
-            // const layer = new itowns.ColorLayer(layerName, {
-            //   transparent: true,
-            //   style: new itowns.Style(style),
-            //   source,
-            // });
-
-            // _view.addLayer(layer);
-
-            // console.log(`-> Layer '${layer.id}' added`);
-
-            // _index[layer.id] = Object.keys(_index).length;
-            // itowns.ColorLayersOrdering.moveLayerToIndex(_view,
-            //   layer.id, _index[layer.id]);
 
             console.log(`-> Layer '${layerName}' dropped`);
 

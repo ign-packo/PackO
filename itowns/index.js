@@ -234,9 +234,6 @@ async function main() {
 
     [branch.active] = branch.list;
 
-    // const getVectorList = itowns.Fetcher.json(`${apiUrl}/${branch.active.id}/vectors`);
-    // branch.vectorList = await getVectorList;
-
     await branch.setLayers();
     viewer.refresh(branch.layers);
 
@@ -326,8 +323,6 @@ async function main() {
           editing.centerOnAlertFeature();
           editing.validated = editing.featureSelectedGeom.properties.status;
           controllers.validated.updateDisplay();
-          // viewer.remark = editing.featureSelectedGeom.properties.comment;
-          // controllers.remark.updateDisplay();
 
           editing.comment = editing.featureSelectedGeom.properties.comment;
           // controllers.comment.updateDisplay();
@@ -403,10 +398,6 @@ async function main() {
     });
     controllers.hide('validated');
 
-    // viewer.remark = '';
-    // controllers.remark = viewer.menuGlobe.gui.add(viewer, 'remark').name('Remark');
-    // controllers.remark.listen().domElement.parentElement.style.pointerEvents = 'none';
-    // controllers.hide('remark');
     editing.comment = '';
     controllers.comment = viewer.menuGlobe.gui.add(editing, 'comment').name('comment');
     controllers.comment.listen().domElement.parentElement.style.pointerEvents = 'none';
@@ -495,8 +486,6 @@ async function main() {
         editing.centerOnAlertFeature();
         editing.validated = editing.featureSelectedGeom.properties.status;
         controllers.validated.updateDisplay();
-        // viewer.remark = editing.featureSelectedGeom.properties.comment;
-        // controllers.remark.updateDisplay();
         editing.comment = editing.featureSelectedGeom.properties.comment;
         // controllers.comment.updateDisplay();
 
@@ -527,8 +516,6 @@ async function main() {
         editing.centerOnAlertFeature();
         editing.validated = editing.featureSelectedGeom.properties.status;
         controllers.validated.updateDisplay();
-        // viewer.remark = editing.featureSelectedGeom.properties.comment;
-        // controllers.remark.updateDisplay();
         editing.comment = editing.featureSelectedGeom.properties.comment;
         // controllers.comment.updateDisplay();
       } else {
@@ -575,7 +562,6 @@ async function main() {
           controllers.id.updateDisplay();
           editing.validated = features[layerTest.id][0].geometry.properties.status;
           controllers.validated.updateDisplay();
-          // viewer.remark = features[layerTest.id][0].geometry.properties.comment;
           editing.comment = features[layerTest.id][0].geometry.properties.comment;
           // controllers.comment.updateDisplay();
 
