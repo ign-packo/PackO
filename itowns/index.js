@@ -101,13 +101,6 @@ async function main() {
     const viewer = new Viewer(viewerDiv);
 
     const overviews = await getOverviews;
-    overviews.with_rgb = true;
-    overviews.with_ir = true;
-    const tabOpi = Object.keys(overviews.list_OPI);
-    if (tabOpi.length > 0) {
-      overviews.with_rgb = overviews.list_OPI[tabOpi[0]].with_rgb;
-      overviews.with_ir = overviews.list_OPI[tabOpi[0]].with_ir;
-    }
 
     // on ajoute les dataset.limits pour les layers graph/contour
     // avec uniquement les niveaux correspondants au COG mis à jour par les patchs
@@ -126,6 +119,20 @@ async function main() {
     viewer.maxGraphDezoom = 2 ** nbSubLevelsPerCOG;
 
     viewer.createView(overviews, activeCache.id);
+
+    overviews.with_rgb = true;
+    overviews.with_ir = true;
+    const tabOpi = Object.keys(overviews.list_OPI);
+    if (tabOpi.length > 0) {
+      overviews.with_rgb = overviews.list_OPI[tabOpi[0]].with_rgb;
+      overviews.with_ir = overviews.list_OPI[tabOpi[0]].with_ir;
+    }
+    if (overviews.with_rgb) {
+      viewer.view.styles = overviews.with_ir ? ['RVB', 'IRC', 'IR'] : ['RVB'];
+    } else {
+      viewer.view.styles = ['IR'];
+    }
+
     setupLoadingScreen(viewerDiv, viewer.view);
     // FeatureToolTip.init(viewerDiv, viewer.view);
 
@@ -155,6 +162,7 @@ async function main() {
       if (layer.id === 'selectedFeature') { return; }
 
       const folder = this[typeGui].addFolder(layer.id);
+
       if (editing.folderVisibleShortcuts[layer.id] !== undefined) {
         const titles = Array.from(folder.domElement.getElementsByClassName('title'));
         titles.forEach((title) => {
@@ -178,24 +186,35 @@ async function main() {
         }
         viewer.view.notifyChange(layer);
       }));
+
       folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0).onChange(((value) => {
         layer.opacity = value;
         viewer.view.notifyChange(layer);
       }));
-      if (layer.source.wmtsStyle) {
-        let styles;
-        if (overviews.with_rgb) {
-          styles = overviews.with_ir ? ['RVB', 'IRC', 'IR'] : ['RVB'];
-        } else {
-          styles = ['IR'];
-        }
-        const chgStyle = folder.add({ style: layer.source.wmtsStyle }, 'style', styles);
+
+      // if (layer.source.wmtsStyle) {
+      if (['Ortho', 'Opi'].includes(layer.id)) {
+        // let styles;
+        // console.log(layer.id, layer.source.wmtsStyle)
+        // if (overviews.with_rgb) {
+        //   styles = overviews.with_ir ? ['RVB', 'IRC', 'IR'] : ['RVB'];
+        // } else {
+        //   styles = ['IR'];
+        // }
+        // if (layer.source.wmtsStyle === 'RVBIR') {
+        //   styles = ['RVB', 'IRC', 'IR'];
+        // } else {
+        //   styles = [layer.source.wmtsStyle];
+        // }
+
+        const chgStyle = folder.add({ style: this.view.styles[0] }, 'style', this.view.styles);
         chgStyle.domElement.id = `${layer.id}_chgStyle`;
         chgStyle.onChange((value) => {
           console.log('Change style', value);
           const regex = /STYLE=.*TILEMATRIXSET/;
           layer.source.url = layer.source.url.replace(regex, `STYLE=${value}&TILEMATRIXSET`);
-          layer.source.wmtsStyle = value;
+          // layer.source.wmtsStyle = value;
+          // console.log(layer.source.wmtsStyle)
           setTimeout(() => { viewer.refresh(branch.layers); }, 1);
         });
       }

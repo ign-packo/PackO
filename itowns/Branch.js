@@ -55,7 +55,6 @@ class Branch {
         crs: this.viewer.crs,
         opacity: 1,
         visible: true,
-        wmtsStyle: this.viewer.overviews.with_rgb ? 'RVB' : 'IR',
       },
       {
         name: 'Opi',
@@ -64,7 +63,6 @@ class Branch {
         crs: this.viewer.crs,
         opacity: 0.5,
         visible: false,
-        wmtsStyle: this.viewer.overviews.with_rgb ? 'RVB' : 'IR',
       },
       {
         name: 'Contour',
