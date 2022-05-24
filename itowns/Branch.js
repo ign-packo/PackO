@@ -231,13 +231,5 @@ class Branch {
       });
     });
   }
-
-  deleteVectorLayer(layer) {
-    if (!layer) return;
-    this.deleteLayer(layer.vectorId, layer.id);
-    this.view.removeLayer(layer.id);
-    this.viewer.menuGlobe.removeLayersGUI(layer.id);
-    delete this.viewer.layerIndex[layer.id];
-  }
 }
 export default Branch;

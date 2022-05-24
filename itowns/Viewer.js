@@ -167,6 +167,29 @@ class Viewer {
         minResolution: this.resolLvMin,
       },
     });
+
+    const viewer = this;
+    this.view.removeVectorLayer = function _(layerName) {
+      if (layerName === undefined) return;
+      const layerId = viewer.view.getLayerById(layerName).vectorId;
+      viewer.view.removeLayer(layerName);
+      delete viewer.layerIndex[layerName];
+      viewer.view.dispatchEvent({
+        type: 'vectorLayer-removed',
+        layerId,
+        layerName,
+      });
+    };
+
+    this.view.changeStyle = function _(value) {
+      console.log('Change style to', value);
+      const regex = /STYLE=.*TILEMATRIXSET/;
+      ['Ortho', 'Opi'].forEach((layerName) => {
+        const layer = viewer.view.getLayerById(layerName);
+        layer.source.url = layer.source.url.replace(regex, `STYLE=${value}&TILEMATRIXSET`);
+      });
+      viewer.refresh(['Ortho', 'Opi']);
+    };
   }
 
   centerCamera(coordX, coordY) {
