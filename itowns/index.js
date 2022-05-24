@@ -458,6 +458,20 @@ async function main() {
       controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
     });
 
+    view.addEventListener('vectorLayer-removed', (event) => {
+      branch.deleteLayer(event.layerId, event.layerName)
+        .then(() => {
+          console.log(`-> Vector '${event.layerName} (id: ${event.layerId}) had been deleted`);
+          controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
+        })
+        .catch((error) => {
+          view.dispatchEvent({
+            type: 'error',
+            error,
+          });
+        });
+    });
+
     view.addEventListener('branch-created', (newBranch) => {
       console.log(`-> New branch created (name: '${newBranch.name}', id: ${newBranch.id})`);
       branch.changeBranch(newBranch.name);
