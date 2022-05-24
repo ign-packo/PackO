@@ -163,16 +163,16 @@ async function main() {
 
       const folder = this[typeGui].addFolder(layer.id);
 
-      if (editing.folderVisibleShortcuts[layer.id] !== undefined) {
+      if (viewer.shortCuts.visibleFolder[layer.id] !== undefined) {
         const titles = Array.from(folder.domElement.getElementsByClassName('title'));
         titles.forEach((title) => {
-          if (title.innerText.startsWith(layer.id)) title.innerText += ` [${editing.folderVisibleShortcuts[layer.id]}]`;
+          if (title.innerText.startsWith(layer.id)) title.innerText += ` [${viewer.shortCuts.visibleFolder[layer.id]}]`;
         });
       }
-      if (editing.folderStyleShortcuts[layer.id] !== undefined) {
+      if (viewer.shortCuts.styleFolder[layer.id] !== undefined) {
         const titles = Array.from(folder.domElement.getElementsByClassName('title'));
         titles.forEach((title) => {
-          if (title.innerText.startsWith(layer.id)) title.innerText += ` [${editing.folderStyleShortcuts[layer.id]}]`;
+          if (title.innerText.startsWith(layer.id)) title.innerText += ` [${viewer.shortCuts.styleFolder[layer.id]}]`;
         });
       }
 

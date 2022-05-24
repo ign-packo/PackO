@@ -67,9 +67,6 @@ class Editing {
     this.featureIndex = 0;
 
     this.STATUS = status;
-
-    this.folderVisibleShortcuts = { Ortho: 'm', Opi: 'o', Contour: 'g' };
-    this.folderStyleShortcuts = { Ortho: 'i', Opi: 'i' };
   }
 
   pickPoint(event) {
@@ -313,8 +310,8 @@ class Editing {
       // start polygon
       if (e.key === 'p') this.polygon();
       // change visibility on ColorLayers
-      Object.keys(this.folderVisibleShortcuts).forEach((key) => {
-        if (e.key === this.folderVisibleShortcuts[key]) {
+      Object.keys(this.viewer.shortCuts.visibleFolder).forEach((key) => {
+        if (e.key === this.viewer.shortCuts.visibleFolder[key]) {
           console.log(`Change ${key} visibility`);
           getAllCheckboxes(key).forEach((c) => (c.click()));
         }

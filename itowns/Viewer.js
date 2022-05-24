@@ -85,6 +85,11 @@ class Viewer {
       Patches: 4,
     };
     this.oldStyle = {};
+
+    this.shortCuts = {
+      visibleFolder: { Ortho: 'm', Opi: 'o', Contour: 'g' },
+      styleFolder: { Ortho: 'i', Opi: 'i' },
+    };
   }
 
   createView(overviews, idCache) {
