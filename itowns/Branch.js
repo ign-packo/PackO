@@ -27,16 +27,29 @@ class Branch {
     this.viewer = viewer;
     this.view = viewer.view;
 
-    this.layers = {};
-    this.vectorList = {};
+    this.layers = [];
 
     this.active = {};
     this.list = {};
   }
 
-  setLayers() {
-    this.layers = {
-      Ortho: {
+  async setLayers(vectorList = null) {
+    let getVectorList;
+    if (vectorList === null) {
+      getVectorList = itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
+    }
+
+    this.layers = [
+      {
+        name: 'Graph',
+        type: 'raster',
+        url: `${this.apiUrl}/${this.active.id}/wmts`,
+        crs: this.viewer.crs,
+        opacity: 1,
+        visible: true,
+      },
+      {
+        name: 'Ortho',
         type: 'raster',
         url: `${this.apiUrl}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
@@ -44,21 +57,8 @@ class Branch {
         visible: true,
         wmtsStyle: this.viewer.overviews.with_rgb ? 'RVB' : 'IR',
       },
-      Graph: {
-        type: 'raster',
-        url: `${this.apiUrl}/${this.active.id}/wmts`,
-        crs: this.viewer.crs,
-        opacity: 1,
-        visible: true,
-      },
-      Contour: {
-        type: 'raster',
-        url: `${this.apiUrl}/${this.active.id}/wmts`,
-        crs: this.viewer.crs,
-        opacity: 0.5,
-        visible: true,
-      },
-      Opi: {
+      {
+        name: 'Opi',
         type: 'raster',
         url: `${this.apiUrl}/${this.active.id}/wmts`,
         crs: this.viewer.crs,
@@ -66,7 +66,16 @@ class Branch {
         visible: false,
         wmtsStyle: this.viewer.overviews.with_rgb ? 'RVB' : 'IR',
       },
-      Patches: {
+      {
+        name: 'Contour',
+        type: 'raster',
+        url: `${this.apiUrl}/${this.active.id}/wmts`,
+        crs: this.viewer.crs,
+        opacity: 0.5,
+        visible: true,
+      },
+      {
+        name: 'Patches',
         type: 'vector',
         url: `${this.apiUrl}/${this.active.id}/patches`,
         crs: this.viewer.crs,
@@ -82,18 +91,24 @@ class Branch {
           },
         },
       },
-    };
+    ];
+
+    if (vectorList === null) {
+      this.vectorList = await getVectorList;
+    }
 
     this.vectorList.forEach((vector) => {
-      this.layers[vector.name] = {
+      this.layers.push({
+        name: vector.name,
         type: 'vector',
         url: `${this.apiUrl}/vector?idVector=${vector.id}`,
         crs: vector.crs,
         opacity: 1,
-        style: JSON.parse(vector.style_itowns),
         visible: true,
-        id: vector.id,
-      };
+        style: JSON.parse(vector.style_itowns),
+        vectorId: vector.id,
+        isAlert: false,
+      });
     });
   }
 
@@ -105,10 +120,9 @@ class Branch {
       const regex = new RegExp(`^${this.apiUrl}\\/[0-9]+\\/`);
       this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url.replace(regex, `${this.apiUrl}/${this.active.id}/`);
     });
-    const getVectorList = itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
-    this.vectorList = await getVectorList;
-    this.setLayers();
-    this.viewer.refresh(this.layers, true);
+    await this.setLayers();
+    this.viewer.removeExtraLayers(this.viewer.menuGlobe);
+    this.viewer.refresh(this.layers);
   }
 
   createBranch() {
@@ -141,7 +155,7 @@ class Branch {
     const res = await fetch(`${this.apiUrl}/branch?name=${branchName}&idCache=${this.viewer.idCache}`,
       {
         method: 'POST',
-      });// .then((res) => {
+      });
     if (res.status === 200) {
       const branches = await itowns.Fetcher.json(`${this.apiUrl}/branches?idCache=${this.viewer.idCache}`);// .then((branches) => {
       this.list = branches;
@@ -151,14 +165,12 @@ class Branch {
       this.view.dispatchEvent({
         type: 'branch-created',
       });
-      // });
     } else {
       res.text().then((err) => {
         console.log(err);
         this.viewer.message = 'le nom n\'est pas valide';
       });
     }
-    // });
   }
 
   async saveLayer(name, geojson, style) {
@@ -180,18 +192,14 @@ class Branch {
         }),
       });
     if (res.status === 200) {
-      this.vectorList = await itowns.Fetcher.json(`${this.apiUrl}/${this.active.id}/vectors`);
-      this.setLayers();
-      // const json = await res.json();
-      // this.layers[name] = {
-      //   type: 'vector',
-      //   url: `${this.apiUrl}/vector?idVector=${json.id}`,
-      //   crs,
-      //   opacity: 1,
-      //   style,
-      //   visible: true,
-      //   id: json.id,
-      // };
+      const json = await res.json();
+      this.vectorList.push({
+        name,
+        id: json.id,
+        style_itowns: JSON.stringify(style),
+        crs,
+      });
+      this.setLayers(this.vectorList);
       console.log(`-> Layer '${name}' saved`);
       this.viewer.refresh(this.layers);
     } else {
