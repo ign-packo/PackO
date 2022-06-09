@@ -133,6 +133,8 @@ async function main() {
     } else {
       viewer.view.styles = ['IR'];
     }
+    [viewer.view.style] = viewer.view.styles;
+    viewer.view.Opi = { style: viewer.view.styles[0] };
 
     setupLoadingScreen(viewerDiv, viewer.view);
     // FeatureToolTip.init(viewerDiv, viewer.view);

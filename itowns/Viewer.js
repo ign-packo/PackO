@@ -181,14 +181,15 @@ class Viewer {
       });
     };
 
-    this.view.changeStyle = function _(value) {
-      console.log('Change style to', value);
+    this.view.changeStyle = function _(layers, value) {
+      console.log('Change style of', layers, 'to', value);
+      const layerList = layers instanceof Array ? layers : [layers];
       const regex = /STYLE=.*TILEMATRIXSET/;
-      ['Ortho', 'Opi'].forEach((layerName) => {
+      layerList.forEach((layerName) => {
         const layer = viewer.view.getLayerById(layerName);
         layer.source.url = layer.source.url.replace(regex, `STYLE=${value}&TILEMATRIXSET`);
       });
-      viewer.refresh(['Ortho', 'Opi']);
+      viewer.refresh(layerList);
     };
   }
 

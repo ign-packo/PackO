@@ -39,7 +39,6 @@ class Menu {
         }
       }));
     }
-    [this.style] = this.view.styles;
   }
 
   addImageryLayerGUI(layer) {
@@ -86,11 +85,9 @@ class Menu {
 
     // style
     if (['Ortho', 'Opi'].includes(layer.id)) {
-      // const chgStyle = folder.add({ style: this.view.styles[0] }, 'style', this.view.styles);
-      const styleFolder = folder.add(this, 'style', this.view.styles);
-      styleFolder.domElement.id = `${layer.id}_chgStyle`;
-      styleFolder.onChange((value) => {
-        this.view.changeStyle(value);
+      const style = folder.add(layer.id === 'Ortho' ? this.view : this.view.Opi, 'style', this.view.styles);
+      style.onChange((value) => {
+        this.view.changeStyle(layer.id, value);
       });
     }
 
