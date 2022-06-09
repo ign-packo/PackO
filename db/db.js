@@ -53,10 +53,12 @@ async function insertListOpi(pgClient, idCache, listOpi) {
     values.push([idCache,
       name,
       `{${opi.color[0]}, ${opi.color[1]}, ${opi.color[2]}}`,
+      opi.date,
+      opi.time_ut,
       opi.with_rgb,
       opi.with_ir]);
   });
-  const sqlRequest = format('INSERT INTO opi (id_cache, name, color, with_rgb, with_ir) VALUES %L', values);
+  const sqlRequest = format('INSERT INTO opi (id_cache, name, color, date, time_ut, with_rgb, with_ir) VALUES %L', values);
   const results = await pgClient.query(sqlRequest);
   return results.rowCount;
 }
@@ -167,7 +169,7 @@ async function getUnactivePatches(pgClient, idBranch) {
 async function getOPIFromColor(pgClient, idBranch, color) {
   debug(`    ~~getOPIFromColor (idBranch: ${idBranch})`);
   const results = await pgClient.query(
-    'SELECT o.name, o.date, o.color, o.id, o.with_rgb, o.with_ir FROM opi o, branches b WHERE b.id_cache = o.id_cache AND b.id = $1 AND o.color=$2',
+    'SELECT o.name, to_char(o.date,\'YYYY-mm-dd\') as date, o.time_ut, o.color, o.id, o.with_rgb, o.with_ir FROM opi o, branches b WHERE b.id_cache = o.id_cache AND b.id = $1 AND o.color=$2',
     [idBranch, color],
   );
   debug(results.rows);
@@ -180,7 +182,7 @@ async function getOPIFromColor(pgClient, idBranch, color) {
 async function getOPIFromName(pgClient, idBranch, name) {
   debug(`    ~~getOpiId (name: ${name})`);
   const results = await pgClient.query(
-    'SELECT o.name, o.date, o.color, o.id, o.with_rgb, o.with_ir FROM opi o, branches b WHERE b.id_cache = o.id_cache AND b.id = $1 AND o.name=$2',
+    'SELECT o.name, to_char(o.date,\'YYYY-mm-dd\') as date, o.time_ut, o.color, o.id, o.with_rgb, o.with_ir FROM opi o, branches b WHERE b.id_cache = o.id_cache AND b.id = $1 AND o.name=$2',
     [idBranch, name],
   );
   debug(results.rows);

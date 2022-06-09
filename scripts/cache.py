@@ -8,7 +8,6 @@ import multiprocessing
 import time
 from osgeo import gdal
 from osgeo import osr
-
 import cache_def as cache
 
 user = os.getenv('PGUSER', default='postgres')
@@ -235,6 +234,10 @@ def generate(update):
                                                                   {
                                                                     # 'nbBands': NB_BANDS,
                                                                     'spatialRef': spatial_ref_wkt
+                                                                  },
+                                                                  {
+                                                                      'connString': conn_string,
+                                                                      'table': args.table
                                                                   },
                                                                   args.verbose,
                                                                   args.reprocessing)

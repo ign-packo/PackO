@@ -6,6 +6,18 @@ const should = chai.should();
 const fs = require('fs');
 const app = require('..');
 
+const testOpiRgb = [
+  { name: '19FD5606Ax00020_16371', date: '2019-07-04', time: '13:33:00' },
+  { name: '19FD5606Ax00020_16372', date: '2019-07-04', time: '13:33:00' },
+  { name: '19FD5606Ax00020_16373', date: '2019-07-04', time: '13:33:00' },
+];
+
+const testOpiIr = [
+  { name: '19FD5606A_ix00020_16371', date: '2019-07-04', time: '13:33:00' },
+  { name: '19FD5606A_ix00020_16372', date: '2019-07-04', time: '13:33:00' },
+  { name: '19FD5606A_ix00020_16373', date: '2019-07-04', time: '13:33:00' },
+];
+
 const params = [
   // Les caches générés par l'intégration continue
   {
@@ -14,8 +26,7 @@ const params = [
     cachePath: 'cache_regress_RGB',
     idCache: null,
     idBranch: {},
-    testOpi1: '19FD5606Ax00020_16371',
-    testOpi2: '19FD5606Ax00020_16372',
+    testOpi: testOpiRgb,
   },
   {
     overviews: JSON.parse(fs.readFileSync('./cache_regress_RGBIR/overviews.json', 'utf8')),
@@ -23,8 +34,7 @@ const params = [
     cachePath: 'cache_regress_RGBIR',
     idCache: null,
     idBranch: {},
-    testOpi1: '19FD5606Ax00020_16371',
-    testOpi2: '19FD5606Ax00020_16372',
+    testOpi: testOpiRgb,
   },
   {
     overviews: JSON.parse(fs.readFileSync('./cache_regress_IR/overviews.json', 'utf8')),
@@ -32,8 +42,7 @@ const params = [
     cachePath: 'cache_regress_IR',
     idCache: null,
     idBranch: {},
-    testOpi1: '19FD5606A_ix00020_16371',
-    testOpi2: '19FD5606A_ix00020_16372',
+    testOpi: testOpiIr,
   },
   // Les caches présents dans le dépôt
   {
@@ -42,8 +51,7 @@ const params = [
     cachePath: 'cache_test/cache_test_RGB/',
     idCache: null,
     idBranch: {},
-    testOpi1: '19FD5606Ax00020_16371',
-    testOpi2: '19FD5606Ax00020_16372',
+    testOpi: testOpiRgb,
   },
   {
     overviews: JSON.parse(fs.readFileSync('./cache_test/cache_test_RGBIR/overviews.json', 'utf8')),
@@ -51,8 +59,7 @@ const params = [
     cachePath: 'cache_test/cache_test_RGBIR/',
     idCache: null,
     idBranch: {},
-    testOpi1: '19FD5606Ax00020_16371',
-    testOpi2: '19FD5606Ax00020_16372',
+    testOpi: testOpiRgb,
   },
   {
     overviews: JSON.parse(fs.readFileSync('./cache_test/cache_test_IR/overviews.json', 'utf8')),
@@ -60,8 +67,7 @@ const params = [
     cachePath: 'cache_test/cache_test_IR/',
     idCache: null,
     idBranch: {},
-    testOpi1: '19FD5606A_ix00020_16371',
-    testOpi2: '19FD5606A_ix00020_16372',
+    testOpi: testOpiIr,
   },
 ];
 
@@ -197,7 +203,7 @@ describe('Graph', () => {
           });
         });
         describe('query: x=230755 & y=6759650', () => {
-          it(`should return a Json { "color": Array(3), "opiName": ${param.testOpi1} }`, (done) => {
+          it(`should return a Json { "color": Array(3), "opiName": ${param.testOpi[0].name}, "date": ${param.testOpi[0].date}, "time": ${param.testOpi[0].time} }`, (done) => {
             chai.request(app)
               .get(`/${param.idBranch[branchName]}/graph`)
               .query({ x: 230755, y: 6759650 })
@@ -206,13 +212,15 @@ describe('Graph', () => {
                 res.should.have.status(200);
                 const resJson = JSON.parse(res.text);
                 resJson.should.be.jsonSchema(schema);
-                resJson.should.have.property('opiName').equal(param.testOpi1);
+                resJson.should.have.property('opiName').equal(param.testOpi[0].name);
+                resJson.should.have.property('date').equal(param.testOpi[0].date);
+                resJson.should.have.property('time').equal(param.testOpi[0].time);
                 done();
               });
           });
         });
         describe('query: x=230749.8 & y=6759645.1', () => {
-          it(`should return a Json { "color": Array(3), "opiName": ${param.testOpi2} }`, (done) => {
+          it(`should return a Json { "color": Array(3), "opiName": ${param.testOpi[1].name}, "date": ${param.testOpi[1].date}, "time": ${param.testOpi[1].time} }`, (done) => {
             chai.request(app)
               .get(`/${param.idBranch[branchName]}/graph`)
               .query({ x: 230749.8, y: 6759645.1 })
@@ -221,17 +229,37 @@ describe('Graph', () => {
                 res.should.have.status(200);
                 const resJson = JSON.parse(res.text);
                 resJson.should.be.jsonSchema(schema);
-                resJson.should.have.property('opiName').equal(param.testOpi2);
+                resJson.should.have.property('opiName').equal(param.testOpi[1].name);
+                resJson.should.have.property('date').equal(param.testOpi[1].date);
+                resJson.should.have.property('time').equal(param.testOpi[1].time);
                 done();
               });
           });
         });
-        describe('query: x=230747 & y=6759643', () => {
+        describe('query: x=230747.7 & y=6759644.', () => {
+          it(`should return a Json { "color": Array(3), "opiName": ${param.testOpi[2].name}, "date": ${param.testOpi[2].date}, "time": ${param.testOpi[2].time} }`, (done) => {
+            chai.request(app)
+              .get(`/${param.idBranch[branchName]}/graph`)
+              .query({ x: 230747.7, y: 6759644 })
+              .end((err, res) => {
+                should.not.exist(err);
+                res.should.have.status(200);
+                const resJson = JSON.parse(res.text);
+                resJson.should.be.jsonSchema(schema);
+                resJson.should.have.property('opiName').equal(param.testOpi[2].name);
+                resJson.should.have.property('date').equal(param.testOpi[2].date);
+                resJson.should.have.property('time').equal(param.testOpi[2].time);
+                done();
+              });
+          });
+        });
+
+        describe('query: x=230748 & y=6759643', () => {
           // image not yet in the cache
           it("should return a 'out of graph'", (done) => {
             chai.request(app)
               .get(`/${param.idBranch[branchName]}/graph`)
-              .query({ x: 230747, y: 6759643 })
+              .query({ x: 230748, y: 6759643 })
               .end((err, res) => {
                 should.not.exist(err);
                 res.should.have.status(201);

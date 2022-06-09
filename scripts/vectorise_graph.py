@@ -13,36 +13,30 @@ def read_args():
     """Gestion des arguments"""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-i", "--input", required=True,
-        help="input data folder (created by prep_vectorise_graph.py)")
-    parser.add_argument(
-        "-o", "--output", required=True, help="output json gpao filepath"
-    )
-    parser.add_argument(
-        "-g", "--graph", help="output vectorised graph pathfile (default: OUTPUT.gpkg)",
-        default=None
-    )
-    parser.add_argument(
-        "-v", "--verbose", help="verbose (default: 0)", type=int, default=0
-    )
-    args = parser.parse_args()
+    parser.add_argument("-i", "--input", required=True,
+                        help="input data folder (created by prep_vectorise_graph.py)")
+    parser.add_argument("-c", "--cache", required=True, help="cache folder")
+    parser.add_argument("-o", "--output", required=True, help="output json gpao filepath")
+    parser.add_argument("-g", "--graph",
+                        help="output vectorised graph pathfile (default: OUTPUT.gpkg)",
+                        default=None)
+    parser.add_argument("-v", "--verbose", help="verbose (default: 0)", type=int, default=0)
+    args_vectorise = parser.parse_args()
 
-    if args.graph is None:
-        args.graph = args.output.split('.')[0] + '.gpkg'
+    if args_vectorise.graph is None:
+        args_vectorise.graph = args_vectorise.output.split('.')[0] + '.gpkg'
 
-    if args.verbose >= 1:
-        print("\nArguments: ", args)
+    if args_vectorise.verbose >= 1:
+        print("\nArguments: ", args_vectorise)
 
-    return args
+    return args_vectorise
 
 
 args = read_args()
 
 # define working dir
 os.chdir(os.path.dirname(args.output))
-if args.verbose > 0:
-    print("Working directory: '" + os.getcwd() + "'")
+print(f"INFO : Le répertoire de travail est '{os.getcwd()}'")
 # redefine input directory
 try:
     # we always want to use absolute path because it will be processed in GPAOv2
@@ -53,22 +47,33 @@ except ValueError:
 
 # check if input dir exists
 if not os.path.exists(args.input):
-    raise SystemExit("Directory " + args.input + " does not exist.")
+    raise SystemExit(f"ERREUR : Le répertoire '{args.input}' n'existe pas.")
 
 t_start = time.perf_counter()
 
-chantier_name = os.path.basename(args.output.split('.')[0])
+overviews_path = os.path.join(args.cache, "overviews.json")
+
+# lecture du fichier overviews pour recuperer les infos du cache
+try:
+    with open(overviews_path, encoding='utf-8') as fileOverviews:
+        overviews = json.load(fileOverviews)
+except IOError:
+    print(f"ERREUR: Le fichier '{overviews_path}' n'existe pas.")
+
+PROJ = str(overviews['crs']['type']) + ':' + str(overviews['crs']['code'])
+
+project_name = os.path.basename(args.output.split('.')[0])
 if args.verbose > 0:
-    print('Chantier name = ' + chantier_name)
+    print(f"Nom du chantier = '{project_name}'")
 
 dict_cmd = {"projects": []}
 
 # debut chantier polygonize
-dict_cmd["projects"].append({"name": str(chantier_name+'_polygonize'), "jobs": []})
+dict_cmd["projects"].append({"name": str(project_name+'_polygonize'), "jobs": []})
 
 script = "gdal_polygonize.py"
 if platform.system() == "Windows":
-    script = script.split('.')[0]+".bat"
+    script = script.split('.', maxsplit=1)[0]+".bat"
 
 tiles_dir = os.path.join(args.input, "tiles")
 gpkg_dir = os.path.join(args.input, "gpkg")
@@ -85,39 +90,44 @@ for tile in list_tiles_graph:
         print(tile)
     gpkg_path = os.path.join(gpkg_dir, tile.split('.')[0] + '.gpkg')
     if os.path.exists(gpkg_path):
-        print('Le fichier '+gpkg_path+' existe déjà. On le supprime avant de relancer le calcul.')
+        print(f"Le fichier '{gpkg_path}' existe déjà. On le supprime avant de relancer le calcul.")
         os.remove(gpkg_path)
     cmd_polygonize = (
-            script + ' '
-            + os.path.join(tiles_dir, tile) + ' '
-            + gpkg_path
-            + ' -f "GPKG" '
-            + '-mask ' + os.path.join(tiles_dir, tile)
+        script + ' '
+        + os.path.join(tiles_dir, tile) + ' '
+        + gpkg_path
+        + ' -f "GPKG" '
+        + '-mask ' + os.path.join(tiles_dir, tile)
     )
     if args.verbose > 0:
         print(cmd_polygonize)
-    dict_cmd["projects"][0]["jobs"].append({"name": "polygonize", "command": cmd_polygonize})
+    dict_cmd["projects"][0]["jobs"].append(
+        {"name": "polygonize_"+tile.split('.')[0], "command": cmd_polygonize}
+    )
 
 # fin chantier polygonize
 
 # debut chantier merge
 # le traitement est divise en deux chantiers de GPAO avec le second dependant du premier
 # le premier (chantier polygonize) contient l'ensemble des gdal_polygonize
-# le second (chantier merge) va contenir les traitements permettant de passer des geopackages calcules par dalle
+# le second (chantier merge) va contenir les traitements
+# permettant de passer des geopackages calcules par dalle
 # a un geopackage global pour toute l'emprise de notre chantier
-dict_cmd["projects"].append({"name": str(chantier_name+'_merge'), "jobs": [], "deps": [{"id": 0}]})
+dict_cmd["projects"].append({"name": str(project_name+'_merge'), "jobs": [], "deps": [{"id": 0}]})
 
 script_merge = "ogrmerge.py"
 if platform.system() == "Windows":
-    script_merge = script_merge.split('.')[0]+".bat"
+    script_merge = script_merge.split('.', maxsplit=1)[0]+".bat"
 
-merge_file = chantier_name + '_merge.gpkg'
+merge_file = project_name + '_merge.gpkg'
 merge_path = os.path.join(args.input, merge_file)
 all_gpkg = os.path.join(gpkg_dir, '*.gpkg')
 cmd_merge = (
     script_merge
     + ' -o ' + merge_path
     + ' ' + all_gpkg
+    + ' -a_srs ' + PROJ
+    + ' -nln data'
     + ' -single'
     + ' -field_strategy Union'
     + ' -overwrite_ds'
@@ -126,19 +136,38 @@ if args.verbose > 0:
     print(cmd_merge)
 dict_cmd["projects"][1]["jobs"].append({"name": "ogrmerge", "command": cmd_merge})
 
-dissolve_file = chantier_name + '_dissolve.gpkg'
+clean_file = project_name + '_clean.gpkg'
+clean_path = os.path.join(args.input, clean_file)
+cmd_clean = (
+        'ogr2ogr '
+        + clean_path + ' '
+        + merge_path
+        + ' -overwrite'
+        + ' -nlt PROMOTE_TO_MULTI'
+        + ' -makevalid'
+)
+if args.verbose > 0:
+    print(cmd_clean)
+dict_cmd["projects"][1]["jobs"].append(
+    {"name": "clean", "command": cmd_clean, "deps": [{"id": 0}]}
+)
+
+dissolve_file = project_name + '_dissolve.gpkg'
 dissolve_path = os.path.join(args.input, dissolve_file)
 cmd_dissolve = (
     'ogr2ogr '
     + dissolve_path + ' '
     + merge_path
     + ' -nlt PROMOTE_TO_MULTI'
+    + ' -nln data'
     + ' -dialect sqlite'
-    + ' -sql "SELECT DN, ST_union(geom) as geom FROM merged GROUP BY DN"'
+    + ' -sql "SELECT DN as color, ST_union(geom) as geom FROM data GROUP BY DN"'
 )
 if args.verbose > 0:
     print(cmd_dissolve)
-dict_cmd["projects"][1]["jobs"].append({"name": "dissolve", "command": cmd_dissolve, "deps": [{"id": 0}]})
+dict_cmd["projects"][1]["jobs"].append(
+    {"name": "dissolve", "command": cmd_dissolve, "deps": [{"id": 1}]}
+)
 
 cmd_make_valid = (
     'ogr2ogr '
@@ -150,17 +179,18 @@ cmd_make_valid = (
 )
 if args.verbose > 0:
     print(cmd_make_valid)
-dict_cmd["projects"][1]["jobs"].append({"name": "make_valid", "command": cmd_make_valid, "deps": [{"id": 1}]})
+dict_cmd["projects"][1]["jobs"].append(
+    {"name": "make_valid", "command": cmd_make_valid, "deps": [{"id": 2}]}
+)
 
 # fin chantier merge
 
 json_file = args.output
-out_file = open(json_file, "w")
-json.dump(dict_cmd, out_file, indent=4)
-out_file.close()
+with open(json_file, "w", encoding='utf-8') as out_file:
+    json.dump(dict_cmd, out_file, indent=4)
 
 t_end = time.perf_counter()
 
 # temps de calcul total
 if args.verbose > 0:
-    print('Temps global du calcul :'+str(round(t_end-t_start, 2)))
+    print(f"Temps global du calcul : {str(round(t_end-t_start, 2))}")

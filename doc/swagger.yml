@@ -128,6 +128,8 @@ paths:
                               126,
                               222,
                               76],
+                          "date": "2019-07-04",
+                          "time_ut": "13:33",
                           "with_rgb": true,
                           "with_ir": false}}
                   dataSet:
@@ -257,7 +259,7 @@ paths:
     get:
       tags:
         - graph
-      summary: "Récupération de l'identifiant du cliché"
+      summary: "Récupération du nom de l'OPI, couleur du label, date et heure d'acquisition"
       description: ""
       parameters:
         - in: path

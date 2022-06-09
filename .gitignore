@@ -103,17 +103,12 @@ dist
 # TernJS port file
 .tern-port
 
-cache/
-
 .idea/
 
 .DS_Store
-itowns/19FD5606A.json
-itowns/graph.json
-itowns/ortho.json
-./Capabilities.xml
-./Capabilities_part1.xml
-./Capabilities_part2.xml
 
-#Ignore les xml dans le fichier cache_test
+#Ignore xml files in cache_test
 cache_test/**/*.png.aux.xml
+
+#Ignore log.txt files in cache_test
+cache_test/**/log.txt
