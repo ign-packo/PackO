@@ -283,18 +283,20 @@ async function main() {
 
     // Couche d'alertes
     editing.alert = '-';
+    editing.alertLayerName = '-';
     controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [editing.alert, ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
     controllers.alert.onChange(async (name) => {
       document.activeElement.blur();
       console.log('choosed alert vector layer: ', name);
+      if (editing.alertLayerName !== '-') viewer.view.getLayerById(editing.alertLayerName).isAlert = false;
       const keepName = true;
       controllers.resetAlerts(keepName);
 
       if (name !== '-') {
         editing.alertLayerName = name;
-        viewer.alertLayerName = name;
 
         const layerTest = viewer.view.getLayerById(editing.alertLayerName);
+        layerTest.isAlert = true;
         editing.alertFC = await layerTest.source.loadData(undefined, layerTest);
 
         if (editing.alertFC.features.length > 0) {
@@ -539,7 +541,7 @@ async function main() {
     viewerDiv.addEventListener('click', async (ev) => {
       ev.preventDefault();
 
-      if (editing.alertLayerName) {
+      if (editing.alertLayerName !== '-') {
         const layerTest = view.getLayerById(editing.alertLayerName);
         const features = view.pickFeaturesAt(ev, 5, layerTest.id);
 

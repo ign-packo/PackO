@@ -221,7 +221,7 @@ class Viewer {
           if (this.oldStyle[layerName]) {
             config.style = this.oldStyle[layerName];
           }
-          if (layerName === this.alertLayerName) {
+          if (layer.isAlert === true) {
             this.oldStyle[layerName] = config.style.clone();
             /* eslint-disable no-param-reassign */
             config.style.fill.color = coloringAlerts;
@@ -283,6 +283,9 @@ class Viewer {
 
       if (newColorLayer.vectorId === undefined) {
         newColorLayer.vectorId = layer.vectorId;
+      }
+      if (layer.isAlert !== undefined) {
+        newColorLayer.isAlert = layer.isAlert;
       }
 
       // Layer ordering

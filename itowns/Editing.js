@@ -325,12 +325,12 @@ class Editing {
         getAllCheckboxes('extraLayers', 'visibcbx').forEach((c) => (c.click()));
       }
       // change alert validation status
-      if ((this.alertLayerName !== undefined) && (e.key === 'c')) {
+      if ((this.alertLayerName !== '-') && (e.key === 'c')) {
         console.log('Change alert validation status');
         getAllCheckboxes('validatedAlert').forEach((c) => (c.click()));
       }
       // move camera proportional to one screen
-      if (this.alertLayerName === undefined) {
+      if (this.alertLayerName === '-') {
         const camera = this.view.camera.camera3D;
         const widthScreen = (camera.right - camera.left) / camera.zoom;
         const heightScreen = (camera.top - camera.bottom) / camera.zoom;
@@ -366,7 +366,7 @@ class Editing {
         this.controllers.opiName.__li.style.backgroundColor = '';
         this.view.getLayerById('Opi').visible = false;
         this.view.notifyChange(this.view.getLayerById('Opi'), true);
-      } else if (this.alertLayerName && this.alertFC.features.length > 0) {
+      } else if (this.alertLayerName !== '-' && this.alertFC.features.length > 0) {
         const { geometries } = this.alertFC.features[0];
         if (e.key === 'ArrowLeft') {
           this.featureIndex -= 1;
