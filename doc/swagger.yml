@@ -283,6 +283,10 @@ paths:
       responses:
         '200':
           description: OK
+        '244':
+          description: No OPI found (out of graph or out of bounds)
+        '404':
+          description: No OPI found (corrupted cache)
           
 # PATCH
   '/{idBranch}/patches':

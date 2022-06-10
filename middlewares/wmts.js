@@ -308,28 +308,27 @@ function wmts(req, _res, next) {
         next();
         return;
       }
-      gdalProcessing.getPixel(url, cogPath.x, cogPath.y, cogPath.z, parseInt(I, 10), parseInt(J, 10), overviews.tileSize.width, 'graph')
-        .then(async (out) => {
-          debugFeatureInfo(out);
+      gdalProcessing.getColor(url, cogPath.x, cogPath.y, cogPath.z, parseInt(I, 10), parseInt(J, 10), overviews.tileSize.width, 'graph')
+        .then(async (color) => {
+          debugFeatureInfo(color);
           let resCode = 200;
-          /* eslint-disable no-param-reassign */
+          let opiName = '';
           try {
-            const opi = await db.getOPIFromColor(req.client, idBranch, out.color);
-            out.opiName = opi.name;
+            const opi = await db.getOPIFromColor(req.client, idBranch, color);
+            opiName = opi.name;
           } catch (error) {
-            out.opiName = 'missing';
+            opiName = error.message;
             resCode = 201;
           }
-          /* eslint-enable no-param-reassign */
-          const testResponse = '<?xml version="1.0" encoding="UTF-8"?>'
+          const xmlResponse = '<?xml version="1.0" encoding="UTF-8"?>'
               + '<ReguralGriddedElevations xmlns="http://www.maps.bob/etopo2"'
                                        + ' xmlns:gml="http://www.opengis.net/gml"'
                                        + ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
                                        + ' xsi:schemaLocation="http://www.maps.bob/etopo2  GetFeatureInfoExampleSchema.xsd">'
                 + '<featureMember>'
                   + `<${LAYER}>`
-                    + `<ortho>${out.opiName}</ortho>`
-                    + `<graph>${out.color}</graph>`
+                    + `<ortho>${opiName}</ortho>`
+                    + `<graph>${color}</graph>`
                     + `<TileRow>${TILEROW}</TileRow>`
                     + `<TileCol>${TILECOL}</TileCol>`
                     + `<J>${J}</J>`
@@ -337,7 +336,7 @@ function wmts(req, _res, next) {
                   + `</${LAYER}>`
                 + '</featureMember>'
               + '</ReguralGriddedElevations>';
-          req.result = { xml: testResponse, code: resCode };
+          req.result = { xml: xmlResponse, code: resCode };
           next();
         }).catch(() => {
           req.error = {

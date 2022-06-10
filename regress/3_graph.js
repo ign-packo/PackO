@@ -176,28 +176,25 @@ describe('Graph', () => {
               .query({ x: 0, y: 0 })
               .end((err, res) => {
                 should.not.exist(err);
-                res.should.have.status(201);
+                res.should.have.status(244);
                 const resJson = JSON.parse(res.text);
-
-                resJson.should.be.jsonSchema(schema);
-                resJson.should.have.property('opiName').equal('out of bounds');
+                resJson.should.have.property('msg').equal('out of bounds');
 
                 done();
               });
           });
         });
         describe('query: x=230757 & y=6759654', () => {
-          // outside of graph but inside the image frame
+          // outside of graph but inside the images frame
           it("should return a 'out of graph'", (done) => {
             chai.request(app)
               .get(`/${param.idBranch[branchName]}/graph`)
               .query({ x: 230757, y: 6759654 })
               .end((err, res) => {
                 should.not.exist(err);
-                res.should.have.status(201);
+                res.should.have.status(244);
                 const resJson = JSON.parse(res.text);
-                resJson.should.be.jsonSchema(schema);
-                resJson.should.have.property('opiName').equal('out of graph');
+                resJson.should.have.property('msg').equal('out of graph');
                 done();
               });
           });
@@ -262,11 +259,9 @@ describe('Graph', () => {
               .query({ x: 230748, y: 6759643 })
               .end((err, res) => {
                 should.not.exist(err);
-                res.should.have.status(201);
+                res.should.have.status(244);
                 const resJson = JSON.parse(res.text);
-
-                resJson.should.be.jsonSchema(schema);
-                resJson.should.have.property('opiName').equal('out of graph');
+                resJson.should.have.property('msg').equal('out of graph');
 
                 done();
               });
