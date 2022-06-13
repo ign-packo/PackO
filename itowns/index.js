@@ -442,14 +442,17 @@ async function main() {
           editing.featureIndex = editing.alertFC.features[0].geometries.length - 1;
         }
 
-        editing.centerOnAlertFeature();
+        if (editing.nbTotal === 1) {
+          editing.featureIndex = 0;
+          editing.centerOnAlertFeature();
+        }
         editing.validated = editing.featureSelectedGeom.properties.status;
         controllers.validated.updateDisplay();
         editing.comment = editing.featureSelectedGeom.properties.comment;
         // controllers.comment.updateDisplay();
       } else {
         controllers.hide(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
-        controllers.viewer.view.removeLayer('selectedFeature');
+        view.removeLayer('selectedFeature');
       }
     });
 

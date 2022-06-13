@@ -83,6 +83,7 @@ class Viewer {
       Graph: 0,
       Contour: 3,
       Patches: 4,
+      Remarques: 5,
     };
     this.oldStyle = {};
 
