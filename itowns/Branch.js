@@ -112,8 +112,11 @@ class Branch {
     });
   }
 
-  async changeBranch() {
-    console.log('changeBranch -> name:', this.active.name, 'id:', this.active.id);
+  async changeBranch(name) {
+    this.active = {
+      name,
+      id: this.list.filter((elem) => elem.name === name)[0].id,
+    };
     this.viewer.message = '';
     const listColorLayer = this.viewer.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
     listColorLayer.forEach((element) => {
@@ -122,7 +125,10 @@ class Branch {
     });
     await this.setLayers();
     this.viewer.removeExtraLayers(this.viewer.menuGlobe);
-    this.viewer.refresh(this.layers);
+    this.view.dispatchEvent({
+      type: 'branch-changed',
+      name: this.active.name,
+    });
   }
 
   createBranch() {
@@ -161,9 +167,10 @@ class Branch {
       this.list = branches;
       this.active.name = branchName;
       this.active.id = this.list.filter((branch) => branch.name === branchName)[0].id;
-      await this.changeBranch();
       this.view.dispatchEvent({
         type: 'branch-created',
+        name: branchName,
+        id: this.active.id,
       });
     } else {
       res.text().then((err) => {
