@@ -83,8 +83,14 @@ class Viewer {
       Graph: 0,
       Contour: 3,
       Patches: 4,
+      Remarques: 5,
     };
     this.oldStyle = {};
+
+    this.shortCuts = {
+      visibleFolder: { Ortho: 'm', Opi: 'o', Contour: 'g' },
+      styleFolder: { Ortho: 'i', Opi: 'i' },
+    };
   }
 
   createView(overviews, idCache) {
@@ -162,6 +168,30 @@ class Viewer {
         minResolution: this.resolLvMin,
       },
     });
+
+    const viewer = this;
+    this.view.removeVectorLayer = function _(layerName) {
+      if (layerName === undefined) return;
+      const layerId = viewer.view.getLayerById(layerName).vectorId;
+      viewer.view.removeLayer(layerName);
+      delete viewer.layerIndex[layerName];
+      viewer.view.dispatchEvent({
+        type: 'vectorLayer-removed',
+        layerId,
+        layerName,
+      });
+    };
+
+    this.view.changeStyle = function _(layers, value) {
+      console.log('Change style of', layers, 'to', value);
+      const layerList = layers instanceof Array ? layers : [layers];
+      const regex = /STYLE=.*TILEMATRIXSET/;
+      layerList.forEach((layerName) => {
+        const layer = viewer.view.getLayerById(layerName);
+        layer.source.url = layer.source.url.replace(regex, `STYLE=${value}&TILEMATRIXSET`);
+      });
+      viewer.refresh(layerList);
+    };
   }
 
   centerCamera(coordX, coordY) {
@@ -239,14 +269,12 @@ class Viewer {
             url: layer.url,
             crs: layer.crs,
             format: 'image/png',
-            style: layer.wmtsStyle,
             name: layerName !== 'Contour' ? layerName.toLowerCase() : 'graph',
             tileMatrixSet: this.overviews.identifier,
             tileMatrixSetLimits:
               (layerName === 'Contour') || (layerName === 'Graph')
                 ? this.overviews.dataSet.limitsForGraph : this.overviews.dataSet.limits,
           });
-          config.source.wmtsStyle = layer.wmtsStyle;
         } else if (layer.type === 'vector') {
           config.source = new itowns.FileSource({
             url: layer.url,

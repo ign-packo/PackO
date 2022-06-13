@@ -1,12 +1,13 @@
 /* eslint-disable no-console */
-/* global setupLoadingScreen, GuiTools */
+/* global setupLoadingScreen */
 import * as itowns from 'itowns';
 import Viewer from './Viewer';
 import Editing from './Editing';
 import Branch from './Branch';
 import Controller from './Controller';
+import Menu from './Menu';
 
-// Global itowns pour GuiTools -> peut être améliorer
+// Global itowns pour setupLoadingScreen -> peut être améliorer
 global.itowns = itowns;
 
 // fonction permettant d'afficher la valeur de l'echelle et du niveau de dezoom
@@ -101,13 +102,6 @@ async function main() {
     const viewer = new Viewer(viewerDiv);
 
     const overviews = await getOverviews;
-    overviews.with_rgb = true;
-    overviews.with_ir = true;
-    const tabOpi = Object.keys(overviews.list_OPI);
-    if (tabOpi.length > 0) {
-      overviews.with_rgb = overviews.list_OPI[tabOpi[0]].with_rgb;
-      overviews.with_ir = overviews.list_OPI[tabOpi[0]].with_ir;
-    }
 
     // on ajoute les dataset.limits pour les layers graph/contour
     // avec uniquement les niveaux correspondants au COG mis à jour par les patchs
@@ -126,108 +120,42 @@ async function main() {
     viewer.maxGraphDezoom = 2 ** nbSubLevelsPerCOG;
 
     viewer.createView(overviews, activeCache.id);
+
+    overviews.with_rgb = true;
+    overviews.with_ir = true;
+    const tabOpi = Object.keys(overviews.list_OPI);
+    if (tabOpi.length > 0) {
+      overviews.with_rgb = overviews.list_OPI[tabOpi[0]].with_rgb;
+      overviews.with_ir = overviews.list_OPI[tabOpi[0]].with_ir;
+    }
+    if (overviews.with_rgb) {
+      viewer.view.styles = overviews.with_ir ? ['RVB', 'IRC', 'IR'] : ['RVB'];
+    } else {
+      viewer.view.styles = ['IR'];
+    }
+    [viewer.view.style] = viewer.view.styles;
+    viewer.view.Opi = { style: viewer.view.styles[0] };
+
     setupLoadingScreen(viewerDiv, viewer.view);
     // FeatureToolTip.init(viewerDiv, viewer.view);
 
     viewer.view.isDebugMode = true;
-    viewer.menuGlobe = new GuiTools('menuDiv', viewer.view);
-    viewer.menuGlobe.gui.width = 300;
 
-    viewer.menuGlobe.colorGui.show();
-    viewer.menuGlobe.colorGui.open();
-    viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Extra Layers [v]');
-    viewer.menuGlobe.vectorGui.domElement.id = 'extraLayers';
-    viewer.menuGlobe.vectorGui.open();
+    viewer.menuGlobe = new Menu(document.getElementById('menuDiv'), viewer.view, viewer.shortCuts);
+
+    // viewer.menuGlobe = new GuiTools('menuDiv', viewer.view);
+    // viewer.menuGlobe.gui.width = 300;
+
+    // viewer.menuGlobe.colorGui.show();
+    // viewer.menuGlobe.colorGui.open();
+    // viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Extra Layers [v]');
+    // viewer.menuGlobe.vectorGui.domElement.id = 'extraLayers';
+    // viewer.menuGlobe.vectorGui.open();
 
     const branch = new Branch(apiUrl, viewer);
     const editing = new Editing(branch, apiUrl);
 
     const controllers = new Controller(viewer.menuGlobe, editing);
-
-    // Patch pour ajouter la modification de l'epaisseur des contours dans le menu
-    viewer.menuGlobe.addImageryLayerGUI = function addImageryLayerGUI(layer) {
-    /* eslint-disable no-param-reassign */
-      let typeGui = 'colorGui';
-      if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layer.id)) {
-        typeGui = 'vectorGui';
-      }
-      if (this[typeGui].hasFolder(layer.id)) { return; }
-      if (layer.id === 'selectedFeature') { return; }
-
-      const folder = this[typeGui].addFolder(layer.id);
-      if (editing.folderVisibleShortcuts[layer.id] !== undefined) {
-        const titles = Array.from(folder.domElement.getElementsByClassName('title'));
-        titles.forEach((title) => {
-          if (title.innerText.startsWith(layer.id)) title.innerText += ` [${editing.folderVisibleShortcuts[layer.id]}]`;
-        });
-      }
-      if (editing.folderStyleShortcuts[layer.id] !== undefined) {
-        const titles = Array.from(folder.domElement.getElementsByClassName('title'));
-        titles.forEach((title) => {
-          if (title.innerText.startsWith(layer.id)) title.innerText += ` [${editing.folderStyleShortcuts[layer.id]}]`;
-        });
-      }
-
-      const visib = folder.add({ visible: layer.visible }, 'visible');
-      visib.domElement.setAttribute('id', layer.id);
-      visib.domElement.classList.add('visibcbx');
-      visib.onChange(((value) => {
-        layer.visible = value;
-        if (layer.id === editing.alertLayerName) {
-          viewer.view.getLayerById('selectedFeature').visible = value;
-        }
-        viewer.view.notifyChange(layer);
-      }));
-      folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0).onChange(((value) => {
-        layer.opacity = value;
-        viewer.view.notifyChange(layer);
-      }));
-      if (layer.source.wmtsStyle) {
-        let styles;
-        if (overviews.with_rgb) {
-          styles = overviews.with_ir ? ['RVB', 'IRC', 'IR'] : ['RVB'];
-        } else {
-          styles = ['IR'];
-        }
-        const chgStyle = folder.add({ style: layer.source.wmtsStyle }, 'style', styles);
-        chgStyle.domElement.id = `${layer.id}_chgStyle`;
-        chgStyle.onChange((value) => {
-          console.log('Change style', value);
-          const regex = /STYLE=.*TILEMATRIXSET/;
-          layer.source.url = layer.source.url.replace(regex, `STYLE=${value}&TILEMATRIXSET`);
-          layer.source.wmtsStyle = value;
-          setTimeout(() => { viewer.refresh(branch.layers); }, 1);
-        });
-      }
-      if (layer.effect_parameter) {
-        folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
-          layer.effect_parameter = value;
-          viewer.view.notifyChange(layer);
-        }));
-      }
-      if (typeGui === 'vectorGui' && layer.id !== 'Remarques') {
-        folder.add(branch, 'deleteVectorLayer').name('delete').onChange(() => {
-          if (layer.id !== editing.alertLayerName) {
-            branch.deleteVectorLayer(layer);
-            viewer.view.notifyChange(layer);
-            controllers.refreshDropBox('alert', ['-', ...branch.vectorList
-              .filter((elem) => elem.name !== layer.id)
-              .map((elem) => elem.name)]);
-          } else {
-            viewer.message = 'Couche en edition';
-          }
-        });
-      }
-    /* eslint-enable no-param-reassign */
-    };
-
-    viewer.menuGlobe.removeLayersGUI = function removeLayersGUI(nameLayer) {
-      if (this.colorGui.hasFolder(nameLayer)) {
-        this.colorGui.removeFolder(nameLayer);
-      } else {
-        this.vectorGui.removeFolder(nameLayer);
-      }
-    };
 
     // const branch = new Branch(apiUrl, viewer);
     branch.list = await getBranches;
@@ -439,6 +367,20 @@ async function main() {
       controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
     });
 
+    view.addEventListener('vectorLayer-removed', (event) => {
+      branch.deleteLayer(event.layerId, event.layerName)
+        .then(() => {
+          console.log(`-> Vector '${event.layerName} (id: ${event.layerId}) had been deleted`);
+          controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
+        })
+        .catch((error) => {
+          view.dispatchEvent({
+            type: 'error',
+            error,
+          });
+        });
+    });
+
     view.addEventListener('branch-created', (newBranch) => {
       console.log(`-> New branch created (name: '${newBranch.name}', id: ${newBranch.id})`);
       branch.changeBranch(newBranch.name);
@@ -500,14 +442,17 @@ async function main() {
           editing.featureIndex = editing.alertFC.features[0].geometries.length - 1;
         }
 
-        editing.centerOnAlertFeature();
+        if (editing.nbTotal === 1) {
+          editing.featureIndex = 0;
+          editing.centerOnAlertFeature();
+        }
         editing.validated = editing.featureSelectedGeom.properties.status;
         controllers.validated.updateDisplay();
         editing.comment = editing.featureSelectedGeom.properties.comment;
         // controllers.comment.updateDisplay();
       } else {
         controllers.hide(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
-        controllers.viewer.view.removeLayer('selectedFeature');
+        view.removeLayer('selectedFeature');
       }
     });
 

@@ -55,7 +55,6 @@ class Branch {
         crs: this.viewer.crs,
         opacity: 1,
         visible: true,
-        wmtsStyle: this.viewer.overviews.with_rgb ? 'RVB' : 'IR',
       },
       {
         name: 'Opi',
@@ -64,7 +63,6 @@ class Branch {
         crs: this.viewer.crs,
         opacity: 0.5,
         visible: false,
-        wmtsStyle: this.viewer.overviews.with_rgb ? 'RVB' : 'IR',
       },
       {
         name: 'Contour',
@@ -214,29 +212,24 @@ class Branch {
     }
   }
 
-  deleteLayer(id) {
-    fetch(`${this.apiUrl}/vector?idVector=${id}`,
-      {
-        method: 'DELETE',
-      }).then((res) => {
-      if (res.status === 200) {
-        const layer = this.vectorList.filter((elem) => elem.id === id)[0];
-        const index = this.vectorList.indexOf(layer);
-        this.vectorList.splice(index, 1);
-        delete this.layers[layer.name];
-        console.log(`-> Layer '${id}' deleted`);
-      } else {
-        console.log(`-> Error Serveur: Layer '${id}' NOT deleted`);
-      }
+  deleteLayer(id, name) {
+    return new Promise((resolve, reject) => {
+      fetch(`${this.apiUrl}/vector?idVector=${id}`,
+        {
+          method: 'DELETE',
+        }).then((res) => {
+        if (res.status === 200) {
+          this.vectorList = this.vectorList.filter((l) => l.id !== id);
+          this.layers = this.layers.filter((l) => l.vectorId !== id);
+          resolve();
+        } else {
+          this.viewer.message = 'PB with updating the database';
+          const err = new Error(`Vector '${name}' (id: ${id}) NOT deleted`);
+          err.name = 'Database Error';
+          reject(err);
+        }
+      });
     });
-  }
-
-  deleteVectorLayer(layer) {
-    if (!layer) return;
-    this.deleteLayer(layer.vectorId);
-    this.view.removeLayer(layer.id);
-    this.viewer.menuGlobe.removeLayersGUI(layer.id);
-    delete this.viewer.layerIndex[layer.id];
   }
 }
 export default Branch;

@@ -30,27 +30,6 @@ function getAllCheckboxes(id, className) {
   return allCheckboxes;
 }
 
-function nextStyleLayers(listId) {
-  if ((!listId) || (listId.length === 0)) return;
-  let next;
-  listId.forEach((id) => {
-    const propEl = document.getElementById(id);
-    if (propEl !== undefined) {
-      const selEls = Array.from(propEl.getElementsByTagName('select'));
-      if (selEls !== undefined) {
-        selEls.forEach((selStyle) => {
-          if (selStyle.options.length > 1) {
-            if (next === undefined) next = (selStyle.selectedIndex + 1) % (selStyle.options.length);
-            const nStyle = selStyle.options[next];
-            nStyle.selected = true;
-            selStyle.dispatchEvent(new Event('change'));
-          }
-        });
-      }
-    }
-  });
-}
-
 class Editing {
   constructor(branch, apiUrl) {
     this.branch = branch;
@@ -67,9 +46,6 @@ class Editing {
     this.featureIndex = 0;
 
     this.STATUS = status;
-
-    this.folderVisibleShortcuts = { Ortho: 'm', Opi: 'o', Contour: 'g' };
-    this.folderStyleShortcuts = { Ortho: 'i', Opi: 'i' };
   }
 
   pickPoint(event) {
@@ -313,8 +289,8 @@ class Editing {
       // start polygon
       if (e.key === 'p') this.polygon();
       // change visibility on ColorLayers
-      Object.keys(this.folderVisibleShortcuts).forEach((key) => {
-        if (e.key === this.folderVisibleShortcuts[key]) {
+      Object.keys(this.viewer.shortCuts.visibleFolder).forEach((key) => {
+        if (e.key === this.viewer.shortCuts.visibleFolder[key]) {
           console.log(`Change ${key} visibility`);
           getAllCheckboxes(key).forEach((c) => (c.click()));
         }
@@ -358,7 +334,12 @@ class Editing {
       // delete remark
       if (this.alertLayerName === 'Remarques' && this.alertFC.features.length > 0 && e.key === 'd') this.delRemark();
       // Change Ortho and Opi to next style RVB/IRC/IR
-      if (e.key === 'i') nextStyleLayers(['Ortho_chgStyle', 'Opi_chgStyle']);
+      if (e.key === 'i') {
+        const selectedIndex = this.view.styles.indexOf(this.view.style);
+        this.view.style = this.view.styles[(selectedIndex + 1) % this.view.styles.length];
+        this.view.Opi.style = this.view.style;
+        this.view.changeStyle(['Opi', 'Ortho'], this.view.style);
+      }
 
       // L'utilisateur demande à déselectionner l'OPI
       if (this.opiName !== 'none' && (e.key === 'Escape')) {
