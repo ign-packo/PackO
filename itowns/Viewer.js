@@ -385,13 +385,15 @@ class Viewer {
       if (Object.keys(extensionsMap).includes(extension)) ListFile[layerName].nbFileDropped += 1;
     }
 
-    let data = {};
     // Read each file
+    const data = {};
     for (let i = 0; i < files.length; i += 1) {
       const file = files[i];
       let fileMtd = extensionsMap[file.name.split('.').pop().toLowerCase()];
       let layerName = file.name.split('.').slice(0, -1).join('.');
       layerName = layerName.charAt(0).toUpperCase() + layerName.slice(1);
+
+      if (!data[layerName]) data[layerName] = {};
 
       if (!fileMtd) {
         if (!errors[layerName]) {
@@ -420,18 +422,18 @@ class Viewer {
         let resData;
         nbFileLoaded += 1;
         if (fileMtd.format === _GEOJSON) {
-          data = JSON.parse(dataLoaded);
-          if (!data.type || data.type !== 'FeatureCollection' || !data.features) {
+          data[layerName] = JSON.parse(dataLoaded);
+          if (!data[layerName].type || data[layerName].type !== 'FeatureCollection' || !data[layerName].features) {
             if (!errors[layerName]) {
               errors[layerName] = ['File is not a valid geoJson'];
             } else {
               errors[layerName].push('File is not a valid geoJson');
             }
           } else {
-            resData = data;
+            resData = data[layerName];
           }
         } else if (fileMtd.format === _SHP) {
-          data[fileMtd.extension] = dataLoaded;
+          data[layerName][fileMtd.extension] = dataLoaded;
           ListFile[layerName].nbFileLoaded += 1;
           if (ListFile[layerName].nbFileLoaded < 4) {
             if (ListFile[layerName].nbFileLoaded === ListFile[layerName].nbFileDropped) {
@@ -444,8 +446,8 @@ class Viewer {
             }
           } else {
             resData = shp.combine([
-              shp.parseShp(data.shp, data.prj),
-              shp.parseDbf(data.dbf),
+              shp.parseShp(data[layerName].shp, data[layerName].prj),
+              shp.parseDbf(data[layerName].dbf),
             ]);
             resData.crs = { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::4326' } };
           }
