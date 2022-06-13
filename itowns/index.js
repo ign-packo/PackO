@@ -399,7 +399,7 @@ async function main() {
     view.addEventListener('remark-added', async () => {
       console.log('-> A remark had been added');
       if (editing.alertLayerName === 'Remarques') {
-        const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
+        const layerAlert = viewer.view.getLayerById('Remarques');
         await layerAlert.whenReady;
         editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
 
@@ -412,13 +412,16 @@ async function main() {
         editing.nbTotal = editing.alertFC.features[0].geometries.length;
         editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
 
-        editing.centerOnAlertFeature();
+        if (editing.nbTotal === 1) {
+          editing.featureIndex = 0;
+          editing.centerOnAlertFeature();
+        }
         editing.validated = editing.featureSelectedGeom.properties.status;
         controllers.validated.updateDisplay();
         editing.comment = editing.featureSelectedGeom.properties.comment;
         // controllers.comment.updateDisplay();
 
-        controllers.setVisible(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
+        controllers.setAlertCtr('Remarques');
       }
     });
 
@@ -451,7 +454,7 @@ async function main() {
         editing.comment = editing.featureSelectedGeom.properties.comment;
         // controllers.comment.updateDisplay();
       } else {
-        controllers.hide(['progress', 'id', 'validated', 'unchecked', 'comment', 'delRemark']);
+        controllers.setAlertCtr('-');
         view.removeLayer('selectedFeature');
       }
     });
