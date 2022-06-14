@@ -345,8 +345,10 @@ class Editing {
       if (this.opiName !== 'none' && (e.key === 'Escape')) {
         this.opiName = 'none';
         this.controllers.opiName.__li.style.backgroundColor = '';
-        this.view.getLayerById('Opi').visible = false;
-        this.view.notifyChange(this.view.getLayerById('Opi'), true);
+        this.view.dispatchEvent({
+          type: 'opi-selected',
+          name: 'none',
+        });
       } else if (this.alertLayerName !== '-' && this.alertFC.features.length > 0) {
         const { geometries } = this.alertFC.features[0];
         if (e.key === 'ArrowLeft') {

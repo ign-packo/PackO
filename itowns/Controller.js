@@ -44,6 +44,10 @@ class Controller {
     this[layerName === 'Remarques' ? 'setVisible' : 'hide'](['delRemark']);
   }
 
+  setOpiCtr(opiName) {
+    this[opiName === 'none' ? 'hide' : 'setVisible'](['opiName', 'opiDate', 'opiTime']);
+  }
+
   refreshDropBox(dropBoxName, listOfValues, valueToSelect = this[dropBoxName].getValue()) {
     // by default (valueToSelect = undefined) the value before the refresh is kept
     let selectedIndex = 0;

@@ -192,13 +192,18 @@ class Viewer {
       viewer.refresh(layerList);
     };
 
+    const _view = this.view;
     this.view.changeOpi = function _(name) {
       console.log('Change Opi to', name);
       const regex = /LAYER=.*&FORMAT/;
       const layer = viewer.view.getLayerById('Opi');
       layer.source.url = layer.source.url.replace(regex, `LAYER=opi&Name=${name}&FORMAT`);
       layer.visible = true;
-      viewer.refresh('Opi');
+
+      _view.dispatchEvent({
+        type: 'opi-selected',
+        name,
+      });
     };
 
     this.view.changeBranch = function _(branchId) {

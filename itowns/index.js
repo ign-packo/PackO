@@ -182,13 +182,21 @@ async function main() {
     // Selection OPI
     controllers.select = viewer.menuGlobe.gui.add(editing, 'select').name('Select an OPI [s]');
     editing.opiName = 'none';
-    controllers.opiName = viewer.menuGlobe.gui.add(editing, 'opiName').name('OPI selected');
-    controllers.opiName.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.opiName = viewer.menuGlobe.gui.add(editing, 'opiName').name('OPI selected').listen();
+    controllers.opiName.domElement.parentElement.style.pointerEvents = 'none';
+    controllers.opiName.onChange((name) => {
+      console.log('opi selected: ', name);
+    });
+    editing.opiDate = '';
+    controllers.opiDate = viewer.menuGlobe.gui.add(editing, 'opiDate').name('Date').listen();
+    controllers.opiDate.domElement.parentElement.style.pointerEvents = 'none';
+    editing.opiTime = '';
+    controllers.opiTime = viewer.menuGlobe.gui.add(editing, 'opiTime').name('Time').listen();
+    controllers.opiTime.domElement.parentElement.style.pointerEvents = 'none';
 
     // Coord
     editing.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
-    controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord').name('Coordinates');
-    controllers.coord.listen();
+    controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord').name('Coordinates').listen();
 
     // Saisie
     controllers.polygon = viewer.menuGlobe.gui.add(editing, 'polygon').name('Start polygon [p]');
@@ -199,8 +207,8 @@ async function main() {
 
     // Message
     viewer.message = '';
-    controllers.message = viewer.menuGlobe.gui.add(viewer, 'message').name('Message');
-    controllers.message.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.message = viewer.menuGlobe.gui.add(viewer, 'message').name('Message').listen();
+    controllers.message.domElement.parentElement.style.pointerEvents = 'none';
 
     // Couche d'alertes
     editing.alert = '-';
@@ -245,11 +253,11 @@ async function main() {
           editing.featureIndex = featureIndex;
 
           editing.id = 0;
-          controllers.id.updateDisplay();
+          // controllers.id.updateDisplay();
 
           editing.centerOnAlertFeature();
           editing.validated = editing.featureSelectedGeom.properties.status;
-          controllers.validated.updateDisplay();
+          // controllers.validated.updateDisplay();
 
           editing.comment = editing.featureSelectedGeom.properties.comment;
           // controllers.comment.updateDisplay();
@@ -260,7 +268,7 @@ async function main() {
       controllers.setAlertCtr(editing.nbTotal === 0 ? '-' : layerName);
     });
     editing.id = '';
-    controllers.id = viewer.menuGlobe.gui.add(editing, 'id').name('Alert id');
+    controllers.id = viewer.menuGlobe.gui.add(editing, 'id').name('Alert id').listen();
     controllers.id.onChange(() => {
       console.log("saisie d'une id");
       editing.currentStatus = editing.STATUS.WRITING;
@@ -276,21 +284,21 @@ async function main() {
       } else {
         viewer.message = 'id non valide';
         editing.id = editing.featureIndex;
-        controllers.id.updateDisplay();
+        // controllers.id.updateDisplay();
       }
     });
     // controllers.hide('id');
 
     editing.progress = '';
-    controllers.progress = viewer.menuGlobe.gui.add(editing, 'progress').name('Progress');
-    controllers.progress.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.progress = viewer.menuGlobe.gui.add(editing, 'progress').name('Progress').listen();
+    controllers.progress.domElement.parentElement.style.pointerEvents = 'none';
     // controllers.hide('progress');
 
     controllers.unchecked = viewer.menuGlobe.gui.add(editing, 'unchecked').name('Mark as unchecked');
     // controllers.hide('unchecked');
 
     editing.validated = false;
-    controllers.validated = viewer.menuGlobe.gui.add(editing, 'validated').name('Validated [c]');
+    controllers.validated = viewer.menuGlobe.gui.add(editing, 'validated').name('Validated [c]').listen();
     controllers.validated.domElement.id = 'validatedAlert';
     controllers.validated.onChange(async (value) => {
       console.log('change status', value);
@@ -320,8 +328,8 @@ async function main() {
     // controllers.hide('validated');
 
     editing.comment = '';
-    controllers.comment = viewer.menuGlobe.gui.add(editing, 'comment').name('comment');
-    controllers.comment.listen().domElement.parentElement.style.pointerEvents = 'none';
+    controllers.comment = viewer.menuGlobe.gui.add(editing, 'comment').name('comment').listen();
+    controllers.comment.domElement.parentElement.style.pointerEvents = 'none';
     // controllers.hide('comment');
 
     // Remarques
@@ -329,8 +337,9 @@ async function main() {
     controllers.delRemark = viewer.menuGlobe.gui.add(editing, 'delRemark').name('Delete remark [d]');
     // controllers.hide('delRemark');
 
-    controllers.setPatchCtr('orig');
-    controllers.setAlertCtr('-');
+    controllers.setPatchCtr(branch.active.name);// branch.active.name = 'orig'
+    controllers.setAlertCtr(editing.alert);// editing.alert = '-'
+    controllers.setOpiCtr(editing.opiName);// editing.opiName = 'none'
 
     // editing controllers
     editing.controllers = {
@@ -338,8 +347,8 @@ async function main() {
       opiName: controllers.opiName,
       polygon: controllers.polygon,
       // checked: controllers.checked,
-      id: controllers.id,
-      validated: controllers.validated,
+      // id: controllers.id,
+      // validated: controllers.validated,
       // comment: controllers.comment,
       addRemark: controllers.addRemark,
     };
@@ -384,6 +393,17 @@ async function main() {
         });
     });
 
+    view.addEventListener('opi-selected', (newOpi) => {
+      console.log(`-> Opi '${newOpi.name}' selected.`);
+      if (newOpi.name === 'none') {
+        view.getLayerById('Opi').visible = false;
+        view.notifyChange(view.getLayerById('Opi'), true);
+      } else {
+        viewer.refresh('Opi');
+      }
+      controllers.setOpiCtr(newOpi.name);
+    });
+
     view.addEventListener('branch-created', (newBranch) => {
       console.log(`-> New branch created (name: '${newBranch.name}', id: ${newBranch.id})`);
       branch.changeBranch(newBranch.name);
@@ -422,7 +442,7 @@ async function main() {
           editing.centerOnAlertFeature();
         }
         editing.validated = editing.featureSelectedGeom.properties.status;
-        controllers.validated.updateDisplay();
+        // controllers.validated.updateDisplay();
         editing.comment = editing.featureSelectedGeom.properties.comment;
         // controllers.comment.updateDisplay();
 
@@ -455,7 +475,7 @@ async function main() {
           editing.centerOnAlertFeature();
         }
         editing.validated = editing.featureSelectedGeom.properties.status;
-        controllers.validated.updateDisplay();
+        // controllers.validated.updateDisplay();
         editing.comment = editing.featureSelectedGeom.properties.comment;
         // controllers.comment.updateDisplay();
       } else {
@@ -499,9 +519,9 @@ async function main() {
           }
 
           editing.id = editing.featureIndex;
-          controllers.id.updateDisplay();
+          // controllers.id.updateDisplay();
           editing.validated = features[layerTest.id][0].geometry.properties.status;
-          controllers.validated.updateDisplay();
+          // controllers.validated.updateDisplay();
           editing.comment = features[layerTest.id][0].geometry.properties.comment;
           // controllers.comment.updateDisplay();
 
