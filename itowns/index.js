@@ -195,7 +195,7 @@ async function main() {
     controllers.undo = viewer.menuGlobe.gui.add(editing, 'undo').name('undo [CTRL+Z]');
     controllers.redo = viewer.menuGlobe.gui.add(editing, 'redo').name('redo [CTRL+Y]');
     controllers.clear = viewer.menuGlobe.gui.add(editing, 'clear');
-    controllers.hide(['polygon', 'undo', 'redo', 'clear']);
+    // controllers.hide(['polygon', 'undo', 'redo', 'clear']);
 
     // Message
     viewer.message = '';
@@ -279,15 +279,15 @@ async function main() {
         controllers.id.updateDisplay();
       }
     });
-    controllers.hide('id');
+    // controllers.hide('id');
 
     editing.progress = '';
     controllers.progress = viewer.menuGlobe.gui.add(editing, 'progress').name('Progress');
     controllers.progress.listen().domElement.parentElement.style.pointerEvents = 'none';
-    controllers.hide('progress');
+    // controllers.hide('progress');
 
     controllers.unchecked = viewer.menuGlobe.gui.add(editing, 'unchecked').name('Mark as unchecked');
-    controllers.hide('unchecked');
+    // controllers.hide('unchecked');
 
     editing.validated = false;
     controllers.validated = viewer.menuGlobe.gui.add(editing, 'validated').name('Validated [c]');
@@ -317,17 +317,20 @@ async function main() {
         viewer.message = 'PB with validate';
       }
     });
-    controllers.hide('validated');
+    // controllers.hide('validated');
 
     editing.comment = '';
     controllers.comment = viewer.menuGlobe.gui.add(editing, 'comment').name('comment');
     controllers.comment.listen().domElement.parentElement.style.pointerEvents = 'none';
-    controllers.hide('comment');
+    // controllers.hide('comment');
 
     // Remarques
     controllers.addRemark = viewer.menuGlobe.gui.add(editing, 'addRemark').name('Add remark [a]');
     controllers.delRemark = viewer.menuGlobe.gui.add(editing, 'delRemark').name('Delete remark [d]');
-    controllers.hide('delRemark');
+    // controllers.hide('delRemark');
+
+    controllers.setPatchCtr('orig');
+    controllers.setAlertCtr('-');
 
     // editing controllers
     editing.controllers = {
