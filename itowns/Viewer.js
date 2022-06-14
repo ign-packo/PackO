@@ -83,7 +83,6 @@ class Viewer {
       Graph: 0,
       Contour: 3,
       Patches: 4,
-      Remarques: 5,
     };
     this.oldStyle = {};
 
@@ -291,6 +290,10 @@ class Viewer {
           // pas besoin de definir le zoom min pour patches car il y en a jamais sur la couche orig
         }
         config.opacity = layer.opacity;
+
+        if (layer.layerIndex !== undefined) {
+          this.layerIndex[layerName] = layer.layerIndex;
+        }
       }
 
       // Dans les 2 cas

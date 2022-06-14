@@ -95,7 +95,9 @@ class Branch {
       this.vectorList = await getVectorList;
     }
 
+    let layerIndex = this.layers.length;
     this.vectorList.forEach((vector) => {
+      layerIndex += 1;
       this.layers.push({
         name: vector.name,
         type: 'vector',
@@ -106,6 +108,7 @@ class Branch {
         style: JSON.parse(vector.style_itowns),
         vectorId: vector.id,
         isAlert: false,
+        layerIndex,
       });
     });
   }
