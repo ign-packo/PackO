@@ -396,7 +396,9 @@ async function main() {
       controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)], '-');
       controllers.setAlertCtr('-');
       controllers.resetAlerts();
-      viewer.refresh(branch.layers, true);
+      viewer.removeExtraLayers(viewer.menuGlobe);
+      viewer.view.changeBranch(newBranch.id, apiUrl);
+      viewer.refresh(branch.layers);
     });
 
     view.addEventListener('remark-added', async () => {

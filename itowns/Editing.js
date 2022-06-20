@@ -253,9 +253,9 @@ class Editing {
 
     // this.id = this.featureSelectedGeom.properties.id;
     this.id = this.featureIndex;
-    this.controllers.id.updateDisplay();
+    // this.controllers.id.updateDisplay();
     this.validated = this.featureSelectedGeom.properties.status;
-    this.controllers.validated.updateDisplay();
+    // this.controllers.validated.updateDisplay();
     // this.viewer.remark = this.featureSelectedGeom.properties.comment;
     this.comment = this.featureSelectedGeom.properties.comment;
 
@@ -479,12 +479,12 @@ class Editing {
             this.cancelcurrentPolygon();
             if (res.status === 200) {
               this.opiName = json.opiName;
+              this.opiDate = json.date;
+              this.opiTime = json.time;
               this.color = json.color;
               this.controllers.opiName.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
               // On modifie la couche OPI
-              this.view.getLayerById('Opi').source.url = this.view.getLayerById('Opi').source.url.replace(/LAYER=.*&FORMAT/, `LAYER=opi&Name=${this.opiName}&FORMAT`);
-              this.view.getLayerById('Opi').visible = true;
-              this.viewer.refresh(this.branch.layers);
+              this.view.changeOpi(this.opiName);
             } else {
               console.log(`-> No OPI found (${json.msg})`);
               // 244-> no OPI at x, y (out of graph OR out of bounds)

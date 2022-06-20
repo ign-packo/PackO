@@ -191,6 +191,24 @@ class Viewer {
       });
       viewer.refresh(layerList);
     };
+
+    this.view.changeOpi = function _(name) {
+      console.log('Change Opi to', name);
+      const regex = /LAYER=.*&FORMAT/;
+      const layer = viewer.view.getLayerById('Opi');
+      layer.source.url = layer.source.url.replace(regex, `LAYER=opi&Name=${name}&FORMAT`);
+      layer.visible = true;
+      viewer.refresh('Opi');
+    };
+
+    this.view.changeBranch = function _(branchId) {
+      console.log('Change Branch to', branchId);
+      const regex = new RegExp('\\/[0-9]+\\/');
+      ['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].forEach((element) => {
+        const layer = viewer.view.getLayerById(element);
+        layer.source.url = layer.source.url.replace(regex, `/${branchId}/`);
+      });
+    };
   }
 
   centerCamera(coordX, coordY) {
@@ -217,7 +235,8 @@ class Viewer {
     });
   }
 
-  refresh(layerList) {
+  refresh(layers) {
+    const layerList = layers instanceof Array ? layers : [layers];
     const layerNames = [];
     layerList.forEach((layer) => {
       layerNames.push(typeof layer === 'string' ? layer : layer.name);
