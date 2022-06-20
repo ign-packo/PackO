@@ -40,7 +40,7 @@ class Controller {
   }
 
   setAlertCtr(layerName) {
-    this[layerName !== '-' ? 'setVisible' : 'hide'](['progress', 'id', 'validated', 'unchecked', 'comment']);
+    this[layerName !== '-' ? 'setVisible' : 'hide'](['progress', 'id', 'validated', 'uncheck', 'comment']);
     this[layerName === 'Remarques' ? 'setVisible' : 'hide'](['delRemark']);
   }
 
@@ -60,14 +60,6 @@ class Controller {
     });
     this[dropBoxName].domElement.children[0].innerHTML = innerHTML;
     this[dropBoxName].__select.options.selectedIndex = selectedIndex;
-  }
-
-  resetAlerts() {
-    this.editing.alertLayerName = '-';
-
-    if (this.editing.viewer.view.getLayerById('selectedFeature')) {
-      this.editing.viewer.view.removeLayer('selectedFeature');
-    }
   }
 }
 

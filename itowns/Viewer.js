@@ -64,6 +64,64 @@ function coloringAlerts(properties) {
   return alertUncheckedColor;
 }
 
+// function changeLayerStyle(config) {
+//   const { style } = config;
+//   style.fill.color = coloringAlerts;
+//   style.point.color = coloringAlerts;
+//   style.stroke.color = coloringAlerts;
+// }
+
+function changeLayerStyle(config, idSelected, oldStyle) {
+  const { style } = config;
+  style.fill.color = coloringAlerts;
+  style.point.color = (properties) => {
+    if (properties.status === false) {
+      return alertCheckedColor;
+    }
+    if (properties.status === true) {
+      return alertValidatedColor;
+    }
+    return alertUncheckedColor;
+  };
+  style.point.radius = (properties) => {
+    if (properties.id === idSelected) {
+      return 7;
+    }
+    return oldStyle.point.radius;
+  };
+  style.point.line = (properties) => {
+    if (properties.id === idSelected) {
+      return 'yellow';
+    }
+    return oldStyle.point.line;
+  };
+  style.point.width = (properties) => {
+    if (properties.id === idSelected) {
+      return 5;
+    }
+    return oldStyle.point.width;
+  };
+
+  style.stroke.color = (properties) => {
+    if (properties.id === idSelected) {
+      return 'yellow';
+    }
+    if (properties.status === false) {
+      return alertCheckedColor;
+    }
+    if (properties.status === true) {
+      return alertValidatedColor;
+    }
+    return alertUncheckedColor;
+  };
+  style.stroke.width = (properties) => {
+    if (properties.id === idSelected) {
+      return 5;
+    }
+    return oldStyle.stroke.width;
+  };
+}
+
 class Viewer {
   constructor(viewerDiv) {
     this.viewerDiv = viewerDiv;
@@ -181,7 +239,7 @@ class Viewer {
       });
     };
 
-    this.view.changeStyle = function _(layers, value) {
+    this.view.changeWmtsStyle = function _(layers, value) {
       console.log('Change style of', layers, 'to', value);
       const layerList = layers instanceof Array ? layers : [layers];
       const regex = /STYLE=.*TILEMATRIXSET/;
@@ -192,31 +250,28 @@ class Viewer {
       viewer.refresh(layerList);
     };
 
-    const _view = this.view;
     this.view.changeOpi = function _(name) {
       console.log('Change Opi to', name);
       const regex = /LAYER=.*&FORMAT/;
       const layer = viewer.view.getLayerById('Opi');
       layer.source.url = layer.source.url.replace(regex, `LAYER=opi&Name=${name}&FORMAT`);
       layer.visible = true;
-
-      _view.dispatchEvent({
-        type: 'opi-selected',
-        name,
-      });
     };
 
     this.view.changeBranch = function _(branchId) {
-      console.log('Change Branch to', branchId);
       const regex = new RegExp('\\/[0-9]+\\/');
       ['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].forEach((element) => {
         const layer = viewer.view.getLayerById(element);
         layer.source.url = layer.source.url.replace(regex, `/${branchId}/`);
       });
     };
+
+    this.view.refresh = function _(layers) {
+      viewer.refresh(layers);
+    };
   }
 
-  centerCamera(coordX, coordY) {
+  centerCameraOn(coordX, coordY) {
     // bug itowns...
     // itowns.CameraUtils.animateCameraToLookAtTarget( ... )
     itowns.CameraUtils.transformCameraToLookAtTarget(
@@ -271,16 +326,15 @@ class Viewer {
             crs: layer.source.crs,
             parser: itowns.GeoJsonParser.parse,
           });
+
           if (this.oldStyle[layerName]) {
-            config.style = this.oldStyle[layerName];
+            config.style = JSON.parse(JSON.stringify(this.oldStyle[layerName]));
           }
           if (layer.isAlert === true) {
-            this.oldStyle[layerName] = config.style.clone();
-            /* eslint-disable no-param-reassign */
-            config.style.fill.color = coloringAlerts;
-            config.style.point.color = coloringAlerts;
-            config.style.stroke.color = coloringAlerts;
-            /* eslint-enable no-param-reassign */
+            if (this.oldStyle[layerName] === undefined) {
+              this.oldStyle[layerName] = JSON.parse(JSON.stringify(config.style));
+            }
+            changeLayerStyle(config, layer.idSelected, this.oldStyle[layerName]);
           }
         }
         this.view.removeLayer(layerName);
@@ -341,6 +395,9 @@ class Viewer {
       }
       if (layer.isAlert !== undefined) {
         newColorLayer.isAlert = layer.isAlert;
+      }
+      if (newColorLayer.isAlert === true) {
+        newColorLayer.idSelected = layer.idSelected;
       }
 
       // Layer ordering
