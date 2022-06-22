@@ -180,7 +180,7 @@ class Editing {
       // select Opi
       if (e.key === 's') this.select();
       // start polygon
-      if (e.key === 'p') this.polygon();
+      if ((e.key === 'p') && (this.branch.active.name !== 'orig')) this.polygon();
       // change visibility on ColorLayers
       Object.keys(this.viewer.shortCuts.visibleFolder).forEach((key) => {
         if (e.key === this.viewer.shortCuts.visibleFolder[key]) {
@@ -194,9 +194,10 @@ class Editing {
         getAllCheckboxes('extraLayers', 'visibcbx').forEach((c) => (c.click()));
       }
       // change alert validation status
-      if ((this.branch.alert.layerName !== '-') && (e.key === 'c')) {
+      if ((e.key === 'c') && (this.branch.alert.nbTotal > 0)) {
         console.log('Change alert validation status');
-        getAllCheckboxes('validatedAlert').forEach((c) => (c.click()));
+        this.branch.alert.validated = !this.branch.alert.validated;
+        this.branch.alert.setValidation(this.branch.alert.validated);
       }
       // move camera proportional to one screen
       if (this.branch.alert.layerName === '-') {
@@ -258,8 +259,10 @@ class Editing {
     if (e.key === 'Escape') {
       this.view.controls.setCursor('default', 'auto');
       this.cancelcurrentPolygon();
-    } else if (e.key === 'Shift') {
-      if (this.currentStatus === status.POLYGON) {
+      this.currentStatus = status.RAS;
+    }
+    if (this.currentStatus === status.POLYGON) {
+      if (e.key === 'Shift') {
         if (this.currentPolygon) {
           if (this.branch.active.name === 'orig') {
             this.viewer.message = 'Changer de branche pour continuer';
@@ -281,9 +284,7 @@ class Editing {
             this.view.notifyChange(this.currentPolygon);
           }
         }
-      }
-    } else if (e.key === 'Backspace') {
-      if (this.currentStatus === status.POLYGON) {
+      } else if (e.key === 'Backspace') {
         if (this.currentPolygon && (this.nbVertices > 1)) {
           const vertices = this.currentPolygon.geometry.attributes.position;
           vertices.copyAt(this.nbVertices - 1, vertices, this.nbVertices);
@@ -293,7 +294,6 @@ class Editing {
           this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
           this.currentPolygon.geometry.computeBoundingSphere();
           this.view.notifyChange(this.currentPolygon);
-
           this.nbVertices -= 1;
         }
       }
