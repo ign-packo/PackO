@@ -226,6 +226,10 @@ class Viewer {
       },
     });
 
+    // disable itowns shortcuts because of conflicts with endogenous shortcuts
+    /* eslint-disable-next-line no-underscore-dangle */
+    this.view.domElement.removeEventListener('keydown', this.view.controls._handlerOnKeyDown, false);
+
     const viewer = this;
     this.view.removeVectorLayer = function _(layerName) {
       if (layerName === undefined) return;

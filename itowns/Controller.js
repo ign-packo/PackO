@@ -1,15 +1,13 @@
 /* eslint no-underscore-dangle: ["error", { "allow": [__controllers, __li, __select] }] */
 
 class Controller {
-  constructor(menuGlobe, editing) {
-    this.controllers = {};
+  constructor(menuGlobe) {
     this.menuGlobe = menuGlobe;
-    this.editing = editing;
   }
 
   getController(name) {
     let controller = null;
-    const controllers = this.menuGlobe.gui.__controllers;
+    const controllers = this.menuGlobe.__controllers;
     for (let i = 0; i < controllers.length; i += 1) {
       const c = controllers[i];
       if (c.property === name || c.name === name) {
@@ -52,8 +50,9 @@ class Controller {
     this[opiName === 'none' ? 'hide' : 'setVisible'](['opiName', 'opiDate', 'opiTime']);
   }
 
-  refreshDropBox(dropBoxName, listOfValues, valueToSelect = this[dropBoxName].getValue()) {
-    // by default (valueToSelect = undefined) the value before the refresh is kept
+  refreshDropBox(dropBoxName, listOfValues,
+    valueToSelect = this.getController(dropBoxName).getValue()) {
+    // by default if valueToSelect is not given, the current value will be kept
     let selectedIndex = 0;
     let innerHTML = '';
     listOfValues.forEach((element, i) => {
@@ -62,8 +61,8 @@ class Controller {
         selectedIndex = i;
       }
     });
-    this[dropBoxName].domElement.children[0].innerHTML = innerHTML;
-    this[dropBoxName].__select.options.selectedIndex = selectedIndex;
+    this.getController(dropBoxName).domElement.children[0].innerHTML = innerHTML;
+    this.getController(dropBoxName).__select.options.selectedIndex = selectedIndex;
   }
 }
 

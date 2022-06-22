@@ -14,31 +14,30 @@ dat.GUI.prototype.hasFolder = function hasFolder(name) {
 };
 /* eslint-enable no-underscore-dangle */
 
-class Menu {
+class Menu extends dat.GUI {
   constructor(menuDiv, view, shortCuts) {
     const width = 300;
+
+    super({ autoPlace: false, width });
     this.shortCuts = shortCuts;
+    // this.gui = new dat.GUI({ autoPlace: false, width });
+    menuDiv.appendChild(this.domElement);
 
-    if (view) {
-      this.gui = new dat.GUI({ autoPlace: false, width });
-      menuDiv.appendChild(this.gui.domElement);
+    this.colorGui = this.addFolder('Color Layers');
+    this.colorGui.open();
+    this.vectorGui = this.addFolder('Extra Layers [v]');
+    this.vectorGui.domElement.id = 'extraLayers';
+    this.vectorGui.open();
+    this.view = view;
 
-      this.colorGui = this.gui.addFolder('Color Layers');
-      this.colorGui.open();
-      this.vectorGui = this.gui.addFolder('Extra Layers [v]');
-      this.vectorGui.domElement.id = 'extraLayers';
-      this.vectorGui.open();
-      this.view = view;
+    view.addEventListener('layers-order-changed', ((ev) => {
+      for (let i = 0; i < ev.new.sequence.length; i += 1) {
+        const colorLayer = view.getLayerById(ev.new.sequence[i]);
 
-      view.addEventListener('layers-order-changed', ((ev) => {
-        for (let i = 0; i < ev.new.sequence.length; i += 1) {
-          const colorLayer = view.getLayerById(ev.new.sequence[i]);
-
-          this.removeLayersGUI(colorLayer.id);
-          this.addImageryLayerGUI(colorLayer);
-        }
-      }));
-    }
+        this.removeLayersGUI(colorLayer.id);
+        this.addImageryLayerGUI(colorLayer);
+      }
+    }));
   }
 
   addImageryLayerGUI(layer) {
