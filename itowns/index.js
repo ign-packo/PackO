@@ -146,22 +146,13 @@ async function main() {
 
     viewer.view.isDebugMode = true;
 
-    viewer.menuGlobe = new Menu(document.getElementById('menuDiv'), viewer.view, viewer.shortCuts);
-
-    // viewer.menuGlobe = new GuiTools('menuDiv', viewer.view);
-    // viewer.menuGlobe.gui.width = 300;
-
-    // viewer.menuGlobe.colorGui.show();
-    // viewer.menuGlobe.colorGui.open();
-    // viewer.menuGlobe.vectorGui = viewer.menuGlobe.gui.addFolder('Extra Layers [v]');
-    // viewer.menuGlobe.vectorGui.domElement.id = 'extraLayers';
-    // viewer.menuGlobe.vectorGui.open();
+    const menu = new Menu(document.getElementById('menuDiv'), viewer.view, viewer.shortCuts);
 
     const alert = new Alert(viewer);
     const branch = new Branch(viewer, alert);
     const editing = new Editing(branch);
 
-    const controllers = new Controller(viewer.menuGlobe, editing);
+    const controllers = new Controller(menu);
 
     // const branch = new Branch(apiUrl, viewer);
     branch.list = await getBranches;
@@ -171,104 +162,110 @@ async function main() {
     await branch.setLayers();
     viewer.refresh(branch.layers);
 
-    // const editing = new Editing(branch, apiUrl);
-
-    // const controllers = new Controller(viewer.menuGlobe, editing);
-
     // Gestion branche
-    controllers.branchName = branch.active.name;
-    controllers.branch = viewer.menuGlobe.gui.add(controllers, 'branchName', branch.list.map((elem) => elem.name)).name('Active branch');
-    controllers.branch.onChange((name) => {
-      document.activeElement.blur();
-      branch.changeBranch(name);
-    });
-    controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch').name('Add new branch');
+    menu.add({ branchName: branch.active.name }, 'branchName', branch.list.map((elem) => elem.name))
+      .name('Active branch')
+      .onChange((name) => {
+        document.activeElement.blur();
+        branch.changeBranch(name);
+      });
+    menu.add(branch, 'createBranch')
+      .name('Add new branch');
 
     // Selection OPI
-    controllers.select = viewer.menuGlobe.gui.add(editing, 'select').name('Select an OPI [s]');
-    editing.opiName = 'none';
-    controllers.opiName = viewer.menuGlobe.gui.add(editing, 'opiName').name('OPI selected').listen();
-    controllers.opiName.domElement.parentElement.style.pointerEvents = 'none';
-    controllers.opiName.onChange((name) => {
-      console.log('opi selected: ', name);
-    });
-    editing.opiDate = '';
-    controllers.opiDate = viewer.menuGlobe.gui.add(editing, 'opiDate').name('Date').listen();
-    controllers.opiDate.domElement.parentElement.style.pointerEvents = 'none';
-    editing.opiTime = '';
-    controllers.opiTime = viewer.menuGlobe.gui.add(editing, 'opiTime').name('Time').listen();
-    controllers.opiTime.domElement.parentElement.style.pointerEvents = 'none';
+    menu.add(editing, 'select').name('Select an OPI [s]');
+    menu.add(editing, 'opiName')
+      .name('OPI selected').listen()
+      .onChange((name) => {
+        console.log('opi selected: ', name);
+      })
+      .domElement.parentElement.style.pointerEvents = 'none';
+    menu.add(editing, 'opiDate')
+      .name('Date').listen()
+      .domElement.parentElement.style.pointerEvents = 'none';
+    menu.add(editing, 'opiTime')
+      .name('Time').listen()
+      .domElement.parentElement.style.pointerEvents = 'none';
 
     // Coord
-    editing.coord = `${viewer.xcenter.toFixed(2)},${viewer.ycenter.toFixed(2)}`;
-    controllers.coord = viewer.menuGlobe.gui.add(editing, 'coord').name('Coordinates').listen();
+    menu.add(editing, 'coord')
+      .name('Coordinates').listen()
+      .onChange(() => {
+        if (!checkCoordString(editing.coord)) {
+          viewer.message = 'Coordonnees non valides';
+        } else {
+          viewer.message = '';
+        }
+      })
+      .onFinishChange(() => {
+        const coords = checkCoordString(editing.coord);
+        if (coords) {
+          viewer.centerCameraOn(coords[0], coords[1]);
+        }
+        editing.currentStatus = editing.STATUS.RAS;
+        viewer.message = '';
+      })
+      .domElement.addEventListener('click', () => {
+        editing.currentStatus = editing.STATUS.WRITING;
+      });
 
     // Saisie
-    controllers.polygon = viewer.menuGlobe.gui.add(editing, 'polygon').name('Start polygon [p]');
-    controllers.undo = viewer.menuGlobe.gui.add(editing, 'undo').name('undo [CTRL+Z]');
-    controllers.redo = viewer.menuGlobe.gui.add(editing, 'redo').name('redo [CTRL+Y]');
-    controllers.clear = viewer.menuGlobe.gui.add(editing, 'clear');
-    controllers.hide('clear');
-    // controllers.hide(['polygon', 'undo', 'redo', 'clear']);
+    menu.add(editing, 'polygon').name('Start polygon [p]');
+    menu.add(editing, 'undo').name('undo [CTRL+Z]');
+    menu.add(editing, 'redo').name('redo [CTRL+Y]');
+    menu.add(editing, 'clear');
 
     // Message
     viewer.message = '';
-    controllers.message = viewer.menuGlobe.gui.add(viewer, 'message').name('Message').listen();
-    controllers.message.domElement.parentElement.style.pointerEvents = 'none';
+    menu.add(viewer, 'message')
+      .name('Message').listen()
+      .domElement.parentElement.style.pointerEvents = 'none';
 
     // Couche d'alertes
-    controllers.alert = viewer.menuGlobe.gui.add({ layerName: '-' }, 'layerName', [alert.layerName, ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
-    controllers.alert.onChange(async (layerName) => {
-      document.activeElement.blur();
-      await alert.changeLayer(layerName);
-      controllers.setAlertCtr(alert.nbTotal === 0 ? '-' : layerName);
+    menu.add({ alert: '-' }, 'alert', [alert.layerName, ...branch.vectorList.map((elem) => elem.name)])
+      .name('Alerts Layer')
+      .onChange(async (layerName) => {
+        document.activeElement.blur();
+        await alert.changeLayer(layerName);
+        controllers.setAlertCtr(alert.nbTotal === 0 ? '-' : layerName);
+      });
+    menu.add(alert, 'id')
+      .name('Alert id').listen()
+      .onFinishChange((value) => {
+        const newId = parseInt(value, 10);
+        console.log('Nouvelle id : ', newId);
+        editing.currentStatus = editing.STATUS.RAS;
+        if (newId >= 0 && newId < alert.nbTotal) {
+          alert.changeFeature(newId, { centerOnFeature: true });
+        } else {
+          viewer.message = 'id non valide';
+          alert.id = alert.featureIndex;
+        }
+      })
+      .domElement.addEventListener('click', () => {
+        editing.currentStatus = editing.STATUS.WRITING;
+      });
 
-      // viewer.refresh(branch.layers);
-    });
-    alert.id = '';
-    controllers.id = viewer.menuGlobe.gui.add(alert, 'id').name('Alert id').listen();
-    controllers.id.onChange(() => {
-      console.log("saisie d'une id");
-      editing.currentStatus = editing.STATUS.WRITING;
-    });
-    controllers.id.onFinishChange((value) => {
-      const newId = parseInt(value, 10);
-      console.log('Nouvelle id : ', newId);
-      editing.currentStatus = editing.STATUS.RAS;
-      if (newId >= 0 && newId < alert.nbTotal) {
-        alert.changeFeature(newId, { centerOnFeature: true });
-      } else {
-        viewer.message = 'id non valide';
-        alert.id = alert.featureIndex;
-        // controllers.id.updateDisplay();
-      }
-    });
-    // controllers.hide('id');
+    menu.add(alert, 'progress')
+      .name('Progress').listen()
+      .domElement.parentElement.style.pointerEvents = 'none';
 
-    alert.progress = '';
-    controllers.progress = viewer.menuGlobe.gui.add(alert, 'progress').name('Progress').listen();
-    controllers.progress.domElement.parentElement.style.pointerEvents = 'none';
-    // controllers.hide('progress');
+    menu.add(alert, 'uncheck').name('Mark as unchecked');
 
-    controllers.uncheck = viewer.menuGlobe.gui.add(alert, 'uncheck').name('Mark as unchecked');
-    // controllers.hide('uncheck');
+    menu.add(alert, 'validated')
+      .name('Validated [c]').listen()
+      .onChange((value) => { alert.setValidation(value); })
+      .domElement.id = 'validatedAlert';
 
-    alert.validated = false;
-    controllers.validated = viewer.menuGlobe.gui.add(alert, 'validated').name('Validated [c]').listen();
-    controllers.validated.domElement.id = 'validatedAlert';
-    controllers.validated.onChange((value) => { alert.setValidation(value); });
-    // controllers.hide('validated');
-
-    alert.comment = '';
-    controllers.comment = viewer.menuGlobe.gui.add(alert, 'comment').name('comment').listen();
-    controllers.comment.domElement.parentElement.style.pointerEvents = 'none';
-    // controllers.hide('comment');
+    menu.add(alert, 'comment')
+      .name('comment').listen()
+      .domElement.parentElement.style.pointerEvents = 'none';
 
     // Remarques
-    controllers.addRemark = viewer.menuGlobe.gui.add(editing, 'addRemark').name('Add remark [a]');
-    controllers.delRemark = viewer.menuGlobe.gui.add(editing, 'delRemark').name('Delete remark [d]');
-    // controllers.hide('delRemark');
+    menu.add(editing, 'addRemark').name('Add remark [a]');
+    menu.add(editing, 'delRemark').name('Delete remark [d]');
 
+    // visibilty of controllers
     controllers.setPatchCtr(branch.active.name);// branch.active.name = 'orig'
     controllers.setAlertCtr(alert.layerName);// alert.layerName = '-'
     controllers.setOpiCtr(editing.opiName);// editing.opiName = 'none'
@@ -353,7 +350,7 @@ async function main() {
       controllers.setPatchCtr(newBranch.name);
       controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)], '-');
       controllers.setAlertCtr('-');
-      viewer.removeExtraLayers(viewer.menuGlobe);
+      viewer.removeExtraLayers(menu);
       viewer.view.changeBranch(newBranch.id);
       viewer.refresh(branch.layers);
     });
@@ -435,24 +432,6 @@ async function main() {
       }
     });
 
-    controllers.coord.onChange(() => {
-      editing.currentStatus = editing.STATUS.WRITING;
-      if (!checkCoordString(editing.coord)) {
-        viewer.message = 'Coordonnees non valides';
-      } else {
-        viewer.message = '';
-      }
-    });
-
-    controllers.coord.onFinishChange(() => {
-      const coords = checkCoordString(editing.coord);
-      if (coords) {
-        viewer.centerCameraOn(coords[0], coords[1]);
-      }
-      editing.currentStatus = editing.STATUS.RAS;
-      viewer.message = '';
-    });
-
     window.addEventListener('keydown', (ev) => {
       editing.keydown(ev);
       return false;
@@ -486,10 +465,6 @@ async function main() {
       }
       return false;
     });
-
-    // disable itowns shortcuts because of conflicts with endogenous shortcuts
-    /* eslint-disable-next-line no-underscore-dangle */
-    view.domElement.removeEventListener('keydown', view.controls._handlerOnKeyDown, false);
 
     const helpContent = document.getElementById('help-content');
     helpContent.style.visibility = 'hidden';

@@ -34,6 +34,12 @@ class Editing {
     this.view = this.viewer.view;
     this.api = this.viewer.api;
 
+    this.opiName = 'none';
+    this.opiDate = '';
+    this.opiTime = '';
+
+    this.coord = `${this.viewer.xcenter.toFixed(2)},${this.viewer.ycenter.toFixed(2)}`;
+
     this.currentStatus = status.RAS;
     this.currentPolygon = null;
     this.nbVertices = 0;
@@ -117,16 +123,15 @@ class Editing {
     // On post le geojson sur l'API
     this.api.postPatch(this.branch.active.id, JSON.stringify(geojson))
       .then(() => {
-        // this.viewer.refresh(this.branch.layers);
-        this.view.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
         this.viewer.message = '';
       })
       .catch((error) => {
         console.log(error);
-        this.viewer.message = error;
+        this.viewer.message = error.message;
         this.viewer.view.dispatchEvent({
           type: 'error',
-          msg: error,
+          error,
         });
       })
       .finally(() => {
@@ -589,7 +594,7 @@ class Editing {
         // this.controllers.addRemark.__li.style.backgroundColor = '';
         this.controllers.setBackgroundColor('addRemark', '');
 
-        this.view.refresh(['Remarques']);
+        this.viewer.refresh(['Remarques']);
 
         this.view.dispatchEvent({
           type: 'remark-added',

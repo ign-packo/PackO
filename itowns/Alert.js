@@ -4,6 +4,10 @@ class Alert {
     this.api = this.viewer.api;
 
     this.reset();
+
+    this.id = '';
+    this.validated = false;
+    this.comment = '';
   }
 
   reset() {
@@ -15,7 +19,7 @@ class Alert {
     this.nbChecked = 0;
     this.nbTotal = 0;
     this.nbValidated = 0;
-    this.progress = 0;
+    this.progress = '';
   }
 
   async changeLayer(layerName) {
