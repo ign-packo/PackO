@@ -106,7 +106,7 @@ class API {
     });
   }
 
-  // alert.js
+  // Alert.js
   updateAlert(idFeature, variable, value) {
     return new Promise((resolve, reject) => {
       fetch(`${this.url}/vector/${idFeature}?${variable}=${value}`,
@@ -126,7 +126,7 @@ class API {
     });
   }
 
-  // editing
+  // Editing.js
   getGraph(idBranch, position) {
     return new Promise((resolve, reject) => {
       fetch(
@@ -134,20 +134,21 @@ class API {
         { method: 'GET' },
       ).then((res) => {
         res.json().then((json) => {
-          // 201-> out of graph; 202-> out of bounds; 404-> cache corrompu
           if (res.status === 200) {
             resolve(json);
           } else {
-            console.log('-> Database Error: No OPI found');
-            console.log(JSON.stringify(json));
+            console.log(`-> No OPI found (${json.msg})`);
+            // 244-> no OPI at x, y (out of graph OR out of bounds)
+            // 404-> no OPI corresponding to the color found at x, y (corrupted cache)
             const err = new Error();
-            if (res.status === 201 || res.status === 202) {
-              err.name = 'Server Error';
-              err.message = json.cliche;
+            if (res.status === 244) {
+              err.name = 'Erreur Utilisateur';
+              err.message = json.msg;
             } else {
-              err.name = 'Database Error';
+              err.name = 'Erreur de Cache ';
+              err.message = json;
               if (res.status === 404) {
-                err.message = 'cache corrupted';
+                err.message = "Sélection d'une OPI\n    -> cache corrompu";
               }
             }
             reject(err);
