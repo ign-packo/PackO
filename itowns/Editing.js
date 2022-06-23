@@ -29,11 +29,10 @@ function getAllCheckboxes(id, className) {
 }
 
 class Editing {
-  constructor(branch, apiUrl) {
+  constructor(branch) {
     this.branch = branch;
     this.viewer = branch.viewer;
     this.view = this.viewer.view;
-    this.apiUrl = apiUrl;
     this.api = this.viewer.api;
 
     this.currentStatus = status.RAS;
@@ -81,8 +80,10 @@ class Editing {
       console.log('pas de polygone');
       return;
     }
-    this.currentStatus = status.RAS;
-    this.viewer.message = '';
+    this.viewer.message = 'calcul en cours';
+    this.view.controls.setCursor('default', 'wait');
+    this.currentStatus = status.WAITING;
+
     const positions = this.currentPolygon.geometry.attributes.position.array;
     const geojson = {
       type: 'FeatureCollection',
@@ -109,29 +110,32 @@ class Editing {
       );
     }
 
-    this.view.scene.remove(this.currentPolygon);
-    this.currentStatus = status.WAITING;
-    this.view.controls.setCursor('default', 'wait');
-    this.viewer.message = 'calcul en cours';
+    // this.view.scene.remove(this.currentPolygon);
+    // this.currentStatus = status.WAITING;
+    // this.view.controls.setCursor('default', 'wait');
+    // this.viewer.message = 'calcul en cours';
+
     // On post le geojson sur l'API
-    fetch(`${this.apiUrl}/${this.branch.active.id}/patch?`,
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(geojson),
-      }).then((res) => {
-      this.cancelcurrentPolygon();
-      if (res.status === 200) {
-        this.viewer.refresh(this.branch.layers);
-      } else {
-        res.json().then((json) => {
-          this.viewer.message = json.msg;
+    this.api.postPatch(this.branch.active.id, JSON.stringify(geojson))
+      .then(() => {
+        // this.viewer.refresh(this.branch.layers);
+        this.view.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        this.viewer.message = '';
+      })
+      .catch((error) => {
+        console.log(error);
+        this.viewer.message = error;
+        this.viewer.view.dispatchEvent({
+          type: 'error',
+          msg: error,
         });
-      }
-    });
+      })
+      .finally(() => {
+        this.cancelcurrentPolygon();
+        this.view.controls.setCursor('default', 'auto');
+        this.currentStatus = status.RAS;
+        this.controllers.polygon.__li.style.backgroundColor = '';
+      });
   }
 
   cancelcurrentPolygon() {
@@ -152,7 +156,7 @@ class Editing {
 
   // alerts
   async postValue(idFeature, variable, value) {
-    const res = await fetch(`${this.apiUrl}/vector/${idFeature}?${variable}=${value}`,
+    const res = await fetch(`${this.api.url}/vector/${idFeature}?${variable}=${value}`,
       {
         method: 'PUT',
       });
@@ -333,51 +337,45 @@ class Editing {
         break;
       }
       case status.SELECT: {
-        console.log('get OPI');
+        this.viewer.message = 'calcul en cours';
+        this.view.controls.setCursor('default', 'wait');
+        this.currentStatus = status.WAITING;
         // on selectionne l'Opi
-        const pos = this.pickPoint(e);
-        this.view.controls.setCursor('default', 'auto');
-        fetch(`${this.apiUrl}/${this.branch.active.id}/graph?x=${pos.x}&y=${pos.y}`,
-          {
-            method: 'GET',
-            headers: {
-              Accept: 'application/json',
-              'Content-Type': 'application/json',
-            },
-          }).then((res) => {
-          res.json().then((json) => {
-            this.cancelcurrentPolygon();
-            if (res.status === 200) {
-              this.opiName = json.opiName;
-              this.opiDate = json.date;
-              this.opiTime = json.time;
-              this.color = json.color;
-              this.controllers.opiName.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
-              // On modifie la couche OPI
-              this.view.changeOpi(this.opiName);
-              this.view.dispatchEvent({
-                type: 'opi-selected',
-                name: this.opiName,
-              });
+        this.api.getGraph(this.branch.active.id, mousePosition)
+          .then((opi) => {
+            this.viewer.message = '';
+            this.view.controls.setCursor('default', 'auto');
+            this.currentStatus = status.RAS;
+            this.controllers.select.__li.style.backgroundColor = '';
+
+            this.opiName = opi.opiName;
+            this.opiDate = opi.date;
+            this.opiTime = opi.time;
+            this.color = opi.color;
+            this.controllers.opiName.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
+            // On modifie la source de la couche OPI
+            this.view.changeOpi(this.opiName);
+            this.view.dispatchEvent({
+              type: 'opi-selected',
+              name: this.opiName,
+            });
+          })
+          .catch((error) => {
+            if (error.name === 'Erreur Utilisateur') {
+              this.viewer.message = 'en dehors de la zone';
+              this.view.controls.setCursor('default', 'crosshair');
+              this.currentStatus = status.SELECT;
             } else {
-              console.log(`-> No OPI found (${json.msg})`);
-              // 244-> no OPI at x, y (out of graph OR out of bounds)
-              // 404-> no OPI corresponding to the color found at x, y (corrupted cache)
-              if (res.status === 244) {
-                this.viewer.message = 'en dehors de la zone';
-              }
-              if (res.status === 404) {
-                const error = new Error("Sélection d'une OPI\n    -> cache corrompu");
-                error.name = 'Erreur de Cache ';
-                this.viewer.message = json.msg;
-                this.view.dispatchEvent({
-                  type: 'error',
-                  error,
-                });
-              }
+              this.viewer.message = 'PB de mise à jour de la BdD';
+              this.view.controls.setCursor('default', 'auto');
+              this.currentStatus = status.RAS;
+              this.controllers.select.__li.style.backgroundColor = '';
+              this.view.dispatchEvent({
+                type: 'error',
+                error,
+              });
             }
           });
-        });
         break;
       }
       case status.POLYGON: {
@@ -408,35 +406,9 @@ class Editing {
         break;
       }
       case status.ADDREMARK: {
-        this.viewer.message = 'Add new point';
-
         const remark = window.prompt('comment:', '');
-
         if (remark !== null) {
-          this.currentStatus = status.WAITING;
-          this.view.controls.setCursor('default', 'wait');
-          this.viewer.message = 'calcul en cours';
-
-          // On post la geometrie sur l'API
-          const remarksLayerId = this.branch.vectorList.filter((elem) => elem.name === 'Remarques')[0].id;
-          fetch(`${this.apiUrl}/${remarksLayerId}/feature?x=${mousePosition.x}&y=${mousePosition.y}&comment=${encodeURIComponent(remark)}`,
-            {
-              method: 'PUT',
-            }).then(async (res) => {
-            if (res.status === 200) {
-              this.viewer.refresh(['Remarques']);
-              this.view.controls.setCursor('default', 'auto');
-              this.currentStatus = status.RAS;
-              this.viewer.message = '';
-              this.controllers.addRemark.__li.style.backgroundColor = '';
-
-              this.view.dispatchEvent({
-                type: 'remark-added',
-              });
-            } else {
-              this.viewer.message = 'remark: error during save';
-            }
-          });
+          this.postRemark(mousePosition, remark);
         }
         break;
       }
@@ -506,7 +478,7 @@ class Editing {
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/${this.branch.active.id}/patch/undo?`,
+    fetch(`${this.api.url}/${this.branch.active.id}/patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -532,7 +504,7 @@ class Editing {
     this.currentStatus = status.WAITING;
     this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
-    fetch(`${this.apiUrl}/${this.branch.active.id}/patch/redo?`,
+    fetch(`${this.api.url}/${this.branch.active.id}/patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -555,7 +527,7 @@ class Editing {
     this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
 
-    fetch(`${this.apiUrl}/${this.branch.active.id}/patches/clear?`,
+    fetch(`${this.api.url}/${this.branch.active.id}/patches/clear?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -572,13 +544,40 @@ class Editing {
   // remarques
   addRemark() {
     if (this.currentStatus !== status.RAS) return;
-
+    console.log("saisie d'une remarque");
+    this.viewer.message = "saisie d'une remarque";
     this.view.controls.setCursor('default', 'crosshair');
     this.currentStatus = status.ADDREMARK;
     this.controllers.addRemark.__li.style.backgroundColor = '#BB0000';
+  }
 
-    console.log("saisie d'une remarque");
-    this.viewer.message = "saisie d'une remarque";
+  postRemark(mousePosition, remark) {
+    this.viewer.message = 'calcul en cours';
+    this.view.controls.setCursor('default', 'wait');
+    this.currentStatus = status.WAITING;
+
+    // On post la geometrie sur l'API
+    const remarksLayerId = this.view.getLayerById('Remarques').vectorId;
+    this.api.putRemark(remarksLayerId, mousePosition, remark)
+      .then(() => {
+        this.viewer.message = '';
+        this.view.controls.setCursor('default', 'auto');
+        this.currentStatus = status.RAS;
+        this.controllers.addRemark.__li.style.backgroundColor = '';
+
+        this.view.refresh(['Remarques']);
+
+        this.view.dispatchEvent({
+          type: 'remark-added',
+        });
+      })
+      .catch((error) => {
+        this.viewer.message = 'remark: error during save';
+        this.viewer.view.dispatchEvent({
+          type: 'error',
+          msg: error,
+        });
+      });
   }
 
   delRemark() {

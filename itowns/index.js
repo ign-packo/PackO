@@ -159,7 +159,7 @@ async function main() {
 
     const alert = new Alert(viewer);
     const branch = new Branch(viewer, alert);
-    const editing = new Editing(branch, apiUrl);
+    const editing = new Editing(branch);
 
     const controllers = new Controller(viewer.menuGlobe, editing);
 
@@ -357,7 +357,7 @@ async function main() {
       controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)], '-');
       controllers.setAlertCtr('-');
       viewer.removeExtraLayers(viewer.menuGlobe);
-      viewer.view.changeBranch(newBranch.id, apiUrl);
+      viewer.view.changeBranch(newBranch.id);
       viewer.refresh(branch.layers);
     });
 
