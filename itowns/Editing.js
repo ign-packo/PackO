@@ -131,27 +131,20 @@ class Editing {
         });
       })
       .finally(() => {
-        this.cancelcurrentPolygon();
+        this.resetCurrentPolygon();
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
         this.controllers.polygon.__li.style.backgroundColor = '';
       });
   }
 
-  cancelcurrentPolygon() {
+  resetCurrentPolygon() {
     if (this.currentPolygon) {
       // on annule la saisie en cours
       this.view.scene.remove(this.currentPolygon);
       this.currentPolygon = null;
-      this.view.notifyChange();
+      this.view.notifyChange(this.currentPolygon);
     }
-    this.view.controls.setCursor('default', 'auto');
-    this.currentStatus = status.RAS;
-    this.viewer.message = '';
-
-    Object.keys(this.controllers).forEach((key) => {
-      if (key !== 'opiName' && this.controllers[key]) this.controllers[key].__li.style.backgroundColor = '';
-    });
   }
 
   // alerts
@@ -257,9 +250,13 @@ class Editing {
       return;
     }
     if (e.key === 'Escape') {
+      this.resetCurrentPolygon();
+      this.viewer.message = '';
       this.view.controls.setCursor('default', 'auto');
-      this.cancelcurrentPolygon();
       this.currentStatus = status.RAS;
+      this.controllers.select.__li.style.backgroundColor = '';
+      this.controllers.polygon.__li.style.backgroundColor = '';
+      this.controllers.addRemark.__li.style.backgroundColor = '';
     }
     if (this.currentStatus === status.POLYGON) {
       if (e.key === 'Shift') {
@@ -421,13 +418,13 @@ class Editing {
   }
 
   select() {
-    if (this.currentStatus === status.WAITING) return;
-    this.cancelcurrentPolygon();
-    this.controllers.select.__li.style.backgroundColor = '#BB0000';
-    this.view.controls.setCursor('default', 'crosshair');
+    if (this.currentStatus !== status.RAS) return;
+    // this.cancelcurrentPolygon();
     console.log('"select": En attente de sélection');
-    this.currentStatus = status.SELECT;
     this.viewer.message = 'choisir une Opi';
+    this.view.controls.setCursor('default', 'crosshair');
+    this.currentStatus = status.SELECT;
+    this.controllers.select.__li.style.backgroundColor = '#BB0000';
   }
 
   polygon() {
@@ -441,11 +438,12 @@ class Editing {
       // saisie deja en cours
       return;
     }
-    this.controllers.select.__li.style.backgroundColor = '';
-    this.controllers.polygon.__li.style.backgroundColor = '#BB0000';
-    this.view.controls.setCursor('default', 'crosshair');
     console.log("saisie d'un polygon");
     this.viewer.message = "saisie d'un polygon";
+    this.view.controls.setCursor('default', 'crosshair');
+    this.controllers.select.__li.style.backgroundColor = '';
+    this.controllers.polygon.__li.style.backgroundColor = '#BB0000';
+
     const MAX_POINTS = 500;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
@@ -467,24 +465,27 @@ class Editing {
   }
 
   undo() {
-    if (this.currentStatus === status.WAITING) return;
+    if (this.currentStatus !== status.RAS) return;
     if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
       this.viewer.message = 'Zoom non valide pour annuler';
       return;
     }
-    this.cancelcurrentPolygon();
-    this.viewer.message = '';
+    // this.cancelcurrentPolygon();
     console.log('undo');
-    this.currentStatus = status.WAITING;
-    this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
+    this.view.controls.setCursor('default', 'wait');
+    this.currentStatus = status.WAITING;
+
     fetch(`${this.api.url}/${this.branch.active.id}/patch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
-      this.cancelcurrentPolygon();
+      // this.cancelcurrentPolygon();
+      this.viewer.message = '';
+      this.view.controls.setCursor('default', 'auto');
+      this.currentStatus = status.RAS;
       if (res.status === 200) {
-        this.viewer.refresh(this.branch.layers);
+        this.view.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
       }
       res.text().then((msg) => {
         this.viewer.message = msg;
@@ -493,22 +494,23 @@ class Editing {
   }
 
   redo() {
-    if (this.currentStatus === status.WAITING) return;
+    if (this.currentStatus !== status.RAS) return;
     if (this.viewer.dezoom > this.viewer.maxGraphDezoom) {
       this.viewer.message = 'Zoom non valide pour refaire';
       return;
     }
-    this.cancelcurrentPolygon();
-    this.viewer.message = '';
     console.log('redo');
-    this.currentStatus = status.WAITING;
-    this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
+    this.view.controls.setCursor('default', 'wait');
+    this.currentStatus = status.WAITING;
     fetch(`${this.api.url}/${this.branch.active.id}/patch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
-      this.cancelcurrentPolygon();
+      // this.cancelcurrentPolygon();
+      this.viewer.message = '';
+      this.view.controls.setCursor('default', 'auto');
+      this.currentStatus = status.RAS;
       if (res.status === 200) {
         this.viewer.refresh(this.branch.layers);
       }
@@ -519,21 +521,24 @@ class Editing {
   }
 
   clear() {
-    if (this.currentStatus === status.WAITING) return;
+    if (this.currentStatus !== status.RAS) return;
     const ok = window.confirm('Voulez-vous effacer toutes les modifications?');
     if (!ok) return;
     console.log('clear');
-    this.currentStatus = status.WAITING;
-    this.view.controls.setCursor('default', 'wait');
     this.viewer.message = 'calcul en cours';
+    this.view.controls.setCursor('default', 'wait');
+    this.currentStatus = status.WAITING;
 
     fetch(`${this.api.url}/${this.branch.active.id}/patches/clear?`,
       {
         method: 'PUT',
       }).then((res) => {
-      this.cancelcurrentPolygon();
+      // this.cancelcurrentPolygon();
+      this.viewer.message = '';
+      this.view.controls.setCursor('default', 'auto');
+      this.currentStatus = status.RAS;
       if (res.status === 200) {
-        this.viewer.refresh(this.branch.layers);
+        this.view.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
       }
       res.text().then((msg) => {
         this.viewer.message = msg;
