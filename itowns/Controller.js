@@ -20,6 +20,10 @@ class Controller {
     return controller;
   }
 
+  changeColor(controllerName, color) {
+    this.getController(controllerName).__li.style.backgroundColor = color;
+  }
+
   setVisible(controllerName) {
     const controllers = (typeof controllerName === 'string' || controllerName instanceof String) ? [controllerName] : controllerName;
     controllers.forEach((controller) => {
