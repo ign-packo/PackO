@@ -121,6 +121,7 @@ async function main() {
 
     viewer.createView(overviews, activeCache.id);
 
+    // TO be modified in link with cache => add a property overview.style
     overviews.with_rgb = true;
     overviews.with_ir = true;
     const tabOpi = Object.keys(overviews.list_OPI);

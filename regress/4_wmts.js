@@ -82,7 +82,7 @@ describe('Wmts', () => {
   });
 
   params.forEach((param) => {
-    describe(`create a test cache on ${param.cacheName}`, () => {
+    describe(`add the cache (${param.cacheName}) on base`, () => {
       it('should return a cacheId', (done) => {
         chai.request(app)
           .post('/cache')
@@ -176,7 +176,7 @@ describe('Wmts', () => {
         chai.request(app)
           .get(`/${param.idBranch[branchName]}/wmts`)
           .query({
-            REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/autre', LAYER: 'ortho', STYLE: 'normal',
+            REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/autre', LAYER: 'ortho', STYLE: 'RVB',
           })
           .end((err, res) => {
             should.not.exist(err);
@@ -192,7 +192,7 @@ describe('Wmts', () => {
         chai.request(app)
           .get(`/${param.idBranch[branchName]}/wmts`)
           .query({
-            REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'ortho', STYLE: 'normal',
+            REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 12, TILEROW: 0, TILECOL: 0, FORMAT: 'image/png', LAYER: 'ortho', STYLE: 'RVB',
           })
           .end((err, res) => {
             should.not.exist(err);
@@ -248,7 +248,7 @@ describe('Wmts', () => {
         chai.request(app)
           .get(`/${param.idBranch[branchName]}/wmts`)
           .query({
-            REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'opi', Name: '19FD5606Ax00020_16371', STYLE: 'normal',
+            REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'opi', Name: '19FD5606Ax00020_16371', STYLE: 'RVB',
           })
           .end((err, res) => {
             should.not.exist(err);
@@ -262,7 +262,7 @@ describe('Wmts', () => {
         chai.request(app)
           .get(`/${param.idBranch[branchName]}/wmts`)
           .query({
-            REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'opi', STYLE: 'normal',
+            REQUEST: 'GetTile', SERVICE: 'WMTS', VERSION: '1.0.0', TILEMATRIXSET: 'LAMB93_5cm', TILEMATRIX: 21, TILEROW: 34402, TILECOL: 18027, FORMAT: 'image/png', LAYER: 'opi', STYLE: 'RVB',
           })
           .end((err, res) => {
             should.not.exist(err);
@@ -284,7 +284,7 @@ describe('Wmts', () => {
               REQUEST: 'GetFeatureInfo',
               VERSION: '1.0.0',
               LAYER: 'other',
-              STYLE: 'normal',
+              STYLE: 'default',
               INFOFORMAT: 'application/gml+xml; version=3.1',
               TILEMATRIXSET: 'LAMB93_5cm',
               TILEMATRIX: 21,
@@ -340,7 +340,7 @@ describe('Wmts', () => {
               REQUEST: 'GetFeatureInfo',
               VERSION: '1.0.0',
               LAYER: 'ortho',
-              STYLE: 'normal',
+              STYLE: 'RVB',
               INFOFORMAT: 'application/gml+xml; version=3.1',
               TILEMATRIXSET: 'Other_Xcm',
               TILEMATRIX: 21,
@@ -368,7 +368,7 @@ describe('Wmts', () => {
             REQUEST: 'GetFeatureInfo',
             VERSION: '1.0.0',
             LAYER: 'ortho',
-            STYLE: 'normal',
+            STYLE: 'RVB',
             INFOFORMAT: 'application/gml+xml; version=3.1',
             TILEMATRIXSET: 'LAMB93_5cm',
             TILEMATRIX: 21,
@@ -394,7 +394,7 @@ describe('Wmts', () => {
               REQUEST: 'GetFeatureInfo',
               VERSION: '1.0.0',
               LAYER: 'ortho',
-              STYLE: 'normal',
+              STYLE: 'RVB',
               INFOFORMAT: 'application/gml+xml; version=3.1',
               TILEMATRIXSET: 'LAMB93_5cm',
               TILEMATRIX: 25,
@@ -421,7 +421,7 @@ describe('Wmts', () => {
             REQUEST: 'GetFeatureInfo',
             VERSION: '1.0.0',
             LAYER: 'ortho',
-            STYLE: 'normal',
+            STYLE: 'RVB',
             INFOFORMAT: 'application/gml+xml; version=3.1',
             TILEMATRIXSET: 'LAMB93_5cm',
             TILEMATRIX: 21,
@@ -445,7 +445,7 @@ describe('Wmts', () => {
             REQUEST: 'GetFeatureInfo',
             VERSION: '1.0.0',
             LAYER: 'ortho',
-            STYLE: 'normal',
+            STYLE: 'RVB',
             INFOFORMAT: 'application/gml+xml; version=3.1',
             TILEMATRIXSET: 'LAMB93_5cm',
             TILEMATRIX: 21,

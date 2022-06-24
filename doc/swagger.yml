@@ -703,9 +703,8 @@ paths:
               - RVB
               - IRC
               - IR
-              - normal
-#              - default
-            example: normal  # example of a parameter value
+              - default
+            example: default  # example of a parameter value
         - in: query
           name: FORMAT
           description: required if GetTile
