@@ -1,6 +1,5 @@
 /* eslint-disable no-alert */
 /* eslint-disable no-console */
-/* eslint-disable no-underscore-dangle */
 import * as THREE from 'three';
 
 const status = {
@@ -134,7 +133,8 @@ class Editing {
         this.resetCurrentPolygon();
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
-        this.controllers.polygon.__li.style.backgroundColor = '';
+        // this.controllers.polygon.__li.style.backgroundColor = '';
+        this.controllers.setBackgroundColor('polygon', '');
       });
   }
 
@@ -231,7 +231,8 @@ class Editing {
       // L'utilisateur demande à déselectionner l'OPI
       if (this.opiName !== 'none' && (e.key === 'Escape')) {
         this.opiName = 'none';
-        this.controllers.opiName.__li.style.backgroundColor = '';
+        // this.controllers.opiName.__li.style.backgroundColor = '';
+        this.controllers.setBackgroundColor('opiName', '');
         this.view.dispatchEvent({
           type: 'opi-selected',
           name: 'none',
@@ -250,13 +251,22 @@ class Editing {
       return;
     }
     if (e.key === 'Escape') {
-      this.resetCurrentPolygon();
+      if (this.currentStatus === status.SELECT) {
+        // this.controllers.select.__li.style.backgroundColor = '';
+        this.controllers.setBackgroundColor('select', '');
+      }
+      if (this.currentStatus === status.POLYGON) {
+        // this.controllers.polygon.__li.style.backgroundColor = '';
+        this.controllers.setBackgroundColor('polygon', '');
+        this.resetCurrentPolygon();
+      }
+      if (this.currentStatus === status.ADDREMARK) {
+        // this.controllers.addRemark.__li.style.backgroundColor = '';
+        this.controllers.setBackgroundColor('addRemark', '');
+      }
       this.viewer.message = '';
       this.view.controls.setCursor('default', 'auto');
       this.currentStatus = status.RAS;
-      this.controllers.select.__li.style.backgroundColor = '';
-      this.controllers.polygon.__li.style.backgroundColor = '';
-      this.controllers.addRemark.__li.style.backgroundColor = '';
     }
     if (this.currentStatus === status.POLYGON) {
       if (e.key === 'Shift') {
@@ -343,13 +353,16 @@ class Editing {
             this.viewer.message = '';
             this.view.controls.setCursor('default', 'auto');
             this.currentStatus = status.RAS;
-            this.controllers.select.__li.style.backgroundColor = '';
+            // this.controllers.select.__li.style.backgroundColor = '';
+            this.controllers.setBackgroundColor('select', '');
 
             this.opiName = opi.opiName;
             this.opiDate = opi.date;
             this.opiTime = opi.time;
             this.color = opi.color;
-            this.controllers.opiName.__li.style.backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
+            // this.controllers.opiName.__li.style
+            //   .backgroundColor = `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`;
+            this.controllers.setBackgroundColor('opiName', `rgb(${this.color[0]},${this.color[1]},${this.color[2]})`);
             // On modifie la source de la couche OPI
             this.view.changeOpi(this.opiName);
             this.view.dispatchEvent({
@@ -366,7 +379,8 @@ class Editing {
               this.viewer.message = 'PB de mise à jour de la BdD';
               this.view.controls.setCursor('default', 'auto');
               this.currentStatus = status.RAS;
-              this.controllers.select.__li.style.backgroundColor = '';
+              // this.controllers.select.__li.style.backgroundColor = '';
+              this.controllers.setBackgroundColor('select', '');
               this.view.dispatchEvent({
                 type: 'error',
                 error,
@@ -424,7 +438,8 @@ class Editing {
     this.viewer.message = 'choisir une Opi';
     this.view.controls.setCursor('default', 'crosshair');
     this.currentStatus = status.SELECT;
-    this.controllers.select.__li.style.backgroundColor = '#BB0000';
+    // this.controllers.select.__li.style.backgroundColor = '#BB0000';
+    this.controllers.setBackgroundColor('select', '#BB0000');
   }
 
   polygon() {
@@ -441,8 +456,10 @@ class Editing {
     console.log("saisie d'un polygon");
     this.viewer.message = "saisie d'un polygon";
     this.view.controls.setCursor('default', 'crosshair');
-    this.controllers.select.__li.style.backgroundColor = '';
-    this.controllers.polygon.__li.style.backgroundColor = '#BB0000';
+    // this.controllers.select.__li.style.backgroundColor = '';
+    this.controllers.setBackgroundColor('select', '');
+    // this.controllers.polygon.__li.style.backgroundColor = '#BB0000';
+    this.controllers.setBackgroundColor('polygon', '#BB0000');
 
     const MAX_POINTS = 500;
     const geometry = new THREE.BufferGeometry();
@@ -553,7 +570,8 @@ class Editing {
     this.viewer.message = "saisie d'une remarque";
     this.view.controls.setCursor('default', 'crosshair');
     this.currentStatus = status.ADDREMARK;
-    this.controllers.addRemark.__li.style.backgroundColor = '#BB0000';
+    // this.controllers.addRemark.__li.style.backgroundColor = '#BB0000';
+    this.controllers.setBackgroundColor('addRemark', '#BB0000');
   }
 
   postRemark(mousePosition, remark) {
@@ -568,7 +586,8 @@ class Editing {
         this.viewer.message = '';
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
-        this.controllers.addRemark.__li.style.backgroundColor = '';
+        // this.controllers.addRemark.__li.style.backgroundColor = '';
+        this.controllers.setBackgroundColor('addRemark', '');
 
         this.view.refresh(['Remarques']);
 
