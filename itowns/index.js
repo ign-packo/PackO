@@ -12,25 +12,6 @@ import API from './Api';
 // Global itowns pour setupLoadingScreen -> peut être améliorer
 global.itowns = itowns;
 
-// fonction permettant d'afficher la valeur de l'echelle et du niveau de dezoom
-function updateScaleWidget(view, resolution, maxGraphDezoom) {
-  let distance = view.getPixelsToMeters(200);
-  let unit = 'm';
-  const dezoom = Math.fround(distance / (200 * resolution));
-  if (distance >= 1000) {
-    distance /= 1000;
-    unit = 'km';
-  }
-  if (distance <= 1) {
-    distance *= 100;
-    unit = 'cm';
-  }
-  document.getElementById('spanZoomWidget').innerHTML = dezoom <= 1 ? `zoom: ${1 / dezoom}` : `zoom: 1/${dezoom}`;
-  document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
-  document.getElementById('spanGraphVisibWidget').classList.toggle('not_displayed', dezoom > maxGraphDezoom);
-  return dezoom;
-}
-
 // check if string is in "x,y" format with x and y positive floats
 // return "null" if incorrect string format, otherwise [x, y] array
 function checkCoordString(coordStr) {
@@ -72,19 +53,19 @@ async function main() {
 
   const nameCache = urlParams.get('namecache');
 
-  itowns.Fetcher.json(`${apiUrl}/version`).then((obj) => {
-    document.getElementById('spAPIVersion_val').innerText = obj.version_git;
-  }).catch(() => {
-    document.getElementById('spAPIVersion_val').innerText = 'unknown';
-  });
+  itowns.Fetcher.json(`${apiUrl}/version`)
+    .then((obj) => {
+      document.getElementById('spAPIVersion_val').innerText = obj.version_git;
+    })
+    .catch(() => {
+      document.getElementById('spAPIVersion_val').innerText = 'unknown';
+    });
+
   try {
     const getCaches = await itowns.Fetcher.json(`${apiUrl}/caches`);
     if (getCaches.length === 0) throw new Error('Pas de cache en base');
 
-    const listCaches = [];
-    Object.keys(getCaches).forEach((key) => {
-      listCaches.push(getCaches[key].name);
-    });
+    const listCaches = getCaches.map((elem) => elem.name);
 
     const [activeCache] = getCaches.filter((cache) => cache.name === nameCache);
 
@@ -98,8 +79,6 @@ async function main() {
 
     const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews?cachePath=${activeCache.path}`);
     const getBranches = itowns.Fetcher.json(`${apiUrl}/branches?idCache=${activeCache.id}`);
-    // const getPatches = itowns.Fetcher.json(`${apiUrl}/0/patches`);
-    // const getVectorList = itowns.Fetcher.json(`${apiUrl}/vectors?cachePath=${activeCache.path}`);
 
     const viewerDiv = document.getElementById('viewerDiv');
     const viewer = new Viewer(viewerDiv);
@@ -107,43 +86,15 @@ async function main() {
 
     const overviews = await getOverviews;
 
-    // on ajoute les dataset.limits pour les layers graph/contour
-    // avec uniquement les niveaux correspondants au COG mis à jour par les patchs
-    // c'est-a-dire un seul niveau de COG
-    // on a donc besoin de connaitre le nombre de niveaux inclus dans un COG
-    const slabSize = Math.min(overviews.slabSize.width, overviews.slabSize.height);
-    const nbSubLevelsPerCOG = Math.floor(Math.log2(slabSize));
-    overviews.dataSet.limitsForGraph = {};
-    // on copie les limites des (nbSubLevelsPerCOG + 1) derniers niveaux
-    for (let l = overviews.dataSet.level.max - nbSubLevelsPerCOG;
-      l <= overviews.dataSet.level.max; l += 1) {
-      overviews.dataSet.limitsForGraph[l] = overviews.dataSet.limits[l];
-    }
-    viewer.zoomMinPatch = overviews.dataSet.level.max - nbSubLevelsPerCOG;
-    // pour la fonction updateScaleWidget
-    viewer.maxGraphDezoom = 2 ** nbSubLevelsPerCOG;
-
     viewer.createView(overviews, activeCache.id);
+    viewer.updateScaleWidget();
 
-    overviews.with_rgb = true;
-    overviews.with_ir = true;
-    const tabOpi = Object.keys(overviews.list_OPI);
-    if (tabOpi.length > 0) {
-      overviews.with_rgb = overviews.list_OPI[tabOpi[0]].with_rgb;
-      overviews.with_ir = overviews.list_OPI[tabOpi[0]].with_ir;
-    }
-    if (overviews.with_rgb) {
-      viewer.view.styles = overviews.with_ir ? ['RVB', 'IRC', 'IR'] : ['RVB'];
-    } else {
-      viewer.view.styles = ['IR'];
-    }
-    [viewer.view.style] = viewer.view.styles;
-    viewer.view.Opi = { style: viewer.view.styles[0] };
+    const { view } = viewer;
 
-    setupLoadingScreen(viewerDiv, viewer.view);
+    setupLoadingScreen(viewerDiv, view);
     // FeatureToolTip.init(viewerDiv, viewer.view);
 
-    viewer.view.isDebugMode = true;
+    // view.isDebugMode = true;
 
     const menu = new Menu(document.getElementById('menuDiv'), viewer, viewer.shortCuts);
 
@@ -155,11 +106,10 @@ async function main() {
 
     // const branch = new Branch(apiUrl, viewer);
     branch.list = await getBranches;
-
     [branch.active] = branch.list;
 
     await branch.setLayers();
-    viewer.refresh(branch.layers);
+    view.refresh(branch.layers);
 
     // Gestion branche
     menu.add({ branchName: branch.active.name }, 'branchName', branch.list.map((elem) => elem.name))
@@ -286,15 +236,16 @@ async function main() {
     document.addEventListener('drop', (e) => { viewer.addDnDFiles(e, e.dataTransfer.files); }, false);
     document.addEventListener('paste', (e) => { viewer.addDnDFiles(e, e.clipboardData.files); }, false);
 
-    const { view } = viewer;
-    view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
-      console.info('-> View initialized');
-      viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
-    });
+    // view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, () => {
+    //   console.info('-> View initialized');
+    //   // viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+    //   viewer.updateScaleWidget();
+    // });
     view.addEventListener(itowns.PLANAR_CONTROL_EVENT.MOVED, () => {
       console.info('-> View moved');
       if (view.controls.state === -1) {
-        viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+        // viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+        viewer.updateScaleWidget();
       }
     });
 
@@ -333,7 +284,7 @@ async function main() {
         view.getLayerById('Opi').visible = false;
         view.notifyChange(view.getLayerById('Opi'), true);
       } else {
-        viewer.refresh('Opi');
+        view.refresh('Opi');
       }
       controllers.setOpiCtr(newOpi.name);
     });
@@ -351,7 +302,7 @@ async function main() {
       controllers.setAlertCtr('-');
       viewer.removeExtraLayers();
       viewer.view.changeBranch(newBranch.id);
-      viewer.refresh(branch.layers);
+      view.refresh(branch.layers);
     });
 
     view.addEventListener('remark-added', async () => {
@@ -380,7 +331,7 @@ async function main() {
 
     view.addEventListener('remark-deleted', async () => {
       console.log('-> A remark had been deleted');
-      viewer.refresh(['Remarques']);
+      view.refresh(['Remarques']);
       const layerAlert = viewer.view.getLayerById(alert.layerName);
       await layerAlert.whenReady;
       alert.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
@@ -403,13 +354,13 @@ async function main() {
     });
 
     view.addEventListener('alert-selected', (ev) => {
-      viewer.refresh([...ev.layersToRefresh]);
+      view.refresh([...ev.layersToRefresh]);
       if (ev.option.centerOnFeature) viewer.centerCameraOn(ev.featureCenter);
     });
 
     view.addEventListener('error', (ev) => {
-      // eslint-disable-next-line no-alert
       console.log(ev.error instanceof Array ? ev.error.map((error) => error.message).join('') : ev.error.message);
+      // eslint-disable-next-line no-alert
       window.alert(ev.error instanceof Array ? ev.error.join('') : ev.error);
     });
 
@@ -450,7 +401,8 @@ async function main() {
         view.camera.camera3D.zoom *= 2;
         view.camera.camera3D.updateProjectionMatrix();
         view.notifyChange(view.camera.camera3D);
-        viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+        // viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+        viewer.updateScaleWidget();
       }
       return false;
     });
@@ -460,7 +412,8 @@ async function main() {
         view.camera.camera3D.zoom *= 0.5;
         view.camera.camera3D.updateProjectionMatrix();
         view.notifyChange(view.camera.camera3D);
-        viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+        // viewer.dezoom = updateScaleWidget(view, viewer.resolution, viewer.maxGraphDezoom);
+        viewer.updateScaleWidget();
       }
       return false;
     });

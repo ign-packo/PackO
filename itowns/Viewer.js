@@ -226,6 +226,37 @@ class Viewer {
       },
     });
 
+    let withRgb = true;
+    let withIr = true;
+    const tabOpi = Object.keys(overviews.list_OPI);
+    if (tabOpi.length > 0) {
+      withRgb = overviews.list_OPI[tabOpi[0]].with_rgb;
+      withIr = overviews.list_OPI[tabOpi[0]].with_ir;
+    }
+    if (withRgb) {
+      this.view.styles = withIr ? ['RVB', 'IRC', 'IR'] : ['RVB'];
+    } else {
+      this.view.styles = ['IR'];
+    }
+    [this.view.style] = this.view.styles;
+    this.view.Opi = { style: this.view.styles[0] };
+
+    // on ajoute les dataset.limits pour les layers graph/contour
+    // avec uniquement les niveaux correspondants au COG mis à jour par les patchs
+    // c'est-a-dire un seul niveau de COG
+    // on a donc besoin de connaitre le nombre de niveaux inclus dans un COG
+    const slabSize = Math.min(overviews.slabSize.width, overviews.slabSize.height);
+    const nbSubLevelsPerCOG = Math.floor(Math.log2(slabSize));
+    // // pour la fonction updateScaleWidget
+    // viewer.maxGraphDezoom = 2 ** nbSubLevelsPerCOG;
+
+    this.overviews.dataSet.limitsForGraph = {};
+    // on copie les limites des (nbSubLevelsPerCOG + 1) derniers niveaux
+    for (let l = overviews.dataSet.level.max - nbSubLevelsPerCOG;
+      l <= overviews.dataSet.level.max; l += 1) {
+      this.overviews.dataSet.limitsForGraph[l] = overviews.dataSet.limits[l];
+    }
+
     // disable itowns shortcuts because of conflicts with endogenous shortcuts
     /* eslint-disable-next-line no-underscore-dangle */
     this.view.domElement.removeEventListener('keydown', this.view.controls._handlerOnKeyDown, false);
@@ -272,6 +303,8 @@ class Viewer {
     this.view.refresh = function _(layers) {
       viewer.refresh(layers);
     };
+    // pour la fonction updateScaleWidget
+    this.maxGraphDezoom = 2 ** nbSubLevelsPerCOG;
   }
 
   centerCameraOn(coordX, coordY) {
@@ -416,6 +449,24 @@ class Viewer {
       type: 'refresh-done',
       layerNames,
     });
+  }
+
+  // fonction permettant d'afficher la valeur de l'echelle et du niveau de dezoom
+  updateScaleWidget() {
+    let distance = this.view.getPixelsToMeters(200);
+    let unit = 'm';
+    this.dezoom = Math.fround(distance / (200 * this.resolution));
+    if (distance >= 1000) {
+      distance /= 1000;
+      unit = 'km';
+    }
+    if (distance <= 1) {
+      distance *= 100;
+      unit = 'cm';
+    }
+    document.getElementById('spanZoomWidget').innerHTML = this.dezoom <= 1 ? `zoom: ${1 / this.dezoom}` : `zoom: 1/${this.dezoom}`;
+    document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
+    document.getElementById('spanGraphVisibWidget').classList.toggle('not_displayed', this.dezoom > this.maxGraphDezoom);
   }
 
   addDnDFiles(eventDnD, files) {
