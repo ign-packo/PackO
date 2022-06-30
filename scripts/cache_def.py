@@ -307,7 +307,7 @@ def cut_opi_1tile(opi, opi_name, dst_root, slab, nb_bands, gdal_option):
                                    target_ds,
                                    options=["BLOCKSIZE="
                                             + str(slab['tile_size']['width']),
-                                            "COMPRESS=JPEG", "LEVEL=90"])
+                                            "COMPRESS=JPEG", "QUALITY=90"])
     target_ds = None
     dst_ds = None  # noqa: F841
     # pylint: enable=unused-variable
@@ -575,18 +575,18 @@ def create_ortho_and_graph_1arg(arg):
             dst_ortho_rgb = COG_DRIVER.CreateCopy(slab_ortho_rgb, img_ortho_rgb,
                                                   options=["BLOCKSIZE="
                                                            + str(overviews['tileSize']['width']),
-                                                           "COMPRESS=JPEG", "LEVEL=90"])
+                                                           "COMPRESS=JPEG", "QUALITY=90"])
             dst_ortho_rgb = None  # noqa: F841
         if img_ortho_ir:
             dst_ortho_ir = COG_DRIVER.CreateCopy(slab_ortho_ir, img_ortho_ir,
                                                  options=["BLOCKSIZE="
                                                           + str(overviews['tileSize']['width']),
-                                                          "COMPRESS=JPEG", "LEVEL=90"])
+                                                          "COMPRESS=JPEG", "QUALITY=90"])
             dst_ortho_ir = None  # noqa: F841
         dst_graph = COG_DRIVER.CreateCopy(slab_graph, img_graph,
                                           options=["BLOCKSIZE="
                                                    + str(overviews['tileSize']['width']),
-                                                   "COMPRESS=LZW"])
+                                                   "COMPRESS=LZW", "PREDICTOR=YES"])
 
         dst_graph = None  # noqa: F841
         # pylint: enable=unused-variable
