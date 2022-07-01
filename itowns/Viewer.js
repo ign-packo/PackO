@@ -123,8 +123,8 @@ function changeLayerStyle(config, idSelected, oldStyle) {
 }
 
 class Viewer {
-  constructor(viewerDiv) {
-    this.viewerDiv = viewerDiv;
+  constructor(view) {
+    this.view = view;
 
     this.crs = {};
     this.overview = {};
@@ -150,9 +150,10 @@ class Viewer {
     };
   }
 
-  createView(overviews, idCache) {
+  createView(overviews, idCache, viewerDiv) {
     this.overviews = overviews;
     this.idCache = idCache;
+    this.viewerDiv = viewerDiv;
 
     // Define projection that we will use (taken from https://epsg.io/3946, Proj4js section)
     this.crs = `${overviews.crs.type}:${overviews.crs.code}`;
@@ -247,8 +248,6 @@ class Viewer {
     // on a donc besoin de connaitre le nombre de niveaux inclus dans un COG
     const slabSize = Math.min(overviews.slabSize.width, overviews.slabSize.height);
     const nbSubLevelsPerCOG = Math.floor(Math.log2(slabSize));
-    // // pour la fonction updateScaleWidget
-    // viewer.maxGraphDezoom = 2 ** nbSubLevelsPerCOG;
 
     this.overviews.dataSet.limitsForGraph = {};
     // on copie les limites des (nbSubLevelsPerCOG + 1) derniers niveaux
@@ -256,10 +255,6 @@ class Viewer {
       l <= overviews.dataSet.level.max; l += 1) {
       this.overviews.dataSet.limitsForGraph[l] = overviews.dataSet.limits[l];
     }
-
-    // disable itowns shortcuts because of conflicts with endogenous shortcuts
-    /* eslint-disable-next-line no-underscore-dangle */
-    this.view.domElement.removeEventListener('keydown', this.view.controls._handlerOnKeyDown, false);
 
     const viewer = this;
     this.view.removeVectorLayer = function _(layerName) {
@@ -303,8 +298,6 @@ class Viewer {
     this.view.refresh = function _(layers) {
       viewer.refresh(layers);
     };
-    // pour la fonction updateScaleWidget
-    this.maxGraphDezoom = 2 ** nbSubLevelsPerCOG;
   }
 
   centerCameraOn(coordX, coordY) {
@@ -453,6 +446,7 @@ class Viewer {
 
   // fonction permettant d'afficher la valeur de l'echelle et du niveau de dezoom
   updateScaleWidget() {
+    const maxGraphDezoom = 2 ** this.view.nbSubLevelsPerCOG;
     let distance = this.view.getPixelsToMeters(200);
     let unit = 'm';
     this.dezoom = Math.fround(distance / (200 * this.resolution));
@@ -466,7 +460,7 @@ class Viewer {
     }
     document.getElementById('spanZoomWidget').innerHTML = this.dezoom <= 1 ? `zoom: ${1 / this.dezoom}` : `zoom: 1/${this.dezoom}`;
     document.getElementById('spanScaleWidget').innerHTML = `${distance.toFixed(2)} ${unit}`;
-    document.getElementById('spanGraphVisibWidget').classList.toggle('not_displayed', this.dezoom > this.maxGraphDezoom);
+    document.getElementById('spanGraphVisibWidget').classList.toggle('not_displayed', this.dezoom > maxGraphDezoom);
   }
 
   addDnDFiles(eventDnD, files) {

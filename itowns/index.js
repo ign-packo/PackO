@@ -86,7 +86,7 @@ async function main() {
 
     const overviews = await getOverviews;
 
-    viewer.createView(overviews, activeCache.id);
+    viewer.createView(overviews, activeCache.id, viewerDiv);
     viewer.updateScaleWidget();
 
     const { view } = viewer;
@@ -280,8 +280,8 @@ async function main() {
 
     view.addEventListener('opi-selected', (newOpi) => {
       console.log(`-> Opi '${newOpi.name}' selected.`);
+      view.getLayerById('Opi').visible = (newOpi.name !== 'none');
       if (newOpi.name === 'none') {
-        view.getLayerById('Opi').visible = false;
         view.notifyChange(view.getLayerById('Opi'), true);
       } else {
         view.refresh('Opi');
@@ -364,6 +364,10 @@ async function main() {
       window.alert(ev.error instanceof Array ? ev.error.join('') : ev.error);
     });
 
+    // disable itowns shortcuts because of conflicts with endogenous shortcuts
+    /* eslint-disable-next-line no-underscore-dangle */
+    viewerDiv.removeEventListener('keydown', view.controls._handlerOnKeyDown, false);
+
     viewerDiv.addEventListener('mousemove', (ev) => {
       ev.preventDefault();
       editing.mousemove(ev);
@@ -384,7 +388,6 @@ async function main() {
 
     window.addEventListener('keydown', (ev) => {
       editing.keydown(ev);
-      return false;
     });
     window.addEventListener('keyup', (ev) => {
       editing.keyup(ev);
