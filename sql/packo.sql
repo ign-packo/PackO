@@ -562,8 +562,8 @@ ALTER TABLE ONLY public.layers
 -- Name: layers layers_num_id_branch_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.layers
-    ADD CONSTRAINT layers_num_id_branch_key UNIQUE (num, id_branch);
+-- ALTER TABLE ONLY public.layers
+--     ADD CONSTRAINT layers_num_id_branch_key UNIQUE (num, id_branch);
 
 
 --

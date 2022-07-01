@@ -95,7 +95,9 @@ class Branch {
       this.vectorList = await getVectorList;
     }
 
+    let layerIndex = this.layers.length;
     this.vectorList.forEach((vector) => {
+      layerIndex += 1;
       this.layers.push({
         name: vector.name,
         type: 'vector',
@@ -106,6 +108,7 @@ class Branch {
         style: JSON.parse(vector.style_itowns),
         vectorId: vector.id,
         isAlert: false,
+        layerIndex,
       });
     });
   }
@@ -115,17 +118,12 @@ class Branch {
       name,
       id: this.list.filter((elem) => elem.name === name)[0].id,
     };
-    this.viewer.message = '';
-    const listColorLayer = this.viewer.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
-    listColorLayer.forEach((element) => {
-      const regex = new RegExp(`^${this.apiUrl}\\/[0-9]+\\/`);
-      this.view.getLayerById(element).source.url = this.view.getLayerById(element).source.url.replace(regex, `${this.apiUrl}/${this.active.id}/`);
-    });
+    // this.viewer.message = '';
     await this.setLayers();
-    this.viewer.removeExtraLayers(this.viewer.menuGlobe);
     this.view.dispatchEvent({
       type: 'branch-changed',
       name: this.active.name,
+      id: this.active.id,
     });
   }
 

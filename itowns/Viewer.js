@@ -83,7 +83,6 @@ class Viewer {
       Graph: 0,
       Contour: 3,
       Patches: 4,
-      Remarques: 5,
     };
     this.oldStyle = {};
 
@@ -192,6 +191,29 @@ class Viewer {
       });
       viewer.refresh(layerList);
     };
+
+    const _view = this.view;
+    this.view.changeOpi = function _(name) {
+      console.log('Change Opi to', name);
+      const regex = /LAYER=.*&FORMAT/;
+      const layer = viewer.view.getLayerById('Opi');
+      layer.source.url = layer.source.url.replace(regex, `LAYER=opi&Name=${name}&FORMAT`);
+      layer.visible = true;
+
+      _view.dispatchEvent({
+        type: 'opi-selected',
+        name,
+      });
+    };
+
+    this.view.changeBranch = function _(branchId) {
+      console.log('Change Branch to', branchId);
+      const regex = new RegExp('\\/[0-9]+\\/');
+      ['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].forEach((element) => {
+        const layer = viewer.view.getLayerById(element);
+        layer.source.url = layer.source.url.replace(regex, `/${branchId}/`);
+      });
+    };
   }
 
   centerCamera(coordX, coordY) {
@@ -218,7 +240,8 @@ class Viewer {
     });
   }
 
-  refresh(layerList) {
+  refresh(layers) {
+    const layerList = layers instanceof Array ? layers : [layers];
     const layerNames = [];
     layerList.forEach((layer) => {
       layerNames.push(typeof layer === 'string' ? layer : layer.name);
@@ -291,6 +314,10 @@ class Viewer {
           // pas besoin de definir le zoom min pour patches car il y en a jamais sur la couche orig
         }
         config.opacity = layer.opacity;
+
+        if (layer.layerIndex !== undefined) {
+          this.layerIndex[layerName] = layer.layerIndex;
+        }
       }
 
       // Dans les 2 cas
@@ -385,13 +412,15 @@ class Viewer {
       if (Object.keys(extensionsMap).includes(extension)) ListFile[layerName].nbFileDropped += 1;
     }
 
-    let data = {};
     // Read each file
+    const data = {};
     for (let i = 0; i < files.length; i += 1) {
       const file = files[i];
       let fileMtd = extensionsMap[file.name.split('.').pop().toLowerCase()];
       let layerName = file.name.split('.').slice(0, -1).join('.');
       layerName = layerName.charAt(0).toUpperCase() + layerName.slice(1);
+
+      if (!data[layerName]) data[layerName] = {};
 
       if (!fileMtd) {
         if (!errors[layerName]) {
@@ -420,18 +449,18 @@ class Viewer {
         let resData;
         nbFileLoaded += 1;
         if (fileMtd.format === _GEOJSON) {
-          data = JSON.parse(dataLoaded);
-          if (!data.type || data.type !== 'FeatureCollection' || !data.features) {
+          data[layerName] = JSON.parse(dataLoaded);
+          if (!data[layerName].type || data[layerName].type !== 'FeatureCollection' || !data[layerName].features) {
             if (!errors[layerName]) {
               errors[layerName] = ['File is not a valid geoJson'];
             } else {
               errors[layerName].push('File is not a valid geoJson');
             }
           } else {
-            resData = data;
+            resData = data[layerName];
           }
         } else if (fileMtd.format === _SHP) {
-          data[fileMtd.extension] = dataLoaded;
+          data[layerName][fileMtd.extension] = dataLoaded;
           ListFile[layerName].nbFileLoaded += 1;
           if (ListFile[layerName].nbFileLoaded < 4) {
             if (ListFile[layerName].nbFileLoaded === ListFile[layerName].nbFileDropped) {
@@ -444,8 +473,8 @@ class Viewer {
             }
           } else {
             resData = shp.combine([
-              shp.parseShp(data.shp, data.prj),
-              shp.parseDbf(data.dbf),
+              shp.parseShp(data[layerName].shp, data[layerName].prj),
+              shp.parseDbf(data[layerName].dbf),
             ]);
             resData.crs = { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::4326' } };
           }
