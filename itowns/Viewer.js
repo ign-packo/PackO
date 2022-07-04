@@ -136,9 +136,9 @@ class Viewer {
     this.resolLvMax = 0;
     this.resolLvMin = 0;
     this.layerIndex = {
+      Graph: 0,
       Ortho: 1,
       Opi: 2,
-      Graph: 0,
       Contour: 3,
       Patches: 4,
     };
@@ -292,7 +292,7 @@ class Viewer {
     this.view.getLayers((l) => l.isColorLayer).map((l) => l.id).forEach((layerName) => {
       if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layerName)) {
         this.view.removeLayer(layerName);
-        menuGlobe.removeLayersGUI(layerName);
+        menuGlobe.removeLayerGUI(layerName);
         delete this.layerIndex[layerName];
       }
     });
@@ -404,12 +404,18 @@ class Viewer {
       }
 
       // Layer ordering
-      itowns.ColorLayersOrdering.moveLayerToIndex(
-        this.view,
-        layerName,
-        this.layerIndex[layerName] === undefined
-          ? Math.max(...Object.values(this.layerIndex)) + 1 : this.layerIndex[layerName],
-      );
+      if (this.view.getLayerById(layerName).sequence !== this.layerIndex[layerName]) {
+        itowns.ColorLayersOrdering.moveLayerToIndex(
+          this.view,
+          layerName,
+          this.layerIndex[layerName] === undefined
+            ? Math.max(...Object.values(this.layerIndex)) + 1 : this.layerIndex[layerName],
+        );
+      }
+    });
+    this.view.dispatchEvent({
+      type: 'refresh-done',
+      layerNames,
     });
   }
 

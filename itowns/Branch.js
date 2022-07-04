@@ -205,7 +205,7 @@ class Branch {
       this.api.deleteVector(name, id)
         .then(() => {
           this.vectorList = this.vectorList.filter((l) => l.id !== id);
-          this.layers = this.layers.filter((l) => l.vectorId !== id);
+          this.setLayers(this.vectorList);
           resolve();
         })
         .catch(() => {
