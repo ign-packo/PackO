@@ -30,25 +30,36 @@ class Menu extends dat.GUI {
     this.vectorGui.open();
     this.view = view;
 
-    view.addEventListener('layers-order-changed', ((ev) => {
-      for (let i = 0; i < ev.new.sequence.length; i += 1) {
-        const colorLayer = view.getLayerById(ev.new.sequence[i]);
+    view.addEventListener('refresh-done', ((ev) => {
+      ev.layerNames.forEach((layerName) => {
+        this.addLayerGUI(layerName);
+      });
+    }));
 
-        this.removeLayersGUI(colorLayer.id);
-        this.addImageryLayerGUI(colorLayer);
+    view.addEventListener('layers-order-changed', ((ev) => {
+      let change = false;
+      for (let i = 0; i < ev.new.sequence.length; i += 1) {
+        if (ev.new.sequence[i] !== ev.previous.sequence[i]) change = true;
+        if (change) {
+          const LayerId = ev.new.sequence[i];
+          this.removeLayerGUI(LayerId);
+          this.addLayerGUI(LayerId);
+        }
       }
     }));
   }
 
-  addImageryLayerGUI(layer) {
-    /* eslint-disable no-param-reassign */
+  addLayerGUI(layerId) {
+    const layer = this.view.getLayerById(layerId);
+    if (!layer.isColorLayer) return;
     let typeGui = 'colorGui';
     if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layer.id)) {
       typeGui = 'vectorGui';
     }
-    if (this[typeGui].hasFolder(layer.id)) { return; }
+    if (this[typeGui].hasFolder(layer.id)) return;
 
     // name folder
+    /* eslint-disable no-param-reassign */
     const folder = this[typeGui].addFolder(layer.id);
     if (this.shortCuts.visibleFolder[layer.id] !== undefined) {
       const titles = Array.from(folder.domElement.getElementsByClassName('title'));
@@ -62,6 +73,7 @@ class Menu extends dat.GUI {
         if (title.innerText.startsWith(layer.id)) title.innerText += ` [${this.shortCuts.styleFolder[layer.id]}]`;
       });
     }
+    /* eslint-enable no-param-reassign */
 
     // visibility
     const visib = folder.add({ visible: layer.visible }, 'visible');
@@ -99,7 +111,7 @@ class Menu extends dat.GUI {
       folder.add(this.view, 'removeVectorLayer').name('delete').onChange(() => {
         // if (layer.isAlert === undefined) {
         this.view.removeVectorLayer(layer.id);
-        this.removeLayersGUI(layer.id);
+        this.removeLayerGUI(layer.id);
         // }
         // } else {
         //   // eslint-disable-next-line no-underscore-dangle
@@ -109,10 +121,9 @@ class Menu extends dat.GUI {
         // }
       });
     }
-    /* eslint-enable no-param-reassign */
   }
 
-  removeLayersGUI(nameLayer) {
+  removeLayerGUI(nameLayer) {
     if (this.colorGui.hasFolder(nameLayer)) {
       this.colorGui.removeFolder(nameLayer);
     } else {
