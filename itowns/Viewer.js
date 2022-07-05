@@ -287,12 +287,11 @@ class Viewer {
     );
   }
 
-  removeExtraLayers(menuGlobe) {
+  removeExtraLayers() {
     // Clean up of all the extra layers
     this.view.getLayers((l) => l.isColorLayer).map((l) => l.id).forEach((layerName) => {
       if (!['Ortho', 'Opi', 'Graph', 'Contour', 'Patches'].includes(layerName)) {
         this.view.removeLayer(layerName);
-        menuGlobe.removeLayerGUI(layerName);
         delete this.layerIndex[layerName];
       }
     });

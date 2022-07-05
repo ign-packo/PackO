@@ -15,12 +15,14 @@ dat.GUI.prototype.hasFolder = function hasFolder(name) {
 /* eslint-enable no-underscore-dangle */
 
 class Menu extends dat.GUI {
-  constructor(menuDiv, view, shortCuts) {
+  constructor(menuDiv, viewer, shortCuts) {
     const width = 300;
 
     super({ autoPlace: false, width });
     this.shortCuts = shortCuts;
-    // this.gui = new dat.GUI({ autoPlace: false, width });
+    this.viewer = viewer;
+    this.view = viewer.view;
+
     menuDiv.appendChild(this.domElement);
 
     this.colorGui = this.addFolder('Color Layers');
@@ -28,25 +30,18 @@ class Menu extends dat.GUI {
     this.vectorGui = this.addFolder('Extra Layers [v]');
     this.vectorGui.domElement.id = 'extraLayers';
     this.vectorGui.open();
-    this.view = view;
 
-    view.addEventListener('refresh-done', ((ev) => {
+    this.view.addEventListener('refresh-done', ((ev) => {
       ev.layerNames.forEach((layerName) => {
         this.addLayerGUI(layerName);
       });
     }));
 
-    view.addEventListener('layers-order-changed', ((ev) => {
-      let change = false;
-      for (let i = 0; i < ev.new.sequence.length; i += 1) {
-        if (ev.new.sequence[i] !== ev.previous.sequence[i]) change = true;
-        if (change) {
-          const LayerId = ev.new.sequence[i];
-          this.removeLayerGUI(LayerId);
-          this.addLayerGUI(LayerId);
-        }
-      }
-    }));
+    this.view.addEventListener('branch-changed', () => {
+      Object.keys(this.vectorGui.getSaveObject().folders).forEach((layerName) => {
+        this.removeLayerGUI(layerName);
+      });
+    });
   }
 
   addLayerGUI(layerId) {
@@ -57,69 +52,68 @@ class Menu extends dat.GUI {
       typeGui = 'vectorGui';
     }
     if (this[typeGui].hasFolder(layer.id)) return;
+    const folder = this[typeGui].addFolder(layer.id);
 
     // name folder
-    /* eslint-disable no-param-reassign */
-    const folder = this[typeGui].addFolder(layer.id);
+    let nameFolder = layer.id;
     if (this.shortCuts.visibleFolder[layer.id] !== undefined) {
-      const titles = Array.from(folder.domElement.getElementsByClassName('title'));
-      titles.forEach((title) => {
-        if (title.innerText.startsWith(layer.id)) title.innerText += ` [${this.shortCuts.visibleFolder[layer.id]}]`;
-      });
+      nameFolder += ` [${this.shortCuts.visibleFolder[layer.id]}]`;
     }
     if (this.shortCuts.styleFolder[layer.id] !== undefined) {
-      const titles = Array.from(folder.domElement.getElementsByClassName('title'));
-      titles.forEach((title) => {
-        if (title.innerText.startsWith(layer.id)) title.innerText += ` [${this.shortCuts.styleFolder[layer.id]}]`;
-      });
+      nameFolder += ` [${this.shortCuts.styleFolder[layer.id]}]`;
     }
-    /* eslint-enable no-param-reassign */
+    folder.name = nameFolder;
 
     // visibility
     const visib = folder.add({ visible: layer.visible }, 'visible');
     visib.domElement.setAttribute('id', layer.id);
     visib.domElement.classList.add('visibcbx');
-    visib.onChange(((value) => {
-      layer.visible = value;
-      this.view.notifyChange(layer);
-    }));
+    visib
+      .onChange(((value) => {
+        const newLayer = this.view.getLayerById(layer.id);
+        newLayer.visible = value;
+        this.view.notifyChange(newLayer);
+      }));
 
     // opacity
-    folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0).onChange(((value) => {
-      layer.opacity = value;
-      this.view.notifyChange(layer);
-    }));
+    folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0)
+      .onChange(((value) => {
+        const newLayer = this.view.getLayerById(layer.id);
+        newLayer.opacity = value;
+        this.view.notifyChange(newLayer);
+      }));
 
     // style
     if (['Ortho', 'Opi'].includes(layer.id)) {
       const style = folder.add(layer.id === 'Ortho' ? this.view : this.view.Opi, 'style', this.view.styles);
-      style.onChange((value) => {
-        this.view.changeWmtsStyle(layer.id, value);
-      });
+      style
+        .onChange((value) => {
+          this.view.changeWmtsStyle(layer.id, value);
+        });
     }
 
     // Patch pour ajouter la modification de l'epaisseur des contours dans le menu
     if (layer.effect_parameter) {
-      folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0).onChange(((value) => {
-        layer.effect_parameter = value;
-        this.view.notifyChange(layer);
-      }));
+      folder.add({ thickness: layer.effect_parameter }, 'thickness').min(0.5).max(5.0)
+        .onChange(((value) => {
+          const newLayer = this.view.getLayerById(layer.id);
+          newLayer.effect_parameter = value;
+          this.view.notifyChange(newLayer);
+        }));
     }
 
     // delete layer
     if (typeGui === 'vectorGui' && layer.id !== 'Remarques' && layer.isAlert === false) {
-      folder.add(this.view, 'removeVectorLayer').name('delete').onChange(() => {
-        // if (layer.isAlert === undefined) {
-        this.view.removeVectorLayer(layer.id);
-        this.removeLayerGUI(layer.id);
-        // }
-        // } else {
-        //   // eslint-disable-next-line no-underscore-dangle
-        //   this.gui.__controllers.filter((controller) => {
-        //  // controller.property === 'message')[0].setValue('Couche en edition');
-        //   // this.viewer.message = 'Couche en edition';
-        // }
-      });
+      folder.add(this.view, 'removeVectorLayer').name('delete')
+        .onChange(() => {
+          const newLayer = this.view.getLayerById(layer.id);
+          if (newLayer.isAlert === false) {
+            this.view.removeVectorLayer(layer.id);
+            this.removeLayerGUI(layer.id);
+          } else {
+            this.viewer.message = 'Couche en edition';
+          }
+        });
     }
   }
 
