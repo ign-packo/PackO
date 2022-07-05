@@ -145,7 +145,7 @@ async function main() {
 
     viewer.view.isDebugMode = true;
 
-    const menu = new Menu(document.getElementById('menuDiv'), viewer.view, viewer.shortCuts);
+    const menu = new Menu(document.getElementById('menuDiv'), viewer, viewer.shortCuts);
 
     const alert = new Alert(viewer);
     const branch = new Branch(viewer, alert);
@@ -349,7 +349,7 @@ async function main() {
       controllers.setPatchCtr(newBranch.name);
       controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)], '-');
       controllers.setAlertCtr('-');
-      viewer.removeExtraLayers(menu);
+      viewer.removeExtraLayers();
       viewer.view.changeBranch(newBranch.id);
       viewer.refresh(branch.layers);
     });
