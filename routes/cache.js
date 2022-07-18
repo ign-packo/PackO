@@ -8,6 +8,20 @@ const cache = require('../middlewares/cache');
 const pgClient = require('../middlewares/pgClient');
 const returnMsg = require('../middlewares/returnMsg');
 
+// Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
+function encapBody(req, _res, next) {
+  let keyName = 'body';
+  if (this.keyName) { keyName = this.keyName; }
+  if (JSON.stringify(req.body) !== '{}') {
+    const requestBodyKeys = Object.keys(req.body);
+    req.body[keyName] = JSON.parse(JSON.stringify(req.body));
+    for (let i = 0; i < requestBodyKeys.length; i += 1) {
+      delete req.body[requestBodyKeys[i]];
+    }
+  }
+  next();
+}
+
 const overviews = [
   body('overviews')
     .exists().withMessage(createErrMsg.missingBody),
@@ -72,7 +86,7 @@ router.get('/caches',
   returnMsg);
 
 router.post('/cache',
-  cache.encapBody.bind({ keyName: 'overviews' }),
+  encapBody.bind({ keyName: 'overviews' }),
   [
     query('name')
       .exists().withMessage(createErrMsg.missingParameter('name')),

@@ -10,6 +10,20 @@ const patch = require('../middlewares/patch');
 const pgClient = require('../middlewares/pgClient');
 const returnMsg = require('../middlewares/returnMsg');
 
+// Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
+function encapBody(req, _res, next) {
+  let keyName = 'body';
+  if (this.keyName) { keyName = this.keyName; }
+  if (JSON.stringify(req.body) !== '{}') {
+    const requestBodyKeys = Object.keys(req.body);
+    req.body[keyName] = JSON.parse(JSON.stringify(req.body));
+    for (let i = 0; i < requestBodyKeys.length; i += 1) {
+      delete req.body[requestBodyKeys[i]];
+    }
+  }
+  next();
+}
+
 const geoJsonAPatcher = [
   body('geoJSON')
     .exists().withMessage(createErrMsg.missingBody)
@@ -53,7 +67,7 @@ router.get('/:idBranch/patches',
   returnMsg);
 
 router.post('/:idBranch/patch',
-  patch.encapBody.bind({ keyName: 'geoJSON' }),
+  encapBody.bind({ keyName: 'geoJSON' }),
   pgClient.open,
   branch.getBranches.bind({ column: 'id' }),
   [

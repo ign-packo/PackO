@@ -4,20 +4,6 @@ const pathMod = require('path');
 const { matchedData } = require('express-validator');
 const db = require('../db/db');
 
-// Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
-function encapBody(req, _res, next) {
-  let keyName = 'body';
-  if (this.keyName) { keyName = this.keyName; }
-  if (JSON.stringify(req.body) !== '{}') {
-    const requestBodyKeys = Object.keys(req.body);
-    req.body[keyName] = JSON.parse(JSON.stringify(req.body));
-    for (let i = 0; i < requestBodyKeys.length; i += 1) {
-      delete req.body[requestBodyKeys[i]];
-    }
-  }
-  next();
-}
-
 async function getCaches(req, _res, next) {
   debug('>>GET caches');
   if (req.error) {
@@ -149,7 +135,6 @@ async function getOverviews(req, _res, next) {
 }
 
 module.exports = {
-  encapBody,
   getCaches,
   getCachePath,
   postCache,

@@ -8,20 +8,6 @@ const cog = require('../cog_path');
 const gdalProcessing = require('../gdal_processing');
 const db = require('../db/db');
 
-// Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
-function encapBody(req, _res, next) {
-  let keyName = 'body';
-  if (this.keyName) { keyName = this.keyName; }
-  if (JSON.stringify(req.body) !== '{}') {
-    const requestBodyKeys = Object.keys(req.body);
-    req.body[keyName] = JSON.parse(JSON.stringify(req.body));
-    for (let i = 0; i < requestBodyKeys.length; i += 1) {
-      delete req.body[requestBodyKeys[i]];
-    }
-  }
-  next();
-}
-
 function getCOGs(feature, overviews) {
   const BBox = {};
   feature.geometry.coordinates[0].forEach((point) => {
@@ -747,5 +733,4 @@ module.exports = {
   undo,
   redo,
   clear,
-  encapBody,
 };
