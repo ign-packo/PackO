@@ -229,11 +229,20 @@ async function rebase(req, res, next) {
   try {
     const patches = await db.getActivePatches(req.client, idBranch);
     debug('patches : ', patches);
-    await patch.applyPatches(req.client,
-      req.overviews,
-      cache.path,
-      idNewBranch,
-      patches.features);
+
+    debug('>>applyPatches', patches.features);
+    patches.features.forEach(async (feature) => {
+      debug('application de ', feature);
+      await patch.applyPatch(
+        req.client,
+        req.overviews,
+        cache.path,
+        idNewBranch,
+        feature,
+      );
+    });
+    debug('fin de applyPatches');
+
     await db.finishProcess(req.client, 'succeed', idProcess, 'done');
   } catch (error) {
     debug(error);

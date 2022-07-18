@@ -709,26 +709,9 @@ async function postPatch(req, _res, next) {
     });
 }
 
-async function applyPatches(pgClient, overviews, dirCache, idBranch, features) {
-  debug('>>applyPatches', features);
-
-  /* eslint-disable-next-line */
-  for (const feature of features) {
-    debug('application de ', feature);
-    /* eslint-disable-next-line */
-    await applyPatch(
-      pgClient,
-      overviews,
-      dirCache, idBranch,
-      feature,
-    );
-  }
-  debug('fin de applyPatches');
-}
-
 module.exports = {
+  applyPatch,
   getPatches,
-  applyPatches,
   postPatch,
   undo,
   redo,
