@@ -4,7 +4,7 @@ chai.use(require('chai-json-schema'));
 
 const should = chai.should();
 const fs = require('fs');
-const app = require('..');
+const app = require('../..');
 
 const testOpi = [
   { name: '19FD5606Ax00020_16371', date: '2019-07-04', time: '13:33:00' },

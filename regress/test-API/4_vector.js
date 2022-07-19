@@ -5,7 +5,7 @@ chai.use(require('chai-json-schema'));
 const should = chai.should();
 const fs = require('fs');
 const GJV = require('geojson-validation');
-const app = require('..');
+const app = require('../..');
 
 const cachePath = './cache_test/cache_test_RGBIR';
 const overviews = JSON.parse(fs.readFileSync(`${cachePath}/overviews.json`, 'utf8'));

@@ -3,7 +3,7 @@ chai.use(require('chai-http'));
 
 chai.should();
 
-const validator = require('../paramValidation/validator');
+const validator = require('../../paramValidation/validator');
 
 describe('Validator', () => {
   describe('isCrs', () => {

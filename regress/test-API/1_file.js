@@ -3,7 +3,7 @@ chai.use(require('chai-http'));
 // chai.use(require('chai-json-schema'));
 
 const should = chai.should();
-const app = require('..');
+const app = require('../..');
 
 describe('routes/file.js', () => {
   after((done) => {

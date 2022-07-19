@@ -4,7 +4,7 @@ chai.use(require('chai-json-schema'));
 
 const should = chai.should();
 
-const app = require('../serveur');
+const app = require('../../serveur');
 
 describe('routes/processQueue.js', () => {
   after((done) => {
