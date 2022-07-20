@@ -203,6 +203,7 @@ async function main() {
     controllers.undo = viewer.menuGlobe.gui.add(editing, 'undo').name('undo [CTRL+Z]');
     controllers.redo = viewer.menuGlobe.gui.add(editing, 'redo').name('redo [CTRL+Y]');
     controllers.clear = viewer.menuGlobe.gui.add(editing, 'clear');
+    controllers.hide('clear');
     // controllers.hide(['polygon', 'undo', 'redo', 'clear']);
 
     // Message
