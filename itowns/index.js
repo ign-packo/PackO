@@ -213,7 +213,8 @@ async function main() {
     menu.add(editing, 'polygon').name('Start polygon [p]');
     menu.add(editing, 'undo').name('undo [CTRL+Z]');
     menu.add(editing, 'redo').name('redo [CTRL+Y]');
-    menu.add(editing, 'clear');
+    menu.add(editing, 'clear')
+      .domElement.parentElement.parentElement.style.display = 'none';
 
     // Message
     viewer.message = '';
