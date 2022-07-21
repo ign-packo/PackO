@@ -3,7 +3,6 @@ const {
   param, query, body, oneOf,
 } = require('express-validator');
 const GJV = require('geojson-validation');
-const cache = require('../middlewares/cache');
 const branch = require('../middlewares/branch');
 const vector = require('../middlewares/vector');
 const validateParams = require('../paramValidation/validateParams');
@@ -103,7 +102,6 @@ router.post('/:idBranch/vector', encapBody.bind({ keyName: 'json' }),
     ...vectorToSave,
   ],
   validateParams,
-  cache.getCachePath,
   vector.postVector,
   pgClient.close,
   returnMsg);

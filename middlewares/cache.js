@@ -26,25 +26,6 @@ async function getCaches(req, _res, next) {
   next();
 }
 
-async function getCachePath(req, _res, next) {
-  debug('>>GET CachePath');
-  if (req.error) {
-    next();
-    return;
-  }
-  const params = matchedData(req);
-  const { idBranch } = params;
-
-  try {
-    req.dir_cache = await db.getCachePath(req.client, idBranch);
-  } catch (error) {
-    debug(error);
-    req.error = error;
-  }
-  debug('  next>>');
-  next();
-}
-
 async function postCache(req, _res, next) {
   debug('>>POST Cache');
   if (req.error) {
@@ -111,6 +92,7 @@ async function deleteCache(req, _res, next) {
   next();
 }
 
+// !!! TO CHANGE WHEN overviews in database !!!
 async function getOverviews(req, _res, next) {
   debug('>>getOverviews');
   if (req.error) {
@@ -136,7 +118,6 @@ async function getOverviews(req, _res, next) {
 
 module.exports = {
   getCaches,
-  getCachePath,
   postCache,
   deleteCache,
   getOverviews,

@@ -251,9 +251,28 @@ async function rebase(req, res, next) {
   pgClient.close(req, res, () => {});
 }
 
+async function getCachePath(req, _res, next) {
+  debug('>>GET CachePath');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+  const { idBranch } = params;
+  try {
+    req.dir_cache = await db.getCachePath(req.client, idBranch);
+  } catch (error) {
+    debug(error);
+    req.error = error;
+  }
+  debug('  next>>');
+  next();
+}
+
 module.exports = {
   getBranches,
   postBranch,
   deleteBranch,
   rebase,
+  getCachePath,
 };
