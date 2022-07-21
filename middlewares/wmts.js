@@ -106,6 +106,22 @@ function wmts(req, _res, next) {
     };
     const crs = `${overviews.crs.type}:${overviews.crs.code}`;
     proj4.defs(crs, overviews.crs.proj4Definition);
+
+    // TO be modified in link with cache => add a property overview.style
+    let style;
+    overviews.with_rgb = true;
+    overviews.with_ir = true;
+    const tabOpi = Object.keys(overviews.list_OPI);
+    if (tabOpi.length > 0) {
+      overviews.with_rgb = overviews.list_OPI[tabOpi[0]].with_rgb;
+      overviews.with_ir = overviews.list_OPI[tabOpi[0]].with_ir;
+    }
+    if (overviews.with_rgb) {
+      style = overviews.with_ir ? ['RVB', 'IRC', 'IR'] : ['RVB'];
+    } else {
+      style = ['IR'];
+    }
+
     const layers = [];
     ['ortho', 'graph', 'opi'].forEach((layerName) => layers.push({
       'ows:Title': layerName,
@@ -116,24 +132,8 @@ function wmts(req, _res, next) {
       },
       'ows:Identifier': layerName,
       Style: layerName === 'graph'
-        ? {
-          'ows:Identifier': 'default',
-          $: {
-            isDefault: 'true',
-          },
-        } : [
-          {
-            'ows:Identifier': 'RVB',
-            $: {
-              isDefault: 'true',
-            },
-          },
-          {
-            'ows:Identifier': 'IRC',
-          },
-          {
-            'ows:Identifier': 'IR',
-          }],
+        ? { 'ows:Identifier': 'default', $: { isDefault: 'true' } }
+        : style.map((s, index) => (index === 0 ? { 'ows:Identifier': s, $: { isDefault: 'true' } } : { 'ows:Identifier': s })),
       Format: 'image/png',
       [extra[layerName].key]: extra[layerName].value,
       TileMatrixSetLink: {
@@ -253,7 +253,7 @@ function wmts(req, _res, next) {
       }
       let bands;
       switch (STYLE) {
-        case 'normal':
+        case 'default':
         case 'RVB':
           bands = [0, 1, 2];
           break;

@@ -294,9 +294,9 @@ class Viewer {
             format: 'image/png',
             name: layerName !== 'Contour' ? layerName.toLowerCase() : 'graph',
             tileMatrixSet: this.overviews.identifier,
-            tileMatrixSetLimits:
-              (layerName === 'Contour') || (layerName === 'Graph')
-                ? this.overviews.dataSet.limitsForGraph : this.overviews.dataSet.limits,
+            tileMatrixSetLimits: ['Graph', 'Contour'].includes(layerName)
+              ? this.overviews.dataSet.limitsForGraph : this.overviews.dataSet.limits,
+            style: ['Graph', 'Contour'].includes(layerName) ? 'default' : this.view.styles[0],
           });
         } else if (layer.type === 'vector') {
           config.source = new itowns.FileSource({
