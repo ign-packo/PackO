@@ -139,7 +139,7 @@ async function rebase(req, res, next) {
         slab[0],
         slab[1],
         slab[2],
-        req.overviews,
+        req.overviews.pathDepth,
       );
       const graphDir = path.join(cache.path, 'graph', cogPath.dirPath);
       const orthoDir = path.join(cache.path, 'ortho', cogPath.dirPath);

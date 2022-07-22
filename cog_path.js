@@ -1,11 +1,10 @@
 const path = require('path');
 const debug = require('debug')('cog_path');
 
-function getSlabPath(X, Y, Z, overviews) {
+function getSlabPath(X, Y, Z, pathDepth) {
   debug('~~~getSlabPath');
   debug(X, Y, Z);
   // On commence par trouver le niveau de zoom de la dalle correspondante
-  const { pathDepth } = overviews;
 
   const strX = Math.trunc(X).toString(36).padStart(pathDepth + 1, 0).toUpperCase();
   const strY = Math.trunc(Y).toString(36).padStart(pathDepth + 1, 0).toUpperCase();
@@ -21,8 +20,8 @@ function getSlabPath(X, Y, Z, overviews) {
   };
 }
 
-function getTilePath(X, Y, Z, overviews) {
-  debug('~~~getTilePath');
+function getTileInfo(X, Y, Z, overviews) {
+  debug('~~~getTileInfo');
   debug(X, Y, Z);
   // On commence par trouver le niveau de zoom de la dalle correspondante
   const nbTiles = overviews.slabSize.width;
@@ -60,12 +59,12 @@ function getTilePath(X, Y, Z, overviews) {
   const tileX = ((X * factor) % nbTiles) / factor;
   const tileY = ((Y * factor) % nbTiles) / factor;
 
-  const slab = getSlabPath(slabX, slabY, levelCOG, overviews);
+  const slab = getSlabPath(slabX, slabY, levelCOG, overviews.pathDepth);
   slab.x = tileX;
   slab.y = tileY;
   slab.z = levelCOG - Z;
   return slab;
 }
 
-exports.getTilePath = getTilePath;
+exports.getTileInfo = getTileInfo;
 exports.getSlabPath = getSlabPath;

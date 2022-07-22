@@ -140,7 +140,7 @@ function createPatch(slab,
     P.slab.x,
     P.slab.y,
     P.slab.z,
-    overviews,
+    overviews.pathDepth,
   );
   const nameRgb = withRgb ? name : name.replace('_ix', 'x');
   const nameIr = withRgb ? name.replace('x', '_ix') : name;
@@ -258,7 +258,7 @@ async function undo(req, _res, next) {
   // slabs.forEach((slab, indexSlab) => {
   slabs.forEach((slab, indexSlab) => {
     debug('slab :', slab, indexSlab);
-    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
+    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
     const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
 
     // on récupère l'historique de cette tuile
@@ -286,7 +286,7 @@ async function undo(req, _res, next) {
   }
   // Object.values(slabs).forEach((slab, indexSlab) => {
   slabs.forEach((slab, indexSlab) => {
-    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
+    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
     const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     // on récupère la version à restaurer
@@ -408,7 +408,7 @@ async function redo(req, _res, next) {
   // Object.values(slabs).forEach((slab) => {
   slabs.forEach((slab) => {
     debug(slab);
-    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
+    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
     debug(cogPath);
     const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
     const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
@@ -501,7 +501,7 @@ async function clear(req, _res, next) {
 
   Object.values(slabsDico).forEach((slab) => {
     debug('clear sur : ', slab);
-    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
+    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
 
     const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
     const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);

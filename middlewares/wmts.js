@@ -217,7 +217,7 @@ function wmts(req, _res, next) {
       mime = Jimp.MIME_JPEG; // "image/jpeg"
     }
     try {
-      const cogPath = cog.getTilePath(TILECOL, TILEROW, TILEMATRIX, overviews);
+      const cogPath = cog.getTileInfo(TILECOL, TILEROW, TILEMATRIX, overviews);
       let urlBranch = path.join(req.dir_cache,
         layerName,
         cogPath.dirPath,
@@ -279,8 +279,8 @@ function wmts(req, _res, next) {
     debug('~~~GetFeatureInfo');
     debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
     try {
-      // TO DO vérifier les infos réellement utiles dans le getTilePath
-      const cogPath = cog.getTilePath(TILECOL, TILEROW, TILEMATRIX, overviews);
+      // TO DO vérifier les infos réellement utiles dans le getTileInfo
+      const cogPath = cog.getTileInfo(TILECOL, TILEROW, TILEMATRIX, overviews);
       const urlBranch = path.join(req.dir_cache, 'graph',
         cogPath.dirPath,
         `${idBranch}_${cogPath.filename}.tif`);
