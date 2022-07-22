@@ -108,7 +108,6 @@ function wmts(req, _res, next) {
     proj4.defs(crs, overviews.crs.proj4Definition);
 
     // TO be modified in link with cache => add a property overview.style
-    let style;
     overviews.with_rgb = true;
     overviews.with_ir = true;
     const tabOpi = Object.keys(overviews.list_OPI);
@@ -116,11 +115,8 @@ function wmts(req, _res, next) {
       overviews.with_rgb = overviews.list_OPI[tabOpi[0]].with_rgb;
       overviews.with_ir = overviews.list_OPI[tabOpi[0]].with_ir;
     }
-    if (overviews.with_rgb) {
-      style = overviews.with_ir ? ['RVB', 'IRC', 'IR'] : ['RVB'];
-    } else {
-      style = ['IR'];
-    }
+    // eslint-disable-next-line no-nested-ternary
+    const styles = overviews.with_rgb ? overviews.with_ir ? ['RVB', 'IRC', 'IR'] : ['RVB'] : ['IR'];
 
     const layers = [];
     ['ortho', 'graph', 'opi'].forEach((layerName) => layers.push({
@@ -133,7 +129,7 @@ function wmts(req, _res, next) {
       'ows:Identifier': layerName,
       Style: layerName === 'graph'
         ? { 'ows:Identifier': 'default', $: { isDefault: 'true' } }
-        : style.map((s, index) => (index === 0 ? { 'ows:Identifier': s, $: { isDefault: 'true' } } : { 'ows:Identifier': s })),
+        : styles.map((style, index) => (index === 0 ? { 'ows:Identifier': style, $: { isDefault: 'true' } } : { 'ows:Identifier': style })),
       Format: 'image/png',
       [extra[layerName].key]: extra[layerName].value,
       TileMatrixSetLink: {
@@ -264,7 +260,6 @@ function wmts(req, _res, next) {
           bands = [3, 3, 3];
           break;
         default:
-          debug('STYLE non géré');
       }
       gdalProcessing.getTileEncoded(url,
         cogPath.x, cogPath.y, cogPath.z,
@@ -284,7 +279,7 @@ function wmts(req, _res, next) {
     debug('~~~GetFeatureInfo');
     debugFeatureInfo(LAYER, TILEMATRIX, TILEROW, TILECOL, I, J);
     try {
-      // To Do vérifier les infos réellement utiles dazns le getTilePath
+      // TO DO vérifier les infos réellement utiles dans le getTilePath
       const cogPath = cog.getTilePath(TILECOL, TILEROW, TILEMATRIX, overviews);
       const urlBranch = path.join(req.dir_cache, 'graph',
         cogPath.dirPath,
@@ -293,9 +288,7 @@ function wmts(req, _res, next) {
         cogPath.dirPath,
         `${cogPath.filename}.tif`);
       // si jamais la version de la branche existe, c'est elle qu'il faut utiliser
-      if (fs.existsSync(urlBranch)) {
-        url = urlBranch;
-      }
+      if (fs.existsSync(urlBranch)) url = urlBranch;
 
       if (!fs.existsSync(url)) {
         req.error = {
@@ -338,7 +331,8 @@ function wmts(req, _res, next) {
               + '</ReguralGriddedElevations>';
           req.result = { xml: xmlResponse, code: resCode };
           next();
-        }).catch(() => {
+        })
+        .catch(() => {
           req.error = {
             json: {
               status: 'out of bounds',
