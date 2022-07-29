@@ -295,6 +295,16 @@ def cut_image_1arg(arg):
                   ' (', tps2_actif - tps1_actif, ')', sep="")
 
 
+def display_bar(current, nb_total, width=50):
+    if not nb_total > 0:
+        return
+    width_per_step = width/nb_total
+    width_done = int(current*width_per_step)
+    print("\r |" + width_done*'#' + (width-width_done)*'-'+'|', end="", flush=True)
+    if current == nb_total:
+        print()
+
+
 def create_blank_slab(overviews, slab, nb_bands, spatial_ref):
     """Return a blank georef image for a slab"""
     origin_x = overviews['crs']['boundingBox']['xmin']\
@@ -352,9 +362,6 @@ def create_ortho_and_graph_1arg(arg):
     """Create ortho and graph on a specified slab"""
 
     overviews = arg['overviews']
-
-    # if arg['advancement'] != 0:
-    #     print("%", end='', flush=True)
 
     # on cree le graphe et l'ortho
     first_opi = list(overviews["list_OPI"].values())[0]

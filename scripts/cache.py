@@ -352,7 +352,7 @@ def generate(update):
         with open(args.cache + '/overviews.json', 'w') as outfile:
             json.dump(overviews_dict, outfile)
 
-    print("\n ", len(list_filename), " image(s) à traiter ", sep="")
+    print(f'\n {len(list_filename)} image(s) à traiter ({cpu_util} cpu)')
 
     slabbox_export = None
     if not update:
@@ -360,8 +360,7 @@ def generate(update):
 
     try:
         # Decoupage des images
-        print("Découpage des images :")
-        print(" Préparation")
+        print("Préparation")
         opi_unused = []
         cmds1 = []
         for filename in list_filename:
@@ -438,11 +437,9 @@ def generate(update):
 
         if args.running:
             time_start_opi = time.perf_counter()
-
-            print(f"Calcul : ({cpu_util} cpu)")
-
             # lancement des traitements de la phase 1
             time_start_opi = time.perf_counter()
+            print('Découpage OPI')
             cmds = []
             for cmd in cmds1:
                 cmds.append(cmd['command'])
@@ -454,15 +451,28 @@ def generate(update):
             if args.verbose > 0:
                 time_opi = time_start_graph - time_start_opi
                 print(f"Temps création tuiles OPIs : {time_opi:.2f} s")
-                print(f"nb total tuiles = {len(cmds2)}")
             # lancement des traitements de la phase 2
+            print("Génération tuiles graphe et ortho")
             cmds = []
             for cmd in cmds2:
                 cmds.append(cmd['command'])
             pool = multiprocessing.Pool(cpu_util)
-            pool.map(os.system, cmds)
-            pool.close()
-            pool.join()
+
+            def mycallback(r):
+                del r
+                mycallback.cnt += 1
+                cache.display_bar(mycallback.cnt, mycallback.nb)
+
+            mycallback.cnt = 0
+            mycallback.nb = len(cmds)
+            cache.display_bar(mycallback.cnt, mycallback.nb)
+
+            results = []
+            for cmd in cmds:
+                r = pool.apply_async(os.system, (cmd,), callback=mycallback)
+                results.append(r)
+            for r in results:
+                r.wait()
 
             time_end = time.perf_counter()
 
