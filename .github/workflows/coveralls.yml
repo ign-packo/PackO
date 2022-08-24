@@ -88,6 +88,42 @@ jobs:
       run: |
         python scripts/update_cache.py -I "regress/data/update/IR/*.tif" -c cache_regress_IR -g "regress/data/regress_graphe.gpkg" -t graphe -r 1
 
+    - name: create cache RGB gpao
+      run: |
+        python scripts/create_cache.py -R "regress/data/RGB/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress_RGB_gpao -g "regress/data/regress_graphe.gpkg" -t graphe
+
+    - name: create cache RGBIR gpao
+      run: |
+        python scripts/create_cache.py -R "regress/data/RGB/*.tif" -I "regress/data/IR/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress_RGBIR_gpao -g "regress/data/regress_graphe.gpkg" -t graphe
+
+    - name: create cache IR gpao
+      run: |
+        python scripts/create_cache.py -I "regress/data/IR/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress_IR_gpao -g "regress/data/regress_graphe.gpkg" -t graphe
+
+    - name: check cache RGB
+      run: |
+        python scripts/check_cache.py -r "cache_test/cache_test_RGB" -s cache_regress_RGB
+        
+    - name: check cache RGBIR
+      run: |
+        python scripts/check_cache.py -r "cache_test/cache_test_RGBIR" -s cache_regress_RGBIR
+        
+    - name: check cache IR
+      run: |
+        python scripts/check_cache.py -r "cache_test/cache_test_IR" -s cache_regress_IR
+
+    - name: check cache RGB gpao
+      run: |
+        python scripts/check_cache.py -r "cache_test/cache_test_RGB_gpao" -s cache_regress_RGB_gpao
+
+    - name: check cache RGBIR gpao
+      run: |
+        python scripts/check_cache.py -r "cache_test/cache_test_RGBIR_gpao" -s cache_regress_RGBIR_gpao
+
+    - name: check cache IR gpao
+      run: |
+        python scripts/check_cache.py -r "cache_test/cache_test_IR_gpao" -s cache_regress_IR_gpao        
+
     - name: install
       run: npm install
 
