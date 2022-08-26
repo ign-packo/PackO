@@ -7,8 +7,8 @@ import math
 import glob
 import time
 import numpy as np
-from osgeo import gdal
 from numpy import base_repr
+from osgeo import gdal
 
 COG_DRIVER = gdal.GetDriverByName('COG')
 
@@ -31,18 +31,17 @@ def get_tile_limits(filename):
     return tile_limits
 
 
-def get_slabdeepth(slabSize):
+def get_slabdepth(slab_size):
     """Get the number of levels per COG"""
-    slabsize = min(slabSize['width'], slabSize['height'])
-    return math.floor(math.log(slabsize, 2)) + 1
+    slab_size = min(slab_size['width'], slab_size['height'])
+    return math.floor(math.log(slab_size, 2)) + 1
 
 
-def get_slabbox(input_filename, overviews, slab_change):
-    """Get the Min/MaxTileRow/Col for a specified image at all levels"""
-
-    nb_level_COG = get_slabdeepth(overviews['slabSize'])
+def get_slabbox(filename, overviews):
+    """Get the Min/MaxTileRow/Col at all levels"""
+    nb_level_cog = get_slabdepth(overviews['slabSize'])
     slabbox = {}
-    tile_limits = get_tile_limits(input_filename)
+    tile_limits = get_tile_limits(filename)
 
     if "LowerCorner" not in overviews['dataSet']['boundingBox']:
         overviews['dataSet']['boundingBox'] = tile_limits
@@ -98,30 +97,24 @@ def get_slabbox(input_filename, overviews, slab_change):
                 = max(max_tile_row,
                       overviews['dataSet']['limits'][str(slab_z)]['MaxTileRow'])
 
-        if (slab_z % nb_level_COG == overviews['dataSet']['level']['max'] % nb_level_COG):
+        if slab_z % nb_level_cog == overviews['dataSet']['level']['max'] % nb_level_cog:
 
             min_slab_col = math.floor(round((tile_limits['LowerCorner'][0] -
-                                            overviews['crs']['boundingBox']['xmin'])
+                                             overviews['crs']['boundingBox']['xmin'])
                                             / (resolution * overviews['tileSize']['width']
-                                            * overviews['slabSize']['width']), 8))
+                                               * overviews['slabSize']['width']), 8))
             min_slab_row = math.floor(round((overviews['crs']['boundingBox']['ymax'] -
-                                            tile_limits['UpperCorner'][1])
+                                             tile_limits['UpperCorner'][1])
                                             / (resolution * overviews['tileSize']['height']
-                                            * overviews['slabSize']['height']), 8))
+                                               * overviews['slabSize']['height']), 8))
             max_slab_col = math.ceil(round((tile_limits['UpperCorner'][0] -
                                             overviews['crs']['boundingBox']['xmin'])
                                            / (resolution * overviews['tileSize']['width']
-                                           * overviews['slabSize']['width']), 8)) - 1
+                                              * overviews['slabSize']['width']), 8)) - 1
             max_slab_row = math.ceil(round((overviews['crs']['boundingBox']['ymax'] -
                                             tile_limits['LowerCorner'][1])
                                            / (resolution * overviews['tileSize']['height']
-                                           * overviews['slabSize']['height']), 8)) - 1
-            if slab_z not in slab_change:
-                slab_change[slab_z] = {}
-
-            for slab_x in range(min_slab_col, max_slab_col + 1):
-                for slab_y in range(min_slab_row, max_slab_row + 1):
-                    slab_change[slab_z][str(slab_x) + "_" + str(slab_y)] = True
+                                              * overviews['slabSize']['height']), 8)) - 1
 
             slabbox_z = {
                 'MinSlabCol': min_slab_col,
@@ -151,6 +144,7 @@ def get_slabbox(input_filename, overviews, slab_change):
                 overviews['dataSet']['slabLimits'][str(slab_z)]['MaxSlabRow']\
                     = max(max_slab_row,
                           overviews['dataSet']['slabLimits'][str(slab_z)]['MaxSlabRow'])
+
     return slabbox
 
 
@@ -175,94 +169,6 @@ def new_color(image, color_dict):
 
     color_dict[color_str[0]][color_str[1]][color_str[2]] = image
     return [int(color_str[0]), int(color_str[1]), int(color_str[2])]
-
-
-def prep_tiling(list_filename_rgb,
-                list_filename_ir,
-                dir_cache,
-                overviews,
-                color_dict,
-                gdal_option,
-                db_options,
-                verbose,
-                reprocess):
-    """Preparation for tiling images according to overviews file"""
-    opi_already_calculated = []
-    args_cut_image = []
-    change = {}
-
-    list_filename = list_filename_rgb
-    with_rgb = (len(list_filename_rgb) > 0)
-    with_ir = (len(list_filename_ir) > 0)
-    if len(list_filename_rgb) == 0:
-        list_filename = list_filename_ir
-
-    # cas du geopackage
-    db_graph = gdal.OpenEx(db_options['connString'], gdal.OF_VECTOR)
-
-    for filename in list_filename:
-        print('  image :', filename)
-        # Si on a du rgb (avec ou sans IR) opi = 19FD5606Ax00020_16371
-        # Si on a que de l'IR, opi = 19FD5606A_ix00020_16371
-        opi = Path(filename).stem
-
-        if not reprocess and opi in overviews['list_OPI'].keys():
-            print('   -> déjà calculée')
-            opi_already_calculated.append(opi)
-        else:
-            filename_rgb = ''
-            filename_ir = ''
-            opi_ir = opi
-            opi_rgb = opi
-            if with_rgb:
-                filename_rgb = filename
-                opi_ir = opi.replace('x', '_ix')
-                if with_ir:
-                    for name in list_filename_ir:
-                        ir = Path(name).stem
-                        if ir == opi_ir:
-                            filename_ir = name
-                    if not filename_ir:
-                        raise SystemExit("ERROR: " + opi_ir + " not found")
-            else:
-                opi_rgb = opi_ir.replace('_ix', 'x')
-                filename_ir = filename
-
-            # on recupere les metadonnees d'acquisition
-            layer = db_graph.GetLayer()
-            opi_tmp = opi_rgb
-            if with_ir and not with_rgb:
-                opi_tmp = opi.replace('_ix', 'x')
-            layer.SetAttributeFilter("CLICHE LIKE '" + opi_tmp.replace('OPI_', '') + "'")
-            feature = layer.GetNextFeature()
-            date = feature.GetField('DATE')
-            time_ut = feature.GetField('HEURE_TU')
-            layer.SetAttributeFilter(None)
-
-            args_cut_image.append({
-                'opi': {
-                    'rgb': filename_rgb,
-                    'ir': filename_ir,
-                    'name_rgb': opi_rgb,
-                    'name_ir': opi_ir
-                },
-                'overviews': overviews,
-                'slabBox': get_slabbox(filename, overviews, change),
-                'cache': dir_cache,
-                'gdalOption': gdal_option,
-                'verbose': verbose
-            })
-
-            # on ajoute l'OPI traitée à la liste (avec sa couleur)
-            overviews["list_OPI"][opi] = {
-                'color': new_color(opi, color_dict),
-                'date': date.replace('/', '-'),
-                'time_ut': time_ut.replace('h', ':'),
-                'with_rgb': with_rgb,
-                'with_ir': with_ir
-            }
-
-    return args_cut_image, opi_already_calculated, change
 
 
 def get_slab_path(slab_x, slab_y, path_depth):
@@ -324,14 +230,15 @@ def cut_image_1arg(arg):
         input_image_ir = gdal.Open(arg['opi']['ir'])
     slabbox = arg['slabBox']
 
-    # seulement pour lmax
-    # level = overviews['dataSet']['level']['max']
     for level in overviews['dataSet']['slabLimits'].keys():
         level = int(level)
         tps1_actif = time.process_time()
         tps1 = time.perf_counter()
         if arg['verbose'] == 0:
-            print('  (', arg['opi']['name_rgb'], ') level : ', level, sep="")
+            if arg['opi']['rgb'] is not None:
+                print('  (', arg['opi']['name_rgb'], ') level : ', level, sep="")
+            else:
+                print('  (', arg['opi']['name_ir'], ') level : ', level, sep="")
 
         resolution = overviews['resolution'] * 2 ** (overviews['level']['max'] - level)
 
@@ -341,12 +248,14 @@ def cut_image_1arg(arg):
                                 slabbox[str(level)]['MaxSlabRow'] + 1):
                 slab_param = {
                     'origin': {
-                        'x': overviews['crs']['boundingBox']['xmin']
-                                + slab_x * resolution * overviews['tileSize']['width']  # noqa: E131
-                                * overviews['slabSize']['width'],  # noqa: E131
-                        'y': overviews['crs']['boundingBox']['ymax']
-                        - slab_y * resolution * overviews['tileSize']['height']
-                        * overviews['slabSize']['height']
+                        'x':
+                            overviews['crs']['boundingBox']['xmin']
+                            + slab_x * resolution * overviews['tileSize']['width']  # noqa: E131
+                            * overviews['slabSize']['width'],  # noqa: E131
+                        'y':
+                            overviews['crs']['boundingBox']['ymax']
+                            - slab_y * resolution * overviews['tileSize']['height']
+                            * overviews['slabSize']['height']
                     },
                     'size': {
                         'width': overviews['tileSize']['width'] * overviews['slabSize']['width'],
@@ -386,51 +295,14 @@ def cut_image_1arg(arg):
                   ' (', tps2_actif - tps1_actif, ')', sep="")
 
 
-def progress_bar(nb_steps, nb_tiles, args_create_ortho_and_graph):
-    """Prepare progress bar display"""
-    if nb_tiles < nb_steps:
-        nb_steps = nb_tiles
-
-    print("   0" + nb_steps * "_" + "100")
-
-    for i in range(nb_tiles):
-        args_create_ortho_and_graph[i]['advancement'] = 0
-        if math.floor(i % (nb_tiles / nb_steps)) == 0:
-            args_create_ortho_and_graph[i]['advancement'] = 1
-
-
-def prep_ortho_and_graph(dir_cache, overviews, db_option, gdal_option, change):
-    """Preparation for computation of ortho and graph"""
-    print(" Préparation")
-
-    # Calcul des ortho et graph
-    args_create_ortho_and_graph = []
-    level = str(overviews["dataSet"]["level"]["max"])
-    for level in overviews['dataSet']['slabLimits'].keys():
-        print("  level :", level)
-
-        level_limits = overviews["dataSet"]["slabLimits"][level]
-        resol = overviews['resolution'] * 2 ** (overviews['level']['max'] - int(level))
-
-        for slab_x in range(level_limits["MinSlabCol"], level_limits["MaxSlabCol"] + 1):
-            for slab_y in range(level_limits["MinSlabRow"], level_limits["MaxSlabRow"] + 1):
-
-                if int(level) in change and str(slab_x) + "_" + str(slab_y) in change[int(level)] \
-                        and change[int(level)][str(slab_x) + "_" + str(slab_y)]:
-
-                    args_create_ortho_and_graph.append({
-                        'slab': {
-                            'x': slab_x,
-                            'y': slab_y,
-                            'level': int(level),
-                            'resolution': resol
-                        },
-                        'overviews': overviews,
-                        'dbOption': db_option,
-                        'cache': dir_cache,
-                        'gdalOption':  gdal_option
-                    })
-    return args_create_ortho_and_graph
+def display_bar(current, nb_total, width=50):
+    if not nb_total > 0:
+        return
+    width_per_step = width/nb_total
+    width_done = int(current*width_per_step)
+    print("\r |" + width_done*'#' + (width-width_done)*'-'+'|', end="", flush=True)
+    if current == nb_total:
+        print()
 
 
 def create_blank_slab(overviews, slab, nb_bands, spatial_ref):
@@ -491,9 +363,6 @@ def create_ortho_and_graph_1arg(arg):
 
     overviews = arg['overviews']
 
-    if arg['advancement'] != 0:
-        print("%", end='', flush=True)
-
     # on cree le graphe et l'ortho
     first_opi = list(overviews["list_OPI"].values())[0]
     with_rgb = first_opi['with_rgb']
@@ -514,7 +383,7 @@ def create_ortho_and_graph_1arg(arg):
     slab_ortho_rgb = arg['cache'] + '/ortho/' + str(arg['slab']['level']) + '/' + slab_path + '.tif'
     slab_ortho_ir = arg['cache'] + '/ortho/' + str(arg['slab']['level']) + '/' + slab_path + 'i.tif'
     slab_graph = arg['cache'] + '/graph/' + str(arg['slab']['level']) + '/' + slab_path + '.tif'
-    is_empty = False
+    is_empty = True
 
     for filename in glob.glob(slab_opi_root + '*.tif'):
         stem = Path(filename).stem[3:]
@@ -535,11 +404,6 @@ def create_ortho_and_graph_1arg(arg):
             db_graph = gdal.OpenEx(arg['dbOption']['connString'], gdal.OF_VECTOR)
             # requete sql adaptee pour marcher avec des nomenclatures du type
             # 20FD1325x00001_02165 ou OPI_20FD1325x00001_02165
-            # gdal.Rasterize(mask,
-            #                db_graph,
-            #                SQLStatement='select geom from '
-            #                + arg['dbOption']['table']
-            #                + ' where cliche like \'%' + stem[-20:] + '%\'')
             # attention, le graph contient peut-etre des reférences aux images RGB
             # alors que les fichiers sont peut-être des IR
             stem_cleaned1 = stem.replace("OPI_", "")
