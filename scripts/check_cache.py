@@ -1,36 +1,39 @@
 # coding: utf-8
-"""This script create or update a cache with a list of OPI"""
+"""This script tests if two caches are equivalent"""
 import os
 import argparse
 import hashlib
 import json
 
 
+# TODO : gestion des erreurs par rapport à Github ?
+
+
 def read_args():
-    """Gestion des arguments"""
+    """Parameters management"""
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--sample",
-                        help="cache directory",
+                        help="cache path to be tested",
                         type=str)
     parser.add_argument("-r", "--ref",
-                        help="reference cache directory",
+                        help="reference cache path",
                         type=str)
     parser.add_argument("-v", "--verbose",
                         help="verbose (default: 0, meaning no verbose)",
                         type=int,
                         default=0)
-    args = parser.parse_args()
+    args_val = parser.parse_args()
 
-    if args.verbose > 1:
-        print("\nArguments: ", args)
+    if args_val.verbose > 1:
+        print("\nArguments: ", args_val)
 
-    if not os.path.isdir(args.sample):
-        raise SystemExit("Cache '" + args.sample + "' doesn't exist.")
-    if not os.path.isdir(args.ref):
-        raise SystemExit("Cache '" + args.ref + "' doesn't exist.")
+    if not os.path.isdir(args_val.sample):
+        raise SystemExit("Cache '" + args_val.sample + "' doesn't exist.")
+    if not os.path.isdir(args_val.ref):
+        raise SystemExit("Cache '" + args_val.ref + "' doesn't exist.")
 
-    return args
+    return args_val
 
 
 def count_files(path):
@@ -39,6 +42,7 @@ def count_files(path):
     return count
 
 
+# TODO : pouvoir filtrer par extension
 def get_list_files(path):
     """Return the list of files in a path"""
     list_files = []
@@ -75,17 +79,18 @@ def check_files_count(sample, ref):
     ref_ortho_num = count_files(os.path.join(ref, 'ortho'))
     ref_graph_num = count_files(os.path.join(ref, 'graph'))
 
-    print("# Test nombre de fichiers")
+    print('# Test nombre de fichiers')
     if not sample_opi_num == ref_opi_num:
-        raise SystemExit(f"## ERREUR : Nb OPI diff {sample_opi_num} (cache) et {ref_opi_num} (ref)")
+        raise SystemExit('## ERREUR : Nb OPI diff entre les deux caches')
 
     if not sample_ortho_num == ref_ortho_num:
         raise SystemExit(
-            f"## ERREUR : Nb ortho diff {sample_ortho_num} (cache) et {ref_ortho_num} (ref)")
+            '## ERREUR : Nb ortho diff entre les deux caches'
+        )
 
     if not sample_graph_num == ref_graph_num:
         raise SystemExit(
-            f"## ERREUR : Nb graph diff {sample_graph_num} (cache) et {ref_graph_num} (ref)"
+            '## ERREUR : Nb graph diff entre les deux caches'
         )
 
     # total
@@ -94,20 +99,20 @@ def check_files_count(sample, ref):
 
     if not sample_file_num == ref_file_num:
         raise SystemExit(
-            f"##ERREUR : Nb fichiers diff {sample_file_num} (cache) et {ref_file_num} (sample)")
-    print("## Fin test nombre de fichiers : OK")
+            '##ERREUR : Nb fichiers diff entre les deux caches')
+    print('## Fin test nombre de fichiers : OK')
 
 
 def no_empty_file(sample):
-    """Check if the dataste has no empty files"""
+    """Check if the dataset has no empty files"""
     list_files = get_list_files(sample)
 
-    print("# Test fichiers vides")
+    print('# Test fichiers vides')
 
     result = any(os.path.getsize(file) == 0 for file in list_files)
     if result:
-        raise SystemExit(f"ERREUR : Le cache {sample} contient au moins un fichier vide")
-    print("## Fin test fichiers vides : OK")
+        raise SystemExit('ERREUR : Le cache contient au moins un fichier vide')
+    print('## Fin test fichiers vides : OK')
 
 
 def check_md5(sample, ref):
@@ -115,9 +120,6 @@ def check_md5(sample, ref):
     # ortho
     list_files_sample_ortho = get_list_files(os.path.join(sample, 'ortho'))
     list_files_ref_ortho = get_list_files(os.path.join(ref, 'ortho'))
-
-    if len(list_files_sample_ortho) != len(list_files_ref_ortho):
-        raise SystemExit("# ERREUR : Il n'y a pas le même nombre d'ortho dans les deux caches")
 
     list_keys_ref_ortho = [(file,
                             hash_bytestr_iter(file_as_blockiter(open(file, 'rb')),
@@ -130,7 +132,7 @@ def check_md5(sample, ref):
                               for file in list_files_sample_ortho]
 
     # [[file, md5_sample, md5_ref],[file2, md5_sample, md5_ref],...]
-    print("# Test clés MD5 ORTHO")
+    print('# Test clés MD5 ORTHO')
     for value in list_keys_sample_ortho:
         key = os.path.basename(value[0])
         hash_value = value[1]
@@ -138,17 +140,14 @@ def check_md5(sample, ref):
             if os.path.basename(ref_elem[0]) == key:
                 if ref_elem[1] != hash_value:
                     raise SystemExit(
-                        f"## ERREUR : Les hash pour le fichier {key} ne sont pas égales"
+                        f"## ERREUR : Les hash pour le fichier '{key}' ne sont pas égales"
                     )
 
-    print("## Fin test clés MD5 ORTHO : OK")
+    print('## Fin test clés MD5 ORTHO : OK')
 
     # opis
     list_files_sample_opi = get_list_files(os.path.join(sample, 'opi'))
     list_files_ref_opi = get_list_files(os.path.join(ref, 'opi'))
-
-    if len(list_files_sample_opi) != len(list_files_ref_opi):
-        raise SystemExit("# ERREUR : Il n'y a pas le même nombre d'opi dans les deux caches")
 
     list_keys_ref_opi = [(file,
                           hash_bytestr_iter(file_as_blockiter(open(file, 'rb')),
@@ -161,13 +160,13 @@ def check_md5(sample, ref):
                             for file in list_files_sample_opi]
 
     # [[file, md5_sample, md5_ref],[file2, md5_sample, md5_ref],...]
-    print("# Test clés MD5 OPI")
+    print('# Test clés MD5 OPI')
     for key, value in list_keys_sample_opi:
         for ref_elem in list_keys_ref_opi:
             if os.path.basename(ref_elem[0]) == key:
                 if ref_elem[1] != value:
                     raise SystemExit(
-                        f"## ERREUR : Les hash pour le fichier {key} ne sont pas égaux"
+                        f"## ERREUR : Les hash pour le fichier '{key}' ne sont pas égaux"
                     )
 
     print("## Fin test clés MD5 OPI : OK")
@@ -175,82 +174,85 @@ def check_md5(sample, ref):
 
 def check_overviews(sample, ref):
     """Check overviews files of the two datasets"""
-    with open(sample + '/overviews.json') as sample_overviews:
-        sample_data = json.load(sample_overviews)
+    try:
+        with open(ref + '/overviews.json') as ref_overviews:
+            ref_data = json.load(ref_overviews)
+            # on prend la premiere opi pour retrouver type cache
+            ref_first_opi = list(ref_data['list_OPI'])[0]
+            try:
+                with open(sample + '/overviews.json') as sample_overviews:
+                    sample_data = json.load(sample_overviews)
+                    # on prend la premiere opi pour retrouver type cache
+                    sample_first_opi = list(sample_data['list_OPI'])[0]
+                    print('# Test fichiers overviews')
+                    # test canaux des caches
+                    ref_rgb = ref_data['list_OPI'][ref_first_opi]['with_rgb']
+                    ref_ir = ref_data['list_OPI'][ref_first_opi]['with_ir']
 
-    with open(ref + '/overviews.json') as ref_overviews:
-        ref_data = json.load(ref_overviews)
+                    sample_rgb = sample_data['list_OPI'][sample_first_opi]['with_rgb']
+                    sample_ir = sample_data['list_OPI'][sample_first_opi]['with_ir']
 
-    ref_first_opi = list(ref_data['list_OPI'])[0]
-    sample_first_opi = list(sample_data['list_OPI'])[0]
+                    if ref_rgb != sample_rgb or ref_ir != sample_ir:
+                        raise SystemExit('## ERREUR : Incohérence type cache')
 
-    print("# Test fichiers overviews")
-    # test canaux des caches
-    ref_rgb = ref_data['list_OPI'][ref_first_opi]['with_rgb']
-    ref_ir = ref_data['list_OPI'][ref_first_opi]['with_ir']
+                    print('## Test type cache : OK')
 
-    sample_rgb = sample_data['list_OPI'][sample_first_opi]['with_rgb']
-    sample_ir = sample_data['list_OPI'][sample_first_opi]['with_ir']
+                    # on parcourt la reference en vérifiant que
+                    # les données à tester correspondent bien
+                    for key in ref_data:
+                        if key == 'list_OPI':
+                            if key not in sample_data:
+                                raise SystemExit(
+                                    f"## ERREUR : attribut '{key}' non présent \
+                                     dans '{os.path.join(sample, 'overviews.json')}'"
+                                )
 
-    if ref_rgb != sample_rgb:
-        raise SystemExit("## ERREUR : Probleme de RGB !")
-    if ref_ir != sample_ir:
-        raise SystemExit("## ERREUR : Probleme d'IR !")
+                            # on vérifie qu'on a bien les memes noms d'OPI
+                            if set(ref_data[key]) != set(sample_data[key]):
+                                raise SystemExit("## ERREUR : Incohérence de nom d'OPI")
 
-    print("## Test canaux OK")
+                            for opi in ref_data[key]:
+                                opi_ref = ref_data[key][opi]
+                                opi_sample = sample_data[key][opi]
+                                if len(opi_ref['color']) != len(opi_sample['color']):
+                                    raise SystemExit('## ERREUR : Incohérence couleurs graphe')
 
-    # on parcourt la reference en vérifiant que les donnees à tester correspondent bien
-    for key in ref_data:
-        if key == 'list_OPI':
-            if key not in sample_data:
-                raise SystemExit(
-                    f"## ERREUR : attribut {key} non présent \
-                     dans {os.path.join(ref, 'overviews.json')}"
-                )
+                                result = all(str(c).isdigit() for c in opi_sample['color'])
+                                if not result:
+                                    raise SystemExit(
+                                        '## ERREUR : Valeur(s) couleur(s) incorrecte(s)'
+                                    )
 
-            # on verifie qu'on a bien les memes OPI
-            if set(ref_data[key]) != set(sample_data[key]):
-                raise SystemExit("## ERREUR : les OPI ne sont pas les mêmes dans les deux caches")
+                                if opi_ref['date'] != opi_sample['date'] or \
+                                        opi_ref['time_ut'] != opi_sample['time_ut']:
+                                    raise SystemExit('## ERREUR : Incohérence métadonnées')
+                        else:
+                            if key not in sample_data:
+                                raise SystemExit(
+                                    f"## ERREUR : Attribut '{key}' non présent \
+                                     dans '{os.path.join(ref, 'overviews.json')}'"
+                                )
 
-            for opi in ref_data[key]:
-                opi_ref = ref_data[key][opi]
-                opi_sample = sample_data[key][opi]
-                color = ref_data[key][opi]['color']
-                if len(ref_data[key][opi]['color']) != len(sample_data[key][opi]['color']):
-                    raise SystemExit("## ERREUR : Nombre de canaux incorrect")
+                            if ref_data[key] != sample_data[key]:
+                                raise SystemExit(f"## ERREUR : Non correspondance pour '{key}'")
 
-                result = all(str(c).isdigit() for c in color)
-                if not result:
-                    raise SystemExit("## ERREUR : color values are not int")
-
-                if opi_ref['date'] != opi_sample['date']:
-                    raise SystemExit(f"## ERREUR : date are not equals for {opi}")
-
-                if opi_ref['time_ut'] != opi_sample['time_ut']:
-                    raise SystemExit(f"## ERREUR : time_ut are not equals for {opi}")
-        else:
-            if key not in sample_data:
-                raise SystemExit(
-                    f"## ERREUR : attribut {key} non présent \
-                     dans {os.path.join(ref, 'overviews.json')}"
-                )
-
-            if ref_data[key] != sample_data[key]:
-                raise SystemExit(f"## ERREUR : non correspondance pour le bloc {key}")
-
-    print("## Fin test fichiers overviews : OK")
+                    print('## Fin test fichiers overviews : OK')
+            except IOError:
+                print(f"ERREUR: Le fichier '{sample + '/overviews.json'}' n'existe pas.")
+    except IOError:
+        print(f"ERREUR: Le fichier '{ref + '/overviews.json'}' n'existe pas.")
 
 
-args = read_args()
+args_input = read_args()
 
-print(f"Cache de référence : {args.ref}")
-print(f"Cache testé : {args.sample}")
+print(f"Cache de référence : '{args_input.ref}'")
+print(f"Cache testé : '{args_input.sample}'")
 
 # vérifier l'overviews en premier
-check_overviews(args.sample, args.ref)
+check_overviews(args_input.sample, args_input.ref)
 
 # vérification sur les fichiers
-check_files_count(args.sample, args.ref)
-no_empty_file(args.sample)
+check_files_count(args_input.sample, args_input.ref)
+no_empty_file(args_input.sample)
 
-check_md5(args.sample, args.ref)
+check_md5(args_input.sample, args_input.ref)
