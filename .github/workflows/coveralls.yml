@@ -88,6 +88,18 @@ jobs:
       run: |
         python scripts/update_cache.py -I "regress/data/update/IR/*.tif" -c cache_regress_IR -g "regress/data/regress_graphe.gpkg" -t graphe -r 1
 
+    - name: check cache RGB
+      run: |
+        python scripts/check_cache.py -r "cache_test/cache_test_RGB" -s cache_regress_RGB
+        
+    - name: check cache RGBIR
+      run: |
+        python scripts/check_cache.py -r "cache_test/cache_test_RGBIR" -s cache_regress_RGBIR
+        
+    - name: check cache IR
+      run: |
+        python scripts/check_cache.py -r "cache_test/cache_test_IR" -s cache_regress_IR
+        
     - name: install
       run: npm install
 
