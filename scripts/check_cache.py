@@ -34,11 +34,13 @@ def read_args():
 
 
 def count_files(path):
+    """Return the number of files in a path"""
     count = sum([len(files) for root, dirs, files in os.walk(path)])
     return count
 
 
 def get_list_files(path):
+    """Return the list of files in a path"""
     list_files = []
     for (root, dirs, files) in os.walk(path):
         list_files += [os.path.join(root, file) for file in files]
@@ -46,12 +48,14 @@ def get_list_files(path):
 
 
 def hash_bytestr_iter(bytesiter, hasher, ashexstr=False):
+    """Return a hash depending on parameters"""
     for block in bytesiter:
         hasher.update(block)
     return hasher.hexdigest() if ashexstr else hasher.digest()
 
 
 def file_as_blockiter(afile, blocksize=65536):
+    """Read a file by blocks"""
     with afile:
         block = afile.read(blocksize)
         while len(block) > 0:
@@ -60,6 +64,7 @@ def file_as_blockiter(afile, blocksize=65536):
 
 
 def check_files_count(sample, ref):
+    """Check files count between two datasets"""
     # directories for cache
     sample_opi_num = count_files(os.path.join(sample, 'opi'))
     sample_ortho_num = count_files(os.path.join(sample, 'ortho'))
@@ -70,11 +75,7 @@ def check_files_count(sample, ref):
     ref_ortho_num = count_files(os.path.join(ref, 'ortho'))
     ref_graph_num = count_files(os.path.join(ref, 'graph'))
 
-
     print("# Test nombre de fichiers")
-
-
-    # TODO : homogeneiser les messages d'erreur
     if not sample_opi_num == ref_opi_num:
         raise SystemExit(f"## ERREUR : Nb OPI diff {sample_opi_num} (cache) et {ref_opi_num} (ref)")
 
@@ -94,11 +95,11 @@ def check_files_count(sample, ref):
     if not sample_file_num == ref_file_num:
         raise SystemExit(
             f"##ERREUR : Nb fichiers diff {sample_file_num} (cache) et {ref_file_num} (sample)")
-    # TODO
     print("## Fin test nombre de fichiers : OK")
 
 
 def no_empty_file(sample):
+    """Check if the dataste has no empty files"""
     list_files = get_list_files(sample)
 
     print("# Test fichiers vides")
@@ -110,6 +111,7 @@ def no_empty_file(sample):
 
 
 def check_md5(sample, ref):
+    """Check if both datasets have the same files"""
     # ortho
     list_files_sample_ortho = get_list_files(os.path.join(sample, 'ortho'))
     list_files_ref_ortho = get_list_files(os.path.join(ref, 'ortho'))
@@ -117,10 +119,14 @@ def check_md5(sample, ref):
     if len(list_files_sample_ortho) != len(list_files_ref_ortho):
         raise SystemExit("# ERREUR : Il n'y a pas le même nombre d'ortho dans les deux caches")
 
-    list_keys_ref_ortho = [(file, hash_bytestr_iter(file_as_blockiter(open(file, 'rb')), hashlib.md5(), True))
+    list_keys_ref_ortho = [(file,
+                            hash_bytestr_iter(file_as_blockiter(open(file, 'rb')),
+                                              hashlib.md5(), True))
                            for file in list_files_ref_ortho]
 
-    list_keys_sample_ortho = [(file, hash_bytestr_iter(file_as_blockiter(open(file, 'rb')), hashlib.md5(), True))
+    list_keys_sample_ortho = [(file,
+                               hash_bytestr_iter(file_as_blockiter(open(file, 'rb')),
+                                                 hashlib.md5(), True))
                               for file in list_files_sample_ortho]
 
     # [[file, md5_sample, md5_ref],[file2, md5_sample, md5_ref],...]
@@ -131,7 +137,9 @@ def check_md5(sample, ref):
         for ref_elem in list_keys_ref_ortho:
             if os.path.basename(ref_elem[0]) == key:
                 if ref_elem[1] != hash_value:
-                    raise SystemExit(f"## ERREUR : Les hash pour le fichier {key} ne sont pas égales")
+                    raise SystemExit(
+                        f"## ERREUR : Les hash pour le fichier {key} ne sont pas égales"
+                    )
 
     print("## Fin test clés MD5 ORTHO : OK")
 
@@ -142,10 +150,14 @@ def check_md5(sample, ref):
     if len(list_files_sample_opi) != len(list_files_ref_opi):
         raise SystemExit("# ERREUR : Il n'y a pas le même nombre d'opi dans les deux caches")
 
-    list_keys_ref_opi = [(file, hash_bytestr_iter(file_as_blockiter(open(file, 'rb')), hashlib.md5(), True))
+    list_keys_ref_opi = [(file,
+                          hash_bytestr_iter(file_as_blockiter(open(file, 'rb')),
+                                            hashlib.md5(), True))
                          for file in list_files_ref_opi]
 
-    list_keys_sample_opi = [(file, hash_bytestr_iter(file_as_blockiter(open(file, 'rb')), hashlib.md5(), True))
+    list_keys_sample_opi = [(file,
+                             hash_bytestr_iter(file_as_blockiter(open(file, 'rb')),
+                                               hashlib.md5(), True))
                             for file in list_files_sample_opi]
 
     # [[file, md5_sample, md5_ref],[file2, md5_sample, md5_ref],...]
@@ -154,28 +166,79 @@ def check_md5(sample, ref):
         for ref_elem in list_keys_ref_opi:
             if os.path.basename(ref_elem[0]) == key:
                 if ref_elem[1] != value:
-                    raise SystemExit(f"## ERREUR : Les hash pour le fichier {key} ne sont pas égaux")
+                    raise SystemExit(
+                        f"## ERREUR : Les hash pour le fichier {key} ne sont pas égaux"
+                    )
 
     print("## Fin test clés MD5 OPI : OK")
 
 
 def check_overviews(sample, ref):
+    """Check overviews files of the two datasets"""
     with open(sample + '/overviews.json') as sample_overviews:
         sample_data = json.load(sample_overviews)
 
     with open(ref + '/overviews.json') as ref_overviews:
         ref_data = json.load(ref_overviews)
 
-    print(sample_data)
+    ref_first_opi = list(ref_data['list_OPI'])[0]
+    sample_first_opi = list(sample_data['list_OPI'])[0]
 
     print("# Test fichiers overviews")
+    # test canaux des caches
+    ref_rgb = ref_data['list_OPI'][ref_first_opi]['with_rgb']
+    ref_ir = ref_data['list_OPI'][ref_first_opi]['with_ir']
+
+    sample_rgb = sample_data['list_OPI'][sample_first_opi]['with_rgb']
+    sample_ir = sample_data['list_OPI'][sample_first_opi]['with_ir']
+
+    if ref_rgb != sample_rgb:
+        raise SystemExit("## ERREUR : Probleme de RGB !")
+    if ref_ir != sample_ir:
+        raise SystemExit("## ERREUR : Probleme d'IR !")
+
+    print("## Test canaux OK")
+
     # on parcourt la reference en vérifiant que les donnees à tester correspondent bien
     for key in ref_data:
-        print(key)
-        if key not in sample_data:
-            raise SystemExit(f"## ERREUR : attribut {key} non présent dans {os.path.join(ref, 'overviews.json')}")
+        if key == 'list_OPI':
+            if key not in sample_data:
+                raise SystemExit(
+                    f"## ERREUR : attribut {key} non présent \
+                     dans {os.path.join(ref, 'overviews.json')}"
+                )
 
-    print("## Fin test fichiers overviews")
+            # on verifie qu'on a bien les memes OPI
+            if set(ref_data[key]) != set(sample_data[key]):
+                raise SystemExit("## ERREUR : les OPI ne sont pas les mêmes dans les deux caches")
+
+            for opi in ref_data[key]:
+                opi_ref = ref_data[key][opi]
+                opi_sample = sample_data[key][opi]
+                color = ref_data[key][opi]['color']
+                if len(ref_data[key][opi]['color']) != len(sample_data[key][opi]['color']):
+                    raise SystemExit("## ERREUR : Nombre de canaux incorrect")
+
+                result = all(str(c).isdigit() for c in color)
+                if not result:
+                    raise SystemExit("## ERREUR : color values are not int")
+
+                if opi_ref['date'] != opi_sample['date']:
+                    raise SystemExit(f"## ERREUR : date are not equals for {opi}")
+
+                if opi_ref['time_ut'] != opi_sample['time_ut']:
+                    raise SystemExit(f"## ERREUR : time_ut are not equals for {opi}")
+        else:
+            if key not in sample_data:
+                raise SystemExit(
+                    f"## ERREUR : attribut {key} non présent \
+                     dans {os.path.join(ref, 'overviews.json')}"
+                )
+
+            if ref_data[key] != sample_data[key]:
+                raise SystemExit(f"## ERREUR : non correspondance pour le bloc {key}")
+
+    print("## Fin test fichiers overviews : OK")
 
 
 args = read_args()
@@ -191,4 +254,3 @@ check_files_count(args.sample, args.ref)
 no_empty_file(args.sample)
 
 check_md5(args.sample, args.ref)
-
