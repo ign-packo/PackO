@@ -301,11 +301,11 @@ async function getLayer(pgClient, idVector) {
     debug(`    ~~getLayer (idBranch: ${idVector.idBranch}, name: ${idVector.name})`);
   }
   const sql = format(
-    "SELECT json_build_object('type', 'FeatureCollection', 'name', name, 'crs', json_build_object('type', substring(crs from '(.+):.'), 'properties', json_build_object('code', substring(crs from '.:(.+)'))), 'features', features) as geojson "
-    + 'FROM features_json f, layers l'
-    + ' WHERE f.id_layer=l.id'
-    + ' AND %s',
-    typeof idVector !== 'object' ? `f.id_layer=${idVector}` : `l.id_branch=${idVector.idBranch} AND l.name='${idVector.name}'`,
+    'WITH fj AS ( SELECT * FROM features_json WHERE features_json.id_layer = (%s)) '
+    + "SELECT json_build_object('type', 'FeatureCollection', 'name', l.name, 'crs', json_build_object('type', substring(l.crs from '(.+):.'), 'properties', json_build_object('code', substring(l.crs from '.:(.+)'))), 'features', fj.features) as geojson "
+    + 'FROM fj, layers l '
+    + 'WHERE fj.id_layer=l.id',
+    typeof idVector !== 'object' ? idVector : `SELECT id FROM  layers WHERE id_branch=${idVector.idBranch} AND name='${idVector.name}'`,
   );
 
   debug('      ', sql);
