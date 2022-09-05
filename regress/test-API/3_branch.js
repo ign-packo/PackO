@@ -4,12 +4,16 @@ chai.use(require('chai-json-schema'));
 
 const should = chai.should();
 const fs = require('fs');
+const path = require('path');
 
 const app = require('../..');
 
-const cachePath = './cache_test/cache_test_RGBIR';
+let cachePath = './cache_test/cache_test_RGBIR';
 const overviews = JSON.parse(fs.readFileSync(`${cachePath}/overviews.json`, 'utf8'));
 const cacheName = 'cacheRegress';
+
+// for npm run test
+const cachePathTmp = './regress/tmp4tests';
 
 let idCache = null;
 function setIdCache(id) {
@@ -25,6 +29,46 @@ function setIdBranch(name, id) {
 // for rebase (adding a patch)
 const testOpi = '19FD5606Ax00020_16371';
 
+function copyFileSync(source, target) {
+  let targetFile = target;
+  // If target is a directory, a new file with the same name will be created
+  if (fs.existsSync(target)) {
+    if (fs.lstatSync(target).isDirectory()) {
+      targetFile = path.join(target, path.basename(source));
+    }
+  }
+  fs.writeFileSync(targetFile, fs.readFileSync(source));
+}
+
+function copyFolderRecursiveSync(source, target) {
+  let files = [];
+  // Check if folder needs to be created or integrated
+  const targetFolder = path.join(target, path.basename(source));
+  if (!fs.existsSync(targetFolder)) {
+    fs.mkdirSync(targetFolder);
+  }
+  // Copy
+  if (fs.lstatSync(source).isDirectory()) {
+    files = fs.readdirSync(source);
+    files.forEach(function (file) {
+      const curSource = path.join(source, file);
+      if (fs.lstatSync(curSource).isDirectory()) {
+        copyFolderRecursiveSync(curSource, targetFolder);
+      } else {
+        copyFileSync(curSource, targetFolder);
+      }
+    });
+  }
+}
+
+if (process.env.TEST_ENV === 'test') {
+  if (!fs.existsSync(cachePathTmp)) {
+    fs.mkdirSync(cachePathTmp);
+  }
+  copyFolderRecursiveSync(path.join(cachePath), cachePathTmp);
+  cachePath = path.join(cachePathTmp, path.basename(cachePath));
+}
+
 const idProcessus = {};
 function setIdProcessus(rebaseName, id) {
   idProcessus[rebaseName] = id;
@@ -33,6 +77,9 @@ function setIdProcessus(rebaseName, id) {
 describe('route/branch.js', () => {
   after((done) => {
     app.server.close();
+    if (process.env.TEST_ENV === 'test') {
+      fs.rmSync(cachePathTmp, { recursive: true, force: true });
+    }
     done();
   });
 
