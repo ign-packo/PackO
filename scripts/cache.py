@@ -186,7 +186,6 @@ def cut_opi():
         'verbose': args.verbose
     }
 
-    print(" Découpage")
     cache.cut_image_1arg(args_cut_image)
 
 
@@ -228,7 +227,7 @@ def export_as_json(filename, jobs_1, jobs_2):
     """Export json file for gpao"""
     gpao = {'projects': [
         {'name': 'decoupage', 'jobs': []},
-        {'name': 'export', 'jobs': [], 'deps': [0]}
+        {'name': 'export', 'jobs': [], 'deps': [{'id': 0}]}
         ]}
     for job in jobs_1:
         gpao['projects'][0]['jobs'].append(job)
@@ -280,21 +279,24 @@ def generate(update):
     if len(list_filename_rgb) == 0:
         list_filename = list_filename_ir
 
-    # si on est en mis a jour
+    # si on est en mise a jour
     # on suppose que le graphe n'a pas changé
-    # donc la liste des clichés et l'emprise reste la même
+    # donc la liste des clichés et l'emprise restent la même
     # donc pas de modification des MTD
     if not update:
         for filename in list_filename:
             basename = Path(filename).stem
             # on recupere les metadonnees d'acquisition
-            layer = db_graph.GetLayer()
+            graph_layer = db_graph.GetLayer()
             filename_tmp = basename.replace('OPI_', '').replace('_ix', 'x')
-            layer.SetAttributeFilter("CLICHE LIKE '" + filename_tmp + "'")
-            feature = layer.GetNextFeature()
-            date = feature.GetField('DATE')
-            time_ut = feature.GetField('HEURE_TU')
-            layer.SetAttributeFilter(None)
+            graph_layer.SetAttributeFilter("CLICHE LIKE '" + filename_tmp + "'")
+            opi_feature = graph_layer.GetNextFeature()
+            # si l'OPI n'est pas presente, passer a la suite
+            if opi_feature is None:
+                continue
+            date = opi_feature.GetField('DATE')
+            time_ut = opi_feature.GetField('HEURE_TU')
+            graph_layer.SetAttributeFilter(None)
 
             overviews_dict["list_OPI"][basename] = {
                 'color': cache.new_color(basename, color_dict),
@@ -327,13 +329,16 @@ def generate(update):
         for filename in list_filename:
             basename = Path(filename).stem
             if basename not in overviews_dict['list_OPI']:
-                layer = db_graph.GetLayer()
+                graph_layer = db_graph.GetLayer()
                 filename_tmp = basename.replace('OPI_', '').replace('_ix', 'x')
-                layer.SetAttributeFilter("CLICHE LIKE '" + filename_tmp + "'")
-                feature = layer.GetNextFeature()
-                date = feature.GetField('DATE')
-                time_ut = feature.GetField('HEURE_TU')
-                layer.SetAttributeFilter(None)
+                graph_layer.SetAttributeFilter("CLICHE LIKE '" + filename_tmp + "'")
+                opi_feature = graph_layer.GetNextFeature()
+                # si l'OPI n'est pas presente, passer a la suite
+                if opi_feature is None:
+                    continue
+                date = opi_feature.GetField('DATE')
+                time_ut = opi_feature.GetField('HEURE_TU')
+                graph_layer.SetAttributeFilter(None)
 
                 overviews_dict["list_OPI"][basename] = {
                     'color': cache.new_color(basename, color_dict),
@@ -364,9 +369,10 @@ def generate(update):
         opi_unused = []
         cmds1 = []
         for filename in list_filename:
+            print(f"  Image : {filename}")
             opi = Path(filename).stem
             if opi not in overviews_dict['list_OPI'].keys():
-                print(opi, '   -> pas dans le graphe', sep="")
+                print('  ', opi, ' -> pas dans le graphe', sep="")
                 opi_unused.append(opi)
             else:
                 cmd1 = (
@@ -416,10 +422,7 @@ def generate(update):
         else:
             table = args.table
         for level in slabbox_export.keys():
-            print("  level :", level)
-
             level_limits = slabbox_export[level]
-
             for slab_x in range(level_limits["MinSlabCol"], level_limits["MaxSlabCol"] + 1):
                 cmds2.append(
                     {'name': level+'_'+str(slab_x),
@@ -438,7 +441,6 @@ def generate(update):
         if args.running:
             time_start_opi = time.perf_counter()
             # lancement des traitements de la phase 1
-            time_start_opi = time.perf_counter()
             print('Découpage OPI')
             cmds = []
             for cmd in cmds1:
