@@ -11,7 +11,7 @@ const cachePath = './cache_test/cache_test_RGBIR';
 const overviews = JSON.parse(fs.readFileSync(`${cachePath}/overviews.json`, 'utf8'));
 const cacheName = 'cacheRegress';
 
-const vector = JSON.parse(fs.readFileSync('./regress/data/vector.json', 'utf8'));
+const vector = JSON.parse(fs.readFileSync('./regress/data/extra_layers/vector.json', 'utf8'));
 const vectorName = vector.metadonnees.name;
 const testBranchName = 'vectorRegress';
 
