@@ -6,9 +6,6 @@ import hashlib
 import json
 
 
-# TODO : gestion des erreurs par rapport à Github ?
-
-
 def read_args():
     """Parameters management"""
 
@@ -39,15 +36,12 @@ def read_args():
 def count_files(path, ext=""):
     """Return the number of files in a path"""
     return sum(f.endswith(ext) for root, dirs, files in os.walk(path) for f in files)
-    #count = sum(len(f for f in files if f.lower().endswith(ext)) for _, _, files in os.walk(path))
-    #return count
 
 
-# TODO : pouvoir filtrer par extension
 def get_list_files(path):
     """Return the list of files in a path"""
     list_files = []
-    for (root, dirs, files) in os.walk(path):
+    for (root, _, files) in os.walk(path):
         list_files += [os.path.join(root, file) for file in files]
     return list_files
 
