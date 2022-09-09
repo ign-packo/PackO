@@ -36,10 +36,11 @@ def read_args():
     return args_val
 
 
-def count_files(path):
+def count_files(path, ext=""):
     """Return the number of files in a path"""
-    count = sum([len(files) for root, dirs, files in os.walk(path)])
-    return count
+    return sum(f.endswith(ext) for root, dirs, files in os.walk(path) for f in files)
+    #count = sum(len(f for f in files if f.lower().endswith(ext)) for _, _, files in os.walk(path))
+    #return count
 
 
 # TODO : pouvoir filtrer par extension
@@ -99,7 +100,24 @@ def check_files_count(sample, ref):
 
     if not sample_file_num == ref_file_num:
         raise SystemExit(
-            '##ERREUR : Nb fichiers diff entre les deux caches')
+            '## ERREUR : Nb fichiers diff entre les deux caches')
+
+    # total json
+    sample_file_num_json = count_files(sample, 'json')
+    ref_file_num_json = count_files(ref, 'json')
+
+    if sample_file_num_json != ref_file_num_json:
+        raise SystemExit(
+            '## ERREUR : Nb JSON diff entre les deux caches')
+
+    # total tif
+    sample_file_num_tif = count_files(sample, 'tif')
+    ref_file_num_tif = count_files(ref, 'tif')
+
+    if sample_file_num_tif != ref_file_num_tif:
+        raise SystemExit(
+            '## ERREUR : Nb TIFF diff entre les deux caches')
+
     print('## Fin test nombre de fichiers : OK')
 
 
