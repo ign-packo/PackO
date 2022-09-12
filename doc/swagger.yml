@@ -723,6 +723,7 @@ paths:
             type: string
             enum:
               - LAMB93_5cm
+              - LAMB93_20cm
             example: LAMB93_5cm
         - in: query
           name: TILEMATRIX
