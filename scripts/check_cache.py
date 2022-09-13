@@ -129,6 +129,32 @@ def no_empty_file(sample):
 
 def check_md5(sample, ref):
     """Check if both datasets have the same files"""
+    # opis
+    list_files_sample_opi = get_list_files(os.path.join(sample, 'opi'))
+    list_files_ref_opi = get_list_files(os.path.join(ref, 'opi'))
+
+    list_keys_ref_opi = [(file,
+                          hash_bytestr_iter(file_as_blockiter(open(file, 'rb')),
+                                            hashlib.md5(), True))
+                         for file in list_files_ref_opi]
+
+    list_keys_sample_opi = [(file,
+                             hash_bytestr_iter(file_as_blockiter(open(file, 'rb')),
+                                               hashlib.md5(), True))
+                            for file in list_files_sample_opi]
+
+    # [[file, md5_sample, md5_ref],[file2, md5_sample, md5_ref],...]
+    print('# Test clés MD5 OPI')
+    for key, value in list_keys_sample_opi:
+        for ref_elem in list_keys_ref_opi:
+            if os.path.basename(ref_elem[0]) == key:
+                if ref_elem[1] != value:
+                    raise SystemExit(
+                        f"## ERREUR : Les hash pour le fichier '{key}' ne sont pas égaux"
+                    )
+
+    print("## Fin test clés MD5 OPI : OK")
+
     # ortho
     list_files_sample_ortho = get_list_files(os.path.join(sample, 'ortho'))
     list_files_ref_ortho = get_list_files(os.path.join(ref, 'ortho'))
@@ -156,32 +182,6 @@ def check_md5(sample, ref):
                     )
 
     print('## Fin test clés MD5 ORTHO : OK')
-
-    # opis
-    list_files_sample_opi = get_list_files(os.path.join(sample, 'opi'))
-    list_files_ref_opi = get_list_files(os.path.join(ref, 'opi'))
-
-    list_keys_ref_opi = [(file,
-                          hash_bytestr_iter(file_as_blockiter(open(file, 'rb')),
-                                            hashlib.md5(), True))
-                         for file in list_files_ref_opi]
-
-    list_keys_sample_opi = [(file,
-                             hash_bytestr_iter(file_as_blockiter(open(file, 'rb')),
-                                               hashlib.md5(), True))
-                            for file in list_files_sample_opi]
-
-    # [[file, md5_sample, md5_ref],[file2, md5_sample, md5_ref],...]
-    print('# Test clés MD5 OPI')
-    for key, value in list_keys_sample_opi:
-        for ref_elem in list_keys_ref_opi:
-            if os.path.basename(ref_elem[0]) == key:
-                if ref_elem[1] != value:
-                    raise SystemExit(
-                        f"## ERREUR : Les hash pour le fichier '{key}' ne sont pas égaux"
-                    )
-
-    print("## Fin test clés MD5 OPI : OK")
 
 
 def check_overviews(sample, ref):
