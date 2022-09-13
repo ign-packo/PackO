@@ -178,7 +178,8 @@ def check_md5(sample, ref):
             if os.path.basename(ref_elem[0]) == key:
                 if ref_elem[1] != hash_value:
                     raise SystemExit(
-                        f"## ERREUR : Les hash pour le fichier '{key}' ne sont pas égales"
+                        f"## ERREUR : Les hash pour le fichier '{key}' ne sont pas égales \ "
+                        f"MD5 {value[0]} = {value[1]} / {ref_elem[0]} = {ref_elem[1]}"
                     )
 
     print('## Fin test clés MD5 ORTHO : OK')
