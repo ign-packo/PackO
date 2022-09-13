@@ -104,9 +104,9 @@ jobs:
     #  run: |
     #    python scripts/check_cache.py -r "cache_test/cache_test_RGB" -s cache_regress_RGB
         
-    - name: check cache RGBIR
-      run: |
-        python scripts/check_cache.py -r "cache_test/cache_test_RGBIR" -s cache_regress_RGBIR
+    #- name: check cache RGBIR
+    #  run: |
+    #    python scripts/check_cache.py -r "cache_test/cache_test_RGBIR" -s cache_regress_RGBIR
         
     - name: check cache IR
       run: |
