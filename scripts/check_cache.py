@@ -111,7 +111,6 @@ def check_files_count(sample, ref):
     if sample_file_num_tif != ref_file_num_tif:
         raise SystemExit(
             '## ERREUR : Nb TIFF diff entre les deux caches')
-
     print('## Fin test nombre de fichiers : OK')
 
 
@@ -268,4 +267,4 @@ check_overviews(args_input.sample, args_input.ref)
 check_files_count(args_input.sample, args_input.ref)
 no_empty_file(args_input.sample)
 
-check_md5(args_input.sample, args_input.ref)
+# check_md5(args_input.sample, args_input.ref)
