@@ -162,11 +162,13 @@ def check_md5(sample, ref):
                             hash_bytestr_iter(file_as_blockiter(open(file, 'rb')),
                                               hashlib.md5(), True))
                            for file in list_files_ref_ortho]
+    print(list_keys_ref_ortho)
 
     list_keys_sample_ortho = [(file,
                                hash_bytestr_iter(file_as_blockiter(open(file, 'rb')),
                                                  hashlib.md5(), True))
                               for file in list_files_sample_ortho]
+    print(list_keys_sample_ortho)
 
     # [[file, md5_sample, md5_ref],[file2, md5_sample, md5_ref],...]
     print('# Test clés MD5 ORTHO')
@@ -267,4 +269,4 @@ check_overviews(args_input.sample, args_input.ref)
 check_files_count(args_input.sample, args_input.ref)
 no_empty_file(args_input.sample)
 
-# check_md5(args_input.sample, args_input.ref)
+check_md5(args_input.sample, args_input.ref)
