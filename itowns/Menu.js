@@ -48,7 +48,6 @@ class Menu {
       typeGui = 'vectorGui';
     }
     if (this[typeGui].hasFolder(layer.id)) { return; }
-    if (layer.id === 'selectedFeature') { return; }
 
     // name folder
     const folder = this[typeGui].addFolder(layer.id);
@@ -71,9 +70,6 @@ class Menu {
     visib.domElement.classList.add('visibcbx');
     visib.onChange(((value) => {
       layer.visible = value;
-      if (layer.isAlert === true) {
-        this.view.getLayerById('selectedFeature').visible = value;
-      }
       this.view.notifyChange(layer);
     }));
 
@@ -87,7 +83,7 @@ class Menu {
     if (['Ortho', 'Opi'].includes(layer.id)) {
       const style = folder.add(layer.id === 'Ortho' ? this.view : this.view.Opi, 'style', this.view.styles);
       style.onChange((value) => {
-        this.view.changeStyle(layer.id, value);
+        this.view.changeWmtsStyle(layer.id, value);
       });
     }
 

@@ -3,9 +3,11 @@
 import * as itowns from 'itowns';
 import Viewer from './Viewer';
 import Editing from './Editing';
+import Alert from './Alert';
 import Branch from './Branch';
 import Controller from './Controller';
 import Menu from './Menu';
+import API from './Api';
 
 // Global itowns pour setupLoadingScreen -> peut être améliorer
 global.itowns = itowns;
@@ -92,6 +94,7 @@ async function main() {
     }
 
     console.log(activeCache);
+    const api = new API(apiUrl, activeCache.id);
 
     const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews?cachePath=${activeCache.path}`);
     const getBranches = itowns.Fetcher.json(`${apiUrl}/branches?idCache=${activeCache.id}`);
@@ -100,6 +103,7 @@ async function main() {
 
     const viewerDiv = document.getElementById('viewerDiv');
     const viewer = new Viewer(viewerDiv);
+    viewer.api = api;
 
     const overviews = await getOverviews;
 
@@ -153,8 +157,9 @@ async function main() {
     // viewer.menuGlobe.vectorGui.domElement.id = 'extraLayers';
     // viewer.menuGlobe.vectorGui.open();
 
-    const branch = new Branch(apiUrl, viewer);
-    const editing = new Editing(branch, apiUrl);
+    const alert = new Alert(viewer);
+    const branch = new Branch(viewer, alert);
+    const editing = new Editing(branch);
 
     const controllers = new Controller(viewer.menuGlobe, editing);
 
@@ -175,7 +180,6 @@ async function main() {
     controllers.branch = viewer.menuGlobe.gui.add(controllers, 'branchName', branch.list.map((elem) => elem.name)).name('Active branch');
     controllers.branch.onChange((name) => {
       document.activeElement.blur();
-      console.log('choosed branch: ', name);
       branch.changeBranch(name);
     });
     controllers.createBranch = viewer.menuGlobe.gui.add(branch, 'createBranch').name('Add new branch');
@@ -213,64 +217,16 @@ async function main() {
     controllers.message.domElement.parentElement.style.pointerEvents = 'none';
 
     // Couche d'alertes
-    editing.alert = '-';
-    editing.alertLayerName = '-';
-    controllers.alert = viewer.menuGlobe.gui.add(editing, 'alert', [editing.alert, ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
+    controllers.alert = viewer.menuGlobe.gui.add({ layerName: '-' }, 'layerName', [alert.layerName, ...branch.vectorList.map((elem) => elem.name)]).name('Alerts Layer');
     controllers.alert.onChange(async (layerName) => {
       document.activeElement.blur();
+      await alert.changeLayer(layerName);
+      controllers.setAlertCtr(alert.nbTotal === 0 ? '-' : layerName);
 
-      editing.featureIndex = null;
-      editing.nbChecked = 0;
-      editing.nbTotal = 0;
-      editing.nbValidated = 0;
-      if (editing.alertLayerName !== '-') viewer.view.getLayerById(editing.alertLayerName).isAlert = false;
-
-      controllers.resetAlerts();
-
-      if (layerName !== '-') {
-        editing.alertLayerName = layerName;
-
-        const layerAlert = viewer.view.getLayerById(layerName);
-        layerAlert.isAlert = true;
-        editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
-
-        if (editing.alertFC.features.length > 0) {
-          editing.nbValidated = editing.alertFC.features[0].geometries.filter(
-            (elem) => elem.properties.status === true,
-          ).length;
-          editing.nbChecked = editing.alertFC.features[0].geometries.filter(
-            (elem) => elem.properties.status !== null,
-          ).length;
-          editing.nbTotal = editing.alertFC.features[0].geometries.length;
-          editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
-
-          let featureIndex = 0;
-          if (editing.alertFC.features[0].geometries[0].properties.status !== null) {
-            while (featureIndex < editing.alertFC.features[0].geometries.length
-            && editing.alertFC.features[0].geometries[featureIndex].properties.status !== null) {
-              featureIndex += 1;
-            }
-            featureIndex -= 1;
-          }
-          editing.featureIndex = featureIndex;
-
-          editing.id = 0;
-          // controllers.id.updateDisplay();
-
-          editing.centerOnAlertFeature();
-          editing.validated = editing.featureSelectedGeom.properties.status;
-          // controllers.validated.updateDisplay();
-
-          editing.comment = editing.featureSelectedGeom.properties.comment;
-          // controllers.comment.updateDisplay();
-        }
-      }
-
-      viewer.refresh(branch.layers);
-      controllers.setAlertCtr(editing.nbTotal === 0 ? '-' : layerName);
+      // viewer.refresh(branch.layers);
     });
-    editing.id = '';
-    controllers.id = viewer.menuGlobe.gui.add(editing, 'id').name('Alert id').listen();
+    alert.id = '';
+    controllers.id = viewer.menuGlobe.gui.add(alert, 'id').name('Alert id').listen();
     controllers.id.onChange(() => {
       console.log("saisie d'une id");
       editing.currentStatus = editing.STATUS.WRITING;
@@ -279,58 +235,32 @@ async function main() {
       const newId = parseInt(value, 10);
       console.log('Nouvelle id : ', newId);
       editing.currentStatus = editing.STATUS.RAS;
-      if (newId >= 0 && newId < editing.nbTotal) {
-        editing.featureIndex = newId;
-
-        editing.centerOnAlertFeature();
+      if (newId >= 0 && newId < alert.nbTotal) {
+        alert.changeFeature(newId, { centerOnFeature: true });
       } else {
         viewer.message = 'id non valide';
-        editing.id = editing.featureIndex;
+        alert.id = alert.featureIndex;
         // controllers.id.updateDisplay();
       }
     });
     // controllers.hide('id');
 
-    editing.progress = '';
-    controllers.progress = viewer.menuGlobe.gui.add(editing, 'progress').name('Progress').listen();
+    alert.progress = '';
+    controllers.progress = viewer.menuGlobe.gui.add(alert, 'progress').name('Progress').listen();
     controllers.progress.domElement.parentElement.style.pointerEvents = 'none';
     // controllers.hide('progress');
 
-    controllers.unchecked = viewer.menuGlobe.gui.add(editing, 'unchecked').name('Mark as unchecked');
-    // controllers.hide('unchecked');
+    controllers.uncheck = viewer.menuGlobe.gui.add(alert, 'uncheck').name('Mark as unchecked');
+    // controllers.hide('uncheck');
 
-    editing.validated = false;
-    controllers.validated = viewer.menuGlobe.gui.add(editing, 'validated').name('Validated [c]').listen();
+    alert.validated = false;
+    controllers.validated = viewer.menuGlobe.gui.add(alert, 'validated').name('Validated [c]').listen();
     controllers.validated.domElement.id = 'validatedAlert';
-    controllers.validated.onChange(async (value) => {
-      console.log('change status', value);
-      const idFeature = editing.featureSelectedGeom.properties.id;
-      const res = await fetch(`${apiUrl}/vector/${idFeature}?status=${value}`,
-        {
-          method: 'PUT',
-        });
-      if (res.status === 200) {
-        // viewer.refresh(branch.layers);
-        viewer.refresh([editing.alertLayerName]);
-        if (value === true) {
-          editing.nbValidated += 1;
-          if (editing.alertFC.features[0].geometries[editing.featureIndex]
-            .properties.status === null) {
-            editing.nbChecked += 1;
-          }
-        } else {
-          editing.nbValidated -= 1;
-        }
-        editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
-        editing.alertFC.features[0].geometries[editing.featureIndex].properties.status = value;
-      } else {
-        viewer.message = 'PB with validate';
-      }
-    });
+    controllers.validated.onChange((value) => { alert.setValidation(value); });
     // controllers.hide('validated');
 
-    editing.comment = '';
-    controllers.comment = viewer.menuGlobe.gui.add(editing, 'comment').name('comment').listen();
+    alert.comment = '';
+    controllers.comment = viewer.menuGlobe.gui.add(alert, 'comment').name('comment').listen();
     controllers.comment.domElement.parentElement.style.pointerEvents = 'none';
     // controllers.hide('comment');
 
@@ -340,7 +270,7 @@ async function main() {
     // controllers.hide('delRemark');
 
     controllers.setPatchCtr(branch.active.name);// branch.active.name = 'orig'
-    controllers.setAlertCtr(editing.alert);// editing.alert = '-'
+    controllers.setAlertCtr(alert.layerName);// alert.layerName = '-'
     controllers.setOpiCtr(editing.opiName);// editing.opiName = 'none'
 
     // editing controllers
@@ -375,10 +305,19 @@ async function main() {
       }
     });
 
-    view.addEventListener('file-dropped', async (event) => {
-      console.log('-> A file had been dropped');
-      await branch.saveLayer(event.name, event.data, event.style);
-      controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
+    view.addEventListener('file-dropped', (ev) => {
+      console.log(`-> A file (${ev.name}) had been dropped`);
+      branch.saveLayer(ev.name, ev.data, ev.style)
+        .then(() => {
+          view.refresh(branch.layers.filter((layer) => layer.name === ev.name));
+          controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
+        })
+        .catch((error) => {
+          view.dispatchEvent({
+            type: 'error',
+            error,
+          });
+        });
     });
 
     view.addEventListener('vectorLayer-removed', (event) => {
@@ -413,77 +352,66 @@ async function main() {
     });
 
     view.addEventListener('branch-changed', (newBranch) => {
-      console.log(`branche changed to '${newBranch.name}'`);
+      console.log(`branch changed to '${newBranch.name}'`);
       controllers.setPatchCtr(newBranch.name);
       controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)], '-');
       controllers.setAlertCtr('-');
-      controllers.resetAlerts();
       viewer.removeExtraLayers(viewer.menuGlobe);
-      viewer.view.changeBranch(newBranch.id, apiUrl);
+      viewer.view.changeBranch(newBranch.id);
       viewer.refresh(branch.layers);
     });
 
     view.addEventListener('remark-added', async () => {
       console.log('-> A remark had been added');
-      if (editing.alertLayerName === 'Remarques') {
+      if (alert.layerName === 'Remarques') {
         const layerAlert = viewer.view.getLayerById('Remarques');
         await layerAlert.whenReady;
-        editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
+        alert.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
+        const alertFC = alert.featureCollection;
 
-        editing.nbValidated = editing.alertFC.features[0].geometries.filter(
+        alert.nbValidated = alertFC.features[0].geometries.filter(
           (elem) => elem.properties.status === true,
         ).length;
-        editing.nbChecked = editing.alertFC.features[0].geometries.filter(
+        alert.nbChecked = alertFC.features[0].geometries.filter(
           (elem) => elem.properties.status !== null,
         ).length;
-        editing.nbTotal = editing.alertFC.features[0].geometries.length;
-        editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
+        alert.nbTotal = alertFC.features[0].geometries.length;
+        alert.progress = `${alert.nbChecked}/${alert.nbTotal} (${alert.nbValidated} validés)`;
 
-        if (editing.nbTotal === 1) {
-          editing.featureIndex = 0;
-          editing.centerOnAlertFeature();
+        if (alert.nbTotal === 1) {
+          alert.changeFeature(0, { centerOnFeature: true });
+          controllers.setAlertCtr('Remarques');
         }
-        editing.validated = editing.featureSelectedGeom.properties.status;
-        // controllers.validated.updateDisplay();
-        editing.comment = editing.featureSelectedGeom.properties.comment;
-        // controllers.comment.updateDisplay();
-
-        controllers.setAlertCtr('Remarques');
       }
     });
 
     view.addEventListener('remark-deleted', async () => {
       console.log('-> A remark had been deleted');
-      const layerAlert = viewer.view.getLayerById(editing.alertLayerName);
+      viewer.refresh(['Remarques']);
+      const layerAlert = viewer.view.getLayerById(alert.layerName);
       await layerAlert.whenReady;
-      editing.alertFC = await layerAlert.source.loadData(undefined, layerAlert);
+      alert.featureCollection = await layerAlert.source.loadData(undefined, layerAlert);
+      const alertFC = alert.featureCollection;
 
-      if (editing.alertFC.features.length > 0) {
-        editing.nbValidated = editing.alertFC.features[0].geometries.filter(
+      if (alertFC.features.length > 0) {
+        alert.nbValidated = alertFC.features[0].geometries.filter(
           (elem) => elem.properties.status === true,
         ).length;
-        editing.nbChecked = editing.alertFC.features[0].geometries.filter(
+        alert.nbChecked = alertFC.features[0].geometries.filter(
           (elem) => elem.properties.status !== null,
         ).length;
-        editing.nbTotal = editing.alertFC.features[0].geometries.length;
-        editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
-        editing.featureIndex -= 1;
-        if (editing.featureIndex === -1) {
-          editing.featureIndex = editing.alertFC.features[0].geometries.length - 1;
-        }
+        alert.nbTotal = alertFC.features[0].geometries.length;
+        alert.progress = `${alert.nbChecked}/${alert.nbTotal} (${alert.nbValidated} validés)`;
 
-        if (editing.nbTotal === 1) {
-          editing.featureIndex = 0;
-          editing.centerOnAlertFeature();
-        }
-        editing.validated = editing.featureSelectedGeom.properties.status;
-        // controllers.validated.updateDisplay();
-        editing.comment = editing.featureSelectedGeom.properties.comment;
-        // controllers.comment.updateDisplay();
+        alert.selectPrevious({ centerOnFeature: true, forceRefresh: true });
       } else {
         controllers.setAlertCtr('-');
-        view.removeLayer('selectedFeature');
       }
+    });
+
+    view.addEventListener('alert-selected', (ev) => {
+      viewer.refresh([...ev.layersToRefresh]);
+      if (ev.option.centerOnFeature) viewer.centerCameraOn(ev.featureCenter);
     });
 
     view.addEventListener('error', (ev) => {
@@ -495,46 +423,11 @@ async function main() {
     viewerDiv.addEventListener('mousemove', (ev) => {
       ev.preventDefault();
       editing.mousemove(ev);
-      return false;
     }, false);
+
     viewerDiv.addEventListener('click', async (ev) => {
       ev.preventDefault();
-
-      if (editing.alertLayerName !== '-') {
-        const layerTest = view.getLayerById(editing.alertLayerName);
-        const features = view.pickFeaturesAt(ev, 5, layerTest.id);
-
-        if (features[layerTest.id].length > 0) {
-          const featureCollec = await layerTest.source.loadData(undefined, layerTest);
-          editing.alertFC = featureCollec;
-          for (let i = 0; i < featureCollec.features[0].geometries.length; i += 1) {
-            if (featureCollec.features[0].geometries[i] === features[layerTest.id][0].geometry) {
-              editing.featureIndex = i;
-            }
-          }
-
-          if (features[layerTest.id][0].geometry.properties.status === null) {
-            editing.postValue(features[layerTest.id][0].geometry.properties.id, 'status', false);
-            editing.featureSelectedGeom.properties.status = false;
-            editing.nbChecked += 1;
-            editing.progress = `${editing.nbChecked}/${editing.nbTotal} (${editing.nbValidated} validés)`;
-          }
-
-          editing.id = editing.featureIndex;
-          // controllers.id.updateDisplay();
-          editing.validated = features[layerTest.id][0].geometry.properties.status;
-          // controllers.validated.updateDisplay();
-          editing.comment = features[layerTest.id][0].geometry.properties.comment;
-          // controllers.comment.updateDisplay();
-
-          editing.highlightSelectedFeature(featureCollec,
-            features[layerTest.id][0].geometry,
-            features[layerTest.id][0].type);
-        }
-      }
-
       editing.click(ev);
-      return false;
     }, false);
 
     viewerDiv.addEventListener('mousedown', (ev) => {
@@ -557,7 +450,7 @@ async function main() {
     controllers.coord.onFinishChange(() => {
       const coords = checkCoordString(editing.coord);
       if (coords) {
-        viewer.centerCamera(coords[0], coords[1]);
+        viewer.centerCameraOn(coords[0], coords[1]);
       }
       editing.currentStatus = editing.STATUS.RAS;
       viewer.message = '';
@@ -573,7 +466,7 @@ async function main() {
     });
 
     document.getElementById('recenterBtn').addEventListener('click', () => {
-      viewer.centerCamera(viewer.xcenter, viewer.ycenter);
+      viewer.centerCameraOn(viewer.xcenter, viewer.ycenter);
       return false;
     }, false);
     document.getElementById('zoomInBtn').addEventListener('click', () => {
