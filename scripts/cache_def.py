@@ -3,6 +3,7 @@
 
 from pathlib import Path
 from random import randrange
+import os
 import math
 import glob
 import time
@@ -395,7 +396,8 @@ def create_ortho_and_graph_1arg(arg):
                 filename_ir = filename
                 filename_rgb = None
             elif with_ir:
-                filename_ir = filename.replace('x', '_ix')
+                filename_ir = os.path.join(os.path.dirname(filename),
+                                           os.path.basename(filename.replace('x', '_ix')))
 
             # on cree une image mono canal pour la tuile
             mask = create_blank_slab(overviews, arg['slab'], 1, arg['gdalOption']['spatialRef'])
