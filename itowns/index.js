@@ -163,7 +163,7 @@ async function main() {
     viewer.refresh(branch.layers);
 
     // Gestion branche
-    menu.add({ branchName: branch.active.name }, 'branchName', branch.list.map((elem) => elem.name))
+    menu.add({ activeBranch: branch.active.name }, 'activeBranch', branch.list.map((elem) => elem.name))
       .name('Active branch')
       .onChange((name) => {
         document.activeElement.blur();
@@ -223,12 +223,12 @@ async function main() {
       .domElement.parentElement.style.pointerEvents = 'none';
 
     // Couche d'alertes
-    menu.add({ alert: '-' }, 'alert', [alert.layerName, ...branch.vectorList.map((elem) => elem.name)])
+    menu.add({ alertLayer: '-' }, 'alertLayer', [alert.layerName, ...branch.vectorList.map((elem) => elem.name)])
       .name('Alerts Layer')
       .onChange(async (layerName) => {
         document.activeElement.blur();
         await alert.changeLayer(layerName);
-        controllers.setAlertCtr(alert.nbTotal === 0 ? '-' : layerName);
+        menu.setAlertCtr(alert.nbTotal === 0 ? '-' : layerName);
       });
     menu.add(alert, 'id')
       .name('Alert id').listen()
@@ -266,10 +266,10 @@ async function main() {
     menu.add(editing, 'addRemark').name('Add remark [a]');
     menu.add(editing, 'delRemark').name('Delete remark [d]');
 
-    // visibilty of controllers
-    controllers.setPatchCtr(branch.active.name);// branch.active.name = 'orig'
-    controllers.setAlertCtr(alert.layerName);// alert.layerName = '-'
-    controllers.setOpiCtr(editing.opiName);// editing.opiName = 'none'
+    // visibility of controllers
+    menu.setPatchCtr(branch.active.name);// branch.active.name = 'orig'
+    menu.setAlertCtr(alert.layerName);// alert.layerName = '-'
+    menu.setOpiCtr(editing.opiName);// editing.opiName = 'none'
 
     // editing controllers
     // editing.controllers = {
@@ -305,7 +305,7 @@ async function main() {
       branch.saveLayer(ev.name, ev.data, ev.style)
         .then(() => {
           view.refresh(branch.layers.filter((layer) => layer.name === ev.name));
-          controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
+          menu.refreshDropBox('alertLayer', ['-', ...branch.vectorList.map((elem) => elem.name)]);
         })
         .catch((error) => {
           view.dispatchEvent({
@@ -319,7 +319,7 @@ async function main() {
       branch.deleteLayer(event.layerId, event.layerName)
         .then(() => {
           console.log(`-> Vector '${event.layerName} (id: ${event.layerId}) had been deleted`);
-          controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)]);
+          menu.refreshDropBox('alertLayer', ['-', ...branch.vectorList.map((elem) => elem.name)]);
         })
         .catch((error) => {
           view.dispatchEvent({
@@ -337,20 +337,20 @@ async function main() {
       } else {
         viewer.refresh('Opi');
       }
-      controllers.setOpiCtr(newOpi.name);
+      menu.setOpiCtr(newOpi.name);
     });
 
     view.addEventListener('branch-created', (newBranch) => {
       console.log(`-> New branch created (name: '${newBranch.name}', id: ${newBranch.id})`);
       branch.changeBranch(newBranch.name);
-      controllers.refreshDropBox('branch', [...branch.list.map((elem) => elem.name)], newBranch.name);
+      menu.refreshDropBox('activeBranch', [...branch.list.map((elem) => elem.name)], newBranch.name);
     });
 
     view.addEventListener('branch-changed', (newBranch) => {
       console.log(`branch changed to '${newBranch.name}'`);
-      controllers.setPatchCtr(newBranch.name);
-      controllers.refreshDropBox('alert', ['-', ...branch.vectorList.map((elem) => elem.name)], '-');
-      controllers.setAlertCtr('-');
+      menu.setPatchCtr(newBranch.name);
+      menu.refreshDropBox('alertLayer', ['-', ...branch.vectorList.map((elem) => elem.name)], '-');
+      menu.setAlertCtr('-');
       viewer.removeExtraLayers();
       viewer.view.changeBranch(newBranch.id);
       viewer.refresh(branch.layers);
@@ -375,7 +375,7 @@ async function main() {
 
         if (alert.nbTotal === 1) {
           alert.changeFeature(0, { centerOnFeature: true });
-          controllers.setAlertCtr('Remarques');
+          menu.setAlertCtr('Remarques');
         }
       }
     });
@@ -400,7 +400,7 @@ async function main() {
 
         alert.selectPrevious({ centerOnFeature: true, forceRefresh: true });
       } else {
-        controllers.setAlertCtr('-');
+        menu.setAlertCtr('-');
       }
     });
 
