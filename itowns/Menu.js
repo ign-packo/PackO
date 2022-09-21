@@ -34,6 +34,9 @@ dat.controllers.Controller.prototype.hide = function hide() {
 dat.controllers.Controller.prototype.selectIndex = function selectIndex(newIndex) {
   this.__select.options.selectedIndex = newIndex;
 };
+dat.controllers.Controller.prototype.setBackgroundColorTo = function _(newColor) {
+  this.__li.style.backgroundColor = newColor;
+};
 /* eslint-enable no-underscore-dangle */
 
 class Menu extends dat.GUI {

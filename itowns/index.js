@@ -5,7 +5,6 @@ import Viewer from './Viewer';
 import Editing from './Editing';
 import Alert from './Alert';
 import Branch from './Branch';
-import Controller from './Controller';
 import Menu from './Menu';
 import API from './Api';
 
@@ -98,8 +97,6 @@ async function main() {
 
     const getOverviews = itowns.Fetcher.json(`${apiUrl}/json/overviews?cachePath=${activeCache.path}`);
     const getBranches = itowns.Fetcher.json(`${apiUrl}/branches?idCache=${activeCache.id}`);
-    // const getPatches = itowns.Fetcher.json(`${apiUrl}/0/patches`);
-    // const getVectorList = itowns.Fetcher.json(`${apiUrl}/vectors?cachePath=${activeCache.path}`);
 
     const viewerDiv = document.getElementById('viewerDiv');
     const viewer = new Viewer(viewerDiv);
@@ -150,11 +147,8 @@ async function main() {
 
     const alert = new Alert(viewer);
     const branch = new Branch(viewer, alert);
-    const editing = new Editing(branch);
+    const editing = new Editing(branch, menu);
 
-    const controllers = new Controller(menu);
-
-    // const branch = new Branch(apiUrl, viewer);
     branch.list = await getBranches;
 
     [branch.active] = branch.list;
@@ -271,14 +265,6 @@ async function main() {
     menu.setAlertCtr(alert.layerName);// alert.layerName = '-'
     menu.setOpiCtr(editing.opiName);// editing.opiName = 'none'
 
-    // editing controllers
-    // editing.controllers = {
-    //   select: controllers.select,
-    //   opiName: controllers.opiName,
-    //   polygon: controllers.polygon,
-    //   addRemark: controllers.addRemark,
-    // };
-    editing.controllers = controllers;
     viewerDiv.focus();
 
     // Listen to drag and drop actions
