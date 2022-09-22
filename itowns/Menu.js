@@ -69,7 +69,7 @@ class Menu extends dat.GUI {
     });
   }
 
-  setVisible(controllerName) {
+  show(controllerName) {
     const controllers = (typeof controllerName === 'string' || controllerName instanceof String) ? [controllerName] : controllerName;
     controllers.forEach((controller) => {
       this.getController(controller).show();
@@ -84,17 +84,17 @@ class Menu extends dat.GUI {
   }
 
   setPatchCtr(branchName) {
-    this[branchName !== 'orig' ? 'setVisible' : 'hide'](['polygon', 'undo', 'redo']);
-    if (process.env.NODE_ENV === 'development') this[branchName !== 'orig' ? 'setVisible' : 'hide']('clear');
+    this[branchName !== 'orig' ? 'show' : 'hide'](['polygon', 'undo', 'redo']);
+    if (process.env.NODE_ENV === 'development') this[branchName !== 'orig' ? 'show' : 'hide']('clear');
   }
 
   setAlertCtr(layerName) {
-    this[layerName !== '-' ? 'setVisible' : 'hide'](['progress', 'id', 'validated', 'uncheck', 'comment']);
-    this[layerName === 'Remarques' ? 'setVisible' : 'hide'](['delRemark']);
+    this[layerName !== '-' ? 'show' : 'hide'](['progress', 'id', 'validated', 'uncheck', 'comment']);
+    this[layerName === 'Remarques' ? 'show' : 'hide'](['delRemark']);
   }
 
   setOpiCtr(opiName) {
-    this[opiName === 'none' ? 'hide' : 'setVisible'](['opiName', 'opiDate', 'opiTime']);
+    this[opiName === 'none' ? 'hide' : 'show'](['opiName', 'opiDate', 'opiTime']);
   }
 
   refreshDropBox(dropBoxName, listOfValues,
