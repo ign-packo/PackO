@@ -39,7 +39,6 @@
     "gdal-async": "^3.4.2",
     "geojson-validation": "^1.0.2",
     "git-describe": "^4.1.0",
-    "jimp": "^0.14.0",
     "mocha": "^9.2.0",
     "nocache": "^2.1.0",
     "pg": "^8.7.1",
@@ -50,6 +49,7 @@
     "swagger-editor-dist": "^3.18.1",
     "swagger-ui-dist": "^4.1.3",
     "swagger-ui-express": "^4.2.0",
+    "uuid": "^9.0.0",
     "xml2js": "^0.4.23",
     "yamljs": "^0.3.0",
     "yargs": "^15.4.1"
