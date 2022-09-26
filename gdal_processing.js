@@ -62,59 +62,37 @@ async function getTileEncoded(url, x, y, z, formatGDAL, blocSize, bands) {
   const withRgb = b.includes(0) || b.includes(1) || b.includes(2);
   const withIr = b.includes(3);
 
-  if (withRgb) {
-    if (withIr) {
-      const rgb = await gdal.openAsync(url);
-      const ir = await gdal.openAsync(urlIr);
-      const br = (z === 0)
-        ? await ir.bands.getAsync(1)
-        : await (await ir.bands.getAsync(1)).overviews.getAsync(z - 1);
-      const bg = (z === 0)
-        ? await rgb.bands.getAsync(2)
-        : await (await rgb.bands.getAsync(1)).overviews.getAsync(z - 1);
-      const bb = (z === 0)
-        ? await rgb.bands.getAsync(3)
-        : await (await rgb.bands.getAsync(1)).overviews.getAsync(z - 1);
-      const outDS = await gdal.openAsync('default', 'w', 'MEM', blocSize, blocSize, 3);
-      await (await outDS.bands.getAsync(1)).pixels.writeAsync(0, 0, blocSize, blocSize,
-        await br.pixels.readAsync(x * blocSize, y * blocSize, blocSize, blocSize));
-      await (await outDS.bands.getAsync(2)).pixels.writeAsync(0, 0, blocSize, blocSize,
-        await bg.pixels.readAsync(x * blocSize, y * blocSize, blocSize, blocSize));
-      await (await outDS.bands.getAsync(3)).pixels.writeAsync(0, 0, blocSize, blocSize,
-        await bb.pixels.readAsync(x * blocSize, y * blocSize, blocSize, blocSize));
-      await gdal.drivers.get(formatGDAL).createCopyAsync(name, outDS);
-    } else {
-      const rgb = await gdal.openAsync(url);
-      const br = (z === 0)
-        ? await rgb.bands.getAsync(1)
-        : await (await rgb.bands.getAsync(1)).overviews.getAsync(z - 1);
-      const bg = (z === 0)
-        ? await rgb.bands.getAsync(2)
-        : await (await rgb.bands.getAsync(2)).overviews.getAsync(z - 1);
-      const bb = (z === 0)
-        ? await rgb.bands.getAsync(3)
-        : await (await rgb.bands.getAsync(3)).overviews.getAsync(z - 1);
-      const outDS = await gdal.openAsync('default', 'w', 'MEM', blocSize, blocSize, 3);
-      await (await outDS.bands.getAsync(1)).pixels.writeAsync(0, 0, blocSize, blocSize,
-        await br.pixels.readAsync(x * blocSize, y * blocSize, blocSize, blocSize));
-      await (await outDS.bands.getAsync(2)).pixels.writeAsync(0, 0, blocSize, blocSize,
-        await bg.pixels.readAsync(x * blocSize, y * blocSize, blocSize, blocSize));
-      await (await outDS.bands.getAsync(3)).pixels.writeAsync(0, 0, blocSize, blocSize,
-        await bb.pixels.readAsync(x * blocSize, y * blocSize, blocSize, blocSize));
-      await gdal.drivers.get(formatGDAL).createCopyAsync(name, outDS);
-    }
-  } else {
-    const ir = await gdal.openAsync(urlIr);
-    const br = (z === 0)
-      ? await ir.bands.getAsync(1)
-      : await (await ir.bands.getAsync(1)).overviews.getAsync(z - 1);
-    const P = await br.pixels.readAsync(x * blocSize, y * blocSize, blocSize, blocSize);
-    const outDS = await gdal.openAsync('default', 'w', 'MEM', blocSize, blocSize, 3);
-    await (await outDS.bands.getAsync(1)).pixels.writeAsync(0, 0, blocSize, blocSize, P);
-    await (await outDS.bands.getAsync(2)).pixels.writeAsync(0, 0, blocSize, blocSize, P);
-    await (await outDS.bands.getAsync(3)).pixels.writeAsync(0, 0, blocSize, blocSize, P);
-    await gdal.drivers.get(formatGDAL).createCopyAsync(name, outDS);
-  }
+  // const ds = withRgb ? await gdal.openAsync(url) : null;
+  // const dsIr = withIr ? await gdal.openAsync(urlIr) : null;
+  const blocks = withRgb
+    ? await gdal.openAsync(url).then((ds) => Promise.all([
+      ds.bands.getAsync(1)
+        .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
+        .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)),
+      ds.bands.getAsync(2)
+        .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
+        .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)),
+      ds.bands.getAsync(3)
+        .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
+        .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)),
+    ]))
+    : [null, null, null];
+  blocks.push(withIr
+    ? await gdal.openAsync(urlIr).then((ds) => ds.bands.getAsync(1)
+      .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
+      .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)))
+    : null);
+
+  const outDS = await gdal.openAsync('default', 'w', 'MEM', blocSize, blocSize, 3);
+
+  await Promise.all([
+    outDS.bands.getAsync(1).then((band) => band.pixels.writeAsync(0, 0,
+      blocSize, blocSize, blocks[b[0]])),
+    outDS.bands.getAsync(2).then((band) => band.pixels.writeAsync(0, 0,
+      blocSize, blocSize, blocks[b[1]])),
+    outDS.bands.getAsync(3).then((band) => band.pixels.writeAsync(0, 0,
+      blocSize, blocSize, blocks[b[2]]))])
+    .then(() => gdal.drivers.get(formatGDAL).createCopyAsync(name, outDS));
 
   return gdal.vsimem.release(name);
 }
