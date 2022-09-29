@@ -27,11 +27,14 @@ async function getTileEncoded(url, x, y, z, formatGDAL, blocSize, bands) {
   // pour les OPIs (YB_OPI_20FD6925x00001_00588.tif -> YB_OPI_20FD6925ix00001_00588.tif)
   // pour les Ortho (UP.tif -> IPi.tif)
   let urlIr = url;
+  let urlRgb = url;
   if (url.includes('_ix') === false) {
     urlIr = url.includes('x') ? url.replace('x', '_ix') : url.replace('.', 'i.');
+  } else {
+    urlRgb = url.replace('_ix', 'x');
   }
 
-  debug(url, urlIr);
+  debug(urlRgb, urlIr);
   if (b.includes(3)) {
     try {
       await fs.promises.access(urlIr, fs.constants.R_OK);
@@ -46,7 +49,7 @@ async function getTileEncoded(url, x, y, z, formatGDAL, blocSize, bands) {
     }
   } else {
     try {
-      await fs.promises.access(url, fs.constants.R_OK);
+      await fs.promises.access(urlRgb, fs.constants.R_OK);
     } catch (_) {
       debug('default');
       if (!(blocSize in defaultImage)) {
@@ -62,10 +65,8 @@ async function getTileEncoded(url, x, y, z, formatGDAL, blocSize, bands) {
   const withRgb = b.includes(0) || b.includes(1) || b.includes(2);
   const withIr = b.includes(3);
 
-  // const ds = withRgb ? await gdal.openAsync(url) : null;
-  // const dsIr = withIr ? await gdal.openAsync(urlIr) : null;
   const blocks = withRgb
-    ? await gdal.openAsync(url).then((ds) => Promise.all([
+    ? await gdal.openAsync(urlRgb).then((ds) => Promise.all([
       ds.bands.getAsync(1)
         .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
         .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)),
