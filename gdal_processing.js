@@ -2,6 +2,7 @@ const fs = require('fs');
 const debug = require('debug')('gdal');
 const gdal = require('gdal-async');
 const Jimp = require('jimp');
+const path = require('path');
 
 // Image par defaut (elle sera créée la premier fois que l'on en a besoin)
 let DEFAULT_IMAGE = null;
@@ -37,13 +38,18 @@ function getTile(url, x, y, z, blocSize, cacheKey, bands) {
   // dans le cas des OPI avec un cache purement IR (présence de _ix)
   // en cas de besoin (bands contient 3), il faut construire le chemin vers l'image IR
   // pour les OPIs (YB_OPI_20FD6925x00001_00588.tif -> YB_OPI_20FD6925ix00001_00588.tif)
-  // pour les Ortho (UP.tif -> IPi.tif)
+  // pour les Ortho (UP.tif -> UPi.tif)
   let urlIr = url;
-  if (url.includes('_ix') === false) {
-    urlIr = url.includes('x') ? url.replace('x', '_ix') : url.replace('.', 'i.');
+  const dname = path.dirname(urlIr);
+  let fname = path.basename(urlIr);
+
+  if (fname.includes('_ix') === false) {
+    fname = fname.includes('x') ? fname.replace('x', '_ix') : fname.replace('.', 'i.');
+    urlIr = path.join(dname, fname);
   }
 
   debug(url, urlIr);
+
   const cacheKeyIr = `${cacheKey}_ir`;
 
   if (b.includes(3)) {
