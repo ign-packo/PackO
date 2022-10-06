@@ -47,16 +47,28 @@ dict_cmd = {"projects": []}
 # debut chantier polygonize
 dict_cmd["projects"].append({"name": str(project_name+'_add_mtd'), "jobs": []})
 
-# on ajoute la colonne name
-cmd_alter_table_name = (
-        'ogrinfo '
-        + args.graph
-        + ' -sql \"ALTER TABLE data ADD name TEXT;\"'
+# on ajoute la colonne des couleurs = r,g,b
+cmd_alter_table_rgb_graph = (
+    'ogrinfo '
+    + args.graph
+    + ' -sql \"ALTER TABLE data ADD rgb_graph TEXT;\"'
 )
 if args.verbose > 0:
-    print(cmd_alter_table_name)
+    print(cmd_alter_table_rgb_graph)
 dict_cmd["projects"][0]["jobs"].append(
-    {"name": "alter_table_add_name", "command": cmd_alter_table_name}
+    {"name": "alter_table_add_rgb_graph", "command": cmd_alter_table_rgb_graph}
+)
+
+# on ajoute la colonne cliche
+cmd_alter_table_opi_name = (
+        'ogrinfo '
+        + args.graph
+        + ' -sql \"ALTER TABLE data ADD cliche TEXT;\"'
+)
+if args.verbose > 0:
+    print(cmd_alter_table_opi_name)
+dict_cmd["projects"][0]["jobs"].append(
+    {"name": "alter_table_add_name", "command": cmd_alter_table_opi_name}
 )
 
 # on ajoute la colonne date
@@ -94,6 +106,7 @@ for row in cursor:
     for elem in overviews['list_OPI']:
         opi = overviews['list_OPI'].get(elem)
         color = opi['color'][0] + opi['color'][1]*256 + opi['color'][2]*256**2
+        rgb_graph = f"{opi['color'][0]},{opi['color'][1]},{opi['color'][2]}"
         if color_graph == color:
             if args.verbose > 0:
                 print('correspondance des labels')
@@ -101,15 +114,28 @@ for row in cursor:
                 print(f"elem : '{elem}'")
                 print(f"date : '{opi['date']}'")
                 print(f"time_ut : '{opi['time_ut']}'")
-            request = f"UPDATE data SET name = '{elem}', date = '{str(opi['date'])}', \
-             time_ut = '{str(opi['time_ut'])}' WHERE color = '{str(color_graph)}'"
+            request = f"UPDATE data SET rgb_graph = '{rgb_graph}', cliche = '{elem}', \
+                      date = '{str(opi['date'])}', \
+                      time_ut = '{str(opi['time_ut'])}' WHERE color = '{str(color_graph)}'"
             cmd_update_data = f"ogrinfo {args.graph} -sql \"{request}\""
             if args.verbose > 0:
                 print(cmd_alter_table_time)
             dict_cmd["projects"][0]["jobs"].append(
                 {"name": "update_data_"+elem, "command": cmd_update_data,
-                 "deps": [{"id": 0}, {"id": 1}, {"id": 2}]}
+                 "deps": [{"id": 0}, {"id": 1}, {"id": 2}, {"id": 3}]}
             )
+
+
+dict_cmd["projects"].append({"name": str(project_name+'_delete'), "jobs": [], "deps": [{"id": 0}]})
+
+cmd_delete_column_color = (
+    f"ogrinfo {args.graph} -sql \"ALTER TABLE data DROP COLUMN color\""
+)
+if args.verbose > 0:
+    print(cmd_delete_column_color)
+dict_cmd["projects"][1]["jobs"].append(
+    {"name": "delete_column_color", "command": cmd_delete_column_color}
+)
 
 json_file = args.output
 with open(json_file, 'w', encoding='utf-8') as out_file:

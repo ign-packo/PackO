@@ -182,6 +182,10 @@ psql -d bd_graphe -c "SELECT UpdateGeometrySRID('graphe','geom',2154)"
 
 PackO peut gérer des images 3 canaux (RGB), 3 + 1 canaux (RGB + IR) ou 1 canal (IR). Attention : toutes les OPI du cache doivent avoir le même type (RGB, IR ou RGB+IR).
 
+Le graphe en entrée doit contenir les métadonnées de date et heure de prise de vue pour chaque image :
+- champ DATE avec les données sous le format : *yyyy/mm/dd* ou *yyyy-mm-dd*
+- champ HEURE_TU avec format attendu : *HHhMM* (example : 10h45) ou *HH:MM* (example : 10:45)
+
 La création du cache est faite à l'aide du script **create_cache.py** :
 - par défaut, l'option 'running' est à 0, on génère seulement un fichier JSON compatible avec le service gpao de l'IGN, service qui va ensuite lancer la création du cache (multi-threads, mono-machine)
 - le mode calcul en local ('running' > 0) permet de lancer la création du cache directement
@@ -430,7 +434,7 @@ optional arguments:
                         verbose (default: 0)
 ````
 
-Le résultat final du calcul gpao de vectorisation, GRAPH_final.gpkg, est au format GeoPackage. 
+Le résultat final du calcul gpao de vectorisation, GRAPH_final.gpkg, est au format GeoPackage.
 
 ### Récupération des métadonnées dans le graphe
 
