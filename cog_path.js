@@ -29,8 +29,9 @@ function getTilePath(X, Y, Z, overviews) {
   const levelMax = overviews.level.max;
   const level = Number(Z);
   const nbLvlInCOG = Math.floor(Math.log2(nbTiles)) + 1;
-  const levelCOG = Math.floor((level + 4 - (levelMax % nbLvlInCOG)) / nbLvlInCOG) * nbLvlInCOG
-                    + (levelMax % nbLvlInCOG);
+  const levelCOG = levelMax - Math.floor((levelMax - level) / nbLvlInCOG) * nbLvlInCOG;
+  // const levelCOG = Math.floor((level + 4 - (levelMax % nbLvlInCOG)) / nbLvlInCOG) * nbLvlInCOG
+  //                   + (levelMax % nbLvlInCOG);
 
   debug(levelMax, levelCOG);
 
