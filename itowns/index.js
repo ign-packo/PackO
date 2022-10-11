@@ -274,16 +274,13 @@ async function main() {
     controllers.setOpiCtr(editing.opiName);// editing.opiName = 'none'
 
     // editing controllers
-    editing.controllers = {
-      select: controllers.select,
-      opiName: controllers.opiName,
-      polygon: controllers.polygon,
-      // checked: controllers.checked,
-      // id: controllers.id,
-      // validated: controllers.validated,
-      // comment: controllers.comment,
-      addRemark: controllers.addRemark,
-    };
+    // editing.controllers = {
+    //   select: controllers.select,
+    //   opiName: controllers.opiName,
+    //   polygon: controllers.polygon,
+    //   addRemark: controllers.addRemark,
+    // };
+    editing.controllers = controllers;
     viewerDiv.focus();
 
     // Listen to drag and drop actions
