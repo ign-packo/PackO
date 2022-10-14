@@ -76,30 +76,38 @@ def read_args(update, cut_opi, export_tile):
         print("\nArguments: ", args)
 
     if not export_tile and (args.rgb is not None) and os.path.isdir(args.rgb):
-        raise SystemExit("create_cache.py: error: invalid pattern: " + args.rgb)
+        raise SystemExit("ERROR: invalid pattern: " + args.rgb)
     if not export_tile and (args.ir is not None) and os.path.isdir(args.ir):
-        raise SystemExit("create_cache.py: error: invalid pattern: " + args.ir)
+        raise SystemExit("ERROR: invalid pattern: " + args.ir)
     if not export_tile and (args.rgb is None) and (args.ir is None):
-        raise SystemExit("create_cache.py: error: no input data")
+        raise SystemExit("ERROR: no input data")
 
     if update is False:
         if os.path.isdir(args.cache) and (cut_opi or export_tile) is False:
-            raise SystemExit("Cache (" + args.cache + ") already in use")
+            raise SystemExit("ERROR: Cache (" + args.cache + ") already in use")
     else:
         if not os.path.isdir(args.cache):
-            raise SystemExit("Cache '" + args.cache + "' doesn't exist.")
+            raise SystemExit("ERROR: Cache '" + args.cache + "' doesn't exist.")
+
+    # gestion des echappements possible sur le nom de table
+    args.table = args.table.strip("'").strip('"')
+
+    if args.table[0].isdigit():
+        raise SystemExit("ERROR: First char of table is digit. "
+                         "Check table name and change it if needed.")
 
     if not cut_opi:
         db_graph = gdal.OpenEx(args.graph, gdal.OF_VECTOR)
         if db_graph is None:
-            raise SystemExit("Connection to database failed")
+            raise SystemExit("ERROR: Connection to database failed")
 
         # Test pour savoir si le nom de la table est correct
         if db_graph.ExecuteSQL("select * from " + args.table) is None:
-            raise SystemExit("table " + args.table + " doesn't exist")
+            raise SystemExit("ERROR: table " + args.table + " doesn't exist")
 
         if not export_tile:
-            args.x_min, args.x_max, args.y_min, args.y_max = db_graph.GetLayer().GetExtent()
+            args.x_min, args.x_max, args.y_min, args.y_max = \
+                db_graph.GetLayer(args.table).GetExtent()
     return args
 
 
@@ -267,7 +275,7 @@ def generate(update):
         with_ir = True
 
     if nb_files == 0:
-        raise SystemExit("WARNING: Empty input folder: nothing to add in cache")
+        raise SystemExit("WARNING: Empty input folder, nothing to add in cache")
 
     if with_rgb and with_ir:
         if len(list_filename_rgb) != len(list_filename_ir):
@@ -287,7 +295,7 @@ def generate(update):
         for filename in list_filename:
             basename = Path(filename).stem
             # on recupere les metadonnees d'acquisition
-            graph_layer = db_graph.GetLayer()
+            graph_layer = db_graph.GetLayer(args.table)
             filename_tmp = basename.replace('OPI_', '').replace('_ix', 'x')
             graph_layer.SetAttributeFilter("CLICHE LIKE '" + filename_tmp + "'")
             opi_feature = graph_layer.GetNextFeature()
@@ -329,7 +337,7 @@ def generate(update):
         for filename in list_filename:
             basename = Path(filename).stem
             if basename not in overviews_dict['list_OPI']:
-                graph_layer = db_graph.GetLayer()
+                graph_layer = db_graph.GetLayer(args.table)
                 filename_tmp = basename.replace('OPI_', '').replace('_ix', 'x')
                 graph_layer.SetAttributeFilter("CLICHE LIKE '" + filename_tmp + "'")
                 opi_feature = graph_layer.GetNextFeature()
