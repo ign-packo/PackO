@@ -272,8 +272,10 @@ Pour importer un cache dans la BD packo, il faut utiliser la route POST **cache*
 Cette route prend en paramètre :
 
 - le nom du cache (il doit être unique dans la base)
-- le chemin du dossier contenant les COG créé par le script **create_cache** et correspondant au cache à importer (ex : "cache_test") : soit en absolu, soit en relatif par rapport au dossier de lancement de l'API
+- le chemin du dossier contenant les COG créés par le script **create_cache** et correspondant au cache à importer (ex : "cache_test") : soit en absolu, soit en relatif par rapport au dossier de lancement de l'API
 - le contenu du fichier **overviews.json** du cache à importer (celui qui a été créé par le script python et qui est à la racine du dossier contenant le cache à importer)
+
+Si un cache a une taille de dalle (slabSize) différente de 16x16 tuiles ou une taille de tuile (tileSize) différente de 256x256 pixels, il peut y avoir des soucis de visualisation sous iTowns car la gestion de ces tailles n'était pas initialement prévue.
 
 ## Traitement d'un chantier
 
