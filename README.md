@@ -185,6 +185,7 @@ PackO peut gérer des images 3 canaux (RGB), 3 + 1 canaux (RGB + IR) ou 1 canal 
 Le graphe en entrée doit contenir les métadonnées de date et heure de prise de vue pour chaque image :
 - champ DATE avec les données sous le format : *yyyy/mm/dd* ou *yyyy-mm-dd*
 - champ HEURE_TU avec format attendu : *HHhMM* (example : 10h45) ou *HH:MM* (example : 10:45)
+
 Le nom de la table du graphe ne doit pas commencer par un caractère numérique.
 
 La création du cache est faite à l'aide du script **create_cache.py** :
