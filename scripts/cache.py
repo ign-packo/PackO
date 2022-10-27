@@ -66,6 +66,10 @@ def read_args(update, cut_opi, export_tile):
                         launching, only GPAO project file creation)",
                         type=int,
                         default=0)
+    parser.add_argument("-s", "--step",
+                        help="size in slabs of working area (default: 2, meaning 2x2 slabs)",
+                        type=int,
+                        default=2)
     parser.add_argument("-v", "--verbose",
                         help="verbose (default: 0, meaning no verbose)",
                         type=int,
@@ -91,6 +95,9 @@ def read_args(update, cut_opi, export_tile):
 
     # gestion des echappements possible sur le nom de table
     args.table = args.table.strip("'").strip('"')
+
+    if args.step < 1:
+        raise SystemExit("ERROR: step must be equal or greater than 1.")
 
     if args.table[0].isdigit():
         raise SystemExit("ERROR: First char of table is digit. "
@@ -431,14 +438,28 @@ def generate(update):
             table = args.table
         for level in slabbox_export.keys():
             level_limits = slabbox_export[level]
-            for slab_x in range(level_limits["MinSlabCol"], level_limits["MaxSlabCol"] + 1):
-                cmds2.append(
-                    {'name': level+'_'+str(slab_x),
-                     'command': 'python '+str(dir_script/'generate_tile.py')+' -i ' + level + ' ' +
-                                str(slab_x) + ' ' + str(level_limits["MinSlabRow"]) + ' ' +
-                                str(slab_x) + ' ' + str(level_limits["MaxSlabRow"]) + ' -c ' +
-                                args.cache + ' -g "' + args.graph + '" -t ' + table}
-                )
+            print(str(level)+":"+str(level_limits))
+            for slab_x in range(level_limits["MinSlabCol"],
+                                level_limits["MaxSlabCol"] + 1,
+                                args.step):
+                for slab_y in range(level_limits["MinSlabRow"],
+                                    level_limits["MaxSlabRow"] + 1,
+                                    args.step):
+                    # il faut s'assurer qu'on ne va pas dépasser des max selon les deux axes
+                    slab_x_max = slab_x + args.step - 1
+                    if slab_x_max > level_limits["MaxSlabCol"]:
+                        slab_x_max = level_limits["MaxSlabCol"]
+                    slab_y_max = slab_y + args.step - 1
+                    if slab_y_max > level_limits["MaxSlabRow"]:
+                        slab_y_max = level_limits["MaxSlabRow"]
+                    cmds2.append(
+                        {'name': level+'_'+str(slab_x)+'_'+str(slab_y),
+                         'command': 'python '+str(dir_script/'generate_tile.py') +
+                                    ' -i ' + level + ' ' +
+                                    str(slab_x) + ' ' + str(slab_y) + ' ' +
+                                    str(slab_x_max) + ' ' + str(slab_y_max) + ' -c ' +
+                                    args.cache + ' -g "' + args.graph + '" -t ' + table}
+                    )
 
         if not args.running:
             if not update:
