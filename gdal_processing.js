@@ -168,7 +168,13 @@ function processPatchAsync(patch, blocSize) {
     const urlOrthoRgb = patch.withOrig ? patch.urlOrthoRgbOrig : patch.urlOrthoRgb;
     const urlOrthoIr = urlOrthoRgb.replace('.', 'i.');
     const { urlOpiRgb } = patch;
-    const urlOpiIr = urlOpiRgb.replace('x', '_ix');
+    let urlOpiIr = urlOpiRgb;
+    const dname = path.dirname(urlOpiIr);
+    let fname = path.basename(urlOpiIr);
+    if (fname.includes('_ix') === false) {
+      fname = fname.includes('x') ? fname.replace('x', '_ix') : fname.replace('.', 'i.');
+      urlOpiIr = path.join(dname, fname);
+    }
     async function getBands(ds) {
       const size = await ds.rasterSizeAsync;
       return Promise.all([
