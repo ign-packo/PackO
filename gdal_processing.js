@@ -308,6 +308,7 @@ function processPatchAsync(patch, blocSize) {
         gdal.drivers.get('COG').createCopyAsync(patch.urlGraphOutput, graphMem, {
           BLOCKSIZE: blocSize,
           COMPRESS: 'LZW',
+          RESAMPLING: 'NEAREST',
         }),
         orthoRgbMem ? gdal.drivers.get('COG').createCopyAsync(patch.urlOrthoRgbOutput, orthoRgbMem, {
           BLOCKSIZE: blocSize,

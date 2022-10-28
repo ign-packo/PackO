@@ -452,7 +452,9 @@ def create_ortho_and_graph_1arg(arg):
         dst_graph = COG_DRIVER.CreateCopy(slab_graph, img_graph,
                                           options=["BLOCKSIZE="
                                                    + str(overviews['tileSize']['width']),
-                                                   "COMPRESS=LZW", "PREDICTOR=YES"])
+                                                   "COMPRESS=LZW",
+                                                   "RESAMPLING=NEAREST",
+                                                   "PREDICTOR=YES"])
 
         dst_graph = None  # noqa: F841
         # pylint: enable=unused-variable
