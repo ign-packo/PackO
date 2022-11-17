@@ -7,6 +7,7 @@ import multiprocessing
 from pathlib import Path
 import json
 import time
+import re
 from osgeo import gdal
 from osgeo import osr
 
@@ -49,7 +50,7 @@ def read_args(update, cut_opi, export_tile):
                             type=str,
                             default="ressources/LAMB93_5cm.json")
     parser.add_argument("-g", "--graph",
-                        help="GeoPackage filename or gdal connection string \
+                        help="GeoPackage filename or database connection string \
                         (\"PG:host=localhost user=postgres password=postgres dbname=demo\")",
                         type=str,
                         default="")
@@ -67,10 +68,14 @@ def read_args(update, cut_opi, export_tile):
                         type=int,
                         default=0)
     parser.add_argument("-s", "--subsize",
-                        help="size of the subareas for processing the data \
-                         (in slabs, default: 2, meaning 2x2 slabs)",
+                        help="size of the subareas for data processing, in slabs \
+                        (default: 2, meaning 2x2 slabs)",
                         type=int,
                         default=2)
+    parser.add_argument("-z", "--zeromtd",
+                        help="allow input graph with no metadata (default: 0, metadata needed)",
+                        type=int,
+                        default=0)
     parser.add_argument("-v", "--verbose",
                         help="verbose (default: 0, meaning no verbose)",
                         type=int,
@@ -116,6 +121,15 @@ def read_args(update, cut_opi, export_tile):
         if not export_tile:
             args.x_min, args.x_max, args.y_min, args.y_max = \
                 db_graph.GetLayer(args.table).GetExtent()
+
+            # check if DATE, HEURE_TU columns exist in input graph
+            if args.zeromtd == 0:
+                db_graph = gdal.OpenEx(args.graph, gdal.OF_VECTOR)
+                if db_graph.ExecuteSQL(
+                        "SELECT DATE, HEURE_TU FROM " + args.table + " \
+                         WHERE EXISTS(SELECT NULL)") is None:
+                    raise SystemExit("ERROR: input graph without metadata")
+
     return args
 
 
@@ -310,9 +324,25 @@ def generate(update):
             # si l'OPI n'est pas presente, passer a la suite
             if opi_feature is None:
                 continue
-            date = opi_feature.GetField('DATE')
-            time_ut = opi_feature.GetField('HEURE_TU')
-            graph_layer.SetAttributeFilter(None)
+            if args.zeromtd != 0:
+                # pas de metadonnees en entree, on met des valeurs fictives
+                # (DATE: "1900-01-01", HEURE_TU: "00:00")
+                date = "1900-01-01"
+                time_ut = "00:00"
+            else:
+                date = opi_feature.GetField('DATE')
+                # yyyy-mm-dd | yyyy/mm/dd
+                pattern_date = "[0-9]{4}[/-][0-9]{2}[/-][0-9]{2}"
+                if not re.match(pattern_date, date):
+                    raise SystemExit("ERROR: date not in the correct format "
+                                     "(expected: yyyy-mm-dd or yyyy/mm/dd)")
+                time_ut = opi_feature.GetField('HEURE_TU')
+                # HHhmm | HH:mm
+                pattern_time_ut = "[0-9]{2}[h:][0-5][0-9]"
+                if not re.match(pattern_time_ut, time_ut):
+                    raise SystemExit("ERROR: time_ut not in the correct format "
+                                     "(expected: HHhmm or HH:mm)")
+                graph_layer.SetAttributeFilter(None)
 
             overviews_dict["list_OPI"][basename] = {
                 'color': cache.new_color(basename, color_dict),
@@ -352,9 +382,25 @@ def generate(update):
                 # si l'OPI n'est pas presente, passer a la suite
                 if opi_feature is None:
                     continue
-                date = opi_feature.GetField('DATE')
-                time_ut = opi_feature.GetField('HEURE_TU')
-                graph_layer.SetAttributeFilter(None)
+                if args.zeromtd != 0:
+                    # pas de metadonnees en entree, on met des valeurs fictives
+                    # (DATE: "1900-01-01", HEURE_TU: "00:00")
+                    date = "1900-01-01"
+                    time_ut = "00:00"
+                else:
+                    date = opi_feature.GetField('DATE')
+                    # yyyy-mm-dd | yyyy/mm/dd
+                    pattern_date = "[0-9]{4}[/-][0-9]{2}[/-][0-9]{2}"
+                    if not re.match(pattern_date, date):
+                        raise SystemExit("ERROR: date not in the correct format "
+                                         "(expected: yyyy-mm-dd or yyyy/mm/dd)")
+                    time_ut = opi_feature.GetField('HEURE_TU')
+                    # HHhmm | HH:mm
+                    pattern_time_ut = "[0-9]{2}[h:][0-5][0-9]"
+                    if not re.match(pattern_time_ut, time_ut):
+                        raise SystemExit("ERROR: time_ut not in the correct format "
+                                         "(expected: HHhmm or HH:mm)")
+                    graph_layer.SetAttributeFilter(None)
 
                 overviews_dict["list_OPI"][basename] = {
                     'color': cache.new_color(basename, color_dict),
@@ -439,7 +485,6 @@ def generate(update):
             table = args.table
         for level in slabbox_export.keys():
             level_limits = slabbox_export[level]
-            print(str(level)+":"+str(level_limits))
             for slab_x in range(level_limits["MinSlabCol"],
                                 level_limits["MaxSlabCol"] + 1,
                                 args.subsize):
