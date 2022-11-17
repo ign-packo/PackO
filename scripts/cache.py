@@ -66,8 +66,9 @@ def read_args(update, cut_opi, export_tile):
                         launching, only GPAO project file creation)",
                         type=int,
                         default=0)
-    parser.add_argument("-s", "--step",
-                        help="size in slabs of working area (default: 2, meaning 2x2 slabs)",
+    parser.add_argument("-s", "--subsize",
+                        help="size of the subareas for processing the data \
+                         (in slabs, default: 2, meaning 2x2 slabs)",
                         type=int,
                         default=2)
     parser.add_argument("-v", "--verbose",
@@ -96,8 +97,8 @@ def read_args(update, cut_opi, export_tile):
     # gestion des echappements possible sur le nom de table
     args.table = args.table.strip("'").strip('"')
 
-    if args.step < 1:
-        raise SystemExit("ERROR: step must be equal or greater than 1.")
+    if args.subsize < 1:
+        raise SystemExit("ERROR: subsize must be equal or greater than 1.")
 
     if args.table[0].isdigit():
         raise SystemExit("ERROR: First char of table is digit. "
@@ -441,15 +442,15 @@ def generate(update):
             print(str(level)+":"+str(level_limits))
             for slab_x in range(level_limits["MinSlabCol"],
                                 level_limits["MaxSlabCol"] + 1,
-                                args.step):
+                                args.subsize):
                 for slab_y in range(level_limits["MinSlabRow"],
                                     level_limits["MaxSlabRow"] + 1,
-                                    args.step):
+                                    args.subsize):
                     # il faut s'assurer qu'on ne va pas dépasser des max selon les deux axes
-                    slab_x_max = slab_x + args.step - 1
+                    slab_x_max = slab_x + args.subsize - 1
                     if slab_x_max > level_limits["MaxSlabCol"]:
                         slab_x_max = level_limits["MaxSlabCol"]
-                    slab_y_max = slab_y + args.step - 1
+                    slab_y_max = slab_y + args.subsize - 1
                     if slab_y_max > level_limits["MaxSlabRow"]:
                         slab_y_max = level_limits["MaxSlabRow"]
                     cmds2.append(
