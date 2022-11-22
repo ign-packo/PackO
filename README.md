@@ -185,6 +185,7 @@ PackO peut gérer des images 3 canaux (RGB), 3 + 1 canaux (RGB + IR) ou 1 canal 
 Le graphe en entrée doit contenir les métadonnées de date et heure de prise de vue pour chaque image :
 - champ DATE avec les données sous le format : *yyyy/mm/dd* ou *yyyy-mm-dd*
 - champ HEURE_TU avec format attendu : *HHhMM* (example : 10h45) ou *HH:MM* (example : 10:45)
+Si ces champs ne sont pas renseignés, une option permet de lancer le calcul sans les métadonnées (voir plus bas). Dans ce cas, les valeurs seront mises à des valeurs fictives DATE: "1900-01-01", HEURE_TU: "00:00".
 
 Le nom de la table du graphe ne doit pas commencer par un caractère numérique.
 
@@ -192,8 +193,8 @@ La création du cache est faite à l'aide du script **create_cache.py** :
 - par défaut, l'option 'running' est à 0, on génère seulement un fichier JSON compatible avec le service gpao de l'IGN, service qui va ensuite lancer la création du cache (multi-threads, mono-machine)
 - le mode calcul en local ('running' > 0) permet de lancer la création du cache directement
 ````
-usage: create_cache.py [-h] [-R RGB] [-I IR] [-c CACHE] [-o OVERVIEWS] [-g GRAPH] [-t TABLE] [-p PROCESSORS]
-                       [-r RUNNING] [-v VERBOSE]
+usage: create_cache.py [-h] [-R RGB] [-I IR] [-c CACHE] [-o OVERVIEWS] [-g GRAPH] [-t TABLE] 
+                       [-p PROCESSORS] [-r RUNNING] [-s SUBSIZE] [-z ZEROMTD] [-v VERBOSE]
 
 options:
   -h, --help            show this help message and exit
@@ -204,15 +205,20 @@ options:
   -o OVERVIEWS, --overviews OVERVIEWS
                         params for the mosaic (default: ressources/LAMB93_5cm.json)
   -g GRAPH, --graph GRAPH
-                        GeoPackage filename or gdal connection string ("PG:host=localhost user=postgres
-                        password=postgres dbname=demo")
+                        GeoPackage filename or database connection string 
+                        ("PG:host=localhost user=postgres password=postgres dbname=demo")
   -t TABLE, --table TABLE
                         graph table (default: graphe_pcrs56_zone_test)
   -p PROCESSORS, --processors PROCESSORS
                         number of processing units to allocate (default: Max_cpu-1)
   -r RUNNING, --running RUNNING
-                        launch the process locally (default: 0, meaning no process launching, only GPAO project file
-                        creation)
+                        launch the process locally (default: 0, meaning no process launching, 
+                        only GPAO project file creation)
+  -s SUBSIZE, --subsize SUBSIZE
+                        size of the subareas for data processing, in slabs 
+                        (default: 2, meaning 2x2 slabs)
+  -z ZEROMTD, --zeromtd ZEROMTD
+                        allow input graph with no metadata (default: 0, metadata needed)
   -v VERBOSE, --verbose VERBOSE
                         verbose (default: 0, meaning no verbose)
 ````
@@ -240,8 +246,8 @@ Le script permet d'obtenir trois arborescences de COG (graph/opi/ortho) et un fi
 Une fois le cache créé, on peut y ajouter des OPI si nécessaire avec le script **update_cache.py** :
 
 ````
-usage: update_cache.py [-h] [-R RGB] [-I IR] [-c CACHE] [-g GRAPH] [-t TABLE] [-p PROCESSORS] [-r RUNNING]
-                       [-v VERBOSE]
+usage: update_cache.py [-h] [-R RGB] [-I IR] [-c CACHE] [-g GRAPH] [-t TABLE] [-p PROCESSORS] 
+                       [-r RUNNING] [-s SUBSIZE] [-z ZEROMTD] [-v VERBOSE]
 
 options:
   -h, --help            show this help message and exit
@@ -250,15 +256,20 @@ options:
   -c CACHE, --cache CACHE
                         cache directory (default: cache)
   -g GRAPH, --graph GRAPH
-                        GeoPackage filename or gdal connection string ("PG:host=localhost user=postgres
-                        password=postgres dbname=demo")
+                        GeoPackage filename or database connection string 
+                        ("PG:host=localhost user=postgres password=postgres dbname=demo")
   -t TABLE, --table TABLE
                         graph table (default: graphe_pcrs56_zone_test)
   -p PROCESSORS, --processors PROCESSORS
                         number of processing units to allocate (default: Max_cpu-1)
   -r RUNNING, --running RUNNING
-                        launch the process locally (default: 0, meaning no process launching, only GPAO project file
-                        creation)
+                        launch the process locally (default: 0, meaning no process launching, 
+                        only GPAO project file creation)
+  -s SUBSIZE, --subsize SUBSIZE
+                        size of the subareas for data processing, in slabs 
+                        (default: 2, meaning 2x2 slabs)
+  -z ZEROMTD, --zeromtd ZEROMTD
+                        allow input graph with no metadata (default: 0, metadata needed)
   -v VERBOSE, --verbose VERBOSE
                         verbose (default: 0, meaning no verbose)
 ````
