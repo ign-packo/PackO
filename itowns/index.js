@@ -360,7 +360,7 @@ async function main() {
         alert.progress = `${alert.nbChecked}/${alert.nbTotal} (${alert.nbValidated} validés)`;
 
         if (alert.nbTotal === 1) {
-          alert.changeFeature(0, { centerOnFeature: true });
+          alert.changeFeature(0, { centerOnFeature: true, forceRefresh: true });
           menu.setAlertCtr('Remarques');
         }
       }
@@ -386,6 +386,7 @@ async function main() {
 
         alert.selectPrevious({ centerOnFeature: true, forceRefresh: true });
       } else {
+        alert.nbTotal = 0;
         menu.setAlertCtr('-');
       }
     });
