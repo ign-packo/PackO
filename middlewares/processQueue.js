@@ -27,7 +27,7 @@ async function getProcesses(req, _res, next) {
 }
 
 async function getProcess(req, _res, next) {
-  debug('~~~getProcesses~~~');
+  debug('~~~getProcess~~~');
   if (req.error) {
     next();
     return;

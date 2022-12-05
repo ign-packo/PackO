@@ -67,7 +67,7 @@ router.get('/:idBranch/wmts',
     query('INFOFORMAT').if(query('REQUEST').isIn(['GetFeatureInfo'])).exists().withMessage(createErrMsg.missingParameter('INFOFORMAT')),
   ],
   validateParams,
-  cache.getCachePath,
+  branch.getCachePath,
   cache.getOverviews,
   [
     query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))

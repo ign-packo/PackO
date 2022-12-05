@@ -8,20 +8,6 @@ const cog = require('../cog_path');
 const gdalProcessing = require('../gdal_processing');
 const db = require('../db/db');
 
-// Encapsulation des informations du requestBody dans une nouvelle clé 'keyName' ("body" par defaut)
-function encapBody(req, _res, next) {
-  let keyName = 'body';
-  if (this.keyName) { keyName = this.keyName; }
-  if (JSON.stringify(req.body) !== '{}') {
-    const requestBodyKeys = Object.keys(req.body);
-    req.body[keyName] = JSON.parse(JSON.stringify(req.body));
-    for (let i = 0; i < requestBodyKeys.length; i += 1) {
-      delete req.body[requestBodyKeys[i]];
-    }
-  }
-  next();
-}
-
 function getCOGs(feature, overviews) {
   const BBox = {};
   feature.geometry.coordinates[0].forEach((point) => {
@@ -61,29 +47,6 @@ function getCOGs(feature, overviews) {
 function rename(url, urlOrig) {
   gdalProcessing.clearCache();
   fs.renameSync(url, urlOrig);
-}
-
-async function getPatches(req, _res, next) {
-  debug('>>GET patches');
-  if (req.error) {
-    next();
-    return;
-  }
-  const params = matchedData(req);
-  const { idBranch } = params;
-  try {
-    const activePatches = await db.getActivePatches(req.client, idBranch);
-    req.result = { json: activePatches, code: 200 };
-  } catch (error) {
-    debug(error);
-    req.error = {
-      msg: error,
-      code: 406,
-      function: 'getPatches',
-    };
-  }
-  debug('  next>>');
-  next();
 }
 
 // Preparation des masques
@@ -154,7 +117,7 @@ function createPatch(slab,
     P.slab.x,
     P.slab.y,
     P.slab.z,
-    overviews,
+    overviews.pathDepth,
   );
   const nameRgb = withRgb ? name : name.replace('_ix', 'x');
   const nameIr = withRgb ? name.replace('x', '_ix') : name;
@@ -207,6 +170,197 @@ function createPatch(slab,
     promises.push(fs.promises.access(P.urlOpiIr, fs.constants.F_OK));
   }
   return Promise.all(promises).then(() => P);
+}
+
+async function getPatches(req, _res, next) {
+  debug('>>GET patches');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+  const { idBranch } = params;
+  try {
+    const activePatches = await db.getActivePatches(req.client, idBranch);
+    req.result = { json: activePatches, code: 200 };
+  } catch (error) {
+    debug(error);
+    req.error = {
+      msg: error,
+      code: 406,
+      function: 'getPatches',
+    };
+  }
+  debug('  next>>');
+  next();
+}
+
+async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
+  debug('applyPatch', feature);
+
+  const opi = (await db.getOPIFromName(pgClient, idBranch, feature.properties.opiName));
+  const patchInserted = await db.insertPatch(pgClient, idBranch, feature.geometry, opi.id);
+  const patchId = patchInserted.id_patch;
+  const newPatchNum = patchInserted.num;
+
+  const cogs = getCOGs(feature, overviews);
+  const promisesCreatePatch = [];
+  debug('~create patch');
+  cogs.forEach((aCog) => {
+    promisesCreatePatch.push(createPatch(aCog,
+      feature,
+      feature.properties.color,
+      feature.properties.opiName,
+      opi.with_rgb,
+      opi.with_ir,
+      overviews,
+      dirCache,
+      idBranch));
+  });
+  debug('~Promise.all');
+  const slabsModified = [];
+  await Promise.all(promisesCreatePatch).then(async (patches) => {
+    const promises = [];
+    debug('~process patch');
+
+    patches.forEach((patch) => {
+      if (patch === null) {
+        return;
+      }
+      /* eslint-disable no-param-reassign */
+      patch.urlGraphOutput = path.join(dirCache,
+        'graph',
+        patch.cogPath.dirPath,
+        `${idBranch}_${patch.cogPath.filename}_${newPatchNum}.tif`);
+      if (patch.withRgb) {
+        patch.urlOrthoRgbOutput = path.join(dirCache,
+          'ortho', patch.cogPath.dirPath,
+          `${idBranch}_${patch.cogPath.filename}_${newPatchNum}.tif`);
+      }
+      if (patch.withIr) {
+        patch.urlOrthoIrOutput = path.join(dirCache,
+          'ortho', patch.cogPath.dirPath,
+          `${idBranch}_${patch.cogPath.filename}_${newPatchNum}i.tif`);
+      }
+
+      /* eslint-enable no-param-reassign */
+      slabsModified.push(patch.slab);
+
+      promises.push(gdalProcessing.processPatch(patch, overviews.tileSize.width));
+    });
+    debug('', promises.length, 'patchs à appliquer.');
+    await Promise.all(promises).then(
+      async () => {
+      // Tout c'est bien passé
+        debug("=> tout c'est bien passé on peut renommer les images");
+        patches.forEach((patch) => {
+          if (patch === null) {
+            return;
+          }
+          const urlHistory = path.join(dirCache,
+            'opi',
+            patch.cogPath.dirPath,
+            `${idBranch}_${patch.cogPath.filename}_history.packo`);
+          if (fs.existsSync(urlHistory)) {
+            debug('history existe');
+            const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchNum}`;
+            const tabHistory = history.split(';');
+            const prevId = tabHistory[tabHistory.length - 2];
+
+            const urlGraphPrev = path.join(dirCache, 'graph', patch.cogPath.dirPath,
+              `${idBranch}_${patch.cogPath.filename}_${prevId}.tif`);
+            // on ne fait un rename que si prevId n'est pas 'orig'
+            if (prevId !== 'orig') {
+              rename(patch.urlGraph, urlGraphPrev);
+            }
+
+            if (patch.withRgb) {
+              const urlOrthoRbgPrev = path.join(dirCache, 'ortho', patch.cogPath.dirPath,
+                `${idBranch}_${patch.cogPath.filename}_${prevId}.tif`);
+                // on ne fait un rename que si prevId n'est pas 'orig'
+              if (prevId !== 'orig') {
+                rename(patch.urlOrthoRgb, urlOrthoRbgPrev);
+              }
+            }
+            if (patch.withIr) {
+              const urlOrthoIrPrev = path.join(dirCache, 'ortho', patch.cogPath.dirPath,
+                `${idBranch}_${patch.cogPath.filename}_${prevId}i.tif`);
+              // on ne fait un rename que si prevId n'est pas 'orig'
+              if (prevId !== 'orig') {
+                rename(patch.urlOrthoIr, urlOrthoIrPrev);
+              }
+            }
+            debug(' historique :', history);
+            fs.writeFileSync(`${urlHistory}`, history);
+          } else {
+            debug('history n existe pas encore');
+            const history = `orig;${newPatchNum}`;
+            fs.writeFileSync(`${urlHistory}`, history);
+            // On a pas besoin de renommer l'image d'origine
+            // qui reste partagée pour toutes les branches
+          }
+          rename(patch.urlGraphOutput, patch.urlGraph);
+          if (patch.withRgb) {
+            rename(patch.urlOrthoRgbOutput, patch.urlOrthoRgb);
+          }
+          if (patch.withIr) {
+            rename(patch.urlOrthoIrOutput, patch.urlOrthoIr);
+          }
+        });
+        // on note le patch Id
+        /* eslint-disable-next-line */
+        feature.properties.num = newPatchNum;
+        /* eslint-disable-next-line */
+        feature.properties.slabs = slabsModified;
+        // on ajoute ce patch à l'historique
+        debug('=> Patch', newPatchNum, 'ajouté');
+
+        // ajouter les slabs correspondant au patch dans la table correspondante
+        await db.insertSlabs(pgClient,
+          patchId,
+          feature.properties.slabs);
+
+        debug('on retourne les dalles modifiees -- 1 : ', slabsModified);
+      },
+    );
+  });
+  debug('Fin de applyPatch');
+  debug('on retourne les dalles modifiees -- 2 : ', slabsModified);
+  return slabsModified;
+}
+
+async function postPatch(req, _res, next) {
+  debug('>>POST patch');
+  if (req.error) {
+    next();
+    return;
+  }
+  const { overviews } = req;
+  const params = matchedData(req);
+  const geoJson = params.geoJSON;
+  const { idBranch } = params;
+
+  applyPatch(req.client,
+    overviews,
+    req.dir_cache,
+    idBranch,
+    geoJson.features[0])
+    .then((slabsModified) => {
+      debug('slabsModified : ', slabsModified);
+      req.result = { json: slabsModified, code: 200 };
+    })
+    .catch((error) => {
+      debug(error);
+      req.error = {
+        msg: error.toString(),
+        code: 404,
+        function: 'patch',
+      };
+    })
+    .finally(() => {
+      debug('Fin de POST patch');
+      next();
+    });
 }
 
 async function undo(req, _res, next) {
@@ -272,7 +426,7 @@ async function undo(req, _res, next) {
   // slabs.forEach((slab, indexSlab) => {
   slabs.forEach((slab, indexSlab) => {
     debug('slab :', slab, indexSlab);
-    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
+    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
     const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
 
     // on récupère l'historique de cette tuile
@@ -300,7 +454,7 @@ async function undo(req, _res, next) {
   }
   // Object.values(slabs).forEach((slab, indexSlab) => {
   slabs.forEach((slab, indexSlab) => {
-    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
+    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
     const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     // on récupère la version à restaurer
@@ -422,7 +576,7 @@ async function redo(req, _res, next) {
   // Object.values(slabs).forEach((slab) => {
   slabs.forEach((slab) => {
     debug(slab);
-    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
+    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
     debug(cogPath);
     const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
     const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
@@ -515,7 +669,7 @@ async function clear(req, _res, next) {
 
   Object.values(slabsDico).forEach((slab) => {
     debug('clear sur : ', slab);
-    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews);
+    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
 
     const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
     const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
@@ -555,197 +709,11 @@ async function clear(req, _res, next) {
   next();
 }
 
-async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
-  debug('applyPatch', feature);
-
-  const opi = (await db.getOPIFromName(pgClient, idBranch, feature.properties.opiName));
-  const patchInserted = await db.insertPatch(pgClient, idBranch, feature.geometry, opi.id);
-  const patchId = patchInserted.id_patch;
-  const newPatchNum = patchInserted.num;
-
-  const cogs = getCOGs(feature, overviews);
-  const promisesCreatePatch = [];
-  debug('~create patch');
-  cogs.forEach((aCog) => {
-    promisesCreatePatch.push(createPatch(aCog,
-      feature,
-      feature.properties.color,
-      feature.properties.opiName,
-      opi.with_rgb,
-      opi.with_ir,
-      overviews,
-      dirCache,
-      idBranch));
-  });
-  debug('~Promise.all');
-  const slabsModified = [];
-  await Promise.all(promisesCreatePatch).then(async (patches) => {
-    const promises = [];
-    debug('~process patch');
-
-    patches.forEach((P) => {
-      if (P === null) {
-        return;
-      }
-      /* eslint-disable no-param-reassign */
-      P.urlGraphOutput = path.join(dirCache,
-        'graph',
-        P.cogPath.dirPath,
-        `${idBranch}_${P.cogPath.filename}_${newPatchNum}.tif`);
-      if (P.withRgb) {
-        P.urlOrthoRgbOutput = path.join(dirCache,
-          'ortho', P.cogPath.dirPath,
-          `${idBranch}_${P.cogPath.filename}_${newPatchNum}.tif`);
-      }
-      if (P.withIr) {
-        P.urlOrthoIrOutput = path.join(dirCache,
-          'ortho', P.cogPath.dirPath,
-          `${idBranch}_${P.cogPath.filename}_${newPatchNum}i.tif`);
-      }
-
-      /* eslint-enable no-param-reassign */
-      slabsModified.push(P.slab);
-
-      promises.push(gdalProcessing.processPatch(P, overviews.tileSize.width));
-    });
-    debug('', promises.length, 'patchs à appliquer.');
-    await Promise.all(promises).then(
-      async () => {
-      // Tout c'est bien passé
-        debug("=> tout c'est bien passé on peut renommer les images");
-        patches.forEach((P) => {
-          if (P === null) {
-            return;
-          }
-          const urlHistory = path.join(dirCache,
-            'opi',
-            P.cogPath.dirPath,
-            `${idBranch}_${P.cogPath.filename}_history.packo`);
-          if (fs.existsSync(urlHistory)) {
-            debug('history existe');
-            const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchNum}`;
-            const tabHistory = history.split(';');
-            const prevId = tabHistory[tabHistory.length - 2];
-
-            const urlGraphPrev = path.join(dirCache, 'graph', P.cogPath.dirPath,
-              `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
-            // on ne fait un rename que si prevId n'est pas 'orig'
-            if (prevId !== 'orig') {
-              rename(P.urlGraph, urlGraphPrev);
-            }
-
-            if (P.withRgb) {
-              const urlOrthoRbgPrev = path.join(dirCache, 'ortho', P.cogPath.dirPath,
-                `${idBranch}_${P.cogPath.filename}_${prevId}.tif`);
-                // on ne fait un rename que si prevId n'est pas 'orig'
-              if (prevId !== 'orig') {
-                rename(P.urlOrthoRgb, urlOrthoRbgPrev);
-              }
-            }
-            if (P.withIr) {
-              const urlOrthoIrPrev = path.join(dirCache, 'ortho', P.cogPath.dirPath,
-                `${idBranch}_${P.cogPath.filename}_${prevId}i.tif`);
-              // on ne fait un rename que si prevId n'est pas 'orig'
-              if (prevId !== 'orig') {
-                rename(P.urlOrthoIr, urlOrthoIrPrev);
-              }
-            }
-            debug(' historique :', history);
-            fs.writeFileSync(`${urlHistory}`, history);
-          } else {
-            debug('history n existe pas encore');
-            const history = `orig;${newPatchNum}`;
-            fs.writeFileSync(`${urlHistory}`, history);
-            // On a pas besoin de renommer l'image d'origine
-            // qui reste partagée pour toutes les branches
-          }
-          rename(P.urlGraphOutput, P.urlGraph);
-          if (P.withRgb) {
-            rename(P.urlOrthoRgbOutput, P.urlOrthoRgb);
-          }
-          if (P.withIr) {
-            rename(P.urlOrthoIrOutput, P.urlOrthoIr);
-          }
-        });
-        // on note le patch Id
-        /* eslint-disable-next-line */
-        feature.properties.num = newPatchNum;
-        /* eslint-disable-next-line */
-        feature.properties.slabs = slabsModified;
-        // on ajoute ce patch à l'historique
-        debug('=> Patch', newPatchNum, 'ajouté');
-
-        // ajouter les slabs correspondant au patch dans la table correspondante
-        await db.insertSlabs(pgClient,
-          patchId,
-          feature.properties.slabs);
-
-        debug('on retourne les dalles modifiees -- 1 : ', slabsModified);
-      },
-    );
-  });
-  debug('Fin de applyPatch');
-  debug('on retourne les dalles modifiees -- 2 : ', slabsModified);
-  return slabsModified;
-}
-
-async function postPatch(req, _res, next) {
-  debug('>>POST patch');
-  if (req.error) {
-    next();
-    return;
-  }
-  const { overviews } = req;
-  const params = matchedData(req);
-  const geoJson = params.geoJSON;
-  const { idBranch } = params;
-
-  applyPatch(req.client,
-    overviews,
-    req.dir_cache,
-    idBranch,
-    geoJson.features[0])
-    .then((slabsModified) => {
-      debug('slabsModified : ', slabsModified);
-      req.result = { json: slabsModified, code: 200 };
-    })
-    .catch((error) => {
-      debug(error);
-      req.error = {
-        msg: error.toString(),
-        code: 404,
-        function: 'patch',
-      };
-    })
-    .finally(() => {
-      debug('Fin de POST patch');
-      next();
-    });
-}
-
-async function applyPatches(pgClient, overviews, dirCache, idBranch, features) {
-  debug('>>applyPatches', features);
-
-  /* eslint-disable-next-line */
-  for (const feature of features) {
-    debug('application de ', feature);
-    /* eslint-disable-next-line */
-    await applyPatch(
-      pgClient,
-      overviews,
-      dirCache, idBranch,
-      feature,
-    );
-  }
-  debug('fin de applyPatches');
-}
-
 module.exports = {
   getPatches,
-  applyPatches,
+  applyPatch,
   postPatch,
   undo,
   redo,
   clear,
-  encapBody,
 };

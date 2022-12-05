@@ -10,7 +10,6 @@ const returnMsg = require('../middlewares/returnMsg');
 
 router.get('/json/:typefile', [
   param('typefile')
-    // .exists().withMessage(createErrMsg.missingParameter('typefile'))
     .isIn(['overviews', 'test'])
     .withMessage(createErrMsg.invalidParameter('typefile')),
   query('cachePath')
@@ -39,9 +38,6 @@ async (req, res, next) => {
       };
       throw err;
     }
-    // debug('ICI', cachePath)
-    // await fs.promises.access(cachePath);
-    // debug('LA', cachePath)
 
     const filePath = pathMod.join(cachePath, `${typefile}.json`);
 

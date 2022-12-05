@@ -34,7 +34,7 @@ function getGraph(req, _res, next) {
   const I = Math.floor(Px - Tx * overviews.tileSize.width);
   const J = Math.floor(Py - Ty * overviews.tileSize.height);
   try {
-    const cogPath = cog.getTilePath(Tx, Ty, lvlMax, overviews);
+    const cogPath = cog.getTileInfo(Tx, Ty, lvlMax, overviews);
     // const url = path.join(global.dir_cache, 'graph', cogPath.dirPath, `${cogPath.filename}.tif`);
     // on commence par cherche la version de la branche
     let url = path.join(req.dir_cache, 'graph', cogPath.dirPath, `${idBranch}_${cogPath.filename}.tif`);

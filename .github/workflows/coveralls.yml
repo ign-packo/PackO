@@ -7,45 +7,16 @@ on:
     # branches: [ master ]
 
 jobs:
-  API:
+  Caches:
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgis/postgis
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
     - uses: actions/checkout@v2
-    
-    - name: Setup Node
-      uses: actions/setup-node@v2
-      with:
-        node-version: '14'
 
     - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
         python-version: 3.8
-
-    - name: initialize DB
-      env:
-        PGHOST: localhost
-        PGPORT: 5432
-        PGUSER: postgres
-        PGPASSWORD: postgres
-      run: |
-        psql -c "CREATE DATABASE packo"
-        psql -d packo -f sql/packo.sql
 
     - name: apt update
       run: |
@@ -124,10 +95,45 @@ jobs:
       run: |
         python scripts/check_cache.py -r "cache_test/cache_test_IR_gpao" -s cache_regress_IR_gpao        
 
+  API:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Setup Node
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+
+    - name: initialize DB
+      env:
+        PGHOST: localhost
+        PGPORT: 5432
+        PGUSER: postgres
+        PGPASSWORD: postgres
+      run: |
+        psql -c "CREATE DATABASE packo"
+        psql -d packo -f sql/packo.sql
+
     - name: install
       run: npm install
 
-    - name: API test
+    - name: API run test
       env:
         PGHOST: localhost
         PGPORT: 5432
@@ -136,7 +142,7 @@ jobs:
         PGDATABASE: packo
         DEBUG:
       run: |
-        npm run test-coveralls
+        npm run coveralls-api
 
     - name: Coveralls
       uses: coverallsapp/github-action@master

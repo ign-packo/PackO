@@ -139,7 +139,7 @@ async function rebase(req, res, next) {
         slab[0],
         slab[1],
         slab[2],
-        req.overviews,
+        req.overviews.pathDepth,
       );
       const graphDir = path.join(cache.path, 'graph', cogPath.dirPath);
       const orthoDir = path.join(cache.path, 'ortho', cogPath.dirPath);
@@ -229,11 +229,20 @@ async function rebase(req, res, next) {
   try {
     const patches = await db.getActivePatches(req.client, idBranch);
     debug('patches : ', patches);
-    await patch.applyPatches(req.client,
-      req.overviews,
-      cache.path,
-      idNewBranch,
-      patches.features);
+
+    debug('>>applyPatches', patches.features);
+    patches.features.forEach(async (feature) => {
+      debug('application de ', feature);
+      await patch.applyPatch(
+        req.client,
+        req.overviews,
+        cache.path,
+        idNewBranch,
+        feature,
+      );
+    });
+    debug('fin de applyPatches');
+
     await db.finishProcess(req.client, 'succeed', idProcess, 'done');
   } catch (error) {
     debug(error);
@@ -242,9 +251,28 @@ async function rebase(req, res, next) {
   pgClient.close(req, res, () => {});
 }
 
+async function getCachePath(req, _res, next) {
+  debug('>>GET CachePath');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+  const { idBranch } = params;
+  try {
+    req.dir_cache = await db.getCachePath(req.client, idBranch);
+  } catch (error) {
+    debug(error);
+    req.error = error;
+  }
+  debug('  next>>');
+  next();
+}
+
 module.exports = {
   getBranches,
   postBranch,
   deleteBranch,
   rebase,
+  getCachePath,
 };

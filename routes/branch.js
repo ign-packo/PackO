@@ -69,7 +69,7 @@ router.post('/:idBranch/rebase',
       .withMessage(createErrMsg.invalidParameter('idBranch')),
   ],
   validateParams,
-  cache.getCachePath,
+  branch.getCachePath,
   cache.getOverviews,
   branch.rebase,
   returnMsg);
