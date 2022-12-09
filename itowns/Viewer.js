@@ -482,8 +482,7 @@ class Viewer {
     for (let i = 0; i < files.length; i += 1) {
       const file = files[i];
       let fileMtd = extensionsMap[file.name.split('.').pop().toLowerCase()];
-      let layerName = file.name.split('.').slice(0, -1).join('.');
-      layerName = layerName.charAt(0).toUpperCase() + layerName.slice(1);
+      const layerName = file.name.split('.').slice(0, -1).join('.');
 
       if (!data[layerName]) data[layerName] = {};
 
