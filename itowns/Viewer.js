@@ -463,6 +463,10 @@ class Viewer {
       type: _TEXT,
     };
 
+    function getLayerNameFromVectorFile(filename) {
+      return filename.split('.').slice(0, -1).join('.');
+    }
+
     const errors = {};
     let nbFileLoaded = 0;
     const ListFile = {};
@@ -470,7 +474,7 @@ class Viewer {
       const file = files[i];
 
       const extension = file.name.split('.').pop().toLowerCase();
-      const layerName = file.name.split('.').slice(0, -1).join('.');
+      const layerName = getLayerNameFromVectorFile(file.name);
 
       if (!ListFile[layerName]) ListFile[layerName] = { nbFileDropped: 0, nbFileLoaded: 0 };
 
@@ -482,7 +486,7 @@ class Viewer {
     for (let i = 0; i < files.length; i += 1) {
       const file = files[i];
       let fileMtd = extensionsMap[file.name.split('.').pop().toLowerCase()];
-      const layerName = file.name.split('.').slice(0, -1).join('.');
+      const layerName = getLayerNameFromVectorFile(file.name);
 
       if (!data[layerName]) data[layerName] = {};
 
