@@ -269,13 +269,29 @@ Par exemple, sur les données du dossier **regress**, on peut ajouter l'OPI isol
 python scripts/update_cache.py -R "regress/data/update/RGB/*.tif" -I "regress/data/update/IR/*.tif" -c cache_regress_RGBIR -g "regress/data/regress_graphe.gpkg" -t graphe
 ````
 
-Pour importer un cache dans la BD packo, il faut utiliser la route POST **cache** de l'API : http://[serveur]:[port]/doc/#/cache/post_cache.
+## Import d'un cache dans la base de données
+Pour importer un cache dans la BD packo, il faut utiliser :
 
-Cette route prend en paramètre :
+- la route POST **cache** de l'API : http://[serveur]:[port]/doc/#/cache/post_cache
 
-- le nom du cache (il doit être unique dans la base)
-- le chemin du dossier contenant les COG créés par le script **create_cache** et correspondant au cache à importer (ex : "cache_test") : soit en absolu, soit en relatif par rapport au dossier de lancement de l'API
-- le contenu du fichier **overviews.json** du cache à importer (celui qui a été créé par le script python et qui est à la racine du dossier contenant le cache à importer)
+  Cette route prend en paramètre :
+
+  - le nom du cache (il doit être unique dans la base)
+  - le chemin du dossier contenant les COG créés par le script **create_cache** et correspondant au cache à importer (ex : "cache_test") : soit en absolu, soit en relatif par rapport au dossier de lancement de l'API
+  - le contenu du fichier **overviews.json** du cache à importer (celui qui a été créé par le script python et qui est à la racine du dossier contenant le cache à importer)
+
+- ou la commande curl équivalente :
+  ````
+  curl [-v] -X "POST" "http://[serveur]:[PORT]/cache?name=[nom_cache]&path=[chemin_cache]" \
+      -H "accept: */*" \
+      -H "Content-Type: application/json" \
+      -d "@[chemin_overviews]"
+  ````
+  où :
+    - *-v*, *--verbose* : option facultative
+    - *nom_cache* : le nom du cache
+    - *chemin_cache* : le chemin du dossier du cache
+    - *chemin_overviews* : le chemin du fichier **overviews.json** du cache
 
 Si un cache a une taille de dalle (slabSize) différente de 16x16 tuiles ou une taille de tuile (tileSize) différente de 256x256 pixels, il peut y avoir des soucis de visualisation sous iTowns car la gestion de ces tailles n'était pas initialement prévue.
 
@@ -318,7 +334,14 @@ Sur chaque branche, une couche vecteur 'Remarques' est par défaut créée qui p
 Le bouton "Add remark" permet à tout moment d'ajouter une entité ponctuelle sur la couche 'Remarques", en cliquant sur la vue et de renseigner un texte.
 Lorsque la couche de 'Remarques' est choisie comme couche d'alerte, en plus des fonctionnalités propres aux couches d'alerte (voir paragraphe précédent), le champ "Remark" est affiché (contenant le texte entré lors de la création de l'entité) et on peut aussi détruire l'entité sélectionnée avec le bouton "Delete Remark".
 
-A tout moment, cette couche "Remarques" peut être exportée en geoJson en appelant la route GET /{idBranch}/vector?name=Remarques. (En utilisant le swagger par exemple.)
+### Export d'une couche vecteur
+
+A tout moment, la couche "Remarques" présentée plus haut peut être exportée en geoJson en utilisant l'url `http://[serveur]:[PORT]/[idBranch]/vector?name=Remarques` ou la commande curl correspondante `curl [-v] -X "GET" "http://[serveur]:[PORT]/[idBranch]/vector?name=Remarques" -H "accept: */*" [-o [chemin_json_sortie]]` où **idBranch** est l'identifiant de la branche contenant la couche Remarques à exporter et, pour le récupérer, on peut demander à l'API la liste des branches en utilisant l'url `http://[serveur]:[port]/branches`, l'option *-v* ou *--verbose* est facultative, *-o* ou *--output* - option facultative pour sauvegarder la réponse directement dans un fichier et **chemin_json_sortie** - le chemin du fichier geoJson en sortie.
+
+De manière générale, pour exporter une couche vecteur, on peut utiliser l'url `http://[serveur]:[PORT]/[idBranch]/vector?name=[nom_vecteur]` ou la commande curl : `curl [-v] -X "GET" "http://[serveur]:[PORT]/[idBranch]/vector?name=[nom_vecteur]" -H "accept: */*" [-o [chemin_json_sortie]]`.
+
+Et pour exporter tous les vecteurs d'une branche, on peut utiliser l'url `http://[serveur]:[PORT]/[idBranch]/vectors` ou la commande curl correspondante `curl [-v] -X "GET" "http://[serveur]:[PORT]/[idBranch]/vectors" -H "accept: */*"`.
+
 
 ### Retouches
 
@@ -329,6 +352,14 @@ Les étapes du processus de retouche du graphe de mosaïquage sont :
 * annuler ou refaire la retouche en utilisant les outils "undo", "redo"
 
 Les contours des retouches d'un chantier peuvent être affichés en activant l'option "visible" de la couche "Patches".
+
+### Export des retouches
+
+Pour exporter les retouches d'une branche, on peut utiliser l'url `http://[serveur]:[PORT]/[idBranch]/patches` ou la commande curl `curl [-v] -X "GET" "http://[serveur]:[PORT]/[idBranch]/patches" -H "accept: */*" [-o [chemin_json_sortie]]`.
+
+Dans les deux cas, le paramètre **idBranch** représente l'identifiant de la branche contenant les retouches à exporter et, pour le récupérer, on peut demander à l'API la liste des branches en utilisant le url `http://[serveur]:[port]/branches`, comme plus haut.
+
+Les options curl *-v* ou *--verbose* et *-o* ou *--output* sont facultatives. Si on utilise l'option *-o*, **chemin_json_sortie** représente le chemin du fichier geoJson en sortie contenant les retouches.
 
 ## Travailler à plusieurs sur un chantier
 
