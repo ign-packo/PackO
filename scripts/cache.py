@@ -267,6 +267,23 @@ def export_as_json(filename, jobs_1, jobs_2):
         json.dump(gpao, file)
 
 
+def get_checked_date_time(opi_feature):
+    """Get checked values for metadata"""
+    date = opi_feature.GetField('DATE')
+    # yyyy-mm-dd | yyyy/mm/dd
+    pattern_date = "[0-9]{4}[/-][0-9]{2}[/-][0-9]{2}"
+    if date is None or not re.match(pattern_date, date):
+        raise SystemExit(f"ERROR: '{date=}' not in the correct format "
+                         "(expected: yyyy-mm-dd or yyyy/mm/dd)")
+    time_ut = opi_feature.GetField('HEURE_TU')
+    # HHhmm | HH:mm
+    pattern_time_ut = "[0-9]{2}[h:][0-5][0-9]"
+    if time_ut is None or not re.match(pattern_time_ut, time_ut):
+        raise SystemExit(f"ERROR: '{time_ut=}' not in the correct format "
+                         "(expected: HHhmm or HH:mm)")
+    return date, time_ut
+
+
 def generate(update):
     """Create a cache from a list of input OPI"""
 
@@ -330,18 +347,7 @@ def generate(update):
                 date = "1900-01-01"
                 time_ut = "00:00"
             else:
-                date = opi_feature.GetField('DATE')
-                # yyyy-mm-dd | yyyy/mm/dd
-                pattern_date = "[0-9]{4}[/-][0-9]{2}[/-][0-9]{2}"
-                if date is None or not re.match(pattern_date, date):
-                    raise SystemExit(f"ERROR: '{date=}' not in the correct format "
-                                     "(expected: yyyy-mm-dd or yyyy/mm/dd)")
-                time_ut = opi_feature.GetField('HEURE_TU')
-                # HHhmm | HH:mm
-                pattern_time_ut = "[0-9]{2}[h:][0-5][0-9]"
-                if time_ut is None or not re.match(pattern_time_ut, time_ut):
-                    raise SystemExit(f"ERROR: '{time_ut=}' not in the correct format "
-                                     "(expected: HHhmm or HH:mm)")
+                date, time_ut = get_checked_date_time(opi_feature)
                 graph_layer.SetAttributeFilter(None)
 
             overviews_dict["list_OPI"][basename] = {
@@ -388,18 +394,7 @@ def generate(update):
                     date = "1900-01-01"
                     time_ut = "00:00"
                 else:
-                    date = opi_feature.GetField('DATE')
-                    # yyyy-mm-dd | yyyy/mm/dd
-                    pattern_date = "[0-9]{4}[/-][0-9]{2}[/-][0-9]{2}"
-                    if date is None or not re.match(pattern_date, date):
-                        raise SystemExit(f"ERROR: '{date=}' not in the correct format "
-                                         "(expected: yyyy-mm-dd or yyyy/mm/dd)")
-                    time_ut = opi_feature.GetField('HEURE_TU')
-                    # HHhmm | HH:mm
-                    pattern_time_ut = "[0-9]{2}[h:][0-5][0-9]"
-                    if time_ut is None or not re.match(pattern_time_ut, time_ut):
-                        raise SystemExit(f"ERROR: '{time_ut=}' not in the correct format "
-                                         "(expected: HHhmm or HH:mm)")
+                    date, time_ut = get_checked_date_time(opi_feature)
                     graph_layer.SetAttributeFilter(None)
 
                 overviews_dict["list_OPI"][basename] = {
