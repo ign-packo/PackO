@@ -333,14 +333,14 @@ def generate(update):
                 date = opi_feature.GetField('DATE')
                 # yyyy-mm-dd | yyyy/mm/dd
                 pattern_date = "[0-9]{4}[/-][0-9]{2}[/-][0-9]{2}"
-                if not re.match(pattern_date, date):
-                    raise SystemExit("ERROR: date not in the correct format "
+                if date is None or not re.match(pattern_date, date):
+                    raise SystemExit(f"ERROR: '{date=}' not in the correct format "
                                      "(expected: yyyy-mm-dd or yyyy/mm/dd)")
                 time_ut = opi_feature.GetField('HEURE_TU')
                 # HHhmm | HH:mm
                 pattern_time_ut = "[0-9]{2}[h:][0-5][0-9]"
-                if not re.match(pattern_time_ut, time_ut):
-                    raise SystemExit("ERROR: time_ut not in the correct format "
+                if time_ut is None or not re.match(pattern_time_ut, time_ut):
+                    raise SystemExit(f"ERROR: '{time_ut=}' not in the correct format "
                                      "(expected: HHhmm or HH:mm)")
                 graph_layer.SetAttributeFilter(None)
 
@@ -391,14 +391,14 @@ def generate(update):
                     date = opi_feature.GetField('DATE')
                     # yyyy-mm-dd | yyyy/mm/dd
                     pattern_date = "[0-9]{4}[/-][0-9]{2}[/-][0-9]{2}"
-                    if not re.match(pattern_date, date):
-                        raise SystemExit("ERROR: date not in the correct format "
+                    if date is None or not re.match(pattern_date, date):
+                        raise SystemExit(f"ERROR: '{date=}' not in the correct format "
                                          "(expected: yyyy-mm-dd or yyyy/mm/dd)")
                     time_ut = opi_feature.GetField('HEURE_TU')
                     # HHhmm | HH:mm
                     pattern_time_ut = "[0-9]{2}[h:][0-5][0-9]"
-                    if not re.match(pattern_time_ut, time_ut):
-                        raise SystemExit("ERROR: time_ut not in the correct format "
+                    if time_ut is None or not re.match(pattern_time_ut, time_ut):
+                        raise SystemExit(f"ERROR: '{time_ut=}' not in the correct format "
                                          "(expected: HHhmm or HH:mm)")
                     graph_layer.SetAttributeFilter(None)
 
