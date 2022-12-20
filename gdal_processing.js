@@ -1,23 +1,10 @@
 const fs = require('fs');
 const debug = require('debug')('gdal');
 const gdal = require('gdal-async');
-const Jimp = require('jimp');
 const path = require('path');
+const uuid = require('uuid');
 
-// Image par defaut (elle sera créée la premier fois que l'on en a besoin)
-let DEFAULT_IMAGE = null;
-
-// cache pour réutiliser les images ouvertes lorsque c'est possible
-let cache = {};
-
-function clearCache() {
-  debug('debut de clearCache : ', cache);
-  Object.values(cache).forEach((value) => {
-    value.ds.close();
-  });
-  cache = {};
-  debug('fin de clearCache ');
-}
+const defaultImage = {};
 
 /**
  *
@@ -25,14 +12,15 @@ function clearCache() {
  * @param {int} x - numéro de tuile en colonne dans l'image
  * @param {int} y - numéro de tuile en ligne dans l'image
  * @param {int} z - niveau de zoom dans l'image (0 : pleine resolution)
+ * @param {string} formatGDAL - ex: PNG ou JPEG
  * @param {*} blocSize - taille des tuiles
- * @param {*} cacheKey - clé utilisée pour gérer le cache des images
  * @param {*} bands - tableau des bandes à utiliser ([0, 1, 2] par défaut)
  * @returns
  */
-function getTile(url, x, y, z, blocSize, cacheKey, bands) {
+async function getTileEncoded(url, x, y, z, formatGDAL, blocSize, bands) {
   const b = bands || [0, 1, 2];
-  debug('~~~getTile : ', url, x, y, z, blocSize, cacheKey, b);
+  debug('~~~getTileEncoded : ', url, x, y, z, blocSize, b);
+  const name = `/vsimem/${uuid.v4()}`;
 
   // url correspond au chemin de l'image RGB sauf
   // dans le cas des OPI avec un cache purement IR (présence de _ix)
@@ -49,117 +37,101 @@ function getTile(url, x, y, z, blocSize, cacheKey, bands) {
   }
 
   debug(url, urlIr);
-
-  const cacheKeyIr = `${cacheKey}_ir`;
-
   if (b.includes(3)) {
-    if (!fs.existsSync(urlIr)) {
+    try {
+      await fs.promises.access(urlIr, fs.constants.R_OK);
+    } catch (_) {
       debug('default');
-      if (DEFAULT_IMAGE === null) {
-        DEFAULT_IMAGE = new Jimp(blocSize, blocSize, 0x000000ff);
+      if (!(blocSize in defaultImage)) {
+        const outDS = await gdal.openAsync('default', 'w', 'MEM', blocSize, blocSize, 3);
+        await gdal.drivers.get(formatGDAL).createCopyAsync(name, outDS);
+        defaultImage[blocSize] = gdal.vsimem.release(name);
       }
-      return Promise.resolve(DEFAULT_IMAGE);
+      return defaultImage[blocSize];
     }
-  } else if (!fs.existsSync(url)) {
-    debug('default');
-    if (DEFAULT_IMAGE === null) {
-      DEFAULT_IMAGE = new Jimp(blocSize, blocSize, 0x000000ff);
+  } else {
+    try {
+      await fs.promises.access(url, fs.constants.R_OK);
+    } catch (_) {
+      debug('default');
+      if (!(blocSize in defaultImage)) {
+        const outDS = await gdal.openAsync('default', 'w', 'MEM', blocSize, blocSize, 3);
+        await gdal.drivers.get(formatGDAL).createCopyAsync(name, outDS);
+        defaultImage[blocSize] = gdal.vsimem.release(name);
+      }
+      return defaultImage[blocSize];
     }
-    return Promise.resolve(DEFAULT_IMAGE);
   }
 
   // On ouvre les images si nécessaire
   const withRgb = b.includes(0) || b.includes(1) || b.includes(2);
-  if (withRgb) {
-    if ((cacheKey in cache) && (cache[cacheKey][url] !== url)) {
-      cache[cacheKey].ds.close();
-      delete cache[cacheKey];
-    }
-    if (!(cacheKey in cache)) {
-      cache[cacheKey] = {
-        url,
-        ds: gdal.open(url),
-      };
-    }
-  }
   const withIr = b.includes(3);
-  if (withIr) {
-    if ((cacheKeyIr in cache) && (cache[cacheKeyIr][urlIr] !== urlIr)) {
-      cache[cacheKeyIr].ds.close();
-      delete cache[cacheKeyIr];
+
+  const blocks = withRgb
+    ? await gdal.openAsync(url).then((ds) => Promise.all([
+      ds.bands.getAsync(1)
+        .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
+        .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)),
+      ds.bands.getAsync(2)
+        .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
+        .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)),
+      ds.bands.getAsync(3)
+        .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
+        .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)),
+    ]))
+    : [null, null, null];
+  blocks.push(withIr
+    ? await gdal.openAsync(urlIr).then((ds) => ds.bands.getAsync(1)
+      .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
+      .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)))
+    : null);
+
+  const outDS = await gdal.openAsync('default', 'w', 'MEM', blocSize, blocSize, 3);
+
+  await Promise.all([
+    outDS.bands.getAsync(1).then((band) => band.pixels.writeAsync(0, 0,
+      blocSize, blocSize, blocks[b[0]])),
+    outDS.bands.getAsync(2).then((band) => band.pixels.writeAsync(0, 0,
+      blocSize, blocSize, blocks[b[1]])),
+    outDS.bands.getAsync(3).then((band) => band.pixels.writeAsync(0, 0,
+      blocSize, blocSize, blocks[b[2]]))])
+    .then(() => gdal.drivers.get(formatGDAL).createCopyAsync(name, outDS));
+
+  return gdal.vsimem.release(name);
+}
+
+async function getColor(url, x, y, z, col, lig, blocSize) {
+  debug('getColor', url, x, y, z, col, lig, blocSize);
+  try {
+    await fs.promises.access(url, fs.constants.R_OK);
+    const ds = await gdal.openAsync(url);
+    if (z === 0) {
+      return [await (await ds.bands.getAsync(1)).pixels.getAsync(col + x * blocSize,
+        lig + y * blocSize),
+      await (await ds.bands.getAsync(2)).pixels.getAsync(col + x * blocSize,
+        lig + y * blocSize),
+      await (await ds.bands.getAsync(3)).pixels.getAsync(col + x * blocSize,
+        lig + y * blocSize)];
     }
-    if (!(cacheKeyIr in cache)) {
-      cache[cacheKeyIr] = {
-        urlIr,
-        ds: gdal.open(urlIr),
-      };
-    }
+    return [await (await (await ds.bands.getAsync(1)).overviews.getAsync(z))
+      .pixels.getAsync(col, lig),
+    await (await (await ds.bands.getAsync(2)).overviews.getAsync(z - 1)).pixels.getAsync(col, lig),
+    await (await (await ds.bands.getAsync(3)).overviews.getAsync(z - 1)).pixels.getAsync(col, lig)];
+  } catch (_) {
+    return [0, 0, 0];
   }
-
-  debug('fichier ouvert ');
-  const ds = withRgb ? cache[cacheKey].ds : null;
-  const dsIr = withIr ? cache[cacheKeyIr].ds : null;
-  const blocks = {};
-  b.forEach((band) => {
-    if (band in blocks) return;
-    const selectedBand = band === 3 ? dsIr.bands.get(1)
-      : ds.bands.get(band + 1);
-    const B = z === 0
-      ? selectedBand
-      : selectedBand.overviews.get(z - 1);
-    blocks[band] = B.pixels.readBlock(x, y);
-  });
-
-  return new Promise((res, rej) => {
-    try {
-      /* eslint-disable no-new */
-      new Jimp(blocSize, blocSize, (err, image) => {
-        /* eslint-disable no-param-reassign */
-        image.scan(0, 0, image.bitmap.width, image.bitmap.height, (_x, _y, idx) => {
-          image.bitmap.data[idx] = blocks[b[0]][idx / 4];
-          image.bitmap.data[idx + 1] = blocks[b[1]][idx / 4];
-          image.bitmap.data[idx + 2] = blocks[b[2]][idx / 4];
-          image.bitmap.data[idx + 3] = 255;
-        });
-        res(image);
-        /* eslint-enable no-param-reassign */
-      });
-    } catch (error) {
-      rej(error);
-    }
-  });
 }
 
-function getTileEncoded(url, x, y, z, mime, blocSize, cacheKey, bands) {
-  return getTile(url, x, y, z, blocSize, cacheKey, bands)
-    .then((image) => image.getBufferAsync(mime));
-}
-
-function getColor(url, x, y, z, col, lig, blocSize, cacheKey) {
-  debug('getColor', url, x, y, z, col, lig, blocSize, cacheKey);
-  return getTile(url, x, y, z, blocSize).then((image) => {
-    const index = image.getPixelIndex(col, lig);
-    return [
-      image.bitmap.data[index],
-      image.bitmap.data[index + 1],
-      image.bitmap.data[index + 2],
-    ];
-  });
-}
-
-function getDefaultEncoded(mime, blocSize) {
-  if (DEFAULT_IMAGE === null) {
-    DEFAULT_IMAGE = new Jimp(blocSize, blocSize, 0x000000ff);
-  }
-  return Promise.resolve(DEFAULT_IMAGE.getBufferAsync(mime));
+async function getDefaultEncoded(formatGDAL, blocSize) {
+  const name = `/vsimem/${uuid.v4()}`;
+  await gdal.openAsync(name, 'w', formatGDAL, blocSize, blocSize, 3);
+  return gdal.vsimem.release(name);
 }
 
 function processPatchAsync(patch, blocSize) {
   return new Promise((res, reject) => {
     // On patch le graph
     const { mask } = patch;
-    // On a modifier le cache, donc il faut forcer le refresh
-    cache = {};
 
     // Modification du graph
     debug('ouverture de l image');
@@ -335,4 +307,3 @@ exports.getTileEncoded = getTileEncoded;
 exports.getColor = getColor;
 exports.getDefaultEncoded = getDefaultEncoded;
 exports.processPatch = processPatchAsync;
-exports.clearCache = clearCache;

@@ -45,7 +45,6 @@ function getCOGs(feature, overviews) {
 }
 
 function rename(url, urlOrig) {
-  gdalProcessing.clearCache();
   fs.renameSync(url, urlOrig);
 }
 
@@ -645,7 +644,6 @@ async function clear(req, _res, next) {
   const params = matchedData(req);
   const { idBranch } = params;
   const { overviews } = req;
-  gdalProcessing.clearCache();
 
   const activePatches = await db.getActivePatches(req.client, idBranch);
 

@@ -2,7 +2,6 @@ const debug = require('debug')('wmts');
 const debugFeatureInfo = require('debug')('wmts:GetFeatureInfo');
 const debugGetTile = require('debug')('wmts:GetTile');
 const { matchedData } = require('express-validator');
-const Jimp = require('jimp');
 const path = require('path');
 
 const fs = require('fs');
@@ -209,12 +208,12 @@ function wmts(req, _res, next) {
   } else if (REQUEST === 'GetTile') {
     debug('~~~GetTile');
     debugGetTile(LAYER, TILEMATRIX, TILEROW, TILECOL);
-    let mime = null;
+    let formatGDAL = null;
     const layerName = LAYER;
     if ((!FORMAT) || (FORMAT === 'image/png')) {
-      mime = Jimp.MIME_PNG; // "image/png"
+      formatGDAL = 'PNG'; // "image/png"
     } else if (FORMAT === 'image/jpeg') {
-      mime = Jimp.MIME_JPEG; // "image/jpeg"
+      formatGDAL = 'JPEG'; // "image/jpeg"
     }
     try {
       const cogPath = cog.getTileInfo(TILECOL, TILEROW, TILEMATRIX, overviews);
@@ -226,14 +225,12 @@ function wmts(req, _res, next) {
         layerName,
         cogPath.dirPath,
         `${cogPath.filename}`);
-      let cacheKey = layerName;
       if (LAYER === 'opi') {
         if (!Name) {
           [Name] = Object.keys(overviews.list_OPI);
         }
         debugGetTile('Name : ', Name);
         url += `_${Name}`;
-        cacheKey = Name;
         // Pas de gestion de branche pour les OPI
         urlBranch = url;
       }
@@ -263,13 +260,13 @@ function wmts(req, _res, next) {
       }
       gdalProcessing.getTileEncoded(url,
         cogPath.x, cogPath.y, cogPath.z,
-        mime, overviews.tileSize.width, cacheKey, bands).then((img) => {
+        formatGDAL, overviews.tileSize.width, bands).then((img) => {
         req.result = { img, code: 200 };
         next();
       });
     } catch (error) {
       debug(error);
-      gdalProcessing.getDefaultEncoded(mime, overviews.tileSize.width).then((img) => {
+      gdalProcessing.getDefaultEncoded(formatGDAL, overviews.tileSize.width).then((img) => {
         req.result = { img, code: 200 };
         next();
       });
