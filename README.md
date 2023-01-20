@@ -306,6 +306,37 @@ Pour importer un cache dans la BD packo, il faut utiliser :
 
 Si un cache a une taille de dalle (slabSize) différente de 16x16 tuiles ou une taille de tuile (tileSize) différente de 256x256 pixels, il peut y avoir des soucis de visualisation sous iTowns car la gestion de ces tailles n'était pas initialement prévue.
 
+
+## Préparation des éléments de la vue PackO pour QGIS
+
+Dans le cas d'utilisation d'un client pour PackO basé sur QGIS, on peut générer des éléments de la vue du chantier en utilisant le script **create_qgis_view.py** :
+````
+usage: create_qgis_view.py [-h] [-u URL] -c CACHE_ID [-b BRANCH_NAME] [-s STYLE_ORTHO] [-o OUTPUT] [-v VERBOSE]
+
+options:
+  -h, --help            show this help message and exit
+  -u URL, --url URL     http://[serveur]:[port] (default: http://localhost:8081)
+  -c CACHE_ID, --cache_id CACHE_ID
+                        cache id
+  -b BRANCH_NAME, --branch_name BRANCH_NAME
+                        name of new branch to be created on cache (default: newBranch)
+  -s STYLE_ORTHO, --style_ortho STYLE_ORTHO
+                        style for ortho to be exported to xml (default: RVB)
+  -o OUTPUT, --output OUTPUT
+                        output path (default: ./)
+  -v VERBOSE, --verbose VERBOSE
+                        verbose (default: 0, meaning no verbose)
+````
+où **-c** est l'identifiant du cache de travail dans la base de données : pour le récupérer, on peut demander à l'API la liste des caches en utilisant l'url `http://[serveur]:[port]/caches` ou la commande curl `curl [-v] -X "GET" "http://[serveur]:[PORT]/caches" -H "accept: */*"`.
+
+Actuellement, les éléments de la vue générés avec ce script sont :
+- une nouvelle branche PackO créée sur le cache indiqué ; le nom de la branche est par défaut "newBranch", nom de branche à indiquer avec **-b**.
+- **ortho.xml** et **graph.xml** : les couches ortho et graphe de la nouvelle branche, exportées sous forme de fichiers xml plus des modifications pour QGIS, dans le dossier de sortie (chemin à indiquer avec **-o**). Pour l'ortho, si le style est différent de celui par défaut ("RVB"), il faut l'indiquer avec **-s**.
+- **graph_contour.vrt** : la couche contour de graphe générée à partir de graph.xml avec des ajouts et modifications pour QGIS, dans le dossier de sortie
+
+Pour le bon fonctionnement dans QGIS, il est impératif de mettre la variable d'environnement **GDAL_VRT_ENABLE_PYTHON** à **YES**.
+
+
 ## Traitement d'un chantier
 
 ### Connection à un cache
