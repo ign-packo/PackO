@@ -309,9 +309,9 @@ Si un cache a une taille de dalle (slabSize) différente de 16x16 tuiles ou une 
 
 ## Préparation des éléments de la vue PackO pour QGIS
 
-Dans le cas d'utilisation d'un client pour PackO basé sur QGIS, on peut générer des éléments de la vue du chantier en utilisant le script **create_qgis_view.py** :
+Dans le cas d'utilisation d'un client pour PackO basé sur QGIS, on peut créer automatiquement la vue contenant les éléments du chantier en utilisant le script **create_qgis_view.py** :
 ````
-usage: create_qgis_view.py [-h] [-u URL] -c CACHE_ID [-b BRANCH_NAME] [-s STYLE_ORTHO] [-o OUTPUT] [-v VERBOSE]
+usage: create_qgis_view.py [-h] [-u URL] -c CACHE_ID [-b BRANCH_NAME] [-s {RVB,IR,IRC}] [-o OUTPUT] [-z ZOOM ZOOM] [-m MACROS] [-v VERBOSE]
 
 options:
   -h, --help            show this help message and exit
@@ -323,19 +323,49 @@ options:
   -s {RVB,IR,IRC}, --style_ortho {RVB,IR,IRC}
                         style for ortho to be exported to xml (default: RVB)
   -o OUTPUT, --output OUTPUT
-                        output path (default: ./)
+                        output qgis view path (default: ./view.qgz)
+  -z ZOOM ZOOM, --zoom ZOOM ZOOM
+                        zoom levels as zmin zmax (default: 3025 10000000) -> graph layer visibility scale [1:zmax,1:zmin]
+  -m MACROS, --macros MACROS
+                        macros file path
   -v VERBOSE, --verbose VERBOSE
                         verbose (default: 0, meaning no verbose)
 ````
 où **-c** est l'identifiant du cache de travail dans la base de données : pour le récupérer, on peut demander à l'API la liste des caches en utilisant l'url `http://[serveur]:[port]/caches` ou la commande curl `curl [-v] -X "GET" "http://[serveur]:[PORT]/caches" -H "accept: */*"`.
 
-Actuellement, les éléments de la vue générés avec ce script sont :
+Les éléments de la vue générés avec ce script sont :
 - une nouvelle branche PackO créée sur le cache indiqué ; le nom de la branche est par défaut "newBranch", nom de branche à indiquer avec **-b**.
-- **ortho.xml** et **graph.xml** : les couches ortho et graphe de la nouvelle branche, exportées sous forme de fichiers xml plus des modifications pour QGIS, dans le dossier de sortie (chemin à indiquer avec **-o**). Pour l'ortho, si le style est différent de celui par défaut ("RVB"), il faut l'indiquer avec **-s**.
-- **graph_contour.vrt** : la couche contour de graphe générée à partir de graph.xml avec des ajouts et modifications pour QGIS, dans le dossier de sortie
+- **ortho.xml** et **graph.xml** : les couches ortho et graphe de la nouvelle branche, exportées sous forme de fichiers xml plus des modifications pour QGIS, dans le dossier de sortie (le chemin de la vue à indiquer avec **-o**). Pour l'ortho, si le style est différent de celui par défaut ("RVB"), il faut l'indiquer avec **-s**. L'échelle de visibilité de la couche *graphe* est définie avec **-z**. 
+- **graph_contour.vrt** : la couche contour de graphe générée à partir de graph.xml avec des ajouts et modifications pour QGIS, dans le dossier de sortie. L'échelle de visibilité de la couche *graphe_contour* est définie à partir de celle de la couche *graphe*
+- **patches.gpkg** : la couche vecteur, initialement vide, utilisée pour les retouches
+- **avancement.gpkg** : la couche vecteur, initialement vide, utilisée pour garder la trace des zones contrôlées
 
-Pour le bon fonctionnement dans QGIS, il est impératif de mettre la variable d'environnement **GDAL_VRT_ENABLE_PYTHON** à **YES**.
+Ces éléments sont des couches de la vue PackO pour QGIS (par défaut **view.qgz**), auxquelles s'ajoute une couche OPI générée en important la couche WMTS OPI de la branche du cache.
 
+Pour intégrer un fichier de macros QGIS à la vue, il faut indiquer le chemin vers le fichier macros prototype avec **-m**. Ce fichier sera adapté au chantier avant d'être intégré à la vue, en remplaçant les clés `__IDBRANCH__`, `__URLSERVER__` et `__TILEMATRIXSET__` avec les valeurs correspondantes pour le chantier - exemple :
+
+  - Extrait prototype macros, avant adaptation :
+    ```
+    id_branch = __IDBRANCH__
+    url_server = __URLSERVER__
+    tile_matrix_set = __TILEMATRIXSET__
+    ```
+  - Extrait macros, après adaptation :
+    ```
+    id_branch = '32'
+    url_server = 'http://localhost:8081/'
+    tile_matrix_set = 'LAMB93_20cm'
+    ```
+
+Pour le bon fonctionnement dans QGIS, il est impératif de mettre la variable d'environnement **GDAL_VRT_ENABLE_PYTHON** à **YES**. Il faut également définir les variables d'environnement (où `<qgispath>` doit être remplacé par le chemin d'accès au dossier d'installation de QGIS) :
+- **PYTHONPATH** :
+  - sous Linux : `export PYTHONPATH=/<qgispath>/share/qgis/python`
+  - sous Windows : `set PYTHONPATH=C:\<qgispath>\python`
+- **LD_LIBRARY_PATH** :
+  - sous Linux : `export LD_LIBRARY_PATH=/<qgispath>/lib`
+  - sous Windows: `set PATH=C:\<qgispath>\bin;C:\<qgispath>\apps\<qgisrelease>\bin;%PATH%` (où `<qgisrelease>` devrait être remplacé avec le type de release ciblé (ex : qgis-ltr, qgis, qgis-dev)
+
+Si la vue contient des macros, il faut activer leur utilisation lors du chargement de la vue dans QGIS.
 
 ## Traitement d'un chantier
 
