@@ -26,7 +26,7 @@ def read_args():
                         type=str, default='newBranch')
     parser.add_argument('-s', '--style_ortho',
                         help="style for ortho to be exported to xml (default: RVB)",
-                        type=str, default='RVB')
+                        type=str, default='RVB', choices=['RVB', 'IR', 'IRC'])
     parser.add_argument('-o', '--output',
                         help="output path (default: ./)",
                         type=str, default='./')
@@ -88,11 +88,6 @@ print(f"Branch '{branch_name}' created (idBranch={branch_id}) on cache '{cache['
 
 # ---------- export ortho and graph xml ---------
 wmts_url = f'WMTS:{ARG.url}/{branch_id}/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0'
-# check input ortho style
-styles = ['RVB', 'IR', 'IRC']
-if ARG.style_ortho not in styles:
-    raise SystemExit(f"ERROR: Ortho style '{ARG.style_ortho}' not available. \
-                     Available styles are 'RVB', 'IRC' and 'IR'")
 wmts_ortho = f'{wmts_url},layer=ortho,style={ARG.style_ortho}'
 wmts_graph = f'{wmts_url},layer=graph'
 
