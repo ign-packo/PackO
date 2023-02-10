@@ -2,14 +2,13 @@
 """This script creates a PackO client view for QGIS"""
 
 import argparse
-import json
 import re
 import ast
 import os.path
 from copy import deepcopy
 from lxml import etree
-import requests
 from osgeo import gdal
+from process_requests import check_get_post, xml_from_wmts
 
 
 def read_args():
@@ -27,7 +26,7 @@ def read_args():
                         type=str, default='newBranch')
     parser.add_argument('-s', '--style_ortho',
                         help="style for ortho to be exported to xml (default: RVB)",
-                        type=str, default='RVB')
+                        type=str, default='RVB', choices=['RVB', 'IR', 'IRC'])
     parser.add_argument('-o', '--output',
                         help="output path (default: ./)",
                         type=str, default='./')
@@ -40,35 +39,6 @@ def read_args():
         print('\nArguments: ', argum)
 
     return argum
-
-
-def check_get_post(req, is_get=True):
-    """ Check GET or POST request """
-    try:
-        if is_get:
-            response = requests.get(req)
-        else:
-            response = requests.post(req)
-        response.raise_for_status()
-    except Exception as err:
-        msg = 'ERROR:\n\t'
-        try:
-            msg += f'{response.json()}\n\t'
-        except json.decoder.JSONDecodeError:
-            pass
-        msg += str(err)
-        raise SystemExit(msg)
-    return response
-
-
-def xml_from_wmts(wmts_in, xml_out):
-    """ Create xml file from wmts GetCapabilities request """
-    src_ds = gdal.Open(wmts_in)
-    _ = gdal.Translate(xml_out, src_ds, format='WMTS')
-    # close dataset to flush to disk
-    _ = None
-    src_ds = None
-    print(f"File '{xml_out}' written")
 
 
 def suppress_cachetag(xml_in, xml_out):
@@ -118,11 +88,6 @@ print(f"Branch '{branch_name}' created (idBranch={branch_id}) on cache '{cache['
 
 # ---------- export ortho and graph xml ---------
 wmts_url = f'WMTS:{ARG.url}/{branch_id}/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0'
-# check input ortho style
-styles = ['RVB', 'IR', 'IRC']
-if ARG.style_ortho not in styles:
-    raise SystemExit(f"ERROR: Ortho style '{ARG.style_ortho}' not available. \
-                     Available styles are 'RVB', 'IRC' and 'IR'")
 wmts_ortho = f'{wmts_url},layer=ortho,style={ARG.style_ortho}'
 wmts_graph = f'{wmts_url},layer=graph'
 

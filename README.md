@@ -320,7 +320,7 @@ options:
                         cache id
   -b BRANCH_NAME, --branch_name BRANCH_NAME
                         name of new branch to be created on cache (default: newBranch)
-  -s STYLE_ORTHO, --style_ortho STYLE_ORTHO
+  -s {RVB,IR,IRC}, --style_ortho {RVB,IR,IRC}
                         style for ortho to be exported to xml (default: RVB)
   -o OUTPUT, --output OUTPUT
                         output path (default: ./)
