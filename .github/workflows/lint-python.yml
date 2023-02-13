@@ -21,10 +21,10 @@ jobs:
 
     - name: Analysing the code with pylint
       run: |
-        pylint scripts/update_cache.py scripts/create_cache.py scripts/cache.py scripts/cache_def.py scripts/export_mtd.py scripts/prep_vectorise_graph.py scripts/vectorise_graph.py scripts/create_qgis_view.py scripts/process_requests.py scripts/process_qlayers.py
+        pylint scripts/update_cache.py scripts/create_cache.py scripts/cache.py scripts/cache_def.py scripts/export_mtd.py scripts/export_graph/prep_vectorise_graph.py scripts/export_graph/vectorise_graph.py scripts/export_graph/export_graph.py scripts/create_qgis_view.py scripts/process_requests.py scripts/process_qlayers.py
 
       continue-on-error: true
 
     - name: Analysing the code with flake8
       run: |
-        flake8  --max-line-length 100 scripts/update_cache.py scripts/create_cache.py scripts/cache.py scripts/cache_def.py scripts/export_mtd.py scripts/prep_vectorise_graph.py scripts/vectorise_graph.py scripts/create_qgis_view.py scripts/process_requests.py scripts/process_qlayers.py
+        flake8  --max-line-length 100 scripts/update_cache.py scripts/create_cache.py scripts/cache.py scripts/cache_def.py scripts/export_mtd.py scripts/export_graph/prep_vectorise_graph.py scripts/export_graph/vectorise_graph.py scripts/export_graph/export_graph.py scripts/create_qgis_view.py scripts/process_requests.py scripts/process_qlayers.py
