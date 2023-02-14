@@ -25,6 +25,17 @@ def check_get_post(req, is_get=True):
     return response
 
 
+def response2pyobj(resp):
+    """ Transform response of web request to py object """
+    resp_decode = resp.content.decode()
+    try:
+        obj = json.loads(resp_decode)
+    except json.decoder.JSONDecodeError as err:
+        print(resp_decode)
+        raise SystemExit(f'ERROR in json interpretation: {err}')
+    return obj
+
+
 def xml_from_wmts(wmts_in, xml_out):
     """ Create xml file from wmts GetCapabilities request """
     src_ds = gdal.Open(wmts_in)

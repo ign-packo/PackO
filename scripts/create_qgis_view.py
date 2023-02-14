@@ -3,12 +3,11 @@
 
 import argparse
 import re
-import ast
 import os.path
 from copy import deepcopy
 from lxml import etree
 from osgeo import gdal
-from process_requests import check_get_post, xml_from_wmts
+from process_requests import check_get_post, response2pyobj, xml_from_wmts
 
 
 def read_args():
@@ -66,7 +65,7 @@ if not re.match(url_pattern, ARG.url):
 
 # check input id cache
 resp_get_caches = check_get_post(ARG.url + '/caches', is_get=True)
-list_all_caches = ast.literal_eval(resp_get_caches.content.decode())
+list_all_caches = response2pyobj(resp_get_caches)
 cache = next((c for c in list_all_caches if c['id'] == ARG.cache_id), None)
 if cache is None:
     raise SystemExit(f'ERROR: cache id {ARG.cache_id} is invalid')
@@ -81,7 +80,7 @@ req_post_branch = ARG.url + '/branch?name=' + branch_name + \
 resp_post_branch = check_get_post(req_post_branch, is_get=False)
 # get branch id
 resp_get_branches = check_get_post(ARG.url + '/branches', is_get=True)
-list_all_branches = ast.literal_eval(resp_get_branches.content.decode())
+list_all_branches = response2pyobj(resp_get_branches)
 branch = next((b for b in list_all_branches if b['name'] == branch_name))
 branch_id = branch['id']
 print(f"Branch '{branch_name}' created (idBranch={branch_id}) on cache '{cache['name']}'")
