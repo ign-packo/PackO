@@ -1,6 +1,17 @@
 const debug = require('debug')('pgClient');
-const { Client } = require('pg');
+const { Pool } = require('pg');
 const db = require('../db/db');
+
+const pool = new Pool({
+  user: process.env.PGUSER,
+  host: process.env.PGHOST,
+  database: process.env.PGDATABASE,
+  password: process.env.PGPASSWORD,
+  port: process.env.PGPORT,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
 
 /*
  * middleware pour la création et la libération des connexions postgresql
@@ -9,14 +20,7 @@ const db = require('../db/db');
 async function open(req, res, next) {
   debug('open pg connection...');
   try {
-    req.client = new Client({
-      user: process.env.PGUSER,
-      host: process.env.PGHOST,
-      database: process.env.PGDATABASE,
-      password: process.env.PGPASSWORD,
-      port: process.env.PGPORT,
-    });
-    await req.client.connect();
+    req.client = await pool.connect();
     await db.beginTransaction(req.client);
     debug('transaction ouverte');
     next();
@@ -42,7 +46,7 @@ async function close(req, _res, next) {
       function: 'pgClient close commit',
     };
   }
-  req.client.end();
+  req.client.release();
   next();
 }
 
