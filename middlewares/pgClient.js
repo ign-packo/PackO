@@ -1,6 +1,5 @@
 const debug = require('debug')('pgClient');
-// const { Client } = require('pg');
-const { Pool } = require('pg')
+const { Pool } = require('pg');
 const db = require('../db/db');
 
 const pool = new Pool({
@@ -12,7 +11,7 @@ const pool = new Pool({
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
-})
+});
 
 /*
  * middleware pour la création et la libération des connexions postgresql
