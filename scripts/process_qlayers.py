@@ -4,14 +4,15 @@
 from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsVectorFileWriter
 
 
-def add_layer_to_map(data_source, layer_name, qgs_project, provider_name, is_raster=True):
+def add_layer_to_map(data_source, layer_name, qgs_project, provider_name,
+                     is_raster=True, show=True):
     """ add layer to map """
     layer = QgsRasterLayer(data_source, layer_name, provider_name) if is_raster\
         else QgsVectorLayer(data_source, layer_name, provider_name)
     if not layer or not layer.isValid():
         raise SystemExit(f"ERROR: Layer '{layer_name}' failed to load! - "
                          f'{layer.error().summary()}')
-    qgs_project.addMapLayer(layer)
+    qgs_project.addMapLayer(layer, show)
     return layer
 
 
@@ -31,3 +32,13 @@ def create_vector(vector_filename, fields, geom_type, crs, qgs_project, driver_n
         raise SystemExit(f"ERROR when creating vector '{vector_filename}': {wrt.errorMessage()}")
     # flush to disk
     del wrt
+
+
+def set_layer_resampling(raster_layer, resampling_method_zoomedin=None,
+                         resampling_method_zoomedout=None, max_oversampling=1.0):
+    """ set zoomed in and out resampling methods (None means nearest neighbor)
+        and max oversampling"""
+    resample_filter = raster_layer.resampleFilter()
+    resample_filter.setZoomedInResampler(resampling_method_zoomedin)
+    resample_filter.setZoomedOutResampler(resampling_method_zoomedout)
+    resample_filter.setMaxOversampling(max_oversampling)

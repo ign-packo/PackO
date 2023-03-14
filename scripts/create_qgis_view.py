@@ -3,7 +3,6 @@
 
 import argparse
 import re
-import json
 import os.path
 import platform
 from copy import deepcopy
@@ -19,11 +18,13 @@ from qgis.core import (
     QgsFields,
     QgsField,
     QgsWkbTypes,
+    QgsLayerTreeLayer,
 )
+from qgis.gui import QgsMapCanvas
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtCore import QVariant
 from process_requests import check_get_post, response2pyobj, xml_from_wmts
-from process_qlayers import add_layer_to_map, create_vector
+from process_qlayers import add_layer_to_map, create_vector, set_layer_resampling
 
 
 def read_args():
@@ -43,8 +44,8 @@ def read_args():
                         help="style for ortho to be exported to xml (default: RVB)",
                         type=str, default='RVB', choices=['RVB', 'IR', 'IRC'])
     parser.add_argument('-o', '--output',
-                        help="output qgis view path (default: ./view.qgz)",
-                        type=str, default='./view.qgz')
+                        help="output qgis view path (default: ./view.qgs)",
+                        type=str, default='./view.qgs')
     parser.add_argument('-z', '--zoom', nargs=2,
                         help="zoom levels as zmin zmax (default: 3025 10000000)\
                         -> graph layer visibility scale [1:zmax,1:zmin]",
@@ -120,23 +121,20 @@ dirpath_out = os.path.dirname(os.path.normpath(ARG.output))
 if not os.path.isdir(dirpath_out):
     raise SystemExit(f"ERROR: '{dirpath_out}' is not a valid directory")
 
-# check overviews file and get info
-overviews_path = cache['path'] + '/overviews.json'
-try:
-    with open(overviews_path, 'r', encoding='utf-8') as fileOverviews:
-        overviews = json.load(fileOverviews)
-        slab_width = overviews['slabSize']['width']
-        slab_height = overviews['slabSize']['height']
-        if slab_width is None or slab_height is None:
-            raise SystemExit(f"ERROR: No 'slabSize' values in '{overviews_path}'!")
-        if slab_width != slab_height:
-            print(f"WARNING: Slab width(={slab_width}) <> height(={slab_height}) \
-in '{overviews_path}'!")
-        tms = overviews['identifier']
-        if tms is None:
-            raise SystemExit(f"ERROR: No 'identifier' value in '{overviews_path}'")
-except IOError:
-    raise SystemExit(f"ERROR: Unable to open file '{overviews_path}'")
+# get info from overviews file
+req_get_overviews = ARG.url + '/json/overviews?cachePath=' + str(cache['path'])
+resp_get_overviews = check_get_post(req_get_overviews)
+overviews = resp_get_overviews.json()
+slab_width = overviews['slabSize']['width']
+slab_height = overviews['slabSize']['height']
+if slab_width is None or slab_height is None:
+    raise SystemExit(f"ERROR: No 'slabSize' values in '{overviews}'!")
+if slab_width != slab_height:
+    print(f"WARNING: Slab width(={slab_width}) <> height(={slab_height}) \
+in '{overviews}'!")
+tms = overviews['identifier']
+if tms is None:
+    raise SystemExit(f"ERROR: No 'identifier' value in '{overviews}'")
 
 # ---------- create new branch on cache ----------
 req_post_branch = ARG.url + '/branch?name=' + branch_name + \
@@ -155,19 +153,19 @@ wmts_ortho = f'{wmts_url},layer=ortho,style={ARG.style_ortho}'
 wmts_graph = f'{wmts_url},layer=graph'
 
 xml_ortho_tmp = dirpath_out + '/ortho_tmp.xml'
-xml_graph_tmp = dirpath_out + '/graph_tmp.xml'
+xml_graph_tmp = dirpath_out + '/graphe_surface_tmp.xml'
 xml_from_wmts(wmts_ortho, xml_ortho_tmp)
 xml_from_wmts(wmts_graph, xml_graph_tmp)
 
 # suppress Cache tag from previous graph and ortho xml to avoid creation of local cache
 xml_ortho = dirpath_out + '/ortho.xml'
-xml_graph = dirpath_out + '/graph.xml'
+xml_graph = dirpath_out + '/graphe_surface.xml'
 suppress_cachetag(xml_ortho_tmp, xml_ortho)
 suppress_cachetag(xml_graph_tmp, xml_graph)
 # TODO: suppress xml_ortho_tmp and xml_graph_tmp
 
 # --------- create contours vrt from graph.xml -----------
-vrt_tmp = dirpath_out + '/graph_contour_tmp.vrt'
+vrt_tmp = dirpath_out + '/graphe_contour_tmp.vrt'
 ds = gdal.BuildVRT(vrt_tmp, xml_graph)
 ds = None
 print(f"File '{vrt_tmp}' written")
@@ -226,15 +224,14 @@ in_ar[2] != np.pad(in_ar[2], 1, 'edge')[1:-1,0:-2])
 else:
     raise SystemExit(f"ERROR: 'VRTRasterBand' not found in '{vrt_tmp}'")
 
-vrt_final = dirpath_out + '/graph_contour.vrt'
+vrt_final = dirpath_out + '/graphe_contour.vrt'
 etree.tail = '\n'
 etree.indent(root)
 tree.write(vrt_final)
 print(f"File '{vrt_final}' written")
 # TODO: suppress vrt_tmp
 
-# --------------- create qgz view -------------
-# TODO: check if only needed for Linux
+# --------------- create qgis view -------------
 if platform.system() == 'Linux':
     os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
@@ -246,6 +243,8 @@ project = QgsProject.instance()
 # ---- add ortho layer to map ----
 ortho_lname = 'ortho'
 ortho_layer = add_layer_to_map(xml_ortho, ortho_lname, project, 'gdal')
+# set resampling
+set_layer_resampling(ortho_layer)
 print_info_add_layer(ortho_lname)
 
 # get crs from layer
@@ -253,11 +252,18 @@ crs = ortho_layer.crs()
 # set project crs
 project.setCrs(QgsCoordinateReferenceSystem(crs))
 
-# ---- add graph layer to map ----
-graph_lname = 'graph'
-graph_layer = add_layer_to_map(xml_graph, graph_lname, project, 'gdal')
-# print(f'{ortho_layer.extent()=}')
-# print(f'{graph_layer.extent()=}')
+# set extent
+canvas = QgsMapCanvas()
+canvas.setExtent(ortho_layer.extent())
+canvas.refresh()
+
+# ------ create group for graph elements --------
+graph_group = project.layerTreeRoot().insertGroup(0, 'GRAPHE')
+graph_group.setExpanded(False)
+
+# --- create graph layer and add to group ----
+graph_lname = 'graphe_surface'
+graph_layer = add_layer_to_map(xml_graph, graph_lname, project, 'gdal', show=False)
 graph_layer.renderer().setOpacity(0.3)
 graph_layer.setScaleBasedVisibility(True)
 # check and set zoom min, max inputs for visibility scale of graph layer
@@ -265,14 +271,18 @@ zoom_min_graph, zoom_max_graph = ARG.zoom if ARG.zoom[0] <= ARG.zoom[1]\
                      else (ARG.zoom[1], ARG.zoom[0])
 graph_layer.setMinimumScale(zoom_max_graph)
 graph_layer.setMaximumScale(zoom_min_graph)
+# set resampling
+set_layer_resampling(graph_layer)
+# add to group
+graph_group.insertChildNode(0, QgsLayerTreeLayer(graph_layer))
 print_info_add_layer(graph_lname)
 print_info_visib_scale(graph_lname, zoom_min_graph, zoom_max_graph)
 
-# ---- add contour layer to map ----
+# --- create contour layer and add to group ----
 contour_lname = 'graphe_contour'
-contour_layer = add_layer_to_map(vrt_final, contour_lname, project, 'gdal')
+contour_layer = add_layer_to_map(vrt_final, contour_lname, project, 'gdal', show=False)
 # set zoom min, max for visibility scale of contour layer
-zoom_max_contour = zoom_min_graph - 1
+zoom_max_contour = zoom_min_graph
 zoom_min_contour = int(np.floor(zoom_max_contour/slab_width))
 contour_layer.setScaleBasedVisibility(True)
 contour_layer.setMinimumScale(zoom_max_contour)
@@ -284,6 +294,10 @@ renderer = QgsPalettedRasterRenderer(contour_layer.dataProvider(), 1,
                                      colorTableToClassData(colors))
 contour_layer.setRenderer(renderer)
 contour_layer.triggerRepaint()
+# set resampling
+set_layer_resampling(contour_layer)
+# add to group
+graph_group.insertChildNode(1, QgsLayerTreeLayer(contour_layer))
 print_info_add_layer(contour_lname)
 print_info_visib_scale(contour_lname, zoom_min_contour, zoom_max_contour)
 
@@ -301,12 +315,12 @@ project.layerTreeRoot().findLayer(opi_layer).setItemVisibilityChecked(False)
 print_info_add_layer(opi_lname)
 
 # ---- create patches layer and add to map -----
-patches_fname = dirpath_out + '/patches.gpkg'
+patches_fname = dirpath_out + '/retouches_graphe.gpkg'
 patches_fields = QgsFields()
 patches_fields.append(QgsField('fid', QVariant.Int))
 patches_geom_type = QgsWkbTypes.Polygon
 create_vector(patches_fname, patches_fields, patches_geom_type, crs, project)
-patches_lname = 'patches'
+patches_lname = 'retouches_graphe'
 patches_layer = add_layer_to_map(patches_fname, patches_lname,
                                  project, 'ogr', is_raster=False)
 print_info_add_layer(patches_lname)
@@ -343,7 +357,7 @@ if ARG.macros:
     if ARG.verbose > 0:
         print('->  macros added to view')
 
-# ---- write qgz view output file ----
+# ---- write qgis view output file ----
 project.write(ARG.output)
 print(f"File '{ARG.output}' written")
 
