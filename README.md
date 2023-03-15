@@ -323,7 +323,7 @@ options:
   -s {RVB,IR,IRC}, --style_ortho {RVB,IR,IRC}
                         style for ortho to be exported to xml (default: RVB)
   -o OUTPUT, --output OUTPUT
-                        output qgis view path (default: ./view.qgz)
+                        output qgis view path (default: ./view.qgs)
   -z ZOOM ZOOM, --zoom ZOOM ZOOM
                         zoom levels as zmin zmax (default: 3025 10000000) -> graph layer visibility scale [1:zmax,1:zmin]
   -m MACROS, --macros MACROS
@@ -340,7 +340,7 @@ Les éléments de la vue générés avec ce script sont :
 - **patches.gpkg** : la couche vecteur, initialement vide, utilisée pour les retouches
 - **avancement.gpkg** : la couche vecteur, initialement vide, utilisée pour garder la trace des zones contrôlées
 
-Ces éléments sont des couches de la vue PackO pour QGIS (par défaut **view.qgz**), auxquelles s'ajoute une couche OPI générée en important la couche WMTS OPI de la branche du cache.
+Ces éléments sont des couches de la vue PackO pour QGIS (par défaut **view.qgs**), auxquelles s'ajoute une couche OPI générée en important la couche WMTS OPI de la branche du cache.
 
 Pour intégrer un fichier de macros QGIS à la vue, il faut indiquer le chemin vers le fichier macros prototype avec **-m**. Ce fichier sera adapté au chantier avant d'être intégré à la vue, en remplaçant les clés `__IDBRANCH__`, `__URLSERVER__` et `__TILEMATRIXSET__` avec les valeurs correspondantes pour le chantier - exemple :
 
@@ -357,7 +357,9 @@ Pour intégrer un fichier de macros QGIS à la vue, il faut indiquer le chemin v
     tile_matrix_set = 'LAMB93_20cm'
     ```
 
-Pour le bon fonctionnement dans QGIS, il est impératif de mettre la variable d'environnement **GDAL_VRT_ENABLE_PYTHON** à **YES**. Il faut également définir les variables d'environnement (où `<qgispath>` doit être remplacé par le chemin d'accès au dossier d'installation de QGIS) :
+Un exemple de fichier macros prototype est fourni dans le dossier *ressources*.
+
+Pour le bon fonctionnement dans QGIS, il est impératif de mettre la variable d'environnement **GDAL_VRT_ENABLE_PYTHON** à **YES**. Il faut également définir les variables d'environnement (où `<qgispath>` doit être remplacé par le chemin d'accès au dossier d'installation de QGIS ; exemples de `<qgispath>` sous Linux : **/usr** , sous Windows **C:\Program Files\QGIS XXX\apps\qgis\python** où 'XXX' est à remplacer avec la version de QGIS) :
 - **PYTHONPATH** :
   - sous Linux : `export PYTHONPATH=/<qgispath>/share/qgis/python`
   - sous Windows : `set PYTHONPATH=C:\<qgispath>\python`
