@@ -404,6 +404,11 @@ def create_ortho_and_graph_1arg(arg):
 
             # on rasterise la partie du graphe qui concerne ce cliche
             db_graph = gdal.OpenEx(arg['dbOption']['connString'], gdal.OF_VECTOR)
+
+            # on veut recuperer le bon nom des geometries sur le graphe en entree
+            layer = db_graph.GetLayer(0)  # un seul layer dans un graphe
+            geom_name = layer.GetGeometryColumn()
+
             # requete sql adaptee pour marcher avec des nomenclatures du type
             # 20FD1325x00001_02165 ou OPI_20FD1325x00001_02165
             # attention, le graph contient peut-etre des reférences aux images RGB
@@ -412,7 +417,7 @@ def create_ortho_and_graph_1arg(arg):
             stem_cleaned2 = stem.replace("OPI_", "").replace("_ix", "x")
             gdal.Rasterize(mask,
                            db_graph,
-                           SQLStatement='select geom from '
+                           SQLStatement=f'select {geom_name} from '
                            + arg['dbOption']['table']
                            + ' where cliche like \'%' + stem_cleaned1 + '%\''
                            + ' or cliche like \'%' + stem_cleaned2 + '%\'')
