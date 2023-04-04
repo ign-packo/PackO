@@ -5,7 +5,7 @@ from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsVectorFileWriter
 
 
 def add_layer_to_map(data_source, layer_name, qgs_project, provider_name,
-                     is_raster=True, show=True):
+                     is_raster=True, show=False):
     """ add layer to map """
     layer = QgsRasterLayer(data_source, layer_name, provider_name) if is_raster\
         else QgsVectorLayer(data_source, layer_name, provider_name)

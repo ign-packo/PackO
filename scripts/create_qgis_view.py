@@ -3,12 +3,19 @@
 
 import argparse
 import re
+import glob
 import os.path
 import platform
+import sys
 from copy import deepcopy
-import numpy as np
 from lxml import etree
 from osgeo import gdal
+if platform.system() == 'Windows':
+    osgeo_root = os.environ['OSGEO4W_ROOT']
+    if osgeo_root is None:
+        raise SystemExit("ERROR: 'OSGEO4W_ROOT' not found; unable to set 'PYTHONPATH'")
+    sys.path.append(osgeo_root + r'\apps\qgis\python')
+# pylint: disable=locally-disabled, wrong-import-position
 from qgis.core import (
     QgsApplication,
     QgsProject,
@@ -25,6 +32,8 @@ from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtCore import QVariant
 from process_requests import check_get_post, response2pyobj, xml_from_wmts
 from process_qlayers import add_layer_to_map, create_vector, set_layer_resampling
+
+gdal.UseExceptions()
 
 
 def read_args():
@@ -46,10 +55,16 @@ def read_args():
     parser.add_argument('-o', '--output',
                         help="output qgis view path (default: ./view.qgs)",
                         type=str, default='./view.qgs')
-    parser.add_argument('-z', '--zoom', nargs=2,
-                        help="zoom levels as zmin zmax (default: 3025 10000000)\
-                        -> graph layer visibility scale [1:zmax,1:zmin]",
-                        type=int, default=[3025, 10000000])
+    parser.add_argument('-z', '--zoom_pivot',
+                        help="layer visibility scale for surface graph [1:10000000,1:zoom_pivot]\
+                        & for contour graph [1:zoom_pivot,1:1] (default:3025)",
+                        type=int, default=3025)
+    parser.add_argument('--vect',
+                        help="vectors folder path",
+                        type=str)
+    parser.add_argument('--bbox', nargs=4,
+                        help="bounding box defining the view extent (Xmin Ymin Xmax Ymax)",
+                        type=float)
     parser.add_argument('-m', '--macros',
                         help="macros file path",
                         type=str)
@@ -65,7 +80,7 @@ def read_args():
 
 
 def suppress_cachetag(xml_in, xml_out):
-    """ Suppress Cache tag from xml file """
+    """ Suppress Cache tag from xml file to avoid creation of local cache """
     tree_xml = etree.parse(xml_in)
     root_xml = tree_xml.getroot()
     all_cache_tags = []
@@ -75,8 +90,38 @@ def suppress_cachetag(xml_in, xml_out):
         for tg in all_cache_tags:
             root_xml.remove(tg)
     else:
-        print(f"WARNING: 'Cache' not found in '{xml_in}' => '{xml_out}' identical to '{xml_in}'")
+        print(f"WARNING: 'Cache' tag not found in '{xml_in}'=>'{xml_out}' identical to '{xml_in}'")
     tree_xml.write(xml_out)
+    print(f"File '{xml_out}' written")
+
+
+def set_extent_xml(xml_in, xml_out, extent_xmin, extent_ymin, extent_xmax, extent_ymax):
+    """ Set extent limits in an xml file """
+    tree_xml = etree.parse(xml_in)
+    root_xml = tree_xml.getroot()
+    data_window = root_xml.iter('DataWindow')
+    if not data_window:
+        raise SystemExit(f"ERROR: 'DataWindow' tag not found in '{xml_in}'")
+    ul_x = root_xml.find('DataWindow/UpperLeftX')
+    ul_y = root_xml.find('DataWindow/UpperLeftY')
+    lr_x = root_xml.find('DataWindow/LowerRightX')
+    lr_y = root_xml.find('DataWindow/LowerRightY')
+    if ul_x is None or ul_y is None or lr_x is None or lr_y is None:
+        raise SystemExit(f"ERROR: Missing tag child in 'DataWindow' in {xml_in}'")
+    ul_x.text = str(extent_xmin)
+    ul_y.text = str(extent_ymax)
+    lr_x.text = str(extent_xmax)
+    lr_y.text = str(extent_ymin)
+    tree_xml.write(xml_out)
+    print(f"File '{xml_out}' written")
+
+
+def modify_xml(xml_in, xml_out, extent_xmin=None, extent_ymin=None,
+               extent_xmax=None, extent_ymax=None):
+    """ Suppress cache tag and set extent in an xml file """
+    suppress_cachetag(xml_in, xml_out)
+    if extent_xmin and extent_ymin and extent_xmax and extent_ymax:
+        set_extent_xml(xml_out, xml_out, extent_xmin, extent_ymin, extent_xmax, extent_ymax)
     print(f"File '{xml_out}' written")
 
 
@@ -87,12 +132,6 @@ def print_info_add_layer(layer_name):
     """ print info when layer added to view """
     if ARG.verbose > 0:
         print(f"-> '{layer_name}' layer added to view")
-
-
-def print_info_visib_scale(layer_name, zmin, zmax):
-    """ print info on visibility scale """
-    if ARG.verbose > 0:
-        print(f'\t{layer_name} layer visibility scale: [1:{zmax},1:{zmin}]')
 
 
 # check input url
@@ -121,20 +160,51 @@ dirpath_out = os.path.dirname(os.path.normpath(ARG.output))
 if not os.path.isdir(dirpath_out):
     raise SystemExit(f"ERROR: '{dirpath_out}' is not a valid directory")
 
+# check zoom_pivot input
+if ARG.zoom_pivot not in range(1, 10000000):
+    raise SystemExit(f"ERROR: zoom_pivot={ARG.zoom_pivot} invalid value")
+
+# check external vectors input
+list_vect = []
+if ARG.vect:
+    dirpath_vect = os.path.normpath(ARG.vect)
+    if not os.path.isdir(dirpath_vect):
+        raise SystemExit(f"ERROR: Unable to open vectors directory '{ARG.vect}'")
+    list_gpkg_vect = glob.glob(os.path.join(dirpath_vect, '*.gpkg'))
+    list_shp_vect = glob.glob(os.path.join(dirpath_vect, '*.shp'))
+    list_vect = [*list_gpkg_vect, *list_shp_vect]
+    if len(list_vect) == 0:
+        raise SystemExit(f"ERROR: No gpkg, nor shp files in '{ARG.vect}'")
+
 # get info from overviews file
 req_get_overviews = ARG.url + '/json/overviews?cachePath=' + str(cache['path'])
 resp_get_overviews = check_get_post(req_get_overviews)
 overviews = resp_get_overviews.json()
-slab_width = overviews['slabSize']['width']
-slab_height = overviews['slabSize']['height']
-if slab_width is None or slab_height is None:
-    raise SystemExit(f"ERROR: No 'slabSize' values in '{overviews}'!")
-if slab_width != slab_height:
-    print(f"WARNING: Slab width(={slab_width}) <> height(={slab_height}) \
-in '{overviews}'!")
 tms = overviews['identifier']
 if tms is None:
-    raise SystemExit(f"ERROR: No 'identifier' value in '{overviews}'")
+    raise SystemExit("ERROR: No 'identifier' value in overviews")
+dataset_bbox = overviews['dataSet']['boundingBox']
+dataset_bbox_lowc = dataset_bbox['LowerCorner']
+dataset_bbox_upc = dataset_bbox['UpperCorner']
+if dataset_bbox is None or dataset_bbox_lowc is None or dataset_bbox_upc is None:
+    raise SystemExit("ERROR: Incorrect 'boundingBox' values in overviews")
+ds_extent = [dataset_bbox_lowc[0], dataset_bbox_lowc[1], dataset_bbox_upc[0], dataset_bbox_upc[1]]
+
+# check bbox input
+bbox_xmin = bbox_ymin = bbox_xmax = bbox_ymax = None
+bbox = None
+if ARG.bbox:
+    bbox_coord = ARG.bbox
+    if any(coord < 0 for coord in bbox_coord):
+        raise SystemExit(f"ERROR: Negative value in '{bbox_coord}'")
+    bbox_xmin = min(bbox_coord[0], bbox_coord[2])
+    bbox_xmax = max(bbox_coord[0], bbox_coord[2])
+    bbox_ymin = min(bbox_coord[1], bbox_coord[3])
+    bbox_ymax = max(bbox_coord[1], bbox_coord[3])
+    bbox = [bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax]
+    if bbox_xmin < dataset_bbox_lowc[0] or bbox_ymin < dataset_bbox_lowc[1] or \
+       bbox_xmax > dataset_bbox_upc[0] or bbox_ymax > dataset_bbox_upc[1]:
+        raise SystemExit(f"ERROR: Input bbox '{bbox} exceeds dataset extent '{ds_extent}'")
 
 # ---------- create new branch on cache ----------
 req_post_branch = ARG.url + '/branch?name=' + branch_name + \
@@ -147,26 +217,26 @@ branch = next((b for b in list_all_branches if b['name'] == branch_name))
 branch_id = branch['id']
 print(f"Branch '{branch_name}' created (idBranch={branch_id}) on cache '{cache['name']}'")
 
-# ---------- export ortho and graph xml ---------
+# ---------- create ortho and graph xml ---------
+# export ortho and graph xml
 wmts_url = f'WMTS:{ARG.url}/{branch_id}/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&VERSION=1.0.0'
 wmts_ortho = f'{wmts_url},layer=ortho,style={ARG.style_ortho}'
 wmts_graph = f'{wmts_url},layer=graph'
-
-xml_ortho_tmp = dirpath_out + '/ortho_tmp.xml'
-xml_graph_tmp = dirpath_out + '/graphe_surface_tmp.xml'
+xml_ortho_tmp = os.path.join(dirpath_out, 'ortho_tmp.xml')
+xml_graph_tmp = os.path.join(dirpath_out, 'graphe_surface_tmp.xml')
 xml_from_wmts(wmts_ortho, xml_ortho_tmp)
 xml_from_wmts(wmts_graph, xml_graph_tmp)
-
-# suppress Cache tag from previous graph and ortho xml to avoid creation of local cache
-xml_ortho = dirpath_out + '/ortho.xml'
-xml_graph = dirpath_out + '/graphe_surface.xml'
-suppress_cachetag(xml_ortho_tmp, xml_ortho)
-suppress_cachetag(xml_graph_tmp, xml_graph)
-# TODO: suppress xml_ortho_tmp and xml_graph_tmp
+# suppress Cache tag and set extent
+xml_ortho = os.path.join(dirpath_out, 'ortho.xml')
+xml_graph = os.path.join(dirpath_out, 'graphe_surface.xml')
+modify_xml(xml_ortho_tmp, xml_ortho, bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax)
+modify_xml(xml_graph_tmp, xml_graph, bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax)
+# TODO: suppress xml ortho_tmp and graph_tmp - for now, useful for comparison
 
 # --------- create contours vrt from graph.xml -----------
-vrt_tmp = dirpath_out + '/graphe_contour_tmp.vrt'
-ds = gdal.BuildVRT(vrt_tmp, xml_graph)
+vrt_tmp = os.path.join(dirpath_out, 'graphe_contour_tmp.vrt')
+ds_options = gdal.BuildVRTOptions(outputBounds=bbox)
+ds = gdal.BuildVRT(vrt_tmp, xml_graph, options=ds_options)
 ds = None
 print(f"File '{vrt_tmp}' written")
 # modify vrt
@@ -223,13 +293,12 @@ in_ar[2] != np.pad(in_ar[2], 1, 'edge')[1:-1,0:-2])
             pycode2.text = etree.CDATA(data)
 else:
     raise SystemExit(f"ERROR: 'VRTRasterBand' not found in '{vrt_tmp}'")
-
-vrt_final = dirpath_out + '/graphe_contour.vrt'
+vrt_final = os.path.join(dirpath_out, 'graphe_contour.vrt')
 etree.tail = '\n'
 etree.indent(root)
 tree.write(vrt_final)
 print(f"File '{vrt_final}' written")
-# TODO: suppress vrt_tmp
+# TODO: suppress vrt_tmp - for now, useful for comparison
 
 # --------------- create qgis view -------------
 if platform.system() == 'Linux':
@@ -240,35 +309,47 @@ qgs = QgsApplication([], False)
 qgs.initQgis()
 project = QgsProject.instance()
 
-# ---- add ortho layer to map ----
+# ------ create group for ortho elements --------
+ortho_group = project.layerTreeRoot().insertGroup(1, 'ORTHOS')
+# --- add ortho layer to group ---
 ortho_lname = 'ortho'
 ortho_layer = add_layer_to_map(xml_ortho, ortho_lname, project, 'gdal')
 # set resampling
 set_layer_resampling(ortho_layer)
+# add to group
+ortho_group.insertChildNode(1, QgsLayerTreeLayer(ortho_layer))
 print_info_add_layer(ortho_lname)
-
 # get crs from layer
 crs = ortho_layer.crs()
 # set project crs
 project.setCrs(QgsCoordinateReferenceSystem(crs))
-
-# set extent
-canvas = QgsMapCanvas()
-canvas.setExtent(ortho_layer.extent())
-canvas.refresh()
+# --- add opi layer to group ---
+opi_name = next(iter(overviews['list_OPI']))  # get first opi name
+opi_uri_params = f'crs={crs.authid()}&format=image/png&layers=opi&'\
+                 f'styles={ARG.style_ortho}&tileDimensions=Name={opi_name}&'\
+                 f'tileMatrixSet={tms}&'\
+                 f'url={ARG.url}/{branch_id}/wmts'
+opi_lname = 'OPI'
+opi_layer = add_layer_to_map(opi_uri_params, opi_lname, project, 'wms')
+opi_layer.renderer().setOpacity(0.5)
+# set resampling
+set_layer_resampling(opi_layer)
+# add to group
+ortho_group.insertChildNode(0, QgsLayerTreeLayer(opi_layer))
+project.layerTreeRoot().findLayer(opi_layer).setItemVisibilityChecked(False)
+print_info_add_layer(opi_lname)
 
 # ------ create group for graph elements --------
 graph_group = project.layerTreeRoot().insertGroup(0, 'GRAPHE')
 graph_group.setExpanded(False)
-
 # --- create graph layer and add to group ----
 graph_lname = 'graphe_surface'
-graph_layer = add_layer_to_map(xml_graph, graph_lname, project, 'gdal', show=False)
+graph_layer = add_layer_to_map(xml_graph, graph_lname, project, 'gdal')
 graph_layer.renderer().setOpacity(0.3)
 graph_layer.setScaleBasedVisibility(True)
-# check and set zoom min, max inputs for visibility scale of graph layer
-zoom_min_graph, zoom_max_graph = ARG.zoom if ARG.zoom[0] <= ARG.zoom[1]\
-                     else (ARG.zoom[1], ARG.zoom[0])
+# set visibility scale
+zoom_min_graph = ARG.zoom_pivot
+zoom_max_graph = 10000000
 graph_layer.setMinimumScale(zoom_max_graph)
 graph_layer.setMaximumScale(zoom_min_graph)
 # set resampling
@@ -276,14 +357,12 @@ set_layer_resampling(graph_layer)
 # add to group
 graph_group.insertChildNode(0, QgsLayerTreeLayer(graph_layer))
 print_info_add_layer(graph_lname)
-print_info_visib_scale(graph_lname, zoom_min_graph, zoom_max_graph)
-
 # --- create contour layer and add to group ----
 contour_lname = 'graphe_contour'
-contour_layer = add_layer_to_map(vrt_final, contour_lname, project, 'gdal', show=False)
-# set zoom min, max for visibility scale of contour layer
-zoom_max_contour = zoom_min_graph
-zoom_min_contour = int(np.floor(zoom_max_contour/slab_width))
+contour_layer = add_layer_to_map(vrt_final, contour_lname, project, 'gdal')
+# set visibility scale
+zoom_max_contour = ARG.zoom_pivot
+zoom_min_contour = 1
 contour_layer.setScaleBasedVisibility(True)
 contour_layer.setMinimumScale(zoom_max_contour)
 contour_layer.setMaximumScale(zoom_min_contour)
@@ -299,42 +378,86 @@ set_layer_resampling(contour_layer)
 # add to group
 graph_group.insertChildNode(1, QgsLayerTreeLayer(contour_layer))
 print_info_add_layer(contour_lname)
-print_info_visib_scale(contour_lname, zoom_min_contour, zoom_max_contour)
 
-# ---- add opi layer to map ----
-# get 1st opi
-opi_name = next(iter(overviews['list_OPI']))
-opi_uri_params = f'crs={crs.authid()}&format=image/png&layers=opi&'\
-                 f'styles={ARG.style_ortho}&tileDimensions=Name={opi_name}&'\
-                 f'tileMatrixSet={tms}&'\
-                 f'url={ARG.url}/{branch_id}/wmts'
-opi_lname = 'OPI'
-opi_layer = add_layer_to_map(opi_uri_params, opi_lname, project, 'wms')
-opi_layer.renderer().setOpacity(0.5)
-project.layerTreeRoot().findLayer(opi_layer).setItemVisibilityChecked(False)
-print_info_add_layer(opi_lname)
-
-# ---- create patches layer and add to map -----
-patches_fname = dirpath_out + '/retouches_graphe.gpkg'
+# ------ create group for patches elements --------
+patch_group = project.layerTreeRoot().insertGroup(0, 'SAISIE')
+# --- create patches layer and add to group ----
+patches_fname = os.path.join(dirpath_out, 'retouches_graphe.gpkg')
 patches_fields = QgsFields()
 patches_fields.append(QgsField('fid', QVariant.Int))
-patches_geom_type = QgsWkbTypes.Polygon
-create_vector(patches_fname, patches_fields, patches_geom_type, crs, project)
+create_vector(patches_fname, patches_fields, QgsWkbTypes.Polygon, crs, project)
 patches_lname = 'retouches_graphe'
 patches_layer = add_layer_to_map(patches_fname, patches_lname,
                                  project, 'ogr', is_raster=False)
+# add to group
+patch_group.insertChildNode(1, QgsLayerTreeLayer(patches_layer))
 print_info_add_layer(patches_lname)
+# --- create infographic patches layer and add to group ----
+patches_infogr_fname = os.path.join(dirpath_out, 'retouches_info.gpkg')
+patches_infogr_fields = QgsFields()
+patches_infogr_fields.append(QgsField('fid', QVariant.Int))
+create_vector(patches_infogr_fname, patches_infogr_fields, QgsWkbTypes.Polygon, crs, project)
+patches_infogr_lname = 'retouches_info'
+patches_infogr_layer = add_layer_to_map(patches_infogr_fname, patches_infogr_lname,
+                                        project, 'ogr', is_raster=False)
+# add to group
+patch_group.insertChildNode(1, QgsLayerTreeLayer(patches_infogr_layer))
+print_info_add_layer(patches_infogr_lname)
+# --- create remarks layer and add to group ----
+remarks_fname = os.path.join(dirpath_out, 'remarques.gpkg')
+remarks_fields = QgsFields()
+attr_comment = QgsField('commentaire', QVariant.String)
+attr_comment.setLength(255)
+remarks_fields.append(attr_comment)
+attr_default = QgsField('defaut', QVariant.String)
+attr_default.setLength(255)
+remarks_fields.append(attr_default)
+create_vector(remarks_fname, remarks_fields, QgsWkbTypes.Point, crs, project)
+remarks_lname = 'remarques'
+remarks_layer = add_layer_to_map(remarks_fname, remarks_lname,
+                                 project, 'ogr', is_raster=False)
+# add to group
+patch_group.insertChildNode(0, QgsLayerTreeLayer(remarks_layer))
+print_info_add_layer(remarks_lname)
 
-# ---- create advancement layer and add to map -----
-advancement_fname = dirpath_out + '/avancement.gpkg'
+# ------ create group for information elements --------
+info_group = project.layerTreeRoot().insertGroup(1, 'INFOS')
+# --- create info save layer and add to group ----
+info_save_fname = os.path.join(dirpath_out, 'retouches_info_sauv.gpkg')
+info_save_fields = QgsFields()
+attr_name = QgsField('NOM', QVariant.String)
+attr_name.setLength(20)
+info_save_fields.append(attr_name)
+create_vector(info_save_fname, info_save_fields, QgsWkbTypes.Polygon, crs, project)
+info_save_lname = 'retouches_info_sauv'
+info_save_layer = add_layer_to_map(info_save_fname, info_save_lname,
+                                   project, 'ogr', is_raster=False)
+# add to group
+info_group.insertChildNode(0, QgsLayerTreeLayer(info_save_layer))
+print_info_add_layer(info_save_lname)
+# --- create advancement layer and add to group ----
+advancement_fname = os.path.join(dirpath_out, 'avancement.gpkg')
 advancement_fields = QgsFields()
-advancement_fields.append(QgsField('fid', QVariant.Int))
-advancement_geom_type = QgsWkbTypes.Polygon
-create_vector(advancement_fname, advancement_fields, advancement_geom_type, crs, project)
+advancement_fields.append(QgsField('H_SAISIE', QVariant.DateTime))
+create_vector(advancement_fname, advancement_fields, QgsWkbTypes.Polygon, crs, project)
 advancement_lname = 'avancement'
 advancement_layer = add_layer_to_map(advancement_fname, advancement_lname,
                                      project, 'ogr', is_raster=False)
+# add to group
+info_group.insertChildNode(1, QgsLayerTreeLayer(advancement_layer))
 print_info_add_layer(advancement_lname)
+
+# ------ create group for external vectors --------
+if len(list_vect) > 0:
+    vect_group = project.layerTreeRoot().insertGroup(2, 'VECTEURS')
+    for vect in list_vect:
+        # create layer
+        vect_lname = os.path.basename(vect).split('.')[0]
+        vect_layer = add_layer_to_map(vect, vect_lname, project, 'ogr', is_raster=False)
+        # add to group
+        vect_group.insertChildNode(1, QgsLayerTreeLayer(vect_layer))
+    if ARG.verbose > 0:
+        print('->  vector layers added to view')
 
 # ---- add macros to map ----
 if ARG.macros:
@@ -356,6 +479,11 @@ if ARG.macros:
         QgsProject.instance().writeEntry("Macros", "/pythonCode", macros_data)
     if ARG.verbose > 0:
         print('->  macros added to view')
+
+# ---- set canvas extent ----
+canvas = QgsMapCanvas()
+canvas.setExtent(ortho_layer.extent())
+canvas.refresh()
 
 # ---- write qgis view output file ----
 project.write(ARG.output)

@@ -5,6 +5,8 @@ import json
 import requests
 from osgeo import gdal
 
+gdal.UseExceptions()
+
 
 def check_get_post(req, is_get=True):
     """ Check GET or POST request """
