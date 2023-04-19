@@ -309,9 +309,9 @@ Si un cache a une taille de dalle (slabSize) différente de 16x16 tuiles ou une 
 
 ## Préparation des éléments de la vue PackO pour QGIS
 
-Dans le cas d'utilisation d'un client pour PackO basé sur QGIS, on peut générer des éléments de la vue du chantier en utilisant le script **create_qgis_view.py** :
+Dans le cas d'utilisation d'un client pour PackO basé sur QGIS, on peut créer automatiquement la vue contenant les éléments du chantier en utilisant le script **create_qgis_view.py** :
 ````
-usage: create_qgis_view.py [-h] [-u URL] -c CACHE_ID [-b BRANCH_NAME] [-s STYLE_ORTHO] [-o OUTPUT] [-v VERBOSE]
+usage: create_qgis_view.py [-h] [-u URL] -c CACHE_ID [-b BRANCH_NAME] [-s {RVB,IR,IRC}] [-o OUTPUT] [-z ZOOM_PIVOT] [--vect VECT] [--bbox BBOX BBOX BBOX BBOX] [-m MACROS] [-v VERBOSE]
 
 options:
   -h, --help            show this help message and exit
@@ -323,19 +323,61 @@ options:
   -s {RVB,IR,IRC}, --style_ortho {RVB,IR,IRC}
                         style for ortho to be exported to xml (default: RVB)
   -o OUTPUT, --output OUTPUT
-                        output path (default: ./)
+                        output qgis view path (default: ./view.qgs)
+  -z ZOOM_PIVOT, --zoom_pivot ZOOM_PIVOT
+                        layer visibility scale for surface graph [1:10000000,1:zoom_pivot] & for contour graph [1:zoom_pivot,1:1] (default:3025)
+  --vect VECT           vectors folder path
+  --bbox BBOX BBOX BBOX BBOX
+                        bounding box defining the view extent (Xmin Ymin Xmax Ymax)
+  -m MACROS, --macros MACROS
+                        macros file path
   -v VERBOSE, --verbose VERBOSE
                         verbose (default: 0, meaning no verbose)
 ````
 où **-c** est l'identifiant du cache de travail dans la base de données : pour le récupérer, on peut demander à l'API la liste des caches en utilisant l'url `http://[serveur]:[port]/caches` ou la commande curl `curl [-v] -X "GET" "http://[serveur]:[PORT]/caches" -H "accept: */*"`.
 
-Actuellement, les éléments de la vue générés avec ce script sont :
+Les éléments de la vue générés avec ce script sont :
 - une nouvelle branche PackO créée sur le cache indiqué ; le nom de la branche est par défaut "newBranch", nom de branche à indiquer avec **-b**.
-- **ortho.xml** et **graph.xml** : les couches ortho et graphe de la nouvelle branche, exportées sous forme de fichiers xml plus des modifications pour QGIS, dans le dossier de sortie (chemin à indiquer avec **-o**). Pour l'ortho, si le style est différent de celui par défaut ("RVB"), il faut l'indiquer avec **-s**.
-- **graph_contour.vrt** : la couche contour de graphe générée à partir de graph.xml avec des ajouts et modifications pour QGIS, dans le dossier de sortie
+- **ortho.xml** et **graphe_surface.xml** : couches ortho et graphe de la nouvelle branche, exportées sous forme de fichiers xml plus des modifications pour QGIS, dans le dossier de sortie (le chemin de la vue à indiquer avec **-o**). Pour l'ortho, si le style est différent de celui par défaut ("RVB"), il faut l'indiquer avec **-s**. L'échelle de visibilité de la couche *graphe_surface* est définie avec l'option **-z** (zoom_pivot, par défaut 3025) : [1:10000000, 1:zoom_pivot].
+- **graphe_contour.vrt** : couche contour de graphe générée à partir de graphe_surface.xml avec des ajouts et modifications pour QGIS, dans le dossier de sortie. L'échelle de visibilité de la couche *graphe_contour* : [1:zoom_pivot, 1:1]
+- **retouches_graphe.gpkg** : couche vecteur, initialement vide, utilisée pour les retouches du graphe
+- **avancement.gpkg** : couche vecteur, initialement vide, utilisée pour garder la trace des zones contrôlées
+- **retouches_info.gpkg** : couche vecteur, initialement vide, utilisée pour les retouches infographiques
+- **retouches_info_sauv.gpkg** : couche vecteur, initialement vide, utilisée pour les sauvegardes liées aux retouches infographiques
+- **remarques.gpkg** : couche vecteur, initialement vide, utilisée pour les remarques sur la vue
 
-Pour le bon fonctionnement dans QGIS, il est impératif de mettre la variable d'environnement **GDAL_VRT_ENABLE_PYTHON** à **YES**.
+Ces éléments sont des couches de la vue PackO pour QGIS (par défaut **view.qgs**), auxquelles s'ajoute une couche OPI générée en important la couche WMTS OPI de la branche du cache.
 
+Des vecteurs externes *.shp* et *.gpkg* peuvent être intégrés à la vue en indiquant le chemin vers le dossier les contenant avec **--vect**.
+
+Dans le cas où l'on veut avoir une emprise pour la vue (emprise de travail) plus petite que l'emprise du chantier (emprise du cache), elle est à indiquer avec **--bbox** Xmin Ymin Xmax Ymax.
+
+Pour intégrer un fichier de macros QGIS à la vue, il faut indiquer le chemin vers le fichier macros prototype avec **-m**. Ce fichier sera adapté au chantier avant d'être intégré à la vue, en remplaçant les clés `__IDBRANCH__`, `__URLSERVER__` et `__TILEMATRIXSET__` avec les valeurs correspondantes pour le chantier - exemple :
+
+  - Extrait prototype macros, avant adaptation :
+    ```
+    id_branch = __IDBRANCH__
+    url_server = __URLSERVER__
+    tile_matrix_set = __TILEMATRIXSET__
+    ```
+  - Extrait macros, après adaptation :
+    ```
+    id_branch = '32'
+    url_server = 'http://localhost:8081/'
+    tile_matrix_set = 'LAMB93_20cm'
+    ```
+
+Un exemple de fichier macros prototype est fourni dans le dossier *ressources*.
+
+Pour le bon fonctionnement dans QGIS, il est impératif de mettre la variable d'environnement **GDAL_VRT_ENABLE_PYTHON** à **YES**. Il faut également définir les variables d'environnement (où `<qgispath>` doit être remplacé par le chemin d'accès au dossier d'installation de QGIS ; exemples de `<qgispath>` sous Linux : **/usr** , sous Windows **C:\Program Files\QGIS XXX\apps\qgis** où 'XXX' est à remplacer avec la version de QGIS) :
+- **PYTHONPATH** :
+  - sous Linux : `export PYTHONPATH=/<qgispath>/share/qgis/python`
+  - sous Windows : `set PYTHONPATH=C:\<qgispath>\python` ; sous windows, si elle n'existe pas, création automatique de cette variable d'environnement à partir de la variable d'environnement OSGEO4W_ROOT.
+- **LD_LIBRARY_PATH** :
+  - sous Linux : `export LD_LIBRARY_PATH=/<qgispath>/lib`
+  - sous Windows: `set PATH=C:\<qgispath>\bin;C:\<qgispath>\apps\<qgisrelease>\bin;%PATH%` (où `<qgisrelease>` devrait être remplacé avec le type de release ciblé (ex : qgis-ltr, qgis, qgis-dev)
+
+Si la vue contient des macros, il faut activer leur utilisation lors du chargement de la vue dans QGIS.
 
 ## Traitement d'un chantier
 
