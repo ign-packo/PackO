@@ -5,7 +5,7 @@ from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsVectorFileWriter
 
 
 def add_layer_to_map(data_source, layer_name, qgs_project, provider_name,
-                     is_raster=True, show=False):
+                     is_raster=True, show=False, disable_att_form_popup=False):
     """ add layer to map """
     layer = QgsRasterLayer(data_source, layer_name, provider_name) if is_raster\
         else QgsVectorLayer(data_source, layer_name, provider_name)
@@ -13,6 +13,10 @@ def add_layer_to_map(data_source, layer_name, qgs_project, provider_name,
         raise SystemExit(f"ERROR: Layer '{layer_name}' failed to load! - "
                          f'{layer.error().summary()}')
     qgs_project.addMapLayer(layer, show)
+    if disable_att_form_popup is True:
+        form_config = layer.editFormConfig()
+        form_config.setSuppress(1)
+        layer.setEditFormConfig(form_config)
     return layer
 
 

@@ -388,7 +388,8 @@ patches_fields.append(QgsField('fid', QVariant.Int))
 create_vector(patches_fname, patches_fields, QgsWkbTypes.Polygon, crs, project)
 patches_lname = 'retouches_graphe'
 patches_layer = add_layer_to_map(patches_fname, patches_lname,
-                                 project, 'ogr', is_raster=False)
+                                 project, 'ogr', is_raster=False,
+                                 disable_att_form_popup=True)
 # add to group
 patch_group.insertChildNode(1, QgsLayerTreeLayer(patches_layer))
 print_info_add_layer(patches_lname)
@@ -399,7 +400,8 @@ patches_infogr_fields.append(QgsField('fid', QVariant.Int))
 create_vector(patches_infogr_fname, patches_infogr_fields, QgsWkbTypes.Polygon, crs, project)
 patches_infogr_lname = 'retouches_info'
 patches_infogr_layer = add_layer_to_map(patches_infogr_fname, patches_infogr_lname,
-                                        project, 'ogr', is_raster=False)
+                                        project, 'ogr', is_raster=False,
+                                        disable_att_form_popup=True)
 # add to group
 patch_group.insertChildNode(1, QgsLayerTreeLayer(patches_infogr_layer))
 print_info_add_layer(patches_infogr_lname)
