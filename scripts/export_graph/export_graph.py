@@ -30,17 +30,28 @@ def read_args():
     parser.add_argument("-t", "--tilesize",
                         help="tile size (in pixels) for vectorising graph tiles (default: 100000)",
                         type=int, default=100000)
+    parser.add_argument("--bbox", help="bbox for export (in meters), xmin ymin xmax ymax",
+                        type=int, nargs=4)
     parser.add_argument("-v", "--verbose", help="verbose (default: 0)", type=int, default=0)
     args_prep = parser.parse_args()
 
     if args_prep.verbose >= 1:
         print("\nArguments: ", args_prep)
 
+    coords = str(args_prep.bbox).split(' ')
+    if any(elem is None for elem in coords) and any(elem is not None for elem in coords):
+        raise SystemError("ERROR: all bbox coordinates must be specified")
+
     return args_prep
 
 
 args = read_args()
 
+# TODO : gérer des dalles de NODATA en bord de chantier
+# TODO : pouvoir ajouter un tag gpao dans le chantier
+# TODO : export mtd optionnel si cache n'en contient pas ? Tester comportement sans mtd || OK
+
+print(f"args = {args}")
 # check input url
 url_pattern = r'^https?:\/\/[0-9A-z.]+\:[0-9]+$'
 if not re.match(url_pattern, args.url):
@@ -80,7 +91,10 @@ path_depth, level, resol, proj, overviews = prep.check_overviews(cache_path)
 list_patches, id_branch_patch = prep.list_patches(list_patches_api, cache_path, path_depth, level)
 
 # create correct path out
-path_out = os.path.join(args.output, os.path.basename(cache_path))
+if os.path.basename(cache_path) != "..":
+    path_out = os.path.join(args.output, os.path.basename(cache_path))
+else:
+    path_out = os.path.join(args.output, os.path.basename(args.output))
 
 # on verifie que la branch donne est correcte
 # encore necessaire vu qu'on va chercher les patches via id_branch ?
@@ -95,7 +109,7 @@ prep.build_vrt_emprise(path_out)
 prep.build_vrt_32bits(path_out)
 
 # creation des dalles de vrt pour la vectorisation
-prep.create_tiles_vrt(args.output, path_out, resol, args.tilesize)
+prep.create_tiles_vrt(args.output, path_out, resol, args.tilesize, args.bbox)
 
 # preparation du fichier pour la gpao
 dict_cmd = {"projects": []}

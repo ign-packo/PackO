@@ -10,6 +10,7 @@ import sqlite3
 
 # creation du chantier de vectorisation
 def create_chantier_polygonize(dict_cmd, output, project_name):
+    """Create vectorize project"""
     dict_cmd["projects"].append({"name": str(project_name+'_polygonize'), "jobs": []})
 
     script = "gdal_polygonize.py"
@@ -53,11 +54,13 @@ def create_chantier_polygonize(dict_cmd, output, project_name):
 # permettant de passer des geopackages calcules par dalle
 # a un geopackage global pour toute l'emprise de notre chantier
 def add_chantier_merge(dict_cmd, project_name):
+    """Add merge project to dictionary"""
     dict_cmd["projects"].append({"name": str(project_name+'_merge'),
                                  "jobs": [], "deps": [{"id": 0}]})
 
 
 def add_job_merge(dict_cmd, output, project_name, proj):
+    """Add merge job to merge project"""
     script_merge = "ogrmerge.py"
     if platform.system() == "Windows":
         script_merge = script_merge.split('.', maxsplit=1)[0]+".bat"
@@ -85,6 +88,7 @@ def add_job_merge(dict_cmd, output, project_name, proj):
 
 
 def add_job_dissolve(dict_cmd, project_name, merge_path, tmp_dir):
+    """Add dissolve job to merge project"""
     dissolve_file = project_name + '_dissolve.gpkg'
     dissolve_path = os.path.join(tmp_dir, dissolve_file)
     cmd_dissolve = (
@@ -107,16 +111,18 @@ def add_job_dissolve(dict_cmd, project_name, merge_path, tmp_dir):
 
 # chantier metadonnees
 def add_chantier_mtd(dict_cmd, project_name):
+    """Add mtd project to dictionary"""
     dict_cmd["projects"].append({"name": str(project_name+'_mtd'),
                                  "jobs": [], "deps": [{"id": 1}]})
 
 
 # recuperation des metadonnees
 def add_table_mtd(dissolve_path):
+    """Add mtd table creation to mtd project"""
     conn = sqlite3.connect(dissolve_path)
-    c = conn.cursor()
+    cursor = conn.cursor()
 
-    c.execute('''
+    cursor.execute('''
               CREATE TABLE IF NOT EXISTS mtd
               ([id] INTEGER PRIMARY KEY, [color_32] INTEGER, [opi] TEXT, [rgb] TEXT,
               [date_cliche] TEXT, [time_ut_cliche] TEXT)
@@ -128,6 +134,7 @@ def add_table_mtd(dissolve_path):
 
 # TODO: verifier json gpao dans TNR ?
 def create_mtd_dico(tmp_dir, overviews):
+    """Create mtd list for OPIs"""
     dico = {}
 
     mtd_file = os.path.join(tmp_dir, 'mtd.csv')
@@ -148,6 +155,7 @@ def create_mtd_dico(tmp_dir, overviews):
 
 # conversion gpkg -> fgb
 def add_job_gpkg_to_fgb(dict_cmd, dissolve_path):
+    """Create gpkg to fgb job"""
     cmd_gpkg_to_fgb = (
         'ogr2ogr '
         + '-f FlatGeobuf '
@@ -161,6 +169,7 @@ def add_job_gpkg_to_fgb(dict_cmd, dissolve_path):
 
 # jointure metadonnees
 def add_job_join_mtd(dict_cmd, dissolve_path, mtd_file):
+    """Add mtd joint to mtd project"""
     cmd_join_mtd = (
         'ogr2ogr '
         + '-dialect sqlite '
@@ -176,6 +185,7 @@ def add_job_join_mtd(dict_cmd, dissolve_path, mtd_file):
 
 # conversion fgb -> gpkg
 def add_job_fbg_to_gpkg(dict_cmd, dissolve_path, output, project_name):
+    """Add fbg to gpkg job to mts project"""
     gpkg_file = project_name + '_mtd.gpkg'
     gpkg_path = os.path.join(output, gpkg_file)
     cmd_fgb_to_gpkg = (
@@ -193,6 +203,7 @@ def add_job_fbg_to_gpkg(dict_cmd, dissolve_path, output, project_name):
 
 # TODO : supprimer dossier temp si necessaire
 def write_json_file(dict_cmd, output, project_name):
+    """Write dictionary into json file"""
     json_file = project_name + "_gpao.json"
     json_path = os.path.join(output, json_file)
     with open(json_path, "w", encoding='utf-8') as out_file:
