@@ -37,7 +37,7 @@
     "express": "^4.17.1",
     "express-validator": "^6.12.1",
     "fs": "0.0.1-security",
-    "gdal-async": "^3.4.2",
+    "gdal-async": "^3.7.0",
     "geojson-validation": "^1.0.2",
     "git-describe": "^4.1.0",
     "mocha": "^10.1.0",
