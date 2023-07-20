@@ -1,0 +1,28 @@
+{
+	"identifier": "RGM04_UTM38S_20cm",
+	"crs": {
+		"type": "EPSG",
+		"code": 4471,
+		"boundingBox": {
+			"xmin": 355949.07,
+			"xmax": 685530.19,
+			"ymin": 8397400.8,
+			"ymax": 8747531.39
+		},
+		"proj4Definition": "+proj=utm +zone=38 +south +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs"
+	},
+	"resolution": 0.20,
+	"level": {
+		"min": 10,
+		"max": 19
+	},
+	"tileSize": {
+		"width": 512,
+		"height": 512
+	},
+	"pathDepth": 4,
+	"slabSize": {
+		"width": 8,
+		"height": 8
+	}
+}
