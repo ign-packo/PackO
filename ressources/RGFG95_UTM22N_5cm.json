@@ -1,0 +1,28 @@
+{
+	"identifier": "RGFG95_UTM22N_5cm",
+	"crs": {
+		"type": "EPSG",
+		"code": 2972,
+		"boundingBox": {
+			"xmin": 98300.99,
+			"xmax": 672381.14,
+			"ymin": 233219.76,
+			"ymax": 983518.72
+		},
+		"proj4Definition": "+proj=utm +zone=22 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs"
+	},
+	"resolution": 0.05,
+	"level": {
+		"min": 12,
+		"max": 21
+	},
+	"tileSize": {
+		"width": 512,
+		"height": 512
+	},
+	"pathDepth": 4,
+	"slabSize": {
+		"width": 8,
+		"height": 8
+	}
+}
