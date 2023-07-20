@@ -1,0 +1,28 @@
+{
+	"identifier": "RGWF96_UTM1S_20cm",
+	"crs": {
+		"type": "EPSG",
+		"code": 8903,
+		"boundingBox": {
+			"xmin": 114904.68,
+			"xmax": 799448.37,
+			"ymin": 8234536.9,
+			"ymax": 8912275.74
+		},
+		"proj4Definition": "+proj=utm +zone=1 +south +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs"
+	},
+	"resolution": 0.20,
+	"level": {
+		"min": 10,
+		"max": 19
+	},
+	"tileSize": {
+		"width": 512,
+		"height": 512
+	},
+	"pathDepth": 4,
+	"slabSize": {
+		"width": 8,
+		"height": 8
+	}
+}

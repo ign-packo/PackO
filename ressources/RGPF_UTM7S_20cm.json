@@ -1,0 +1,28 @@
+{
+	"identifier": "RGPF_UTM7S_20cm",
+	"crs": {
+		"type": "EPSG",
+		"code": 3298,
+		"boundingBox": {
+			"xmin": -1429036.68,
+			"xmax": 1505856.55,
+			"ymin":  6414052.93,
+			"ymax":  9500376.6
+		},
+		"proj4Definition": "+proj=utm +zone=7 +south +ellps=GRS80 +towgs84=0.072,-0.507,-0.245,0.0183,-0.0003,0.007,-0.0093 +units=m +no_defs +type=crs"
+	},
+	"resolution": 0.20,
+	"level": {
+		"min": 10,
+		"max": 19
+	},
+	"tileSize": {
+		"width": 512,
+		"height": 512
+	},
+	"pathDepth": 4,
+	"slabSize": {
+		"width": 8,
+		"height": 8
+	}
+}
