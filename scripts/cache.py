@@ -48,9 +48,9 @@ def read_args(update, cut_opi, export_tile):
                         default="cache")
     if update is False:
         parser.add_argument("-o", "--overviews",
-                            help="params for the mosaic (default: ressources/LAMB93_5cm.json)",
+                            help="params for the mosaic (default: ressources/RGF93_LA93_5cm.json)",
                             type=str,
-                            default="ressources/LAMB93_5cm.json")
+                            default="ressources/RGF93_LA93_5cm.json")
     parser.add_argument("-g", "--graph",
                         help="GeoPackage filename or database connection string \
                         (\"PG:host=localhost user=postgres password=postgres dbname=demo\")",
