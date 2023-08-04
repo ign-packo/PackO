@@ -203,7 +203,7 @@ options:
   -c CACHE, --cache CACHE
                         cache directory (default: cache)
   -o OVERVIEWS, --overviews OVERVIEWS
-                        params for the mosaic (default: ressources/LAMB93_5cm.json)
+                        params for the mosaic (default: ressources/RGF93_LA93_5cm.json)
   -g GRAPH, --graph GRAPH
                         GeoPackage filename or database connection string 
                         ("PG:host=localhost user=postgres password=postgres dbname=demo")
