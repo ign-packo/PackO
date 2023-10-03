@@ -491,7 +491,8 @@ if ARG.macros:
     # adapt macros to working data
     words_to_replace = {'__IDBRANCH__': branch_id,
                         '__URLSERVER__': ARG.url+'/',
-                        '__TILEMATRIXSET__': tms}
+                        '__TILEMATRIXSET__': tms,
+                        '__STYLE__': ARG.style_ortho}
     words_not_found = []
     with open(ARG.macros, 'r', encoding='utf-8') as file_macro_in:
         macros_data = file_macro_in.read()
