@@ -211,7 +211,8 @@ req_post_branch = ARG.url + '/branch?name=' + branch_name + \
            '&idCache=' + str(ARG.cache_id)
 resp_post_branch = check_get_post(req_post_branch, is_get=False)
 # get branch id
-resp_get_branches = check_get_post(ARG.url + '/branches', is_get=True)
+resp_get_branches = check_get_post(ARG.url + '/branches' +
+                                   '?idCache=' + str(ARG.cache_id), is_get=True)
 list_all_branches = response2pyobj(resp_get_branches)
 branch = next((b for b in list_all_branches if b['name'] == branch_name))
 branch_id = branch['id']
