@@ -38,9 +38,19 @@ def read_args():
     if args_prep.verbose >= 1:
         print("\nArguments: ", args_prep)
 
+    # check input url
+    url_pattern = r'^https?:\/\/[0-9A-z.]+\:[0-9]+$'
+    if not re.match(url_pattern, args_prep.url):
+        raise SystemExit(f"ERROR: URL '{args_prep.url}' is invalid")
+
+    # check bbox
     coords = str(args_prep.bbox).split(' ')
     if any(elem is None for elem in coords) and any(elem is not None for elem in coords):
         raise SystemError("ERROR: all bbox coordinates must be specified")
+
+    # verifier tous les parametres
+
+    # verifier l'existence de la branche d'id args.branch
 
     return args_prep
 
@@ -50,12 +60,6 @@ args = read_args()
 # TODO : gérer des dalles de NODATA en bord de chantier
 # TODO : pouvoir ajouter un tag gpao dans le chantier
 # TODO : export mtd optionnel si cache n'en contient pas ? Tester comportement sans mtd || OK
-
-print(f"args = {args}")
-# check input url
-url_pattern = r'^https?:\/\/[0-9A-z.]+\:[0-9]+$'
-if not re.match(url_pattern, args.url):
-    raise SystemExit(f"ERROR: URL '{args.url}' is invalid")
 
 # recuperer les patches correspondant a la branche desiree (requete curl)
 patches_files = os.path.join(args.output, 'patches.json')
@@ -87,7 +91,7 @@ if not os.path.exists(cache_path):
 # on verifie si l'overviews utilise est bien correct
 path_depth, level, resol, proj, overviews = prep.check_overviews(cache_path)
 
-# recupere la liste des tiles impactes par les patches sur le chantier
+# recupere la liste des dalles impactees par les retouches sur le chantier
 list_patches, id_branch_patch = prep.list_patches(list_patches_api, cache_path, path_depth, level)
 
 # create correct path out
@@ -98,10 +102,11 @@ else:
 
 # on verifie que la branch donne est correcte
 # encore necessaire vu qu'on va chercher les patches via id_branch ?
+# verif dans argsparser, a supprimer
 prep.check_branch_patch(args.branch, id_branch_patch)
 
-# on cree un vrt pour chaque tuile ddu cache
-prep.create_tiles(cache_path, level, args.branch, path_out, list_patches)
+# on recupere la liste des dalles impactees par les patches
+prep.create_list_slabs(cache_path, level, args.branch, path_out, list_patches)
 
 # creation des vrt intermediaires
 prep.build_full_vrt(path_out, resol)

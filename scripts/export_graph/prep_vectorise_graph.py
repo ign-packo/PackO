@@ -62,8 +62,8 @@ def list_patches(patches, cache, path_depth, level):
                 y = slab[1]  # pylint: disable=C0103
 
                 slab_path = get_slab_path(int(x), int(y), int(path_depth))
-                tile_path = os.path.join(cache, 'graph', str(level), slab_path[1:])
-                list_patches.append(os.path.abspath(tile_path + '.tif'))
+                full_slab_path = os.path.join(cache, 'graph', str(level), slab_path[1:])
+                list_patches.append(os.path.abspath(full_slab_path + '.tif'))
 
     return list_patches, id_branch_patch
 
@@ -80,34 +80,34 @@ def check_branch_patch(branch, id_branch_patch):
         branch = str(id_branch_patch)
 
 
-def create_tiles(cache, level, branch, path_out, list_patches):
-    """Create tile list for vectorization"""
+def create_list_slabs(cache, level, branch, path_out, list_patches):
+    """Create slabs list for vectorization"""
     graph_dir = os.path.join(cache, 'graph', str(level))
 
     # on parcourt le repertoire graph du cache pour recuperer l'ensemble des images de graphe
-    list_tiles = []
+    list_slabs = []
     for (root, dirs, files) in os.walk(graph_dir):
         for file in files:
             file = os.path.join(root, file)
-            list_tiles.append(os.path.abspath(file))
+            list_slabs.append(os.path.abspath(file))
 
     # fichier intermediaire contenant la liste de images pour le vrt
     with open(path_out + '.txt', 'w', encoding='utf-8') as f_out:
-        for tile in list_tiles:
-            # il faut filtrer uniquement les tuiles presentes a l'origine
+        for slab in list_slabs:
+            # il faut filtrer uniquement les dalles presentes a l'origine
             # on recupere juste le nom de la dalle sans extension -> 2 caracteres
-            filename = os.path.basename(tile).split('.')[0]
+            filename = os.path.basename(slab).split('.')[0]
 
-            if len(filename) > 2:  # cas des tuiles avec retouche
+            if len(filename) > 2:  # cas des dalles avec retouche
                 continue
-            if tile in list_patches:
-                # dans ce cas il faut ajouter la tuile index_branche + tilename a la liste
-                tilename = os.path.basename(tile)
-                tile_path = os.path.join(os.path.dirname(tile), str(branch) + '_' + tilename)
-                f_out.write(tile_path + '\n')
+            if slab in list_patches:
+                # dans ce cas il faut ajouter la dalle index_branche + slab_name a la liste
+                slab_name = os.path.basename(slab)
+                slab_path = os.path.join(os.path.dirname(slab), str(branch) + '_' + slab_name)
+                f_out.write(slab_path + '\n')
             else:
-                # on ajoute la tuile d'origine dans la liste pour creer le vrt
-                f_out.write(tile + '\n')
+                # on ajoute la dalle d'origine dans la liste pour creer le vrt
+                f_out.write(slab + '\n')
 
 
 def build_full_vrt(path_out, resol):
@@ -117,7 +117,7 @@ def build_full_vrt(path_out, resol):
         'gdalbuildvrt'
         + ' -input_file_list '
         + path_out + '.txt '
-        + path_out + '_graphTiles.vrt'
+        + path_out + '_graph_tmp.vrt'
         + ' -tap'
         + ' -tr ' + str(resol) + ' ' + str(resol) + ' '
     )
@@ -130,8 +130,8 @@ def build_vrt_emprise(path_out):
     # (pour avoir la bonne structure avec les bons parametres : notamment l'emprise)
     cmd_buildvrt2 = (
         'gdalbuildvrt '
-        + path_out + '_tmp.vrt '
-        + path_out + '_graphTiles.vrt'
+        + path_out + '_emprise_tmp.vrt '
+        + path_out + '_graph_tmp.vrt'
     )
     os.system(cmd_buildvrt2)
 
@@ -139,7 +139,7 @@ def build_vrt_emprise(path_out):
 def build_vrt_32bits(path_out):
     """Build vrt from a 3-8bits channels to 32bits monochannel"""
     # modification du VRT pour passage 32bits
-    with open(path_out + '_tmp.vrt', 'r', encoding='utf-8') as file:
+    with open(path_out + '_emprise_tmp.vrt', 'r', encoding='utf-8') as file:
         lines = file.readlines()
     with open(path_out + '_32bits.vrt', 'w', encoding='utf-8') as file:
         for line in lines:
