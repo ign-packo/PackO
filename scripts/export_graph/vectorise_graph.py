@@ -17,8 +17,8 @@ def create_chantier_polygonize(dict_cmd, output, project_name):
     if platform.system() == "Windows":
         script = script.split('.', maxsplit=1)[0]+".bat"
 
-    tiles_dir = os.path.join(output, "tiles")
-    gpkg_dir = os.path.join(output, "gpkg")
+    tiles_dir = os.path.join(output, 'tmp', 'tiles')
+    gpkg_dir = os.path.join(output, 'tmp', 'gpkg')
 
     if not os.path.exists(gpkg_dir):
         os.mkdir(gpkg_dir)
@@ -65,7 +65,7 @@ def add_job_merge(dict_cmd, output, project_name, proj):
     if platform.system() == "Windows":
         script_merge = script_merge.split('.', maxsplit=1)[0]+".bat"
 
-    gpkg_dir = os.path.join(output, "gpkg")
+    gpkg_dir = os.path.join(output, 'tmp', 'gpkg')
     tmp_dir = os.path.join(output, 'tmp')
     if not os.path.exists(tmp_dir):
         os.mkdir(tmp_dir)

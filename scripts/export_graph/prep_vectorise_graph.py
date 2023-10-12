@@ -136,12 +136,13 @@ def build_vrt_emprise(path_out):
     os.system(cmd_buildvrt2)
 
 
+# ajouter _tmp au vrt_32bits ?
 def build_vrt_32bits(path_out):
     """Build vrt from a 3-8bits channels to 32bits monochannel"""
     # modification du VRT pour passage 32bits
     with open(path_out + '_emprise_tmp.vrt', 'r', encoding='utf-8') as file:
         lines = file.readlines()
-    with open(path_out + '_32bits.vrt', 'w', encoding='utf-8') as file:
+    with open(path_out + '_32bits_tmp.vrt', 'w', encoding='utf-8') as file:
         for line in lines:
             # on ecrit le code python au bon endroit dans le VRT
             if 'band="1"' in line:
@@ -172,13 +173,13 @@ def build_vrt_32bits(path_out):
 
 def create_tiles_vrt(output, path_out, resol, tilesize, bbox):
     """Create command line for each tile to be vectorized"""
-    tiles_dir = os.path.join(os.path.abspath(output), 'tiles')
+    tiles_dir = os.path.join(os.path.abspath(output), 'tmp', 'tiles')
     if not os.path.exists(tiles_dir):
-        os.mkdir(tiles_dir)
+        os.makedirs(tiles_dir)
 
     if any(elem is None for elem in str(bbox).split(' ')) or bbox is None:
         # on recupere l'emprise globale du chantier dont on veut extraire xmin, xmax, ymin, ymax
-        info = gdal.Info(path_out + '_32bits.vrt')
+        info = gdal.Info(path_out + '_32bits_tmp.vrt')
         info_list = info.split('\n')
 
         upper_left, lower_right = '', ''
@@ -218,7 +219,7 @@ def create_tiles_vrt(output, path_out, resol, tilesize, bbox):
             cmd_vrt = (
                 'gdalbuildvrt '
                 + os.path.join(tiles_dir, str(x) + '_' + str(y) + '.vrt') + ' '
-                + path_out + '_32bits.vrt'
+                + path_out + '_32bits_tmp.vrt'
                 + ' -tr ' + str(resol) + ' ' + str(resol)
                 + ' -te ' + str(x) + ' ' + str(y) + ' '
                 + str(x + tile_size) + ' ' + str(y + tile_size)

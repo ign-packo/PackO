@@ -22,14 +22,14 @@ def read_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--cache", required=True, type=str, help="path of input cache")
     parser.add_argument("-o", "--output", required=True, help="output folder")
-    parser.add_argument("-b", "--branch", required=True,
+    parser.add_argument("-b", "--branch", required=True, type=int,
                         help="id of branch of cache to use as source for patches")
     parser.add_argument('-u', '--url',
                         help="http://[serveur]:[port] (default: http://localhost:8081)",
                         type=str, default='http://localhost:8081')
     parser.add_argument("-t", "--tilesize",
-                        help="tile size (in pixels) for vectorising graph tiles (default: 100000)",
-                        type=int, default=100000)
+                        help="tile size (in pixels) for vectorising graph tiles (default: 5000)",
+                        type=int, default=5000)
     parser.add_argument("--bbox", help="bbox for export (in meters), xmin ymin xmax ymax",
                         type=int, nargs=4)
     parser.add_argument("-v", "--verbose", help="verbose (default: 0)", type=int, default=0)
@@ -38,10 +38,20 @@ def read_args():
     if args_prep.verbose >= 1:
         print("\nArguments: ", args_prep)
 
+    # check input cache
+    if not os.path.exists(args_prep.cache):
+        raise SystemExit(f"ERROR: folder '{args_prep.cache}' does not exist")
+
+    # check branch -> voir create_qgis_view
+
     # check input url
     url_pattern = r'^https?:\/\/[0-9A-z.]+\:[0-9]+$'
     if not re.match(url_pattern, args_prep.url):
         raise SystemExit(f"ERROR: URL '{args_prep.url}' is invalid")
+
+    # check tilesize > 0
+    if args_prep.tilesize <= 0:
+        raise SystemExit("ERROR: tilesize must be greater that zero")
 
     # check bbox
     coords = str(args_prep.bbox).split(' ')
