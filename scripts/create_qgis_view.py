@@ -211,7 +211,8 @@ req_post_branch = ARG.url + '/branch?name=' + branch_name + \
            '&idCache=' + str(ARG.cache_id)
 resp_post_branch = check_get_post(req_post_branch, is_get=False)
 # get branch id
-resp_get_branches = check_get_post(ARG.url + '/branches', is_get=True)
+resp_get_branches = check_get_post(ARG.url + '/branches' +
+                                   '?idCache=' + str(ARG.cache_id), is_get=True)
 list_all_branches = response2pyobj(resp_get_branches)
 branch = next((b for b in list_all_branches if b['name'] == branch_name))
 branch_id = branch['id']
@@ -388,7 +389,8 @@ patches_fields.append(QgsField('fid', QVariant.Int))
 create_vector(patches_fname, patches_fields, QgsWkbTypes.Polygon, crs, project)
 patches_lname = 'retouches_graphe'
 patches_layer = add_layer_to_map(patches_fname, patches_lname,
-                                 project, 'ogr', is_raster=False)
+                                 project, 'ogr', is_raster=False,
+                                 disable_att_form_popup=True)
 # add to group
 patch_group.insertChildNode(1, QgsLayerTreeLayer(patches_layer))
 print_info_add_layer(patches_lname)
@@ -399,7 +401,8 @@ patches_infogr_fields.append(QgsField('fid', QVariant.Int))
 create_vector(patches_infogr_fname, patches_infogr_fields, QgsWkbTypes.Polygon, crs, project)
 patches_infogr_lname = 'retouches_info'
 patches_infogr_layer = add_layer_to_map(patches_infogr_fname, patches_infogr_lname,
-                                        project, 'ogr', is_raster=False)
+                                        project, 'ogr', is_raster=False,
+                                        disable_att_form_popup=True)
 # add to group
 patch_group.insertChildNode(1, QgsLayerTreeLayer(patches_infogr_layer))
 print_info_add_layer(patches_infogr_lname)
