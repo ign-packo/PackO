@@ -8,6 +8,7 @@ import re
 import argparse
 import prep_vectorise_graph as prep
 import vectorise_graph as vect
+from osgeo import ogr
 
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
@@ -32,6 +33,7 @@ def read_args():
                         type=int, default=5000)
     parser.add_argument("--bbox", help="bbox for export (in meters), xmin ymin xmax ymax",
                         type=int, nargs=4)
+    parser.add_argument("--shapefile", help="filepath of shapefile containing extent of export")
     parser.add_argument("-v", "--verbose", help="verbose (default: 0)", type=int, default=0)
     args_prep = parser.parse_args()
 
@@ -53,14 +55,29 @@ def read_args():
     if args_prep.tilesize <= 0:
         raise SystemExit("ERROR: tilesize must be greater that zero")
 
+    # check if bbox and extent are not both used
+    if args_prep.bbox is not None and args_prep.shapefile is not None:
+        raise SystemExit("ERROR: bbox and extent options were used, incompatible")
+
     # check bbox
-    coords = str(args_prep.bbox).split(' ')
-    if any(elem is None for elem in coords) and any(elem is not None for elem in coords):
-        raise SystemError("ERROR: all bbox coordinates must be specified")
+    if args_prep.bbox is not None:
+        coords = str(args_prep.bbox).split(' ')
+        if any(elem is None for elem in coords) and any(elem is not None for elem in coords):
+            raise SystemError("ERROR: all bbox coordinates must be specified")
+
+    # check extent, only shapefile
+    if args_prep.shapefile is not None:
+        if not os.path.exists(args_prep.shapefile):
+            raise SystemExit(f"ERROR: file {args_prep.shapefile} does not exist")
+        ext = os.path.splitext(args_prep.shapefile)[1]
+        if ext != '.shp':
+            raise SystemExit(f"ERROR: wrong extent file extension expected .shp, got {ext}")
+        driver = ogr.GetDriverByName("ESRI Shapefile")
+        data = driver.Open(args_prep.shapefile, 0)  # 0 = read-only
+        if data is None:
+            raise SystemExit("ERROR: data is null in ", args_prep.shapefile)
 
     # verifier tous les parametres
-
-    # verifier l'existence de la branche d'id args.branch
 
     return args_prep
 
@@ -115,8 +132,31 @@ else:
 # verif dans argsparser, a supprimer
 prep.check_branch_patch(args.branch, id_branch_patch)
 
+# on recupere l'emprise du chantier si necessaire
+extent = None
+if args.bbox:
+    x_min = args.bbox[0]
+    y_min = args.bbox[1]
+    x_max = args.bbox[2]
+    y_max = args.bbox[3]
+
+    extent = prep.get_extent(x_min, x_max, y_min, y_max)
+elif args.shapefile:
+    # actuellement on prend seulement la bbox du chantier
+    driver = ogr.GetDriverByName("ESRI Shapefile")
+    data = driver.Open(args.shapefile, 0)  # 0 = read-only
+
+    layer = data.GetLayer()
+    layer_extent = layer.GetExtent()
+    x_min = layer_extent[0]
+    x_max = layer_extent[1]
+    y_min = layer_extent[2]
+    y_max = layer_extent[3]
+
+    extent = prep.get_extent(x_min, x_max, y_min, y_max)
+
 # on recupere la liste des dalles impactees par les patches
-prep.create_list_slabs(cache_path, level, args.branch, path_out, list_patches)
+prep.create_list_slabs(cache_path, level, args.branch, path_out, list_patches, extent)
 
 # creation des vrt intermediaires
 prep.build_full_vrt(path_out, resol)
@@ -124,7 +164,7 @@ prep.build_vrt_emprise(path_out)
 prep.build_vrt_32bits(path_out)
 
 # creation des dalles de vrt pour la vectorisation
-prep.create_tiles_vrt(args.output, path_out, resol, args.tilesize, args.bbox)
+prep.create_tiles_vrt(args.output, path_out, resol, args.tilesize)
 
 # preparation du fichier pour la gpao
 dict_cmd = {"projects": []}

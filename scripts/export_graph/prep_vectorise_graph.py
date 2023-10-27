@@ -6,12 +6,28 @@ import os
 import sys
 import json
 from osgeo import gdal
+from osgeo import ogr
 
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 sys.path.append(parent)
 
 from cache_def import get_slab_path  # noqa: E402
+
+
+def get_extent(xmin, xmax, ymin, ymax):
+    """ Return a polygon = bbox from coordinates """
+    ring = ogr.Geometry(ogr.wkbLinearRing)
+    ring.AddPoint(xmin, ymin)
+    ring.AddPoint(xmin, ymax)
+    ring.AddPoint(xmax, ymax)
+    ring.AddPoint(xmax, ymin)
+    ring.AddPoint(xmin, ymin)
+
+    extent = ogr.Geometry(ogr.wkbPolygon)
+    extent.AddGeometry(ring)
+
+    return extent
 
 
 def check_overviews(cache):
@@ -80,24 +96,36 @@ def check_branch_patch(branch, id_branch_patch):
         branch = str(id_branch_patch)
 
 
-def create_list_slabs(cache, level, branch, path_out, list_patches):
+def create_list_slabs(cache, level, branch, path_out, list_patches, extent):
     """Create slabs list for vectorization"""
     graph_dir = os.path.join(cache, 'graph', str(level))
 
     # on parcourt le repertoire graph du cache pour recuperer l'ensemble des images de graphe
     list_slabs = []
-    for (root, dirs, files) in os.walk(graph_dir):
+    for (root, _, files) in os.walk(graph_dir):
         for file in files:
             file = os.path.join(root, file)
-            list_slabs.append(os.path.abspath(file))
 
-    # fichier intermediaire contenant la liste de images pour le vrt
+            # verifier si l'emprise du slab intersecte l'emprise du chantier
+            if extent is not None:
+                dataset = gdal.Open(file)
+                x_min, x_pixel, _, y_max, _, y_pixel = dataset.GetGeoTransform()
+                width, height = dataset.RasterXSize, dataset.RasterYSize
+                x_max = x_min + width * x_pixel
+                y_min = y_max + height * y_pixel
+
+                extent_slab = get_extent(x_min, x_max, y_min, y_max)
+                if extent_slab.Intersects(extent):
+                    list_slabs.append(os.path.abspath(file))
+            else:
+                list_slabs.append(os.path.abspath(file))
+
+    # fichier intermediaire contenant la liste des images pour le vrt
     with open(path_out + '.txt', 'w', encoding='utf-8') as f_out:
         for slab in list_slabs:
             # il faut filtrer uniquement les dalles presentes a l'origine
             # on recupere juste le nom de la dalle sans extension -> 2 caracteres
             filename = os.path.basename(slab).split('.')[0]
-
             if len(filename) > 2:  # cas des dalles avec retouche
                 continue
             if slab in list_patches:
@@ -171,46 +199,39 @@ def build_vrt_32bits(path_out):
                 file.write(line)
 
 
-def create_tiles_vrt(output, path_out, resol, tilesize, bbox):
+def create_tiles_vrt(output, path_out, resol, tilesize):
     """Create command line for each tile to be vectorized"""
     tiles_dir = os.path.join(os.path.abspath(output), 'tmp', 'tiles')
     if not os.path.exists(tiles_dir):
         os.makedirs(tiles_dir)
 
-    if any(elem is None for elem in str(bbox).split(' ')) or bbox is None:
-        # on recupere l'emprise globale du chantier dont on veut extraire xmin, xmax, ymin, ymax
-        info = gdal.Info(path_out + '_32bits_tmp.vrt')
-        info_list = info.split('\n')
+    # on recupere l'emprise de l'export dont on veut extraire xmin, xmax, ymin, ymax
+    info = gdal.Info(path_out + '_32bits_tmp.vrt')
+    info_list = info.split('\n')
 
-        upper_left, lower_right = '', ''
-        for line in info_list:
-            if 'Upper Left' in line:
-                upper_left = line
-            elif 'Lower Right' in line:
-                lower_right = line
+    upper_left, lower_right = '', ''
+    for line in info_list:
+        if 'Upper Left' in line:
+            upper_left = line
+        elif 'Lower Right' in line:
+            lower_right = line
 
-        upper_left = upper_left.replace('(', '').replace(')', '').replace(',', '')
-        ul_split = upper_left.split(' ')
-        x_min = ul_split[5]
-        y_max = ul_split[6]
+    upper_left = upper_left.replace('(', '').replace(')', '').replace(',', '')
+    ul_split = upper_left.split(' ')
+    x_min = ul_split[5]
+    y_max = ul_split[6]
 
-        lower_right = lower_right.replace('(', '').replace(')', '').replace(',', '')
-        lr_split = lower_right.split(' ')
-        x_max = lr_split[4]
-        y_min = lr_split[5]
+    lower_right = lower_right.replace('(', '').replace(')', '').replace(',', '')
+    lr_split = lower_right.split(' ')
+    x_max = lr_split[4]
+    y_min = lr_split[5]
 
-        # ces valeurs vont servir a gerer l'ensemble des gdalbuildvrt sur le chantier
-        x_min = int(float(x_min) // 1000 * 1000)
-        y_min = int(float(y_min) // 1000 * 1000)
+    # ces valeurs vont servir a gerer l'ensemble des gdalbuildvrt sur le chantier
+    x_min = int(float(x_min) // 1000 * 1000)
+    y_min = int(float(y_min) // 1000 * 1000)
 
-        x_max = int((float(x_max) // 1000 + 1) * 1000)
-        y_max = int((float(y_max) // 1000 + 1) * 1000)
-    else:
-        coords = str(bbox).split(' ')
-        x_min = coords[0]
-        y_min = coords[1]
-        x_max = coords[2]
-        y_max = coords[3]
+    x_max = int((float(x_max) // 1000 + 1) * 1000)
+    y_max = int((float(y_max) // 1000 + 1) * 1000)
 
     tile_size = int(resol * tilesize)
 
