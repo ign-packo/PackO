@@ -36,6 +36,8 @@ id_branch = __IDBRANCH__
 url_server = __URLSERVER__
 tile_matrix_set = __TILEMATRIXSET__
 style = __STYLE__
+pixel_size_x = __PIXELSIZEX__
+pixel_size_y = __PIXELSIZEY__
 # ===================================
 
 url_graph = url_server + id_branch + '/graph'
@@ -296,7 +298,7 @@ def on_key(event):
 
             chem_export_txt = os.path.join(rep_pont, nom_export.replace('.tif', '.txt'))
 
-            cmd = f'gdalwarp -tr 0.05 0.05 -tap -r near -co TFW=YES {ortho_layer.source()} {chem_export}\
+            cmd = f'gdalwarp -tr {pixel_size_x} {pixel_size_y} -tap -r near -co TFW=YES {ortho_layer.source()} {chem_export}\
                 -cutline {src_poly} -csql "select ret.geom from retouches_info as ret where ret.fid == {id_poly}"\
                 -crop_to_cutline -overwrite -dstnodata 0'
             os.popen(cmd).readlines()
