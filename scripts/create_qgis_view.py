@@ -344,6 +344,9 @@ set_layer_resampling(ortho_layer)
 # add to group
 ortho_group.insertChildNode(1, QgsLayerTreeLayer(ortho_layer))
 print_info_add_layer(ortho_lname)
+# get pixel size from layer
+pixel_size_x = round(ortho_layer.rasterUnitsPerPixelX(), 4)
+pixel_size_y = round(ortho_layer.rasterUnitsPerPixelY(), 4)
 # get crs from layer
 crs = ortho_layer.crs()
 # set project crs
@@ -492,7 +495,9 @@ if ARG.macros:
     words_to_replace = {'__IDBRANCH__': branch_id,
                         '__URLSERVER__': ARG.url+'/',
                         '__TILEMATRIXSET__': tms,
-                        '__STYLE__': ARG.style_ortho}
+                        '__STYLE__': ARG.style_ortho,
+                        '__PIXELSIZEX__': pixel_size_x,
+                        '__PIXELSIZEY__': pixel_size_y}
     words_not_found = []
     with open(ARG.macros, 'r', encoding='utf-8') as file_macro_in:
         macros_data = file_macro_in.read()
