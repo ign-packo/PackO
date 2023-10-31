@@ -496,6 +496,7 @@ if ARG.macros:
                         '__URLSERVER__': ARG.url+'/',
                         '__TILEMATRIXSET__': tms,
                         '__STYLE__': ARG.style_ortho,
+                        '__CRS__': crs.postgisSrid(),
                         '__PIXELSIZEX__': pixel_size_x,
                         '__PIXELSIZEY__': pixel_size_y}
     words_not_found = []
