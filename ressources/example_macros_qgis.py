@@ -36,6 +36,7 @@ id_branch = __IDBRANCH__
 url_server = __URLSERVER__
 tile_matrix_set = __TILEMATRIXSET__
 style = __STYLE__
+crs = __CRS__
 pixel_size_x = __PIXELSIZEX__
 pixel_size_y = __PIXELSIZEY__
 # ===================================
@@ -45,7 +46,7 @@ url_patch = url_server + id_branch + '/patch'
 url_undo = url_server + id_branch + '/patch/undo'
 url_redo = url_server + id_branch + '/patch/redo'
 url_wmts = url_server + id_branch + '/wmts'
-source='contextualWMSLegend=0&crs=EPSG:2154&dpiMode=7&featureCount=10&format=image/png&layers=opi&styles='+style+'&tileDimensions=Name%3DXXX&tileMatrixSet='+tile_matrix_set+'&url='+url_wmts+'?SERVICE%3DWMTS%26REQUEST%3DGetCapabilities%26VERSION%3D1.0.0'
+source='contextualWMSLegend=0&crs=EPSG:'+crs+'&dpiMode=7&featureCount=10&format=image/png&layers=opi&styles='+style+'&tileDimensions=Name%3DXXX&tileMatrixSet='+tile_matrix_set+'&url='+url_wmts+'?SERVICE%3DWMTS%26REQUEST%3DGetCapabilities%26VERSION%3D1.0.0'
 OPI=None
 color=None
 opi_layer = None
@@ -84,7 +85,7 @@ def sendPatch(feature, OPI, color):
     exporter = QgsJsonExporter()
     patch = json.loads(exporter.exportFeatures([feature]))
     # print(patch)
-    patch['crs'] = {'type': 'name', 'properties': {'name': 'urn:ogc:def:crs:EPSG::2154'}}
+    patch['crs'] = {'type': 'name', 'properties': {'name': 'urn:ogc:def:crs:EPSG::'+crs}}
     patch['features'][0]['properties'] = {'color': color, 'opiName': OPI}
     res = requests.post(url_patch, json=patch)
     return res.text
