@@ -1,0 +1,28 @@
+{
+	"identifier": "RGAF09_UTM20N_20cm",
+	"crs": {
+		"type": "EPSG",
+		"code": 5490,
+		"boundingBox": {
+			"xmin": 428749.41,
+			"xmax": 1092386.1,
+			"ymin": 1556576.31,
+			"ymax": 2057644.16
+		},
+		"proj4Definition": "+proj=utm +zone=20 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs"
+	},
+	"resolution": 0.20,
+	"level": {
+		"min": 10,
+		"max": 19
+	},
+	"tileSize": {
+		"width": 512,
+		"height": 512
+	},
+	"pathDepth": 4,
+	"slabSize": {
+		"width": 8,
+		"height": 8
+	}
+}

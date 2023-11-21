@@ -1,0 +1,28 @@
+{
+	"identifier": "RGSPM06_UTM21N_20cm",
+	"crs": {
+		"type": "EPSG",
+		"code": 4467,
+		"boundingBox": {
+			"xmin": 491903.57,
+			"xmax": 589061.06,
+			"ymin": 4806346.28,
+			"ymax": 5246868.78
+		},
+		"proj4Definition": "+proj=utm +zone=21 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs"
+	},
+	"resolution": 0.20,
+	"level": {
+		"min": 10,
+		"max": 19
+	},
+	"tileSize": {
+		"width": 512,
+		"height": 512
+	},
+	"pathDepth": 4,
+	"slabSize": {
+		"width": 8,
+		"height": 8
+	}
+}
