@@ -309,7 +309,7 @@ Si un cache a une taille de dalle (slabSize) différente de 16x16 tuiles ou une 
 
 ## Préparation des éléments de la vue PackO pour QGIS
 
-Dans le cas d'utilisation d'un client pour PackO basé sur QGIS, on peut créer automatiquement la vue contenant les éléments du chantier en utilisant le script **create_qgis_view.py** :
+Dans le cas d'utilisation d'un client pour PackO basé sur QGIS (version minimale 3.34), on peut créer automatiquement la vue contenant les éléments du chantier en utilisant le script **create_qgis_view.py** :
 ````
 usage: create_qgis_view.py [-h] [-u URL] -c CACHE_ID [-b BRANCH_NAME] [-s {RVB,IR,IRC}] [-o OUTPUT] [-z ZOOM_PIVOT] [--vect VECT] [--bbox BBOX BBOX BBOX BBOX] [-m MACROS] [-v VERBOSE]
 
