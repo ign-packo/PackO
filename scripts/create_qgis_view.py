@@ -47,8 +47,9 @@ def read_args():
                         help='cache id',
                         type=int)
     parser.add_argument('-b', '--branch_name',
-                        help="name of new branch to be created on cache (default: newBranch)",
-                        type=str, default='newBranch')
+                        help="name of new branch to be created on cache",
+                        required=True,
+                        type=str)
     parser.add_argument('-s', '--style_ortho',
                         help="style for ortho to be exported to xml (default: RVB)",
                         type=str, default='RVB', choices=['RVB', 'IR', 'IRC'])
