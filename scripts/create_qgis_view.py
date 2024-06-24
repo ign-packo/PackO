@@ -96,6 +96,19 @@ def suppress_cachetag(xml_in, xml_out):
     print(f"File '{xml_out}' written")
 
 
+def set_nb_bands(xml_in, xml_out, nb_bands):
+    """ Set number of bands or channels in xml file """
+    if nb_bands is None or nb_bands < 0:
+        raise SystemExit(f'ERROR: Bad number of bands (={nb_bands})')
+    tree_xml = etree.parse(xml_in)
+    root_xml = tree_xml.getroot()
+    bands_count = root_xml.find('BandsCount')
+    if bands_count is None:
+        raise SystemExit(f"ERROR: 'BandsCount' tag not found in '{xml_in}'")
+    bands_count.text = str(nb_bands)
+    tree_xml.write(xml_out)
+
+
 def set_extent_xml(xml_in, xml_out, extent_xmin, extent_ymin, extent_xmax, extent_ymax):
     """ Set extent limits in an xml file """
     tree_xml = etree.parse(xml_in)
@@ -117,10 +130,11 @@ def set_extent_xml(xml_in, xml_out, extent_xmin, extent_ymin, extent_xmax, exten
     print(f"File '{xml_out}' written")
 
 
-def modify_xml(xml_in, xml_out, extent_xmin=None, extent_ymin=None,
+def modify_xml(xml_in, xml_out, nb_bands, extent_xmin=None, extent_ymin=None,
                extent_xmax=None, extent_ymax=None):
-    """ Suppress cache tag and set extent in an xml file """
+    """ Suppress cache tag and set number of bands & extent in an xml file """
     suppress_cachetag(xml_in, xml_out)
+    set_nb_bands(xml_out, xml_out, nb_bands)
     if extent_xmin and extent_ymin and extent_xmax and extent_ymax:
         set_extent_xml(xml_out, xml_out, extent_xmin, extent_ymin, extent_xmax, extent_ymax)
     print(f"File '{xml_out}' written")
@@ -231,8 +245,12 @@ xml_from_wmts(wmts_graph, xml_graph_tmp)
 # suppress Cache tag and set extent
 xml_ortho = os.path.join(dirpath_out, 'ortho.xml')
 xml_graph = os.path.join(dirpath_out, 'graphe_surface.xml')
-modify_xml(xml_ortho_tmp, xml_ortho, bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax)
-modify_xml(xml_graph_tmp, xml_graph, bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax)
+# get number of channels or bands for ortho layer
+nb_bands_from_style = {'RVB': 3, 'IR': 1, 'IRC': 3}
+nb_bands_ortho = nb_bands_from_style.get(ARG.style_ortho)
+modify_xml(xml_ortho_tmp, xml_ortho, nb_bands_ortho, bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax)
+# graph layer is a RGB layer (3 channels)
+modify_xml(xml_graph_tmp, xml_graph, 3, bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax)
 # TODO: suppress xml ortho_tmp and graph_tmp - for now, useful for comparison
 
 # --------- create contours vrt from graph.xml -----------
@@ -269,7 +287,12 @@ if len(all_rband_tags) > 0:
                 ch = etree.SubElement(mdata, 'MDI', attrib={'key': key})
                 ch.text = val
             # add children tags ComplexSource for band 2 and 3
+            if rband.find('ComplexSource') is None and rband.find('SimpleSource') is None:
+                raise SystemExit(f"ERROR: Neither 'ComplexSource' tag, nor 'SimpleSource' \
+                                 could be found in '{vrt_tmp}' file")
             complsrc = rband.find('ComplexSource')
+            if complsrc is None and rband.find('SimpleSource') is not None:
+                complsrc = rband.find('SimpleSource')
             for i in range(2, 4):
                 tmp = deepcopy(complsrc)
                 srcband = tmp.find('SourceBand')
