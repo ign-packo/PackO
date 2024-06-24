@@ -11,6 +11,9 @@ import numpy as np
 from numpy import base_repr
 from osgeo import gdal
 
+# enable gdal/ogr exceptions
+gdal.UseExceptions()
+
 COG_DRIVER = gdal.GetDriverByName('COG')
 
 

@@ -13,6 +13,8 @@ from osgeo import osr
 
 import cache_def as cache
 
+# enable gdal/ogr exceptions
+gdal.UseExceptions()
 
 cpu_dispo = multiprocessing.cpu_count()
 
