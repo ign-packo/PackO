@@ -1,7 +1,7 @@
 # coding: utf-8
 """ This script handles QGIS layers """
 
-from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsVectorFileWriter
+from qgis.core import QgsRasterLayer, QgsVectorLayer, QgsVectorFileWriter, QgsEditFormConfig
 
 
 def add_layer_to_map(data_source, layer_name, qgs_project, provider_name,
@@ -15,7 +15,7 @@ def add_layer_to_map(data_source, layer_name, qgs_project, provider_name,
     qgs_project.addMapLayer(layer, show)
     if disable_att_form_popup is True:
         form_config = layer.editFormConfig()
-        form_config.setSuppress(1)
+        form_config.setSuppress(QgsEditFormConfig.SuppressOn)
         layer.setEditFormConfig(form_config)
     return layer
 
