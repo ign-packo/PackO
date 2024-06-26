@@ -87,7 +87,7 @@ describe('routes/file.js', () => {
             res.should.be.a('object');
             res.should.have.status(200);
             res.body.should.be.a('object');
-            res.body.should.have.property('identifier').equal('LAMB93_5cm');
+            res.body.should.have.property('identifier').equal('RGF93_LA93_5cm');
             res.body.should.have.property('dataSet');
 
             done();
