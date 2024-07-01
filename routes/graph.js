@@ -29,6 +29,7 @@ router.get('/:idBranch/graph',
   validateParams,
   branch.getCachePath,
   cache.getOverviews,
+  branch.lockShared,
   graph.getGraph,
   pgClient.close,
   returnMsg);

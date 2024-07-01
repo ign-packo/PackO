@@ -83,6 +83,24 @@ async function getCachePath(pgClient, idBranch) {
   throw new Error('idBranch non valide');
 }
 
+async function lockSharedBranch(pgClient, idBranch) {
+  debug(`    ~~lockSharedBranch (idBranch: ${idBranch})`);
+  await pgClient.query(
+    'SELECT pg_advisory_xact_lock_shared($1)',
+    [idBranch],
+  );
+  debug(`    ~~lockSharedBranch (idBranch: ${idBranch}) done`);
+}
+
+async function lockBranch(pgClient, idBranch) {
+  debug(`    ~~lockBranch (idBranch: ${idBranch})`);
+  await pgClient.query(
+    'SELECT pg_advisory_xact_lock($1)',
+    [idBranch],
+  );
+  debug(`    ~~lockBranch (idBranch: ${idBranch}) done`);
+}
+
 async function getBranches(pgClient, idCache) {
   debug(`    ~~getBranches (idCache: ${idCache})`);
   let results;
@@ -546,6 +564,8 @@ module.exports = {
   deleteCache,
   insertListOpi,
   getCachePath,
+  lockSharedBranch,
+  lockBranch,
   getBranches,
   // getIdCacheFromPath,
   insertBranch,
