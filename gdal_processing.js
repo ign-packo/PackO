@@ -64,27 +64,44 @@ async function getTileEncoded(url, x, y, z, formatGDAL, blocSize, bands) {
   }
 
   // On ouvre les images si nécessaire
+  debug('On ouvre les images si nécessaire');
   const withRgb = b.includes(0) || b.includes(1) || b.includes(2);
   const withIr = b.includes(3);
 
-  const blocks = withRgb
-    ? await gdal.openAsync(url).then((ds) => Promise.all([
-      ds.bands.getAsync(1)
+  const blocks = [];
+  if (withRgb) {
+    const dsRgb = await gdal.openAsync(url);
+    const blocksRgb = await Promise.all([
+      dsRgb.bands.getAsync(1)
         .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
         .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)),
-      ds.bands.getAsync(2)
+      dsRgb.bands.getAsync(2)
         .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
         .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)),
-      ds.bands.getAsync(3)
+      dsRgb.bands.getAsync(3)
         .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
         .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)),
-    ]))
-    : [null, null, null];
-  blocks.push(withIr
-    ? await gdal.openAsync(urlIr).then((ds) => ds.bands.getAsync(1)
+    ]);
+    // Attention a toujours fermer les images ouvertes avec openAsync
+    // afin de ne pas bloquer le fichier
+    dsRgb.close();
+    blocks.push(blocksRgb[0], blocksRgb[1], blocksRgb[2]);
+  } else {
+    blocks.push(null, null, null);
+  }
+
+  if (withIr) {
+    const dsIr = await gdal.openAsync(urlIr);
+    const blockIr = await dsIr.bands.getAsync(1)
       .then((band) => (z === 0 ? band : band.overviews.getAsync(z - 1)))
-      .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y)))
-    : null);
+      .then((selectedLevel) => selectedLevel.pixels.readBlockAsync(x, y));
+    // Attention a toujours fermer les images ouvertes avec openAsync
+    // afin de ne pas bloquer le fichier
+    dsIr.close();
+    blocks.push(blockIr);
+  } else {
+    blocks.push(null);
+  }
 
   const outDS = await gdal.openAsync('default', 'w', 'MEM', blocSize, blocSize, 3);
 
@@ -105,18 +122,26 @@ async function getColor(url, x, y, z, col, lig, blocSize) {
   try {
     await fs.promises.access(url, fs.constants.R_OK);
     const ds = await gdal.openAsync(url);
-    if (z === 0) {
-      return [await (await ds.bands.getAsync(1)).pixels.getAsync(col + x * blocSize,
-        lig + y * blocSize),
-      await (await ds.bands.getAsync(2)).pixels.getAsync(col + x * blocSize,
-        lig + y * blocSize),
-      await (await ds.bands.getAsync(3)).pixels.getAsync(col + x * blocSize,
-        lig + y * blocSize)];
-    }
-    return [await (await (await ds.bands.getAsync(1)).overviews.getAsync(z))
-      .pixels.getAsync(col, lig),
-    await (await (await ds.bands.getAsync(2)).overviews.getAsync(z - 1)).pixels.getAsync(col, lig),
-    await (await (await ds.bands.getAsync(3)).overviews.getAsync(z - 1)).pixels.getAsync(col, lig)];
+    const result = (z === 0)
+      ? [
+        await (await ds.bands.getAsync(1)).pixels.getAsync(col + x * blocSize,
+          lig + y * blocSize),
+        await (await ds.bands.getAsync(2)).pixels.getAsync(col + x * blocSize,
+          lig + y * blocSize),
+        await (await ds.bands.getAsync(3)).pixels.getAsync(col + x * blocSize,
+          lig + y * blocSize),
+      ] : [
+        await (await (await ds.bands.getAsync(1)).overviews.getAsync(z))
+          .pixels.getAsync(col, lig),
+        await (await (await ds.bands.getAsync(2)).overviews.getAsync(z - 1))
+          .pixels.getAsync(col, lig),
+        await (await (await ds.bands.getAsync(3)).overviews.getAsync(z - 1))
+          .pixels.getAsync(col, lig),
+      ];
+    // Attention a toujours fermer les images ouvertes avec openAsync
+    // afin de ne pas bloquer le fichier
+    ds.close();
+    return result;
   } catch (_) {
     return [0, 0, 0];
   }
@@ -262,6 +287,8 @@ function processPatchAsync(patch, blocSize) {
       debug('... fin creation des images en memoire');
       debug('creation des COGs ...');
 
+      // Attention a toujours fermer les images ouvertes avec openAsync
+      // afin de ne pas bloquer le fichier
       graph.ds.close();
       if (orthoRgb) {
         orthoRgb.ds.close();
