@@ -74,7 +74,7 @@ paths:
                 properties:
                   identifier:
                     type: string
-                    example: "LAMB93_5cm"
+                    example: "RGF93_LA93_5cm"
                   crs:
                     type: object
                     properties:
@@ -721,10 +721,7 @@ paths:
           required: false
           schema:
             type: string
-            enum:
-              - LAMB93_5cm
-              - LAMB93_20cm
-            example: LAMB93_5cm
+            example: RGF93_LA93_5cm
         - in: query
           name: TILEMATRIX
           description: required if GetTile or GetFeatureInfo
