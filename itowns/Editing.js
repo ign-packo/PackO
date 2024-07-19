@@ -4,12 +4,13 @@ import * as THREE from 'three';
 
 const status = {
   RAS: 0,
-  SELECT: 1,
+  SELECTREFOPI: 1,
   POLYGON: 2,
   ENDING: 3,
   WAITING: 4,
   WRITING: 5,
   ADDREMARK: 6,
+  SELECTSECOPI: 7,
 };
 
 function getAllCheckboxes(id, className) {
@@ -35,9 +36,16 @@ class Editing {
     this.api = this.viewer.api;
     this.menu = menu;
 
-    this.opiName = 'none';
-    this.opiDate = '';
-    this.opiTime = '';
+    this.opiRefName = 'none';
+    this.opiRefDate = '';
+    this.opiRefTime = '';
+
+    this.opiSecName = 'none';
+    this.opiSecDate = '';
+    this.opiSecTime = '';
+
+    this.typePatchStr = 'none';
+    this.typePolygonStr = 'none';
 
     this.coord = `${this.viewer.xcenter.toFixed(2)},${this.viewer.ycenter.toFixed(2)}`;
 
@@ -65,7 +73,7 @@ class Editing {
       this.coord = `${this.mousePosition.x.toFixed(2)},${this.mousePosition.y.toFixed(2)}`;
       if (this.currentPolygon == null) return;
 
-      if (this.currentStatus === status.POLYGON && this.nbVertices > 0) {
+      if ((this.currentStatus === status.POLYGON) && this.nbVertices > 0) {
         const vertices = this.currentPolygon.geometry.attributes.position;
         const newPoint = new THREE.Vector3();
         newPoint.subVectors(this.mousePosition, this.currentPolygon.position);
@@ -88,6 +96,7 @@ class Editing {
     }
     this.viewer.message = 'calcul en cours';
     this.view.controls.setCursor('default', 'wait');
+    console.log('update typePatch, currentStatus:', this.typePatchStr, this.currentStatus);
     this.currentStatus = status.WAITING;
 
     const positions = this.currentPolygon.geometry.attributes.position.array;
@@ -98,7 +107,13 @@ class Editing {
       features: [
         {
           type: 'Feature',
-          properties: { color: this.color, opiName: this.opiName },
+          properties: {
+            colorRef: this.colorRef,
+            opiRefName: this.opiRefName,
+            colorSec: (this.typePatchStr === 'manual' ? 'none' : this.colorSec),
+            opiSecName: (this.typePatchStr === 'manual' ? 'none' : this.opiSecName),
+            patchIsAuto: (this.typePatchStr !== 'manual'),
+          },
           geometry:
                     {
                       type: 'Polygon',
@@ -143,7 +158,8 @@ class Editing {
         this.resetCurrentPolygon();
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
-        this.menu.getController('polygon').setBackgroundColorTo('');
+        this.typePolygonStr = this.typePatchStr === 'manual' ? 'polygon' : 'polygon4Auto';
+        this.menu.getController(this.typePolygonStr).setBackgroundColorTo('');
       });
   }
 
@@ -179,10 +195,13 @@ class Editing {
       if (e.ctrlKey && (e.key === 'z')) this.undo();
       // redo CTRL+y
       if (e.ctrlKey && (e.key === 'y')) this.redo();
-      // select Opi
-      if (e.key === 's') this.select();
+      // select Opi ref
+      if (e.key === 's') this.selectRefOpi();
+      // select Opi sec
+      if (e.key === 'w') this.selectSecOpi();
       // start polygon
       if ((e.key === 'p') && (this.branch.active.name !== 'orig')) this.polygon();
+      if ((e.key === 't') && (this.branch.active.name !== 'orig')) this.polygon4Auto();
       // change visibility on ColorLayers
       Object.keys(this.viewer.shortCuts.visibleFolder).forEach((key) => {
         if (e.key === this.viewer.shortCuts.visibleFolder[key]) {
@@ -238,11 +257,18 @@ class Editing {
       }
 
       // L'utilisateur demande à déselectionner l'OPI
-      if (this.opiName !== 'none' && (e.key === 'Escape')) {
-        this.opiName = 'none';
-        this.menu.getController('opiName').setBackgroundColorTo('');
+      if (this.opiRefName !== 'none' && (e.key === 'Escape')) {
+        this.opiRefName = 'none';
+        this.menu.getController('opiRefName').setBackgroundColorTo('');
         this.view.dispatchEvent({
-          type: 'opi-selected',
+          type: 'oref-selected',
+          name: 'none',
+        });
+      } else if (this.opiSecName !== 'none' && (e.key === 'Escape')) {
+        this.opiSecName = 'none';
+        this.menu.getController('opiSecName').setBackgroundColorTo('');
+        this.view.dispatchEvent({
+          type: 'osec-selected',
           name: 'none',
         });
       } else if (this.branch.alert.layerName !== '-' && this.branch.alert.nbTotal > 0) {
@@ -259,12 +285,17 @@ class Editing {
       return;
     }
     if (e.key === 'Escape') {
-      if (this.currentStatus === status.SELECT) {
-        this.menu.getController('select').setBackgroundColorTo('');
+      if (this.currentStatus === status.SELECTREFOPI) {
+        this.menu.getController('selectRefOpi').setBackgroundColorTo('');
+      }
+      if (this.currentStatus === status.SELECTSECOPI) {
+        this.menu.getController('selectSecOpi').setBackgroundColorTo('');
       }
       if (this.currentStatus === status.POLYGON) {
-        this.menu.getController('polygon').setBackgroundColorTo('');
+        this.typePolygonStr = this.typePatchStr === 'manual' ? 'polygon' : 'polygon4Auto';
+        this.menu.getController(this.typePolygonStr).setBackgroundColorTo('');
         this.resetCurrentPolygon();
+        this.typePatchStr = 'none';
       }
       if (this.currentStatus === status.ADDREMARK) {
         this.menu.getController('addRemark').setBackgroundColorTo('');
@@ -317,7 +348,7 @@ class Editing {
     console.log(e.key, ' up');
     if (e.key === 'Shift') {
       if (this.currentStatus === status.ENDING || this.currentStatus === status.POLYGON) {
-        this.viewer.message = 'Maj pour terminer';
+        this.viewer.message = '???Maj pour terminer';
         if (this.currentPolygon && (this.nbVertices > 0)) {
           // on remet le dernier sommet sur la position de la souris
 
@@ -348,40 +379,82 @@ class Editing {
         this.branch.alert.selectFeatureAt(e);
         break;
       }
-      case status.SELECT: {
+      case status.SELECTREFOPI: {
         this.viewer.message = 'calcul en cours';
         this.view.controls.setCursor('default', 'wait');
         this.currentStatus = status.WAITING;
-        // on selectionne l'Opi
+        // on selectionne l'Opi de reference
         this.api.getGraph(this.branch.active.id, mousePosition)
           .then((opi) => {
             this.viewer.message = '';
             this.view.controls.setCursor('default', 'auto');
             this.currentStatus = status.RAS;
-            this.menu.getController('select').setBackgroundColorTo('');
+            this.menu.getController('selectRefOpi').setBackgroundColorTo('');
 
-            this.opiName = opi.opiName;
-            this.opiDate = opi.date;
-            this.opiTime = opi.time;
-            this.color = opi.color;
-            this.menu.getController('opiName').setBackgroundColorTo(`rgb(${this.color[0]},${this.color[1]},${this.color[2]})`);
+            this.opiRefName = opi.opiName;
+            this.opiRefDate = opi.date;
+            this.opiRefTime = opi.time;
+            this.colorRef = opi.color;
+            this.menu.getController('opiRefName').setBackgroundColorTo(`rgb(${this.colorRef[0]},${this.colorRef[1]},${this.colorRef[2]})`);
             // On modifie la source de la couche OPI
-            this.view.changeOpi(this.opiName);
+            this.view.changeOpi(this.opiRefName);
             this.view.dispatchEvent({
-              type: 'opi-selected',
-              name: this.opiName,
+              type: 'oref-selected',
+              name: this.opiRefName,
             });
           })
           .catch((error) => {
             if (error.name === 'Erreur Utilisateur') {
               this.viewer.message = 'en dehors de la zone';
               this.view.controls.setCursor('default', 'crosshair');
-              this.currentStatus = status.SELECT;
+              this.currentStatus = status.SELECTREFOPI;
             } else {
-              this.viewer.message = 'PB de mise à jour de la BdD';
+              this.viewer.message = 'ORef PB de mise à jour de la BdD';
               this.view.controls.setCursor('default', 'auto');
               this.currentStatus = status.RAS;
-              this.menu.getController('select').setBackgroundColorTo('');
+              this.menu.getController('selectRefOpi').setBackgroundColorTo('');
+              this.view.dispatchEvent({
+                type: 'error',
+                error,
+              });
+            }
+          });
+        break;
+      }
+      case status.SELECTSECOPI: {
+        this.viewer.message = 'calcul en cours';
+        this.view.controls.setCursor('default', 'wait');
+        this.currentStatus = status.WAITING;
+        // on selectionne l'Opi secondaire
+        this.api.getGraph(this.branch.active.id, mousePosition)
+          .then((opi) => {
+            this.viewer.message = '';
+            this.view.controls.setCursor('default', 'auto');
+            this.currentStatus = status.RAS;
+            this.menu.getController('selectSecOpi').setBackgroundColorTo('');
+
+            this.opiSecName = opi.opiName;
+            this.opiSecDate = opi.date;
+            this.opiSecTime = opi.time;
+            this.colorSec = opi.color;
+            this.menu.getController('opiSecName').setBackgroundColorTo(`rgb(${this.colorSec[0]},${this.colorSec[1]},${this.colorSec[2]})`);
+            // On modifie la source de la couche OPI
+            // this.view.changeOpi(this.opiSecName); // pas d'affichage de l'opi sec
+            this.view.dispatchEvent({
+              type: 'osec-selected',
+              name: this.opiSecName,
+            });
+          })
+          .catch((error) => {
+            if (error.name === 'Erreur Utilisateur') {
+              this.viewer.message = 'en dehors de la zone';
+              this.view.controls.setCursor('default', 'crosshair');
+              this.currentStatus = status.SELECTSECOPI;
+            } else {
+              this.viewer.message = 'OSec PB de mise à jour de la BdD';
+              this.view.controls.setCursor('default', 'auto');
+              this.currentStatus = status.RAS;
+              this.menu.getController('selectSecOpi').setBackgroundColorTo('');
               this.view.dispatchEvent({
                 type: 'error',
                 error,
@@ -432,20 +505,31 @@ class Editing {
     }
   }
 
-  select() {
+  selectRefOpi() {
     if (this.currentStatus !== status.RAS) return;
     // this.cancelcurrentPolygon();
-    console.log('"select": En attente de sélection');
-    this.viewer.message = 'choisir une Opi';
+    console.log('"select ref opi": En attente de sélection');
+    this.viewer.message = 'choisir Opi ref';
     this.view.controls.setCursor('default', 'crosshair');
-    this.currentStatus = status.SELECT;
-    this.menu.getController('select').setBackgroundColorTo('#BB0000');
+    this.currentStatus = status.SELECTREFOPI;
+    this.menu.getController('selectRefOpi').setBackgroundColorTo('#BB0000');
+  }
+
+  selectSecOpi() {
+    if (this.currentStatus !== status.RAS) return;
+    // this.cancelcurrentPolygon();
+    console.log('"select sec opi": En attente de sélection');
+    this.viewer.message = 'choisir Opi sec';
+    this.view.controls.setCursor('default', 'crosshair');
+    this.currentStatus = status.SELECTSECOPI;
+    this.menu.getController('selectSecOpi').setBackgroundColorTo('#725794');
   }
 
   polygon() {
     if (this.currentStatus === status.WAITING) return;
-    if (this.opiName === 'none') {
-      this.viewer.message = (this.currentStatus === status.SELECT) ? 'Opi pas encore choisie' : "pas d'Opi sélectionnée";
+    if (this.opiRefName === 'none') {
+      this.viewer.message = (this.currentStatus === status.SELECTREFOPI)
+        ? 'Opi ref pas encore choisie' : 'pas d\'Opi ref sélectionnée';
       return;
     }
     if (this.currentPolygon) {
@@ -453,12 +537,11 @@ class Editing {
       // saisie deja en cours
       return;
     }
-    console.log("saisie d'un polygon");
     this.viewer.message = "saisie d'un polygon";
     this.view.controls.setCursor('default', 'crosshair');
-    this.menu.getController('select').setBackgroundColorTo('');
+    this.menu.getController('selectRefOpi').setBackgroundColorTo('');
+    this.menu.getController('selectSecOpi').setBackgroundColorTo('');
     this.menu.getController('polygon').setBackgroundColorTo('#BB0000');
-
     const MAX_POINTS = 500;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
@@ -476,6 +559,57 @@ class Editing {
     this.view.scene.add(this.currentPolygon);
     this.view.notifyChange(this.currentPolygon);
     this.currentStatus = status.POLYGON;
+    this.typePatchStr = 'manual';
+    console.log(`saisie d'un polygon -> type patch: '${this.typePatchStr}'`);
+    this.nbVertices = 0;
+  }
+
+  polygon4Auto() {
+    if (this.currentStatus === status.WAITING) return;
+    if (this.opiRefName === 'none') {
+      this.viewer.message = (this.currentStatus === status.SELECTREFOPI)
+        ? 'Opi ref pas encore choisie' : 'pas d\'Opi ref sélectionnée';
+      return;
+    }
+    if (this.opiSecName === 'none') {
+      this.viewer.message = (this.currentStatus === status.SELECTSECOPI)
+        ? 'Opi sec pas encore choisie' : 'pas d\'Opi sec sélectionnée';
+      return;
+    }
+    if (this.opiSecName === this.opiRefName) {
+      this.viewer.message = (this.currentStatus === status.SELECTSECOPI)
+        ? 'Opi sec pas encore choisie' : 'Opi sec pas diff Opi ref';
+      return;
+    }
+    if (this.currentPolygon) {
+      this.viewer.message = 'saisie déjà en cours';
+      // saisie deja en cours
+      return;
+    }
+    this.viewer.message = "saisie d'un polygon auto";
+    this.view.controls.setCursor('default', 'crosshair');
+    this.menu.getController('selectRefOpi').setBackgroundColorTo('');
+    this.menu.getController('selectSecOpi').setBackgroundColorTo('');
+    this.menu.getController('polygon4Auto').setBackgroundColorTo('#3456b5');
+    const MAX_POINTS = 500;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setDrawRange(0, 1);
+    const material = new THREE.LineBasicMaterial({
+      color: 0x0000FF,
+      depthTest: false,
+      depthWrite: false,
+    });
+    this.currentPolygon = new THREE.Line(geometry, material);
+    // Pour eviter que l'object disparaisse dans certains cas
+    this.currentPolygon.renderOrder = 1;
+    this.currentPolygon.maxMarkers = -1;
+    this.view.scene.add(this.currentPolygon);
+    this.view.notifyChange(this.currentPolygon);
+    this.currentStatus = status.POLYGON;
+    this.typePatchStr = 'auto';
+    console.log(`saisie d'un polygon -> type patch: '${this.typePatchStr}'`);
     this.nbVertices = 0;
   }
 

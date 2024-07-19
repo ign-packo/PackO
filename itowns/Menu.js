@@ -84,7 +84,7 @@ class Menu extends dat.GUI {
   }
 
   setPatchCtr(branchName) {
-    this[branchName !== 'orig' ? 'show' : 'hide'](['polygon', 'undo', 'redo']);
+    this[branchName !== 'orig' ? 'show' : 'hide'](['polygon', 'polygon4Auto', 'undo', 'redo']);
     if (process.env.NODE_ENV === 'development') this[branchName !== 'orig' ? 'show' : 'hide']('clear');
   }
 
@@ -93,8 +93,12 @@ class Menu extends dat.GUI {
     this[layerName === 'Remarques' ? 'show' : 'hide'](['delRemark']);
   }
 
-  setOpiCtr(opiName) {
-    this[opiName === 'none' ? 'hide' : 'show'](['opiName', 'opiDate', 'opiTime']);
+  setOpiRefCtr(opiRefName) {
+    this[opiRefName === 'none' ? 'hide' : 'show'](['opiRefName', 'opiRefDate', 'opiRefTime']);
+  }
+
+  setOpiSecCtr(opiSecName) {
+    this[opiSecName === 'none' ? 'hide' : 'show'](['opiSecName', 'opiSecDate', 'opiSecTime']);
   }
 
   refreshDropBox(dropBoxName, listOfValues,
