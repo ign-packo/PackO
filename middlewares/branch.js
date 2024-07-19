@@ -189,7 +189,9 @@ async function rebase(req, res, next) {
       const patchInserted = await db.insertPatch(req.client,
         idNewBranch,
         feature.geometry,
-        feature.properties.id_opi);
+        feature.properties.id_opi,
+        feature.properties.id_opisec,
+        feature.properties.id_type);
       const idNewPatch = patchInserted.id_patch;
 
       const slabs = [];

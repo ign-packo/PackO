@@ -153,7 +153,7 @@ async function getDefaultEncoded(formatGDAL, blocSize) {
   return gdal.vsimem.release(name);
 }
 
-function processPatchAsync(patch, blocSize) {
+function processPatchAsync(patch, blocSize, isAuto) {
   return new Promise((res, reject) => {
     // On patch le graph
     const { mask } = patch;
@@ -164,14 +164,24 @@ function processPatchAsync(patch, blocSize) {
     const urlGraph = patch.withOrig ? patch.urlGraphOrig : patch.urlGraph;
     const urlOrthoRgb = patch.withOrig ? patch.urlOrthoRgbOrig : patch.urlOrthoRgb;
     const urlOrthoIr = urlOrthoRgb.replace('.', 'i.');
-    const { urlOpiRgb } = patch;
-    let urlOpiIr = urlOpiRgb;
-    const dname = path.dirname(urlOpiIr);
-    let fname = path.basename(urlOpiIr);
-    if (fname.includes('_ix') === false) {
-      fname = fname.includes('x') ? fname.replace('x', '_ix') : fname.replace('.', 'i.');
-      urlOpiIr = path.join(dname, fname);
+    const { urlOpiRefRgb, urlOpiSecRgb } = patch;
+    let urlOpiRefIr = urlOpiRefRgb;
+    const dnameRef = path.dirname(urlOpiRefIr);
+    let fnameRef = path.basename(urlOpiRefIr);
+    if (fnameRef.includes('_ix') === false) {
+      fnameRef = fnameRef.includes('x') ? fnameRef.replace('x', '_ix') : fnameRef.replace('.', 'i.');
+      urlOpiRefIr = path.join(dnameRef, fnameRef);
     }
+    let urlOpiSecIr = urlOpiSecRgb;
+    if (isAuto) {
+      const dnameSec = path.dirname(urlOpiSecIr);
+      let fnameSec = path.basename(urlOpiSecIr);
+      if (fnameSec.includes('_ix') === false) {
+        fnameSec = fnameSec.includes('x') ? fnameSec.replace('x', '_ix') : fnameSec.replace('.', 'i.');
+        urlOpiSecIr = path.join(dnameSec, fnameSec);
+      }
+    }
+
     async function getBands(ds) {
       const size = await ds.rasterSizeAsync;
       return Promise.all([
@@ -213,34 +223,40 @@ function processPatchAsync(patch, blocSize) {
     debug('chargement...');
     Promise.all([
       gdal.openAsync(urlGraph).then((ds) => getBands(ds)),
-      patch.withRgb ? gdal.openAsync(urlOpiRgb).then((ds) => getBands(ds)) : null,
-      patch.withIr ? gdal.openAsync(urlOpiIr).then((ds) => getBand(ds)) : null,
+      patch.withRgb ? gdal.openAsync(urlOpiRefRgb).then((ds) => getBands(ds)) : null,
+      patch.withIr ? gdal.openAsync(urlOpiRefIr).then((ds) => getBand(ds)) : null,
       patch.withRgb ? gdal.openAsync(urlOrthoRgb).then((ds) => getBands(ds)) : null,
       patch.withIr ? gdal.openAsync(urlOrthoIr).then((ds) => getBand(ds)) : null,
+      (isAuto && patch.withRgb) ? gdal.openAsync(urlOpiSecRgb).then((ds) => getBands(ds)) : null,
+      (isAuto && patch.withIr) ? gdal.openAsync(urlOpiSecIr).then((ds) => getBand(ds)) : null,
     ]).then(async (images) => {
       debug('... fin chargement');
       debug('application du patch...');
+      // TODO: opi sec
       const graph = images[0];
-      const opiRgb = images[1];
-      const opiIr = images[2];
+      const opiRefRgb = images[1];
+      const opiRefIr = images[2];
       const orthoRgb = images[3];
       const orthoIr = images[4];
+      const opiSecRgb = (isAuto ? images[5] : 'none');
+      const opiSecIr = (isAuto ? images[6] : 'none');
+
       graph.bands[0].forEach((_element, index) => {
         /* eslint-disable no-param-reassign */
         if (mask.data[4 * index] > 0) {
           [graph.bands[0][index],
             graph.bands[1][index],
-            graph.bands[2][index]] = patch.color;
+            graph.bands[2][index]] = patch.colorRef;
           if (orthoRgb) {
             [orthoRgb.bands[0][index],
               orthoRgb.bands[1][index],
               orthoRgb.bands[2][index]] = [
-              opiRgb.bands[0][index],
-              opiRgb.bands[1][index],
-              opiRgb.bands[2][index]];
+              opiRefRgb.bands[0][index],
+              opiRefRgb.bands[1][index],
+              opiRefRgb.bands[2][index]];
           }
           if (orthoIr) {
-            orthoIr.bands[0][index] = opiIr.bands[0][index];
+            orthoIr.bands[0][index] = opiRefIr.bands[0][index];
           }
         }
         /* eslint-enable no-param-reassign */
@@ -296,11 +312,19 @@ function processPatchAsync(patch, blocSize) {
       if (orthoIr) {
         orthoIr.ds.close();
       }
-      if (opiRgb) {
-        opiRgb.ds.close();
+      if (opiRefRgb) {
+        opiRefRgb.ds.close();
       }
-      if (opiIr) {
-        opiIr.ds.close();
+      if (opiRefIr) {
+        opiRefIr.ds.close();
+      }
+      if (isAuto) {
+        if (opiSecRgb) {
+          opiSecRgb.ds.close();
+        }
+        if (opiSecIr) {
+          opiSecIr.ds.close();
+        }
       }
 
       Promise.all([
