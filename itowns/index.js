@@ -166,18 +166,33 @@ async function main() {
     menu.add(branch, 'createBranch')
       .name('Add new branch');
 
-    // Selection OPI
-    menu.add(editing, 'select').name('Select an OPI [s]');
-    menu.add(editing, 'opiName')
-      .name('OPI selected').listen()
+    // Selection OPI ref
+    menu.add(editing, 'selectRefOpi').name('Select ref OPI [s]');
+    menu.add(editing, 'opiRefName')
+      .name('Selected Ref OPI').listen()
       .onChange((name) => {
-        console.log('opi selected: ', name);
+        console.log('Selected ref Opi : ', name);
       })
       .domElement.parentElement.style.pointerEvents = 'none';
-    menu.add(editing, 'opiDate')
+    menu.add(editing, 'opiRefDate')
       .name('Date').listen()
       .domElement.parentElement.style.pointerEvents = 'none';
-    menu.add(editing, 'opiTime')
+    menu.add(editing, 'opiRefTime')
+      .name('Time').listen()
+      .domElement.parentElement.style.pointerEvents = 'none';
+
+    // Selection OPI sec
+    menu.add(editing, 'selectSecOpi').name('Select sec OPI [w]');
+    menu.add(editing, 'opiSecName')
+      .name('Selected Sec OPI').listen()
+      .onChange((name) => {
+        console.log('Selected sec Opi : ', name);
+      })
+      .domElement.parentElement.style.pointerEvents = 'none';
+    menu.add(editing, 'opiSecDate')
+      .name('Date').listen()
+      .domElement.parentElement.style.pointerEvents = 'none';
+    menu.add(editing, 'opiSecTime')
       .name('Time').listen()
       .domElement.parentElement.style.pointerEvents = 'none';
 
@@ -204,7 +219,8 @@ async function main() {
       });
 
     // Saisie
-    menu.add(editing, 'polygon').name('Start polygon [p]');
+    menu.add(editing, 'polygon').name('Start patch [p]');
+    menu.add(editing, 'polygon4Auto').name('Start patch auto [t]');
     menu.add(editing, 'undo').name('undo [CTRL+Z]');
     menu.add(editing, 'redo').name('redo [CTRL+Y]');
     menu.add(editing, 'clear')
@@ -263,7 +279,8 @@ async function main() {
     // visibility of controllers
     menu.setPatchCtr(branch.active.name);// branch.active.name = 'orig'
     menu.setAlertCtr(alert.layerName);// alert.layerName = '-'
-    menu.setOpiCtr(editing.opiName);// editing.opiName = 'none'
+    menu.setOpiRefCtr(editing.opiRefName);// editing.opiRefName = 'none'
+    menu.setOpiSecCtr(editing.opiRefName);// editing.opiRefName = 'none'
 
     viewerDiv.focus();
 
@@ -315,15 +332,26 @@ async function main() {
         });
     });
 
-    view.addEventListener('opi-selected', (newOpi) => {
-      console.log(`-> Opi '${newOpi.name}' selected.`);
+    view.addEventListener('oref-selected', (newOpi) => {
+      console.log(`-> Ref Opi '${newOpi.name}' selected.`);
       if (newOpi.name === 'none') {
         view.getLayerById('Opi').visible = false;
         view.notifyChange(view.getLayerById('Opi'), true);
       } else {
         viewer.refresh('Opi');
       }
-      menu.setOpiCtr(newOpi.name);
+      menu.setOpiRefCtr(newOpi.name);
+    });
+
+    view.addEventListener('osec-selected', (newOpi) => {
+      console.log(`-> Sec Opi '${newOpi.name}' selected.`);
+      /* if (newOpi.name === 'none') {
+        view.getLayerById('Opi').visible = false;
+        view.notifyChange(view.getLayerById('Opi'), true);
+      } else {
+        viewer.refresh('Opi');
+      } */
+      menu.setOpiSecCtr(newOpi.name);
     });
 
     view.addEventListener('branch-created', (newBranch) => {
@@ -397,8 +425,8 @@ async function main() {
     });
 
     view.addEventListener('error', (ev) => {
-      // eslint-disable-next-line no-alert
       console.log(ev.error instanceof Array ? ev.error.map((error) => error.message).join('') : ev.error.message);
+      // eslint-disable-next-line no-alert
       window.alert(ev.error instanceof Array ? ev.error.join('') : ev.error);
     });
 

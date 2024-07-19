@@ -1,5 +1,7 @@
 const debug = require('debug')('db');
 const format = require('pg-format');
+const fs = require('fs');
+const gjson = require('./geojson');
 
 async function beginTransaction(pgClient) {
   debug('BEGIN');
@@ -180,7 +182,7 @@ async function getOPIFromColor(pgClient, idBranch, color) {
 }
 
 async function getOPIFromName(pgClient, idBranch, name) {
-  debug(`    ~~getOpiId (name: ${name})`);
+  debug(`    ~~getOPIFromName (name: ${name})`);
   const results = await pgClient.query(
     'SELECT o.name, to_char(o.date,\'YYYY-mm-dd\') as date, o.time_ut, o.color, o.id, o.with_rgb, o.with_ir FROM opi o, branches b WHERE b.id_cache = o.id_cache AND b.id = $1 AND o.name=$2',
     [idBranch, name],
@@ -192,19 +194,99 @@ async function getOPIFromName(pgClient, idBranch, name) {
   return results.rows[0];
 }
 
-async function insertPatch(pgClient, idBranch, geometry, opiId) {
-  debug(`    ~~insertPatch (idBranch: ${idBranch})`);
+async function getOPIFromId(pgClient, idOpi) {
+  debug(`    ~~getOPIFromId (idOpi: ${idOpi})`);
+  const results = await pgClient.query(
+    'SELECT name, to_char(date,\'YYYY-mm-dd\'), time_ut, color, with_rgb, with_ir FROM opi WHERE id=$1',
+    [idOpi],
+  );
+  if (results.rowCount !== 1) {
+    throw new Error(`on a trouvé ${results.rowCount} opi pour le idOpi '${idOpi}'`);
+  }
+  return results.rows[0];
+}
 
-  const sql = format('INSERT INTO patches (geom, id_branch, id_opi) values (ST_GeomFromGeoJSON(%L), %s, %s) RETURNING id as id_patch, num',
+async function getCacheCrsFromIdBranch(pgClient, idBranch) {
+  debug(`    ~~getCacheCrs (idBranch: ${idBranch})`);
+  const results = await pgClient.query('SELECT crs FROM caches WHERE id=(SELECT id_cache FROM branches WHERE id=$1)', [idBranch]);
+  if (results.rowCount !== 1) {
+    throw new Error(`on a trouvé ${results.rowCount} crs pour le idBranch '${idBranch}'`);
+  }
+  return results.rows[0];
+}
+
+async function insertPatch(pgClient, idBranch, geometry, opiRefId, opiSecId, isAuto) {
+  debug(`    ~~insertPatch (idBranch: ${idBranch})`);
+  const sql = format('INSERT INTO patches (geom, id_branch, id_opi, id_opisec, is_auto) VALUES (ST_GeomFromGeoJSON(%L), %L) RETURNING id as id_patch, num',
     JSON.stringify(geometry),
-    idBranch,
-    opiId);
+    [idBranch,
+      opiRefId,
+      isAuto ? opiSecId : null,
+      isAuto]);
   debug(sql);
 
   const results = await pgClient.query(sql);
   if (results.rowCount !== 1) {
     throw new Error('failed to insert patch');
   }
+
+  const idPatch = results.rows[0].id_patch;
+
+  // get cache path
+  let cachePath;
+  try {
+    cachePath = await getCachePath(pgClient, idBranch);
+    debug('--------cache path:', cachePath);
+  } catch (error) {
+    debug(error);
+  }
+
+  // get cache crs code
+  let crsCode = '';
+  try {
+    const { crs } = await getCacheCrsFromIdBranch(pgClient, idBranch);
+    debug('--------cache crs:', JSON.stringify(crs));
+    [, crsCode] = crs.split(':');
+  } catch (error) {
+    debug(error);
+  }
+
+  // get opi ref name
+  let [opiRefName, opiRefColor] = '';
+  try {
+    const { name, color } = await getOPIFromId(pgClient, opiRefId);
+    debug('--------opi ref name from id:', name);
+    debug('--------opi ref color from id:', color);
+    [opiRefName, opiRefColor] = [name, color];
+  } catch (error) {
+    debug(error);
+  }
+
+  // get opi sec name
+  let [opiSecName, opiSecColor] = '';
+  if (isAuto) { // auto patch -> mandatory opi sec
+    try {
+      const { name, color } = await getOPIFromId(pgClient, opiSecId);
+      debug('--------opi sec name from id:', name);
+      debug('--------opi sec color from id:', color);
+      [opiSecName, opiSecColor] = [name, color];
+    } catch (error) {
+      debug(error);
+    }
+  }
+
+  // create dir if it does not exist
+  const dir = `${cachePath}/tmp_test_js`;
+  try {
+    return fs.mkdirSync(dir);
+  } catch (error) {
+    if (error.code !== 'EEXIST') debug(error);
+  }
+  // write patch geojson
+  const filePath = `${dir}/patch_idBr${idBranch}_idP${idPatch}.geojson`;
+  gjson.writeGeojson(filePath, idBranch, idPatch, crsCode, geometry, opiRefName, opiSecName,
+    opiRefColor, opiSecColor, isAuto);
+
   return results.rows[0];
 }
 
@@ -554,6 +636,7 @@ module.exports = {
   getUnactivePatches,
   getOPIFromColor,
   getOPIFromName,
+  getCrsFromIdBranch: getCacheCrsFromIdBranch,
   insertPatch,
   deactivatePatch,
   reactivatePatch,

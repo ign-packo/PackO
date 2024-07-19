@@ -502,6 +502,11 @@ ALTER TABLE public.styles ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     CACHE 1
 );
 
+--
+-- Data for Name: styles; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.styles OVERRIDING SYSTEM VALUE VALUES (0, 'Remarques', 1, true, '{"fill": {"color": "#ee6d03", "opacity": 0.7}, "point": {"color": "#ee6d03", "radius": 5}, "stroke": {"color": "#ee6d03"}}');
 
 --
 -- Name: branches branches_name_id_cache_key; Type: CONSTRAINT; Schema: public; Owner: postgres
