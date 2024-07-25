@@ -517,11 +517,23 @@ async function undo(req, _res, next) {
     }
     debug('newHistory : ', newHistory);
     fs.writeFileSync(`${urlHistory}`, newHistory);
-    for (let i = 0; i < todo.length; i += 1) {
-      rename(todo[i][0], todo[i][1]);
+    try {
+      for (let i = 0; i < todo.length; i += 1) {
+        rename(todo[i][0], todo[i][1]);
+      }
+    } catch (e) {
+      errors.push(`error: fileaccess ${e}`);
     }
   });
-
+  if (errors.length > 0) {
+    req.error = {
+      msg: errors,
+      code: 404,
+      function: 'undo',
+    };
+    next();
+    return;
+  }
   await db.deactivatePatch(req.client, lastPatchId);
 
   debug('fin du undo');
@@ -657,10 +669,23 @@ async function redo(req, _res, next) {
     // on met a jour l'historique
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     fs.writeFileSync(`${urlHistory}`, history);
-    for (let i = 0; i < todo.length; i += 1) {
-      rename(todo[i][0], todo[i][1]);
+    try {
+      for (let i = 0; i < todo.length; i += 1) {
+        rename(todo[i][0], todo[i][1]);
+      }
+    } catch (e) {
+      errors.push(`error: fileaccess ${e}`);
     }
   });
+  if (errors.length > 0) {
+    req.error = {
+      msg: errors,
+      code: 404,
+      function: 'redo',
+    };
+    next();
+    return;
+  }
 
   await db.reactivatePatch(req.client, patchIdRedo);
 
