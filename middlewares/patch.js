@@ -1,4 +1,5 @@
 const debug = require('debug')('patch');
+const os = require('os');
 const fs = require('fs');
 const canvas = require('canvas');
 const turf = require('@turf/turf');
@@ -422,12 +423,14 @@ async function undo(req, _res, next) {
   const errors = [];
   const histories = [];
   const toRenamed = [];
+  const directories = [];
   // Object.values(slabs).forEach((slab, indexSlab) => {
   // slabs.forEach((slab, indexSlab) => {
   slabs.forEach((slab, indexSlab) => {
     debug('slab :', slab, indexSlab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
     const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
+    directories.push(opiDir);
 
     // on récupère l'historique de cette tuile
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
@@ -460,6 +463,8 @@ async function undo(req, _res, next) {
     // debug(' version selectionnée pour la tuile :', idSelected);
     const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
     const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
+    directories.push(graphDir);
+    directories.push(orthoDir);
 
     debug(` dalle ${slab.z}/${slab.y}/${slab.x} : version ${idSelected} selectionnée`);
     const todo = [];
@@ -535,8 +540,24 @@ async function undo(req, _res, next) {
     fs.writeFileSync(`${urlHistory}`, newHistory);
     for (let i = 0; i < todo.length; i += 1) {
       rename(todo[i][0], todo[i][1]);
+      if (os.platform() === 'linux') {
+        // on flush le fichier destination
+        // pour le cas ou on utilise plusieurs serveurs
+        const fd = fs.openSync(todo[i][1]);
+        fs.fsyncSync(fd);
+        fs.closeSync(fd);
+      }
     }
   });
+  // Derniere boucle, on flush tous les dossiers dans lesquels on a fait des modifs
+  if (os.platform() === 'linux') {
+    const uniqueDirectories = [...new Set(directories)];
+    uniqueDirectories.forEach((d) => {
+      const fd = fs.openSync(d);
+      fs.fsyncSync(fd);
+      fs.closeSync(fd);
+    });
+  }
 
   const result = await db.deactivatePatch(req.client, lastPatchId);
 
@@ -606,6 +627,7 @@ async function redo(req, _res, next) {
   const errors = [];
   const histories = [];
   const toRenamed = [];
+  const directories = [];
   // Premiere boucle: on s'assure que tous les fichiers sont dispo avant de commencer
   slabs.forEach((slab, indexSlab) => {
     debug(slab);
@@ -614,6 +636,9 @@ async function redo(req, _res, next) {
     const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
     const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
     const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
+    directories.push(opiDir);
+    directories.push(graphDir);
+    directories.push(orthoDir);
     // on met a jour l'historique
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     const history = `${fs.readFileSync(`${urlHistory}`)};${patchNumRedo}`;
@@ -691,8 +716,24 @@ async function redo(req, _res, next) {
     fs.writeFileSync(`${urlHistory}`, history);
     for (let i = 0; i < todo.length; i += 1) {
       rename(todo[i][0], todo[i][1]);
+      if (os.platform() === 'linux') {
+        // on flush le fichier destination
+        // pour le cas ou on utilise plusieurs serveurs
+        const fd = fs.openSync(todo[i][1]);
+        fs.fsyncSync(fd);
+        fs.closeSync(fd);
+      }
     }
   });
+  // Derniere boucle, on flush tous les dossiers dans lesquels on a fait des modifs
+  if (os.platform() === 'linux') {
+    const uniqueDirectories = [...new Set(directories)];
+    uniqueDirectories.forEach((d) => {
+      const fd = fs.openSync(d);
+      fs.fsyncSync(fd);
+      fs.closeSync(fd);
+    });
+  }
 
   const result = await db.reactivatePatch(req.client, patchIdRedo);
   debug(result.rowCount);
