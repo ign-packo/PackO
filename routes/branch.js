@@ -49,6 +49,7 @@ router.delete('/branch',
       .withMessage(createErrMsg.invalidParameter('idBranch')),
   ],
   validateParams,
+  branch.lock,
   branch.deleteBranch,
   pgClient.close,
   returnMsg);
