@@ -522,7 +522,7 @@ async function undo(req, _res, next) {
         rename(todo[i][0], todo[i][1]);
       }
     } catch (e) {
-      errors.push(`error: fileaccess ${e}`);
+      errors.push(`error: rename ${e}`);
     }
   });
   if (errors.length > 0) {
@@ -674,7 +674,7 @@ async function redo(req, _res, next) {
         rename(todo[i][0], todo[i][1]);
       }
     } catch (e) {
-      errors.push(`error: fileaccess ${e}`);
+      errors.push(`error: rename ${e}`);
     }
   });
   if (errors.length > 0) {
