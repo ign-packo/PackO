@@ -352,19 +352,27 @@ Des vecteurs externes *.shp* et *.gpkg* peuvent être intégrés à la vue en in
 
 Dans le cas où l'on veut avoir une emprise pour la vue (emprise de travail) plus petite que l'emprise du chantier (emprise du cache), elle est à indiquer avec **--bbox** Xmin Ymin Xmax Ymax.
 
-Pour intégrer un fichier de macros QGIS à la vue, il faut indiquer le chemin vers le fichier macros prototype avec **-m**. Ce fichier sera adapté au chantier avant d'être intégré à la vue, en remplaçant les clés `__IDBRANCH__`, `__URLSERVER__` et `__TILEMATRIXSET__` avec les valeurs correspondantes pour le chantier - exemple :
+Pour intégrer un fichier de macros QGIS à la vue, il faut indiquer le chemin vers le fichier macros prototype avec **-m**. Ce fichier sera adapté au chantier avant d'être intégré à la vue, en remplaçant les clés `__IDBRANCH__`, `__URLSERVER__`, `__TILEMATRIXSET__`, `__STYLE__`, `__CRS__`, `__PIXELSIZEX__`, `__PIXELSIZEY__`  avec les valeurs correspondantes pour le chantier - exemple :
 
   - Extrait prototype macros, avant adaptation :
     ```
     id_branch = __IDBRANCH__
     url_server = __URLSERVER__
     tile_matrix_set = __TILEMATRIXSET__
+    style = __STYLE__
+    crs = __CRS__
+    pixel_size_x = __PIXELSIZEX__
+    pixel_size_y = __PIXELSIZEY__
     ```
   - Extrait macros, après adaptation :
     ```
     id_branch = '32'
     url_server = 'http://localhost:8081/'
     tile_matrix_set = 'LAMB93_20cm'
+    style = 'RVB'
+    crs = '2154'
+    pixel_size_x = 0.2
+    pixel_size_y = 0.2
     ```
 
 Un exemple de fichier macros prototype est fourni dans le dossier *ressources*.

@@ -35,6 +35,10 @@ def closeProject():
 id_branch = __IDBRANCH__
 url_server = __URLSERVER__
 tile_matrix_set = __TILEMATRIXSET__
+style = __STYLE__
+crs = __CRS__
+pixel_size_x = __PIXELSIZEX__
+pixel_size_y = __PIXELSIZEY__
 # ===================================
 
 url_graph = url_server + id_branch + '/graph'
@@ -42,7 +46,7 @@ url_patch = url_server + id_branch + '/patch'
 url_undo = url_server + id_branch + '/patch/undo'
 url_redo = url_server + id_branch + '/patch/redo'
 url_wmts = url_server + id_branch + '/wmts'
-source='contextualWMSLegend=0&crs=EPSG:2154&dpiMode=7&featureCount=10&format=image/png&layers=opi&styles=RVB&tileDimensions=Name%3DXXX&tileMatrixSet='+tile_matrix_set+'&url='+url_wmts+'?SERVICE%3DWMTS%26REQUEST%3DGetCapabilities%26VERSION%3D1.0.0'
+source='contextualWMSLegend=0&crs=EPSG:'+crs+'&dpiMode=7&featureCount=10&format=image/png&layers=opi&styles='+style+'&tileDimensions=Name%3DXXX&tileMatrixSet='+tile_matrix_set+'&url='+url_wmts+'?SERVICE%3DWMTS%26REQUEST%3DGetCapabilities%26VERSION%3D1.0.0'
 OPI=None
 color=None
 opi_layer = None
@@ -81,7 +85,7 @@ def sendPatch(feature, OPI, color):
     exporter = QgsJsonExporter()
     patch = json.loads(exporter.exportFeatures([feature]))
     # print(patch)
-    patch['crs'] = {'type': 'name', 'properties': {'name': 'urn:ogc:def:crs:EPSG::2154'}}
+    patch['crs'] = {'type': 'name', 'properties': {'name': 'urn:ogc:def:crs:EPSG::'+crs}}
     patch['features'][0]['properties'] = {'color': color, 'opiName': OPI}
     res = requests.post(url_patch, json=patch)
     return res.text
@@ -295,7 +299,7 @@ def on_key(event):
 
             chem_export_txt = os.path.join(rep_pont, nom_export.replace('.tif', '.txt'))
 
-            cmd = f'gdalwarp -tr 0.05 0.05 -tap -r near -co TFW=YES {ortho_layer.source()} {chem_export}\
+            cmd = f'gdalwarp -tr {pixel_size_x} {pixel_size_y} -tap -r near -co TFW=YES {ortho_layer.source()} {chem_export}\
                 -cutline {src_poly} -csql "select ret.geom from retouches_info as ret where ret.fid == {id_poly}"\
                 -crop_to_cutline -overwrite -dstnodata 0'
             os.popen(cmd).readlines()
