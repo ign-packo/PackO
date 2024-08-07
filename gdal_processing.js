@@ -333,4 +333,4 @@ function processPatchAsync(patch, blocSize) {
 exports.getTileEncoded = getTileEncoded;
 exports.getColor = getColor;
 exports.getDefaultEncoded = getDefaultEncoded;
-exports.processPatch = processPatchAsync;
+exports.processPatchAsync = processPatchAsync;
