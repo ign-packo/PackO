@@ -245,7 +245,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
       /* eslint-enable no-param-reassign */
       slabsModified.push(patch.slab);
 
-      promises.push(gdalProcessing.processPatch(patch, overviews.tileSize.width));
+      promises.push(gdalProcessing.processPatchAsync(patch, overviews.tileSize.width));
     });
     debug('', promises.length, 'patchs à appliquer.');
     await Promise.all(promises).then(
