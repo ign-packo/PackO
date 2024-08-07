@@ -331,6 +331,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
 async function postPatch(req, _res, next) {
   debug('>>POST patch');
   if (req.error) {
+    debug(req.error);
     next();
     return;
   }
