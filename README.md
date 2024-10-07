@@ -203,7 +203,7 @@ options:
   -c CACHE, --cache CACHE
                         cache directory (default: cache)
   -o OVERVIEWS, --overviews OVERVIEWS
-                        params for the mosaic (default: ressources/LAMB93_5cm.json)
+                        params for the mosaic (default: ressources/RGF93_LA93_5cm.json)
   -g GRAPH, --graph GRAPH
                         GeoPackage filename or database connection string 
                         ("PG:host=localhost user=postgres password=postgres dbname=demo")
@@ -233,7 +233,7 @@ pip install --global-option=build_ext --global-option="-I/usr/include/gdal" GDAL
 
 Par exemple, pour créer un cache à partir des données incluses dans le dossier **regress**, on peut utiliser la commande suivante depuis la racine du dépôt PackO :
 ````
-python scripts/create_cache.py -R "regress/data/RGB/*.tif" -I "regress/data/IR/*.tif" -o ressources/LAMB93_5cm.json -c cache_regress_RGBIR -g "regress/data/regress_graphe.gpkg" -t graphe
+python scripts/create_cache.py -R "regress/data/RGB/*.tif" -I "regress/data/IR/*.tif" -o ressources/RGF93_LA93_5cm.json -c cache_regress_RGBIR -g "regress/data/regress_graphe.gpkg" -t graphe
 ````
 
 Ce script fonctionne en deux phases :
@@ -368,7 +368,7 @@ Pour intégrer un fichier de macros QGIS à la vue, il faut indiquer le chemin v
     ```
     id_branch = '32'
     url_server = 'http://localhost:8081/'
-    tile_matrix_set = 'LAMB93_20cm'
+    tile_matrix_set = 'RGF93_LA93_20cm'
     style = 'RVB'
     crs = '2154'
     pixel_size_x = 0.2
