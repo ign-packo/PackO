@@ -22,6 +22,8 @@ tags:
     description: Récupération de fichiers
   - name: process
     description: Gestion des processus longs (donc asynchrones)
+  - name: mergeImages
+    description: Fusion deux images
   - name: ozcppexe
     description: Lancement oz exe c++
 paths:
@@ -820,6 +822,37 @@ paths:
         required: true
         schema:
           type: integer
+      responses:
+        '200':
+          description: OK
+
+# MERGE IMG
+  '/mergeImages':
+    get:
+      tags:
+        - mergeImages
+      summary: ""
+      description: ""
+      parameters:
+      - in: query
+        name: im1
+        description: First image path
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: im2
+        description: Second image path
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: output
+        description: Output image path
+        required: false
+        schema:
+          type: string
+          default: out_merge.tif
       responses:
         '200':
           description: OK
