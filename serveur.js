@@ -44,7 +44,7 @@ const cache = require('./routes/cache');
 const vector = require('./routes/vector');
 const processQueue = require('./routes/processQueue');
 const ozCpp = require('./routes/ozCppExe');
-const mergeIm = require('./routes/mergeIm');
+const mergeSlabs = require('./routes/mergeSlabs');
 
 try {
   // desactive la mise en cache des images par le navigateur - OK Chrome/Chromium et Firefox
@@ -84,7 +84,7 @@ try {
   app.use('/', vector);
   app.use('/', processQueue);
   app.use('/', ozCpp);
-  app.use('/', mergeIm);
+  app.use('/', mergeSlabs);
 
   app.use('/itowns', express.static('itowns'));
 
