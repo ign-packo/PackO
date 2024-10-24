@@ -847,6 +847,21 @@ paths:
         schema:
           type: string
       - in: query
+        name: type
+        description:  >
+          List of merging options:
+
+          * `opi/ortho` merging options: `'-of', 'COG', '-co', 'COMPRESS=JPEG', '-co', 'QUALITY=90'`
+
+          *  `graph` merging options:  `'-of', 'COG', '-co', 'COMPRESS=LZW', '-co', 'RESAMPLING=NEAREST'`
+        required: true
+        schema:
+          type: string
+          enum:
+            - opi/ortho
+            - graph
+          default: opi/ortho
+      - in: query
         name: output
         description: Output image path
         required: false
