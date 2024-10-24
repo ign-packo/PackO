@@ -12,8 +12,8 @@ router.get('/mergeImages', [
     .exists().withMessage(createErrMsg.missingParameter('im1')),
   query('im2')
     .exists().withMessage(createErrMsg.missingParameter('im2')),
-  query('type')
-    .exists().withMessage(createErrMsg.missingParameter('type')),
+  query('options')
+    .exists().withMessage(createErrMsg.missingParameter('options')),
   query('output')
     .exists().withMessage(createErrMsg.missingParameter('output')),
 ], validateParams, (req, res, next) => {
@@ -24,7 +24,7 @@ router.get('/mergeImages', [
   }
   const params = matchedData(req);
   const {
-    im1, im2, type, output,
+    im1, im2, options, output,
   } = params;
 
   console.log('Parameters: ', params);
@@ -33,12 +33,13 @@ router.get('/mergeImages', [
   const start = Date.now();
   const ds1 = gdal.open(im1);
   const ds2 = gdal.open(im2);
-  if (type == "opi/ortho") {
-    gdal.warp(output, null, [ds1, ds2], ['-of', 'COG', '-co', 'COMPRESS=JPEG', '-co', 'QUALITY=90']);
+  let listOptions = ['-of', 'COG'];
+  if (options.length > 0) {
+    options.forEach((option) => {
+      listOptions.push('-co', option);
+    });
   }
-  else if (type == "graph") {
-    gdal.warp(output, null, [ds1, ds2], ['-of', 'COG', '-co', 'COMPRESS=LZW', '-co', 'RESAMPLING=NEAREST']);
-  }
+  gdal.warp(output, null, [ds1, ds2], listOptions);
   ds1.close();
   ds2.close();
   const end = Date.now();
