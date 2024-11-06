@@ -41,11 +41,23 @@ router.get('/ozCppExe', [
 
   console.log('Parameters: ', params);
 
-  execFile(ozExe, ['-r', `${refOpi}`, '-s', `${secOpi}`,
-    '-p', `${patch}`, '-g', `${graph}`,
-    '-w', `${weightDiffCost}`, '-m', `${minCost}`,
-    '-t', `${tension}`, '-b', `${border}`,
-    '-o', `${outDir}`], (err, stdout) => {
+  const arrArgs = ['-r'];
+  refOpi.forEach((refO) => {
+    arrArgs.push(refO);
+  });
+  arrArgs.push('-s');
+  secOpi.forEach((secfO) => {
+    arrArgs.push(secfO);
+  });
+  arrArgs.push('-p', `${patch}`);
+  arrArgs.push('-g');
+  graph.forEach((gr) => {
+    arrArgs.push(gr);
+  });
+  arrArgs.push('-w', `${weightDiffCost}`, '-m', `${minCost}`,
+    '-t', `${tension}`, '-b', `${border}`, '-o', `${outDir}`);
+
+  execFile(ozExe, arrArgs, (err, stdout) => {
     if (err) {
       console.log(stdout);
       console.log(err);
