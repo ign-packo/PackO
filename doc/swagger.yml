@@ -837,25 +837,38 @@ paths:
         description: reference opi path
         required: true
         schema:
-          type: string
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+          example: [ref_opi_0.tif]
       - in: query
         name: secOpi
         description: second opi path
         required: true
         schema:
-          type: string
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+          example: [sec_opi_0.tif]
       - in: query
         name: patch
         description: geojson patch path
         required: true
         schema:
           type: string
+        example: patch.geojson
       - in: query
         name: graph
         description: geotiff_graph_path
         required: true
         schema:
-          type: string
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+          example: [graph_0.tif]
       - in: query
         name: weightDiffCost
         description: weight of difference cost, between 0 and 1
