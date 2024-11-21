@@ -397,21 +397,6 @@ async function undo(req, _res, next) {
 
   debug(`Patch '${lastPatchNum}' à annuler.`);
 
-  // const features = [];
-  // let index = activePatches.features.length - 1;
-  // const slabs = {};
-  // while (index >= 0) {
-  //   const feature = activePatches.features[index];
-  //   if (feature.properties.num === lastPatchId) {
-  //     features.push(feature);
-  //     activePatches.features.splice(index, 1);
-  //     feature.properties.slabs.forEach((item) => {
-  //       slabs[`${item.x}_${item.y}_${item.z}`] = item;
-  //     });
-  //   }
-  //   index -= 1;
-  // }
-
   const slabs = await db.getSlabs(req.client, lastPatchId);
 
   debug(slabs);
@@ -421,7 +406,7 @@ async function undo(req, _res, next) {
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
   const errors = [];
   const histories = [];
-  // Object.values(slabs).forEach((slab, indexSlab) => {
+  const toRenamed = [];
   // slabs.forEach((slab, indexSlab) => {
   slabs.forEach((slab, indexSlab) => {
     debug('slab :', slab, indexSlab);
@@ -436,9 +421,7 @@ async function undo(req, _res, next) {
       debug("erreur d'historique");
       errors.push(`error: history on tile ${cogPath}`);
       debug('erreur : ', history, lastPatchNum);
-      // res.status(404).send(`erreur d'historique sur la tuile ${cogPath}`);
     } else {
-      // histories[indexSlab] = history;
       histories[indexSlab] = history;
     }
   });
@@ -451,15 +434,81 @@ async function undo(req, _res, next) {
     next();
     return;
   }
-  // Object.values(slabs).forEach((slab, indexSlab) => {
+  // Premiere boucle: on s'assure que tous les fichiers sont dispo avant de commencer
   slabs.forEach((slab, indexSlab) => {
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
-    const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
-    const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     // on récupère la version à restaurer
     const history = histories[indexSlab];
     const patchIdPrev = history[history.length - 1];
     const idSelected = history[history.length - 2];
+    // debug(' version selectionnée pour la tuile :', idSelected);
+    const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
+    const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
+
+    debug(` dalle ${slab.z}/${slab.y}/${slab.x} : version ${idSelected} selectionnée`);
+    const todo = [];
+    // renommer les images pour pointer sur ce numéro de version
+    todo.push([
+      path.join(graphDir, `${idBranch}_${cogPath.filename}.tif`),
+      path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`),
+    ]);
+    if (withRgb) {
+      todo.push([
+        path.join(orthoDir, `${idBranch}_${cogPath.filename}.tif`),
+        path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`),
+      ]);
+    }
+    if (withIr) {
+      todo.push([
+        path.join(orthoDir, `${idBranch}_${cogPath.filename}i.tif`),
+        path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}i.tif`),
+      ]);
+    }
+    if (idSelected !== 'orig') {
+      todo.push([
+        path.join(graphDir, `${idBranch}_${cogPath.filename}_${idSelected}.tif`),
+        path.join(graphDir, `${idBranch}_${cogPath.filename}.tif`),
+      ]);
+      if (withRgb) {
+        todo.push([
+          path.join(orthoDir, `${idBranch}_${cogPath.filename}_${idSelected}.tif`),
+          path.join(orthoDir, `${idBranch}_${cogPath.filename}.tif`),
+        ]);
+      }
+      if (withIr) {
+        todo.push([
+          path.join(orthoDir, `${idBranch}_${cogPath.filename}_${idSelected}i.tif`),
+          path.join(orthoDir, `${idBranch}_${cogPath.filename}i.tif`),
+        ]);
+      }
+    }
+    // on teste que tous les fichiers sont accessibles
+    try {
+      for (let i = 0; i < todo.length; i += 1) {
+        /* eslint-disable-next-line no-bitwise */
+        fs.accessSync(todo[i][0], fs.constants.R_OK | fs.constants.W_OK);
+      }
+    } catch (e) {
+      errors.push(`error: fileaccess ${e}`);
+    }
+    toRenamed[indexSlab] = todo;
+  });
+  if (errors.length > 0) {
+    req.error = {
+      msg: errors,
+      code: 404,
+      function: 'undo',
+    };
+    next();
+    return;
+  }
+  // Deuxieme boucle: tout est ok, on peut commencer les modifications sur disque
+  slabs.forEach((slab, indexSlab) => {
+    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
+    const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
+    const history = histories[indexSlab];
+    const todo = toRenamed[indexSlab];
+    const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     // mise à jour de l'historique
     let newHistory = '';
     for (let i = 0; i < (history.length - 1); i += 1) {
@@ -468,49 +517,26 @@ async function undo(req, _res, next) {
     }
     debug('newHistory : ', newHistory);
     fs.writeFileSync(`${urlHistory}`, newHistory);
-    debug(` dalle ${slab.z}/${slab.y}/${slab.x} : version ${idSelected} selectionnée`);
-    // debug(' version selectionnée pour la tuile :', idSelected);
-    const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
-    const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
-    // renommer les images pour pointer sur ce numéro de version
-    const urlGraph = path.join(graphDir, `${idBranch}_${cogPath.filename}.tif`);
-    const urlOrthoRgb = path.join(orthoDir, `${idBranch}_${cogPath.filename}.tif`);
-    const urlOrthoIr = path.join(orthoDir, `${idBranch}_${cogPath.filename}i.tif`);
-    const urlGraphSelected = path.join(graphDir, `${idBranch}_${cogPath.filename}_${idSelected}.tif`);
-    const urlOrthoRgbSelected = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${idSelected}.tif`);
-    const urlOrthoIrSelected = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${idSelected}i.tif`);
-
-    // on renomme les anciennes images
-    const urlGraphPrev = path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
-    const urlOrthoRgbPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
-    const urlOrthoIrPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}i.tif`);
-
-    rename(urlGraph, urlGraphPrev);
-    if (withRgb) rename(urlOrthoRgb, urlOrthoRgbPrev);
-    if (withIr) rename(urlOrthoIr, urlOrthoIrPrev);
-
-    // on renomme les nouvelles images sauf si c'est la version orig
-    if (idSelected !== 'orig') {
-      rename(urlGraphSelected, urlGraph);
-      if (withRgb) rename(urlOrthoRgbSelected, urlOrthoRgb);
-      if (withIr) rename(urlOrthoIrSelected, urlOrthoIr);
+    try {
+      for (let i = 0; i < todo.length; i += 1) {
+        rename(todo[i][0], todo[i][1]);
+      }
+    } catch (e) {
+      errors.push(`error: rename ${e}`);
     }
   });
-
-  const result = await db.deactivatePatch(req.client, lastPatchId);
-
-  debug(result.rowCount);
-
-  // req.selectedBranch.unactivePatches.features = req.selectedBranch.unactivePatches.features
-  //   .concat(
-  //     features,
-  //   );
-  // fs.writeFileSync(path.join(req.dir_cache, 'branches.json'),
-  //   JSON.stringify(req.app.branches, null, 4));
+  if (errors.length > 0) {
+    req.error = {
+      msg: errors,
+      code: 404,
+      function: 'undo',
+    };
+    next();
+    return;
+  }
+  await db.deactivatePatch(req.client, lastPatchId);
 
   debug('fin du undo');
-  // debug('features in activePatches:', activePatches.features.length);
-  // debug('features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
   req.result = { json: `undo: patch ${lastPatchNum} annulé`, code: 200 };
   debug('  next>>');
   next();
@@ -552,76 +578,116 @@ async function redo(req, _res, next) {
 
   debug(`Patch '${patchNumRedo}' à réappliquer.`);
 
-  // const features = [];
-  // const slabs = {};
-  // let index = req.selectedBranch.unactivePatches.features.length - 1;
-  // while (index >= 0) {
-  //   const feature = req.selectedBranch.unactivePatches.features[index];
-  //   if (feature.properties.patchId === patchNumRedo) {
-  //     features.push(feature);
-  //     feature.properties.slabs.forEach((item) => {
-  //       slabs[`${item.x}_${item.y}_${item.z}`] = item;
-  //     });
-  //     req.selectedBranch.unactivePatches.features.splice(index, 1);
-  //   }
-  //   index -= 1;
-  // }
-
   const slabs = await db.getSlabs(req.client, patchIdRedo);
 
   // debug(Object.keys(slabs).length, ' dalles impactées');
   debug(slabs.length, 'dalles impactées');
-  // pour chaque tuile, renommer les images
-  // Object.values(slabs).forEach((slab) => {
-  slabs.forEach((slab) => {
+
+  const errors = [];
+  const histories = [];
+  const toRenamed = [];
+  // Premiere boucle: on s'assure que tous les fichiers sont dispo avant de commencer
+  slabs.forEach((slab, indexSlab) => {
     debug(slab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
     debug(cogPath);
     const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
     const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
     const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
-
     // on met a jour l'historique
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     const history = `${fs.readFileSync(`${urlHistory}`)};${patchNumRedo}`;
     const tabHistory = history.split(';');
     const patchIdPrev = tabHistory[tabHistory.length - 2];
-    fs.writeFileSync(`${urlHistory}`, history);
-    // on verifie si la tuile a été effectivement modifiée par ce patch
-    const urlGraphSelected = path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchNumRedo}.tif`);
-    const urlOrthoRgbSelected = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchNumRedo}.tif`);
-    const urlOrthoIrSelected = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchNumRedo}i.tif`);
-    // renommer les images pour pointer sur ce numéro de version
-    const urlGraph = path.join(graphDir, `${idBranch}_${cogPath.filename}.tif`);
-    const urlOrthoRgb = path.join(orthoDir, `${idBranch}_${cogPath.filename}.tif`);
-    const urlOrthoIr = path.join(orthoDir, `${idBranch}_${cogPath.filename}i.tif`);
-    // on renomme les anciennes images
-    const urlGraphPrev = path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
-    const urlOrthoRgbPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`);
-    const urlOrthoIrPrev = path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}i.tif`);
+    histories[indexSlab] = history;
+    const todo = [];
+    // on backup la version en cours (si ça n'est pas la orig)
     if (patchIdPrev !== 'orig') {
-      rename(urlGraph, urlGraphPrev);
-      if (withRgb) rename(urlOrthoRgb, urlOrthoRgbPrev);
-      if (withIr) rename(urlOrthoIr, urlOrthoIrPrev);
+      todo.push([
+        path.join(graphDir, `${idBranch}_${cogPath.filename}.tif`),
+        path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`),
+      ]);
+      if (withRgb) {
+        todo.push([
+          path.join(orthoDir, `${idBranch}_${cogPath.filename}.tif`),
+          path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}.tif`),
+        ]);
+      }
+      if (withIr) {
+        todo.push([
+          path.join(orthoDir, `${idBranch}_${cogPath.filename}i.tif`),
+          path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchIdPrev}i.tif`),
+        ]);
+      }
     }
 
-    // on renomme les nouvelles images
-    rename(urlGraphSelected, urlGraph);
-    if (withRgb) rename(urlOrthoRgbSelected, urlOrthoRgb);
-    if (withIr) rename(urlOrthoIrSelected, urlOrthoIr);
+    // on applique la version du patch
+    todo.push([
+      path.join(graphDir, `${idBranch}_${cogPath.filename}_${patchNumRedo}.tif`),
+      path.join(graphDir, `${idBranch}_${cogPath.filename}.tif`),
+    ]);
+    if (withRgb) {
+      todo.push([
+        path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchNumRedo}.tif`),
+        path.join(orthoDir, `${idBranch}_${cogPath.filename}.tif`),
+      ]);
+    }
+    if (withIr) {
+      todo.push([
+        path.join(orthoDir, `${idBranch}_${cogPath.filename}_${patchNumRedo}i.tif`),
+        path.join(orthoDir, `${idBranch}_${cogPath.filename}i.tif`),
+      ]);
+    }
+
+    // on teste que tous les fichiers sont accessibles
+    try {
+      for (let i = 0; i < todo.length; i += 1) {
+        /* eslint-disable-next-line no-bitwise */
+        fs.accessSync(todo[i][0], fs.constants.R_OK | fs.constants.W_OK);
+      }
+    } catch (e) {
+      errors.push(`error: fileaccess ${e}`);
+    }
+    toRenamed[indexSlab] = todo;
   });
-  // on remet les features dans req.app.activePatches.features
-  // req.selectedBranch.activePatches.features = req.selectedBranch.activePatches.features.concat(
-  //   features,
-  // );
-  // fs.writeFileSync(path.join(global.dir_cache, 'branches.json'),
-  //   JSON.stringify(req.app.branches, null, 4));
+  if (errors.length > 0) {
+    req.error = {
+      msg: errors,
+      code: 404,
+      function: 'redo',
+    };
+    next();
+    return;
+  }
+  // Deuxieme boucle: tout est ok, on peut commencer les modifications sur disque
+  slabs.forEach((slab, indexSlab) => {
+    const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
+    const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
+    const history = histories[indexSlab];
+    const todo = toRenamed[indexSlab];
 
-  // debug('features in activePatches:', req.selectedBranch.activePatches.features.length);
-  // debug('features in unactivePatches:', req.selectedBranch.unactivePatches.features.length);
+    // on met a jour l'historique
+    const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
+    fs.writeFileSync(`${urlHistory}`, history);
+    try {
+      for (let i = 0; i < todo.length; i += 1) {
+        rename(todo[i][0], todo[i][1]);
+      }
+    } catch (e) {
+      errors.push(`error: rename ${e}`);
+    }
+  });
+  if (errors.length > 0) {
+    req.error = {
+      msg: errors,
+      code: 404,
+      function: 'redo',
+    };
+    next();
+    return;
+  }
 
-  const result = await db.reactivatePatch(req.client, patchIdRedo);
-  debug(result.rowCount);
+  await db.reactivatePatch(req.client, patchIdRedo);
 
   debug('fin du redo');
   req.result = { json: `redo: patch ${patchNumRedo} réappliqué`, code: 200 };

@@ -269,10 +269,48 @@ async function getCachePath(req, _res, next) {
   next();
 }
 
+async function lockShared(req, _res, next) {
+  debug('>>GET lockShared');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+  const { idBranch } = params;
+  try {
+    await db.lockSharedBranch(req.client, idBranch);
+  } catch (error) {
+    debug(error);
+    req.error = error;
+  }
+  debug('  next>>');
+  next();
+}
+
+async function lock(req, _res, next) {
+  debug('>>GET lock');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+  const { idBranch } = params;
+  try {
+    await db.lockBranch(req.client, idBranch);
+  } catch (error) {
+    debug(error);
+    req.error = error;
+  }
+  debug('  next>>');
+  next();
+}
+
 module.exports = {
   getBranches,
   postBranch,
   deleteBranch,
   rebase,
   getCachePath,
+  lockShared,
+  lock,
 };
