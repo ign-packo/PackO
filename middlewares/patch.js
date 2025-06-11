@@ -339,27 +339,31 @@ async function postPatch(req, _res, next) {
   const geoJson = params.geoJSON;
   const { idBranch } = params;
 
-  applyPatch(req.client,
-    overviews,
-    req.dir_cache,
-    idBranch,
-    geoJson.features[0])
-    .then((slabsModified) => {
-      debug('slabsModified : ', slabsModified);
-      req.result = { json: slabsModified, code: 200 };
-    })
-    .catch((error) => {
-      debug(error);
-      req.error = {
-        msg: error.toString(),
-        code: 404,
-        function: 'patch',
-      };
-    })
-    .finally(() => {
-      debug('Fin de POST patch');
-      next();
-    });
+  // iterate through an async block in series to handle competing patch applications
+  /* eslint-disable no-restricted-syntax, no-await-in-loop */
+  for (const gjFeature of geoJson.features) {
+    await applyPatch(req.client,
+      overviews,
+      req.dir_cache,
+      idBranch,
+      gjFeature)
+      .then((slabsModified) => {
+        debug('slabsModified : ', slabsModified);
+        req.result = { json: slabsModified, code: 200 };
+      })
+      .catch((error) => {
+        debug(error);
+        req.error = {
+          msg: error.toString(),
+          code: 404,
+          function: 'patch',
+        };
+      })
+      .finally(() => {
+        debug('Fin de POST patch');
+        next();
+      });
+  }
 }
 
 async function undo(req, _res, next) {
