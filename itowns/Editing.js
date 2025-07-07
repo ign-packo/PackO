@@ -35,9 +35,13 @@ class Editing {
     this.api = this.viewer.api;
     this.menu = menu;
 
-    this.opiName = 'none';
-    this.opiDate = '';
-    this.opiTime = '';
+    this.currentOpi = 0;
+    this.opi1Name = 'none';
+    this.opi1Date = '';
+    this.opi1Time = '';
+    this.opi2Name = 'none';
+    this.opi2Date = '';
+    this.opi2Time = '';
 
     this.coord = `${this.viewer.xcenter.toFixed(2)},${this.viewer.ycenter.toFixed(2)}`;
 
@@ -98,7 +102,7 @@ class Editing {
       features: [
         {
           type: 'Feature',
-          properties: { color: this.color, opiName: this.opiName },
+          properties: { color: this.color, opiName: this.opi1Name },
           geometry:
                     {
                       type: 'Polygon',
@@ -234,13 +238,28 @@ class Editing {
       }
 
       // L'utilisateur demande à déselectionner l'OPI
-      if (this.opiName !== 'none' && (e.key === 'Escape')) {
-        this.opiName = 'none';
-        this.menu.getController('opiName').setBackgroundColorTo('');
-        this.view.dispatchEvent({
-          type: 'opi-selected',
-          name: 'none',
-        });
+      if (e.key === 'Escape') {
+        if (this.opi2Name !== 'none') {
+          this.opi2Name = 'none';
+          this.menu.setOpi2DataCtr(this.opi2Name);
+          this.menu.getController('opi2Name').setBackgroundColorTo('');
+          this.menu.getController('select2').setBackgroundColorTo('');
+          this.view.changeOpi(this.opi1Name);
+          this.view.dispatchEvent({
+            type: 'opi-selected',
+            name: this.opi1Name,
+            id: 1,
+          });
+        } else if (this.opi1Name !== 'none') {
+          this.opi1Name = 'none';
+          this.menu.getController('opi1Name').setBackgroundColorTo('');
+          // this.menu.getController('select').setBackgroundColorTo('');
+          this.view.dispatchEvent({
+            type: 'opi-selected',
+            name: 'none',
+            id: 1,
+          });
+        }
       } else if (this.branch.alert.layerName !== '-' && this.branch.alert.nbTotal > 0) {
         if (e.key === 'ArrowLeft') {
           this.branch.alert.selectPrevious({ centerOnFeature: true });
@@ -256,7 +275,7 @@ class Editing {
     }
     if (e.key === 'Escape') {
       if (this.currentStatus === status.SELECT) {
-        this.menu.getController('select').setBackgroundColorTo('');
+        this.menu.getController(`select${this.currentOpi}`).setBackgroundColorTo('');
       }
       if (this.currentStatus === status.POLYGON) {
         this.menu.getController('polygon').setBackgroundColorTo('');
@@ -351,21 +370,31 @@ class Editing {
         // on selectionne l'Opi
         this.api.getGraph(this.branch.active.id, mousePosition)
           .then((opi) => {
+            console.log(this.opi1Name);
+            if (this.opi1Name !== 'none' && ([this.opi1Name, this.opi2Name].includes(opi.opiName))) {
+              this.viewer.message = 'meme opi';
+              this.view.controls.setCursor('default', 'crosshair');
+              this.currentStatus = status.SELECT;
+              return;
+            }
             this.viewer.message = '';
             this.view.controls.setCursor('default', 'auto');
             this.currentStatus = status.RAS;
-            this.menu.getController('select').setBackgroundColorTo('');
+            this.menu.getController(`select${this.currentOpi}`).setBackgroundColorTo('');
 
-            this.opiName = opi.opiName;
-            this.opiDate = opi.date;
-            this.opiTime = opi.time;
+            const opiName = `opi${this.currentOpi}Name`;
+            this[opiName] = opi.opiName;
+            this[`opi${this.currentOpi}Date`] = opi.date;
+            this[`opi${this.currentOpi}Time`] = opi.time;
             this.color = opi.color;
-            this.menu.getController('opiName').setBackgroundColorTo(`rgb(${this.color[0]},${this.color[1]},${this.color[2]})`);
+
+            this.menu.getController(opiName).setBackgroundColorTo(`rgb(${this.color[0]},${this.color[1]},${this.color[2]})`);
             // On modifie la source de la couche OPI
-            this.view.changeOpi(this.opiName);
+            this.view.changeOpi(this[opiName]);
             this.view.dispatchEvent({
               type: 'opi-selected',
-              name: this.opiName,
+              name: this[opiName],
+              id: this.currentOpi,
             });
           })
           .catch((error) => {
@@ -377,7 +406,7 @@ class Editing {
               this.viewer.message = 'PB de mise à jour de la BdD';
               this.view.controls.setCursor('default', 'auto');
               this.currentStatus = status.RAS;
-              this.menu.getController('select').setBackgroundColorTo('');
+              this.menu.getController(`select${this.currentOpi}`).setBackgroundColorTo('');
               this.view.dispatchEvent({
                 type: 'error',
                 error,
@@ -421,26 +450,33 @@ class Editing {
         break;
       }
       case status.ENDING:
-      // on termine la ployline ou polygon
+      // on termine la polyline ou polygon
         this.update();
         break;
       default:
     }
   }
 
-  select() {
+  select1(id = 1) {
+    if (this.currentStatus === status.SELECT && this.currentOpi !== id) {
+      this.viewer.message = `Opi ${this.currentOpi} non encore choisie`;
+    }
     if (this.currentStatus !== status.RAS) return;
-    // this.cancelcurrentPolygon();
     console.log('"select": En attente de sélection');
-    this.viewer.message = 'choisir une Opi';
+    this.viewer.message = `choisir l'Opi ${id}`;
     this.view.controls.setCursor('default', 'crosshair');
     this.currentStatus = status.SELECT;
-    this.menu.getController('select').setBackgroundColorTo('#BB0000');
+    this.currentOpi = id;
+    this.menu.getController(`select${id}`).setBackgroundColorTo('#BB0000');
+  }
+
+  select2() {
+    this.select1(2);
   }
 
   polygon() {
     if (this.currentStatus === status.WAITING) return;
-    if (this.opiName === 'none') {
+    if (this.opi1Name === 'none') {
       this.viewer.message = (this.currentStatus === status.SELECT) ? 'Opi pas encore choisie' : "pas d'Opi sélectionnée";
       return;
     }
@@ -452,7 +488,7 @@ class Editing {
     console.log("saisie d'un polygon");
     this.viewer.message = "saisie d'un polygon";
     this.view.controls.setCursor('default', 'crosshair');
-    this.menu.getController('select').setBackgroundColorTo('');
+    this.menu.getController(`select${this.currentOpi}`).setBackgroundColorTo('');
     this.menu.getController('polygon').setBackgroundColorTo('#BB0000');
 
     const MAX_POINTS = 500;

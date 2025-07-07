@@ -93,8 +93,12 @@ class Menu extends dat.GUI {
     this[layerName === 'Remarques' ? 'show' : 'hide'](['delRemark']);
   }
 
-  setOpiCtr(opiName) {
-    this[opiName === 'none' ? 'hide' : 'show'](['opiName', 'opiDate', 'opiTime']);
+  setOpiDataCtr(opiName) {
+    this[opiName === 'none' ? 'hide' : 'show'](['opi1Name', 'opi1Date', 'opi1Time', 'select2']);
+  }
+
+  setOpi2DataCtr(opiName) {
+    this[opiName === 'none' ? 'hide' : 'show'](['opi2Name', 'opi2Date', 'opi2Time']);
   }
 
   refreshDropBox(dropBoxName, listOfValues,
@@ -142,6 +146,7 @@ class Menu extends dat.GUI {
         newLayer.visible = value;
         this.view.notifyChange(newLayer);
       }));
+    // TODO manage check when we select an OPI
 
     // opacity
     folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0)
