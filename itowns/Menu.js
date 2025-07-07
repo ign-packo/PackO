@@ -84,7 +84,7 @@ class Menu extends dat.GUI {
   }
 
   setPatchCtr(branchName) {
-    this[branchName !== 'orig' ? 'show' : 'hide'](['polygon', 'undo', 'redo']);
+    this[branchName !== 'orig' ? 'show' : 'hide'](['polygon', 'polyline', 'undo', 'redo']);
     if (process.env.NODE_ENV === 'development') this[branchName !== 'orig' ? 'show' : 'hide']('clear');
   }
 
@@ -93,7 +93,7 @@ class Menu extends dat.GUI {
     this[layerName === 'Remarques' ? 'show' : 'hide'](['delRemark']);
   }
 
-  setOpiDataCtr(opiName) {
+  setOpi1DataCtr(opiName) {
     this[opiName === 'none' ? 'hide' : 'show'](['opi1Name', 'opi1Date', 'opi1Time', 'select2']);
   }
 
