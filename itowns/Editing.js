@@ -12,6 +12,11 @@ const status = {
   ADDREMARK: 6,
 };
 
+export const saisie = {
+  LineString: 0,
+  Polygon: 1,
+};
+
 function getAllCheckboxes(id, className) {
   const allCheckboxes = [];
   let propEls;
@@ -80,7 +85,7 @@ class Editing {
         vertices.set(newPoint.toArray(), 3 * this.nbVertices);
         vertices.copyAt(this.nbVertices + 1, vertices, 0);
         vertices.needsUpdate = true;
-        this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + (this.saisie.type === 'polygon' ? 2 : 1));
+        this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + this.saisie.type + 1);
         this.currentPolygon.geometry.computeBoundingSphere();
         this.view.notifyChange(this.currentPolygon);
       }
@@ -95,10 +100,23 @@ class Editing {
     }
     this.viewer.message = 'calcul en cours';
     this.view.controls.setCursor('default', 'wait');
-    console.log('update typePatch, currentStatus:', this.saisie.type, this.currentStatus);
+
+    const saisieTypeStr = Object.keys(saisie)[this.saisie.type];
+    console.log(` -> patch: ${saisieTypeStr}, currentStatus: ${this.currentStatus}`);
     this.currentStatus = status.WAITING;
 
     const positions = this.currentPolygon.geometry.attributes.position.array;
+    const coordinates = [];
+    for (let i = 0; i <= this.nbVertices; i += 1) {
+      coordinates.push(
+        [
+          positions[3 * i] + this.currentPolygon.position.x,
+          positions[3 * i + 1] + this.currentPolygon.position.y,
+        ],
+      );
+    }
+
+    // On créer le geoJSON
     const geojson = {
       type: 'FeatureCollection',
       name: 'annotation',
@@ -109,31 +127,18 @@ class Editing {
           properties: {
             colorRef: this.opi1Color,
             opiRefName: this.opi1Name,
-            colorSec: (this.saisie.type === 'polygon' ? 'none' : this.opi2Color),
-            opiSecName: (this.saisie.type === 'polygon' ? 'none' : this.opi2Name),
-            patchIsAuto: (this.saisie.type !== 'polygon'),
+            colorSec: (this.saisie.type ? 'none' : this.opi2Color),
+            opiSecName: (this.saisie.type ? 'none' : this.opi2Name),
+            patchIsAuto: (!this.saisie.type),
           },
           geometry:
                     {
-                      type: 'Polygon',
-                      coordinates: [[]],
+                      type: saisieTypeStr,
+                      coordinates: this.saisie.type ? [coordinates] : coordinates,
                     },
         },
       ],
     };
-    for (let i = 0; i <= this.nbVertices; i += 1) {
-      geojson.features[0].geometry.coordinates[0].push(
-        [
-          positions[3 * i] + this.currentPolygon.position.x,
-          positions[3 * i + 1] + this.currentPolygon.position.y,
-        ],
-      );
-    }
-
-    // this.view.scene.remove(this.currentPolygon);
-    // this.currentStatus = status.WAITING;
-    // this.view.controls.setCursor('default', 'wait');
-    // this.viewer.message = 'calcul en cours';
 
     // On post le geojson sur l'API
     this.api.postPatch(this.branch.active.id, JSON.stringify(geojson))
@@ -157,7 +162,7 @@ class Editing {
         this.resetCurrentPolygon();
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
-        this.menu.getController(this.saisie.type).setBackgroundColorTo('');
+        this.menu.getController(saisieTypeStr).setBackgroundColorTo('');
       });
   }
 
@@ -198,8 +203,8 @@ class Editing {
       // select Opi 2
       if (e.key === 'w') this.select(2);
       // start polygon
-      if ((e.key === 'p') && (this.branch.active.name !== 'orig')) this.saisie('polygon');
-      if ((e.key === 't') && (this.branch.active.name !== 'orig')) this.saisie('polyline');
+      if ((e.key === 'p') && (this.branch.active.name !== 'orig')) this.saisie('Polygon');
+      if ((e.key === 't') && (this.branch.active.name !== 'orig')) this.saisie('LineString');
       // change visibility on ColorLayers
       Object.keys(this.viewer.shortCuts.visibleFolder).forEach((key) => {
         if (e.key === this.viewer.shortCuts.visibleFolder[key]) {
@@ -208,7 +213,7 @@ class Editing {
         }
       });
       // change visibility on ExtraLayers
-      if (e.key === 'v') {
+      if (e.key === this.viewer.shortCuts.layerFolders.extraLayers) {
         console.log('Change Extra Layers visibility');
         getAllCheckboxes('extraLayers', 'visibcbx').forEach((c) => (c.click()));
       }
@@ -294,7 +299,7 @@ class Editing {
         this.menu.getController(`select${this.currentOpi}`).setBackgroundColorTo('');
       }
       if (this.currentStatus === status.SAISIE) {
-        this.menu.getController(this.saisie.type).setBackgroundColorTo('');
+        this.menu.getController(Object.keys(saisie)[this.saisie.type]).setBackgroundColorTo('');
         this.resetCurrentPolygon();
       }
       if (this.currentStatus === status.ADDREMARK) {
@@ -322,7 +327,7 @@ class Editing {
             vertices.copyAt(this.nbVertices, vertices, 0);
             vertices.needsUpdate = true;
 
-            this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
+            this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + this.saisie.type);
             this.currentPolygon.geometry.computeBoundingSphere();
             this.view.notifyChange(this.currentPolygon);
           }
@@ -334,7 +339,7 @@ class Editing {
           vertices.copyAt(this.nbVertices, vertices, 0);
           vertices.needsUpdate = true;
 
-          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 1);
+          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + this.saisie.type);
           this.currentPolygon.geometry.computeBoundingSphere();
           this.view.notifyChange(this.currentPolygon);
           this.nbVertices -= 1;
@@ -358,7 +363,7 @@ class Editing {
           vertices.set(newPoint.toArray(), 3 * this.nbVertices);
           vertices.needsUpdate = true;
 
-          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + 2);
+          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + this.saisie.type + 1);
           this.currentPolygon.geometry.computeBoundingSphere();
           this.view.notifyChange(this.currentPolygon);
           this.view.controls.setCursor('default', 'crosshair');
@@ -386,7 +391,6 @@ class Editing {
         // on selectionne une Opi
         this.api.getGraph(this.branch.active.id, mousePosition)
           .then((opi) => {
-            console.log(this.opi1Name);
             if (this.opi1Name !== 'none' && ([this.opi1Name, this.opi2Name].includes(opi.opiName))) {
               this.viewer.message = 'Même opi';
               this.view.controls.setCursor('default', 'crosshair');
@@ -399,7 +403,6 @@ class Editing {
             this.menu.getController(`select${this.currentOpi}`).setBackgroundColorTo('');
 
             const opiName = `opi${this.currentOpi}Name`;
-            const opiColor = `opi${this.currentOpi}Color`;
             this[opiName] = opi.opiName;
             this[`opi${this.currentOpi}Date`] = opi.date;
             this[`opi${this.currentOpi}Time`] = opi.time;
@@ -468,7 +471,7 @@ class Editing {
         break;
       }
       case status.ENDING:
-      // on termine la polyline ou polygon
+      // on termine la polyline (LineString) ou polygon
         this.update();
         break;
       default:
@@ -500,25 +503,25 @@ class Editing {
       return;
     }
 
-    if (type === 'polygon') {
+    if (saisie[type] === saisie.Polygon) {
       if (this.opi1Name === 'none') {
-        this.viewer.message = "pas d'Opi sélectionnée";
+        this.viewer.message = 'pas d\'Opi sélectionnée';
         return;
       }
       if (this.opi2Name !== 'none') {
-        this.viewer.message = "2 Opi sélectionnées !";
+        this.viewer.message = '2 Opi sélectionnées !';
         return;
       }
-    } else if (type === 'polyline') {
+    } else if (saisie[type] === saisie.LineString) {
       if (this.opi1Name === 'none' || this.opi2Name === 'none') {
-        this.viewer.message = "Sélectionnez 2 Opi";
+        this.viewer.message = 'Sélectionnez 2 Opi';
         return;
       }
     }
 
-    this.saisie.type = type;
-    console.log("saisie d'un " + type);
-    this.viewer.message = "saisie d'un " + type;
+    this.saisie.type = saisie[type];
+    console.log(`Saisie d'un.e ${type}`);
+    this.viewer.message = `Saisie d'un.e ${type}`;
     this.view.controls.setCursor('default', 'crosshair');
     this.menu.getController(`select${this.currentOpi}`).setBackgroundColorTo('');
     this.menu.getController(type).setBackgroundColorTo('#BB0000');
@@ -541,7 +544,6 @@ class Editing {
     this.view.notifyChange(this.currentPolygon);
     this.currentStatus = status.SAISIE;
     this.nbVertices = 0;
-
   }
 
   undo() {

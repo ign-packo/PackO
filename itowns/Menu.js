@@ -50,9 +50,15 @@ class Menu extends dat.GUI {
 
     menuDiv.appendChild(this.domElement);
 
-    this.colorGui = this.addFolder('Color Layers');
+    const colorLayersName = `Color Layers ${(this.shortCuts.layerFolders.ColorLayers
+      ? ` [${this.shortCuts.layerFolders.ColorLayers}]`
+      : '')}`;
+    const extraLayersName = `Extra Layers ${(this.shortCuts.layerFolders.extraLayers
+      ? ` [${this.shortCuts.layerFolders.extraLayers}]`
+      : '')}`;
+    this.colorGui = this.addFolder(colorLayersName);
     this.colorGui.open();
-    this.vectorGui = this.addFolder('Extra Layers [v]');
+    this.vectorGui = this.addFolder(extraLayersName);
     this.vectorGui.domElement.id = 'extraLayers';
     this.vectorGui.open();
 
@@ -84,7 +90,7 @@ class Menu extends dat.GUI {
   }
 
   setPatchCtr(branchName) {
-    this[branchName !== 'orig' ? 'show' : 'hide'](['polygon', 'polyline', 'undo', 'redo']);
+    this[branchName !== 'orig' ? 'show' : 'hide'](['Polygon', 'LineString', 'undo', 'redo']);
     if (process.env.NODE_ENV === 'development') this[branchName !== 'orig' ? 'show' : 'hide']('clear');
   }
 
