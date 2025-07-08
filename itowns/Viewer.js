@@ -145,6 +145,7 @@ class Viewer {
     this.oldStyle = {};
 
     this.shortCuts = {
+      layerFolders: { ColorLayers: '', extraLayers: 'v' },
       visibleFolder: { Ortho: 'm', Opi: 'o', Contour: 'g' },
       styleFolder: { Ortho: 'i', Opi: 'i' },
     };

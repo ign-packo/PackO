@@ -2,7 +2,7 @@
 /* global setupLoadingScreen */
 import * as itowns from 'itowns';
 import Viewer from './Viewer';
-import Editing from './Editing';
+import Editing, { saisie } from './Editing';
 import Alert from './Alert';
 import Branch from './Branch';
 import Menu from './Menu';
@@ -167,7 +167,8 @@ async function main() {
       .name('Add new branch');
 
     // Selection OPI
-    menu.add({select1: editing.select.bind(editing, 1)}, 'select1').name('Select an OPI [s]');// TODO linked name with shortcut
+    menu.add({ select1: editing.select.bind(editing, 1) }, 'select1')
+      .name('Select an OPI [s]');// TODO linked name with shortcut
 
     menu.add(editing, 'opi1Name')
       .name('OPI selected')
@@ -183,7 +184,7 @@ async function main() {
       .name('➢ Time').listen()
       .domElement.parentElement.style.pointerEvents = 'none';
 
-    menu.add({select2: editing.select.bind(editing, 2)}, 'select2')
+    menu.add({ select2: editing.select.bind(editing, 2) }, 'select2')
       .name('Select a 2nd OPI [w]');
     menu.add(editing, 'opi2Name')
       .name('OPI selected')
@@ -223,8 +224,12 @@ async function main() {
       });
 
     // Saisie
-    menu.add({polygon: editing.saisie.bind(editing, 'polygon')}, 'polygon').name('Saisie manuelle [p]');
-    menu.add({polyline: editing.saisie.bind(editing, 'polyline')}, 'polyline').name('Saisie semi-auto [t]');// TODO shortcut
+    const polygonStr = Object.keys(saisie)[saisie.Polygon];
+    menu.add({ [polygonStr]: editing.saisie.bind(editing, polygonStr) }, polygonStr)
+      .name('Saisie manuelle [p]');
+    const lineStringStr = Object.keys(saisie)[saisie.LineString];
+    menu.add({ [lineStringStr]: editing.saisie.bind(editing, lineStringStr) }, lineStringStr)
+      .name('Saisie semi-auto [t]');// TODO shortcut
     menu.add(editing, 'undo').name('undo [CTRL+Z]');
     menu.add(editing, 'redo').name('redo [CTRL+Y]');
     menu.add(editing, 'clear')
