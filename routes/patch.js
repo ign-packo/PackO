@@ -41,14 +41,26 @@ const geoJsonAPatcher = [
     .withMessage(createErrMsg.invalidParameter('crs')),
   body('geoJSON.features.*.geometry')
     .custom(GJV.isPolygon).withMessage(createErrMsg.InvalidEntite('geometry', 'polygon')),
-  body('geoJSON.features.*.properties.color')
-    .exists().withMessage(createErrMsg.missingParameter('properties.color'))
+  body('geoJSON.features.*.properties.colorRef')
+    .exists().withMessage(createErrMsg.missingParameter('properties.colorRef'))
     .custom(validator.isColor)
-    .withMessage(createErrMsg.invalidParameter('properties.color')),
-  body('geoJSON.features.*.properties.opiName')
-    .exists().withMessage(createErrMsg.missingParameter('properties.opiName'))
+    .withMessage(createErrMsg.invalidParameter('properties.colorRef')),
+  body('geoJSON.features.*.properties.opiRefName')
+    .exists().withMessage(createErrMsg.missingParameter('properties.opiRefName'))
     .matches(/^[a-zA-Z0-9-_]+$/i)
-    .withMessage(createErrMsg.invalidParameter('properties.opiName')),
+    .withMessage(createErrMsg.invalidParameter('properties.opiRefName')),
+  /* body('geoJSON.features.*.properties.colorSec')
+    .exists().withMessage(createErrMsg.missingParameter('properties.colorSec'))
+    .custom(validator.isColor)
+    .withMessage(createErrMsg.invalidParameter('properties.colorSec')),
+  body('geoJSON.features.*.properties.opiSecName')
+    .exists().withMessage(createErrMsg.missingParameter('properties.opiSecName'))
+    .matches(/^[a-zA-Z0-9-_]+$/i)
+    .withMessage(createErrMsg.invalidParameter('properties.opiSecName')), */
+  body('geoJSON.features.*.properties.patchIsAuto')
+    .exists().withMessage(createErrMsg.missingParameter('properties.patchIsAuto'))
+    .custom(validator.isBool)
+    .withMessage(createErrMsg.invalidParameter('properties.patchIsAuto')),
 ];
 
 router.get('/:idBranch/patches',
