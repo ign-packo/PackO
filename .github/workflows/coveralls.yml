@@ -13,17 +13,18 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Set up Python 3.8
+    - name: Set up Python 3.12.11
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: 3.12.11
 
     - name: apt update
       run: |
         sudo apt-get update
     - name: Install gdal
+      # latest version of ubuntu (24.04) has only unstable ubuntugis release
       run: |
-        sudo add-apt-repository ppa:ubuntugis/ppa && sudo apt-get update
+        sudo add-apt-repository ppa:ubuntugis/ubuntugis-unstable && sudo apt-get update
         sudo apt-get install python3-gdal
     - name: Install libgdal
       run: |
@@ -31,7 +32,7 @@ jobs:
 
     - name: pip install
       run: |
-        pip install 'pip<23'
+        python -m pip install --upgrade pip
         pip install numpy
         pip install --global-option=build_ext --global-option="-I/usr/include/gdal" GDAL==`gdal-config --version`
 
