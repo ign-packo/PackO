@@ -300,14 +300,18 @@ describe('route/branch.js', () => {
                   {
                     type: 'Feature',
                     properties: {
-                      color: overviews.list_OPI[testOpi].color,
-                      opiName: testOpi,
+                      colorRef: overviews.list_OPI[testOpi].color,
+                      opiRefName: testOpi,
+                      colorSec: 'none',
+                      opiSecName: 'none',
+                      patchIsAuto: false,
                     },
                     geometry: { type: 'Polygon', coordinates: [[[230749, 6759646], [230752, 6759646], [230752, 6759644], [230749, 6759644], [230749, 6759646]]] },
                   }],
               })
               .end((err, res) => {
                 should.not.exist(err);
+                console.log(res.body.msg);
                 res.should.have.status(200);
                 const resJson = JSON.parse(res.text);
                 resJson.should.be.a('array');
