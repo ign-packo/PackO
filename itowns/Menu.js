@@ -35,7 +35,12 @@ dat.controllers.Controller.prototype.selectIndex = function selectIndex(newIndex
   this.__select.options.selectedIndex = newIndex;
 };
 dat.controllers.Controller.prototype.setBackgroundColorTo = function _(newColor) {
-  this.__li.style.backgroundColor = newColor;
+  console.log(this.property, /^opi\dName$/g.test(this.property));
+  if (/^opi\dName$/g.test(this.property)) {
+    this.__li.style.backgroundColor = newColor;
+  } else {
+    this.__li.children[0].children[0].style.backgroundColor = newColor;
+  }
 };
 /* eslint-enable no-underscore-dangle */
 
