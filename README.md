@@ -585,8 +585,10 @@ optional arguments:
 ## Raccourcis clavier
 
 Les raccourcis clavier disponibles dans l'interface sont :
-- Sélectionner une OPI (*Select an OPI*) : **s**
+- Sélectionner une OPI de réference (*Select ref OPI*) : **s**
+- Sélectionner une OPI secondaire (*Select sec OPI*) : **w**
 - Démarrer polygone (*Start polygon*) : **p**
+- Démarrer polygone pour saisie auto (*Start polygon auto*) : **t**
 - Annuler polygone (*Undo*) : **Ctrl + Z**
 - Refaire polygone (*Redo*) : **Ctrl + Y**
 - Masquer/Afficher l’Ortho mosaïquée : **m**

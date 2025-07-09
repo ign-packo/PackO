@@ -302,12 +302,12 @@ function wmts(req, _res, next) {
         .then(async (color) => {
           debugFeatureInfo(color);
           let resCode = 200;
-          let opiName = '';
+          let opiRefName = '';
           try {
             const opi = await db.getOPIFromColor(req.client, idBranch, color);
-            opiName = opi.name;
+            opiRefName = opi.name;
           } catch (error) {
-            opiName = error.message;
+            opiRefName = error.message;
             resCode = 201;
           }
           const xmlResponse = '<?xml version="1.0" encoding="UTF-8"?>'
@@ -317,7 +317,7 @@ function wmts(req, _res, next) {
                                        + ' xsi:schemaLocation="http://www.maps.bob/etopo2  GetFeatureInfoExampleSchema.xsd">'
                 + '<featureMember>'
                   + `<${LAYER}>`
-                    + `<ortho>${opiName}</ortho>`
+                    + `<ortho>${opiRefName}</ortho>`
                     + `<graph>${color}</graph>`
                     + `<TileRow>${TILEROW}</TileRow>`
                     + `<TileCol>${TILECOL}</TileCol>`
