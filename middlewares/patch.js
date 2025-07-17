@@ -8,9 +8,9 @@ const cog = require('../cog_path');
 const gdalProcessing = require('../gdal_processing');
 const db = require('../db/db');
 
-function getCOGs(feature, overviews, borderMeters = 0) {
+function getCOGs(coordinates, overviews, borderMeters = 0) {
   const BBox = {};
-  feature.geometry.coordinates[0].forEach((point) => {
+  coordinates.forEach((point) => {
     if ('xmin' in BBox) {
       BBox.xmin = Math.min(BBox.xmin, point[0]);
       BBox.xmax = Math.max(BBox.xmax, point[0]);
@@ -215,35 +215,43 @@ async function getPatches(req, _res, next) {
 async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
   debug('applyPatch', feature);
 
-  const opiRef = (await db.getOPIFromName(pgClient, idBranch, feature.properties.opiRefName));
+  const opiRef = (await db.getOPIFromName(pgClient, idBranch, feature.properties.opiRef.name));
   // patch auto
-  let opiSec = 'none';
-  if (feature.properties.patchIsAuto) {
-    opiSec = (await db.getOPIFromName(pgClient, idBranch, feature.properties.opiSecName));
+  let opiSec = {
+    name: 'none',
+    id: null,
+  };
+  const patchIsAuto = !!feature.properties.opiSec.name;
+  if (patchIsAuto) {
+    opiSec = (await db.getOPIFromName(pgClient, idBranch, feature.properties.opiSec.name));
   }
   const patchInserted = await db.insertPatch(pgClient, idBranch, feature.geometry,
-    opiRef.id, opiSec.id, feature.properties.patchIsAuto);
+    opiRef.id, opiSec.id, patchIsAuto);
   const patchId = patchInserted.id_patch;
   const newPatchNum = patchInserted.num;
 
   // in case of patch-auto, add border to bbox for selecting cogs
-  const borderMeters = feature.properties.patchIsAuto ? 20 : 0;
-  const cogs = getCOGs(feature, overviews, borderMeters);
+  const borderMeters = patchIsAuto ? 20 : 0;
+  let { coordinates } = feature.geometry;
+  if (!patchIsAuto) {
+    [coordinates] = coordinates;
+  }
+  const cogs = getCOGs(coordinates, overviews, borderMeters);
   const promisesCreatePatch = [];
   debug('~create patch');
   cogs.forEach((aCog) => {
     promisesCreatePatch.push(createPatch(aCog,
       feature,
-      feature.properties.colorRef,
-      feature.properties.opiRefName,
-      feature.properties.colorSec,
-      feature.properties.opiSecName,
+      feature.properties.opiRef.color,
+      feature.properties.opiRef.name,
+      feature.properties.opiSec.color,
+      feature.properties.opiSec.name,
       opiRef.with_rgb,
       opiRef.with_ir,
       overviews,
       dirCache,
       idBranch,
-      feature.properties.patchIsAuto));
+      patchIsAuto));
   });
   debug('~Promise.all');
   const slabsModified = [];
@@ -275,7 +283,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
       slabsModified.push(patch.slab);
 
       promises.push(gdalProcessing.processPatchAsync(patch, overviews.tileSize.width,
-        feature.properties.patchIsAuto));
+        patchIsAuto));
     });
     debug('', promises.length, 'patchs à appliquer.');
     await Promise.all(promises).then(

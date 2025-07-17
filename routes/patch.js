@@ -24,6 +24,11 @@ function encapBody(req, _res, next) {
   next();
 }
 
+const alias = {
+  opi1: 'opiRef',
+  opi2: 'opiSec',
+};
+
 const geoJsonAPatcher = [
   body('geoJSON')
     .exists().withMessage(createErrMsg.missingBody)
@@ -41,14 +46,50 @@ const geoJsonAPatcher = [
     .withMessage(createErrMsg.invalidParameter('crs')),
   body('geoJSON.features.*.geometry')
     .custom(GJV.isPolygon).withMessage(createErrMsg.InvalidEntite('geometry', 'polygon')),
-  body('geoJSON.features.*.properties.colorRef')
-    .exists().withMessage(createErrMsg.missingParameter('properties.colorRef'))
-    .custom(validator.isColor)
-    .withMessage(createErrMsg.invalidParameter('properties.colorRef')),
-  body('geoJSON.features.*.properties.opiRefName')
-    .exists().withMessage(createErrMsg.missingParameter('properties.opiRefName'))
+  body('geoJSON.features.*.properties')
+    .exists().withMessage(createErrMsg.missingParameter('properties')),
+
+  body(`geoJSON.features.*.properties.${alias.opi1}`)
+    .if(body('geoJSON.features.*.properties').exists())
+    .exists().withMessage(createErrMsg.missingParameter(`properties.${alias.opi1}`)),
+  body(`geoJSON.features.*.properties.${alias.opi1}.name`)
+    .if(body(`geoJSON.features.*.properties.${alias.opi1}`).exists())
+    .exists().withMessage(createErrMsg.missingParameter(`properties.${alias.opi1}.name`))
+    .if(body(`geoJSON.features.*.properties.${alias.opi1}.name`).exists())
     .matches(/^[a-zA-Z0-9-_]+$/i)
-    .withMessage(createErrMsg.invalidParameter('properties.opiRefName')),
+    .withMessage(createErrMsg.invalidParameter(`properties.${alias.opi1}.name`)),
+  body(`geoJSON.features.*.properties.${alias.opi1}.color`)
+    .if(body(`geoJSON.features.*.properties.${alias.opi1}`).exists())
+    .exists().withMessage(createErrMsg.missingParameter(`properties.${alias.opi1}.color`))
+    .if(body(`geoJSON.features.*.properties.${alias.opi1}.color`).exists())
+    .custom(validator.isColor)
+    .withMessage(createErrMsg.invalidParameter(`properties.${alias.opi1}.color`)),
+
+  // body(`geoJSON.features.*.properties.${aliasOpi2}`)
+  //   .if(body('geoJSON.features.*.properties').exists())
+  //   .exists().withMessage(createErrMsg.missingParameter(`properties.${aliasOpi2}`)),
+  body(`geoJSON.features.*.properties.${alias.opi2}.name`)
+    .if(body(`geoJSON.features.*.properties.${alias.opi2}`).exists())
+    .exists().withMessage(createErrMsg.missingParameter(`properties.${alias.opi2}.name`))
+    .if(body(`geoJSON.features.*.properties.${alias.opi2}.name`).exists())
+    .matches(/^[a-zA-Z0-9-_]+$/i)
+    .withMessage(createErrMsg.invalidParameter(`properties.${alias.opi2}.name`)),
+  body(`geoJSON.features.*.properties.${alias.opi2}.color`)
+    .if(body(`geoJSON.features.*.properties.${alias.opi2}`).exists())
+    .exists().withMessage(createErrMsg.missingParameter(`properties.${alias.opi2}.color`))
+    .if(body(`geoJSON.features.*.properties.${alias.opi2}.color`).exists())
+    .custom(validator.isColor)
+    .withMessage(createErrMsg.invalidParameter(`properties.${alias.opi2}.color`)),
+
+  // body('geoJSON.features.*.properties.colorRef')
+  //   .exists().withMessage(createErrMsg.missingParameter('properties.colorRef'))
+  //   .custom(validator.isColor)
+  //   .withMessage(createErrMsg.invalidParameter('properties.colorRef')),
+  // body('geoJSON.features.*.properties.opiRefName')
+  //   .exists().withMessage(createErrMsg.missingParameter('properties.opiRefName'))
+  //   .matches(/^[a-zA-Z0-9-_]+$/i)
+  //   .withMessage(createErrMsg.invalidParameter('properties.opiRefName')),
+
   /* body('geoJSON.features.*.properties.colorSec')
     .exists().withMessage(createErrMsg.missingParameter('properties.colorSec'))
     .custom(validator.isColor)
@@ -57,10 +98,11 @@ const geoJsonAPatcher = [
     .exists().withMessage(createErrMsg.missingParameter('properties.opiSecName'))
     .matches(/^[a-zA-Z0-9-_]+$/i)
     .withMessage(createErrMsg.invalidParameter('properties.opiSecName')), */
-  body('geoJSON.features.*.properties.patchIsAuto')
-    .exists().withMessage(createErrMsg.missingParameter('properties.patchIsAuto'))
-    .custom(validator.isBool)
-    .withMessage(createErrMsg.invalidParameter('properties.patchIsAuto')),
+  // body('geoJSON.features.*.properties.patchIsAuto')
+  //   .exists().withMessage(createErrMsg.missingParameter('properties.patchIsAuto'))
+  //   .if(body('geoJSON.features.*.properties.patchIsAuto').exists())
+  //   .custom(validator.isBool)
+  //   .withMessage(createErrMsg.invalidParameter('properties.patchIsAuto')),
 ];
 
 router.get('/:idBranch/patches',
