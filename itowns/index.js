@@ -423,9 +423,9 @@ async function main() {
     });
 
     view.addEventListener('error', (ev) => {
-      console.log(ev.error instanceof Array ? ev.error.map((error) => error.message).join('') : ev.error.message);
+      console.log(ev.error instanceof Array ? ev.error.map((err) => err.status) : ev.error.msg);
       // eslint-disable-next-line no-alert
-      window.alert(ev.error instanceof Array ? ev.error.join('') : ev.error);
+      window.alert(ev.error instanceof Array ? ev.error.map((err) => err.status).join('\n') : ev.error.msg);
     });
 
     viewerDiv.addEventListener('mousemove', (ev) => {
