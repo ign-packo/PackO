@@ -17,6 +17,13 @@ export const saisie = {
   Polygon: 1,
 };
 
+const actvBtnColor = '#FF0000';
+
+const saisieColor = {
+  LineString: '#FFFF00',
+  Polygon: '#FF0000',
+};
+
 function getAllCheckboxes(id, className) {
   const allCheckboxes = [];
   let propEls;
@@ -488,7 +495,7 @@ class Editing {
     this.view.controls.setCursor('default', 'crosshair');
     this.currentStatus = status.SELECT;
     this.currentOpi = id;
-    this.menu.getController(`select${id}`).setBackgroundColorTo('#BB0000');
+    this.menu.getController(`select${id}`).setBackgroundColorTo(actvBtnColor);
   }
 
   saisie(type) {
@@ -520,11 +527,12 @@ class Editing {
     }
 
     this.saisie.type = saisie[type];
+    this.saisie.color = saisieColor[type];
     console.log(`Saisie d'un.e ${type}`);
     this.viewer.message = `Saisie d'un.e ${type}`;
     this.view.controls.setCursor('default', 'crosshair');
     this.menu.getController(`select${this.currentOpi}`).setBackgroundColorTo('');
-    this.menu.getController(type).setBackgroundColorTo('#BB0000');
+    this.menu.getController(type).setBackgroundColorTo(this.saisie.color);
 
     const MAX_POINTS = 500;
     const geometry = new THREE.BufferGeometry();
@@ -532,7 +540,7 @@ class Editing {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setDrawRange(0, 1);
     const material = new THREE.LineBasicMaterial({
-      color: 0xFF0000,
+      color: this.saisie.color,
       depthTest: false,
       depthWrite: false,
     });
@@ -635,7 +643,7 @@ class Editing {
     this.viewer.message = "saisie d'une remarque";
     this.view.controls.setCursor('default', 'crosshair');
     this.currentStatus = status.ADDREMARK;
-    this.menu.getController('addRemark').setBackgroundColorTo('#BB0000');
+    this.menu.getController('addRemark').setBackgroundColorTo(actvBtnColor);
   }
 
   postRemark(mousePosition, remark) {

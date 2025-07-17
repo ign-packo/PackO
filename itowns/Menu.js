@@ -37,9 +37,9 @@ dat.controllers.Controller.prototype.selectIndex = function selectIndex(newIndex
 dat.controllers.Controller.prototype.setBackgroundColorTo = function _(newColor) {
   console.log(this.property, /^opi\dName$/g.test(this.property));
   if (/^opi\dName$/g.test(this.property)) {
-    this.__li.style.backgroundColor = newColor;
-  } else {
     this.__li.children[0].children[0].style.backgroundColor = newColor;
+  } else {
+    this.__li.style.backgroundColor = newColor;
   }
 };
 /* eslint-enable no-underscore-dangle */

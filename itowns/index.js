@@ -226,10 +226,10 @@ async function main() {
     // Saisie
     const polygonStr = Object.keys(saisie)[saisie.Polygon];
     menu.add({ [polygonStr]: editing.saisie.bind(editing, polygonStr) }, polygonStr)
-      .name('Saisie manuelle [p]');
+      .name('Simple edit [p]');
     const lineStringStr = Object.keys(saisie)[saisie.LineString];
     menu.add({ [lineStringStr]: editing.saisie.bind(editing, lineStringStr) }, lineStringStr)
-      .name('Saisie semi-auto [t]');// TODO shortcut
+      .name('Complexe edit [t]');// TODO shortcut
     menu.add(editing, 'undo').name('undo [CTRL+Z]');
     menu.add(editing, 'redo').name('redo [CTRL+Y]');
     menu.add(editing, 'clear')
