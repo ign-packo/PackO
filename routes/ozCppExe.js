@@ -10,8 +10,8 @@ const returnMsg = require('../middlewares/returnMsg');
 const ozExe = process.env.OZEXE;
 
 router.get('/ozCppExe', [
-  query('refOpi')
-    .exists().withMessage(createErrMsg.missingParameter('refOpi')),
+  query('fstOpi')
+    .exists().withMessage(createErrMsg.missingParameter('fstOpi')),
   query('secOpi')
     .exists().withMessage(createErrMsg.missingParameter('secOpi')),
   query('patch')
@@ -20,6 +20,8 @@ router.get('/ozCppExe', [
     .exists().withMessage(createErrMsg.missingParameter('graph')),
   query('weightDiffCost') // value btwn 0 and 1
     .exists().withMessage(createErrMsg.missingParameter('weightDiffCost')),
+  query('weightTransition')
+    .exists().withMessage(createErrMsg.missingParameter('weightTransition')),
   query('minCost')
     .exists().withMessage(createErrMsg.missingParameter('minCost')),
   query('tension')
@@ -36,17 +38,18 @@ router.get('/ozCppExe', [
   }
   const params = matchedData(req);
   const {
-    refOpi, secOpi, patch, graph, weightDiffCost, minCost, tension, border, outDir,
+    fstOpi, secOpi, patch, graph, weightDiffCost, weightTransition, minCost,
+    tension, border, outDir,
   } = params;
 
   console.log('Parameters: ', params);
 
   const arrArgs = ['-r'];
-  if (Array.isArray(refOpi)) {
-    refOpi.forEach((refO) => {
-      arrArgs.push(refO);
+  if (Array.isArray(fstOpi)) {
+    fstOpi.forEach((fstO) => {
+      arrArgs.push(fstO);
     });
-  } else arrArgs.push(refOpi);
+  } else arrArgs.push(fstOpi);
 
   arrArgs.push('-s');
   if (Array.isArray(secOpi)) {
@@ -64,7 +67,7 @@ router.get('/ozCppExe', [
     });
   } else arrArgs.push(graph);
 
-  arrArgs.push('-w', `${weightDiffCost}`, '-m', `${minCost}`,
+  arrArgs.push('-w', `${weightDiffCost}`, '-wt', `${weightTransition}`, '-m', `${minCost}`,
     '-t', `${tension}`, '-b', `${border}`, '-o', `${outDir}`);
 
   execFile(ozExe, arrArgs, (err, stdout) => {
