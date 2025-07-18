@@ -218,7 +218,6 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
   const opiRef = (await db.getOPIFromName(pgClient, idBranch, feature.properties.opiRef.name));
   // patch auto
   let opiSec = {
-    name: 'none',
     id: null,
   };
   const patchIsAuto = !!feature.properties.opiSec.name;
@@ -237,6 +236,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
     [coordinates] = coordinates;
   }
   const cogs = getCOGs(coordinates, overviews, borderMeters);
+
   const promisesCreatePatch = [];
   debug('~create patch');
   cogs.forEach((aCog) => {
@@ -255,112 +255,108 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature) {
   });
   debug('~Promise.all');
   const slabsModified = [];
-  await Promise.all(promisesCreatePatch).then(async (patches) => {
-    const promises = [];
-    debug('~process patch');
+  const patches = await Promise.all(promisesCreatePatch);
+  const promises = [];
+  debug('~process patch');
 
-    patches.forEach((patch) => {
-      if (patch === null) {
-        return;
-      }
-      /* eslint-disable no-param-reassign */
-      patch.urlGraphOutput = path.join(dirCache,
-        'graph',
-        patch.cogPath.dirPath,
+  patches.forEach((patch) => {
+    if (patch === null) {
+      return;
+    }
+    /* eslint-disable no-param-reassign */
+    patch.urlGraphOutput = path.join(dirCache,
+      'graph',
+      patch.cogPath.dirPath,
+      `${idBranch}_${patch.cogPath.filename}_${newPatchNum}.tif`);
+    if (patch.withRgb) {
+      patch.urlOrthoRgbOutput = path.join(dirCache,
+        'ortho', patch.cogPath.dirPath,
         `${idBranch}_${patch.cogPath.filename}_${newPatchNum}.tif`);
+    }
+    if (patch.withIr) {
+      patch.urlOrthoIrOutput = path.join(dirCache,
+        'ortho', patch.cogPath.dirPath,
+        `${idBranch}_${patch.cogPath.filename}_${newPatchNum}i.tif`);
+    }
+
+    /* eslint-enable no-param-reassign */
+    slabsModified.push(patch.slab);
+
+    promises.push(gdalProcessing.processPatchAsync(patch, overviews.tileSize.width,
+      patchIsAuto));
+  });
+  debug('', promises.length, 'patchs à appliquer.');
+  await Promise.all(promises);
+  // Tout c'est bien passé
+  debug("=> tout c'est bien passé on peut renommer les images");
+  patches.forEach((patch) => {
+    if (patch === null) {
+      return;
+    }
+    const urlHistory = path.join(dirCache,
+      'opi',
+      patch.cogPath.dirPath,
+      `${idBranch}_${patch.cogPath.filename}_history.packo`);
+    if (fs.existsSync(urlHistory)) {
+      debug('history existe');
+      const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchNum}`;
+      const tabHistory = history.split(';');
+      const prevId = tabHistory[tabHistory.length - 2];
+
+      const urlGraphPrev = path.join(dirCache, 'graph', patch.cogPath.dirPath,
+        `${idBranch}_${patch.cogPath.filename}_${prevId}.tif`);
+      // on ne fait un rename que si prevId n'est pas 'orig'
+      if (prevId !== 'orig') {
+        rename(patch.urlGraph, urlGraphPrev);
+      }
+
       if (patch.withRgb) {
-        patch.urlOrthoRgbOutput = path.join(dirCache,
-          'ortho', patch.cogPath.dirPath,
-          `${idBranch}_${patch.cogPath.filename}_${newPatchNum}.tif`);
+        const urlOrthoRbgPrev = path.join(dirCache, 'ortho', patch.cogPath.dirPath,
+          `${idBranch}_${patch.cogPath.filename}_${prevId}.tif`);
+        // on ne fait un rename que si prevId n'est pas 'orig'
+        if (prevId !== 'orig') {
+          rename(patch.urlOrthoRgb, urlOrthoRbgPrev);
+        }
       }
       if (patch.withIr) {
-        patch.urlOrthoIrOutput = path.join(dirCache,
-          'ortho', patch.cogPath.dirPath,
-          `${idBranch}_${patch.cogPath.filename}_${newPatchNum}i.tif`);
+        const urlOrthoIrPrev = path.join(dirCache, 'ortho', patch.cogPath.dirPath,
+          `${idBranch}_${patch.cogPath.filename}_${prevId}i.tif`);
+        // on ne fait un rename que si prevId n'est pas 'orig'
+        if (prevId !== 'orig') {
+          rename(patch.urlOrthoIr, urlOrthoIrPrev);
+        }
       }
-
-      /* eslint-enable no-param-reassign */
-      slabsModified.push(patch.slab);
-
-      promises.push(gdalProcessing.processPatchAsync(patch, overviews.tileSize.width,
-        patchIsAuto));
-    });
-    debug('', promises.length, 'patchs à appliquer.');
-    await Promise.all(promises).then(
-      async () => {
-      // Tout c'est bien passé
-        debug("=> tout c'est bien passé on peut renommer les images");
-        patches.forEach((patch) => {
-          if (patch === null) {
-            return;
-          }
-          const urlHistory = path.join(dirCache,
-            'opi',
-            patch.cogPath.dirPath,
-            `${idBranch}_${patch.cogPath.filename}_history.packo`);
-          if (fs.existsSync(urlHistory)) {
-            debug('history existe');
-            const history = `${fs.readFileSync(`${urlHistory}`)};${newPatchNum}`;
-            const tabHistory = history.split(';');
-            const prevId = tabHistory[tabHistory.length - 2];
-
-            const urlGraphPrev = path.join(dirCache, 'graph', patch.cogPath.dirPath,
-              `${idBranch}_${patch.cogPath.filename}_${prevId}.tif`);
-            // on ne fait un rename que si prevId n'est pas 'orig'
-            if (prevId !== 'orig') {
-              rename(patch.urlGraph, urlGraphPrev);
-            }
-
-            if (patch.withRgb) {
-              const urlOrthoRbgPrev = path.join(dirCache, 'ortho', patch.cogPath.dirPath,
-                `${idBranch}_${patch.cogPath.filename}_${prevId}.tif`);
-                // on ne fait un rename que si prevId n'est pas 'orig'
-              if (prevId !== 'orig') {
-                rename(patch.urlOrthoRgb, urlOrthoRbgPrev);
-              }
-            }
-            if (patch.withIr) {
-              const urlOrthoIrPrev = path.join(dirCache, 'ortho', patch.cogPath.dirPath,
-                `${idBranch}_${patch.cogPath.filename}_${prevId}i.tif`);
-              // on ne fait un rename que si prevId n'est pas 'orig'
-              if (prevId !== 'orig') {
-                rename(patch.urlOrthoIr, urlOrthoIrPrev);
-              }
-            }
-            debug(' historique :', history);
-            fs.writeFileSync(`${urlHistory}`, history);
-          } else {
-            debug('history n existe pas encore');
-            const history = `orig;${newPatchNum}`;
-            fs.writeFileSync(`${urlHistory}`, history);
-            // On a pas besoin de renommer l'image d'origine
-            // qui reste partagée pour toutes les branches
-          }
-          rename(patch.urlGraphOutput, patch.urlGraph);
-          if (patch.withRgb) {
-            rename(patch.urlOrthoRgbOutput, patch.urlOrthoRgb);
-          }
-          if (patch.withIr) {
-            rename(patch.urlOrthoIrOutput, patch.urlOrthoIr);
-          }
-        });
-        // on note le patch Id
-        /* eslint-disable-next-line */
-        feature.properties.num = newPatchNum;
-        /* eslint-disable-next-line */
-        feature.properties.slabs = slabsModified;
-        // on ajoute ce patch à l'historique
-        debug('=> Patch', newPatchNum, 'ajouté');
-
-        // ajouter les slabs correspondant au patch dans la table correspondante
-        await db.insertSlabs(pgClient,
-          patchId,
-          feature.properties.slabs);
-
-        debug('on retourne les dalles modifiees -- 1 : ', slabsModified);
-      },
-    );
+      debug(' historique :', history);
+      fs.writeFileSync(`${urlHistory}`, history);
+    } else {
+      debug('history n existe pas encore');
+      const history = `orig;${newPatchNum}`;
+      fs.writeFileSync(`${urlHistory}`, history);
+      // On a pas besoin de renommer l'image d'origine
+      // qui reste partagée pour toutes les branches
+    }
+    rename(patch.urlGraphOutput, patch.urlGraph);
+    if (patch.withRgb) {
+      rename(patch.urlOrthoRgbOutput, patch.urlOrthoRgb);
+    }
+    if (patch.withIr) {
+      rename(patch.urlOrthoIrOutput, patch.urlOrthoIr);
+    }
   });
+  // on note le patch Id
+  /* eslint-disable-next-line */
+        feature.properties.num = newPatchNum;
+  /* eslint-disable-next-line */
+        feature.properties.slabs = slabsModified;
+  // on ajoute ce patch à l'historique
+  debug('=> Patch', newPatchNum, 'ajouté');
+
+  // ajouter les slabs correspondant au patch dans la table correspondante
+  await db.insertSlabs(pgClient,
+    patchId,
+    feature.properties.slabs);
+
+  debug('on retourne les dalles modifiees -- 1 : ', slabsModified);
   debug('Fin de applyPatch');
   debug('on retourne les dalles modifiees -- 2 : ', slabsModified);
   return slabsModified;
