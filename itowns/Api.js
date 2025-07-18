@@ -173,7 +173,7 @@ class API {
           if (res.status === 200) {
             resolve();
           } else {
-            res.json().then((json) => reject(json.msg));
+            res.json().then((json) => reject(json));
           }
         });
     });

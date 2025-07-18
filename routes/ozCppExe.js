@@ -1,0 +1,86 @@
+const debug = require('debug')('ozCpp');
+const router = require('express').Router();
+const { matchedData, query } = require('express-validator');
+const { execFile } = require('child_process');
+
+const validateParams = require('../paramValidation/validateParams');
+const createErrMsg = require('../paramValidation/createErrMsg');
+const returnMsg = require('../middlewares/returnMsg');
+
+const ozExe = process.env.OZEXE;
+
+router.get('/ozCppExe', [
+  query('fstOpi')
+    .exists().withMessage(createErrMsg.missingParameter('fstOpi')),
+  query('secOpi')
+    .exists().withMessage(createErrMsg.missingParameter('secOpi')),
+  query('patch')
+    .exists().withMessage(createErrMsg.missingParameter('patch')),
+  query('graph')
+    .exists().withMessage(createErrMsg.missingParameter('graph')),
+  query('weightDiffCost') // value btwn 0 and 1
+    .exists().withMessage(createErrMsg.missingParameter('weightDiffCost')),
+  query('weightTransition')
+    .exists().withMessage(createErrMsg.missingParameter('weightTransition')),
+  query('minCost')
+    .exists().withMessage(createErrMsg.missingParameter('minCost')),
+  query('tension')
+    .exists().withMessage(createErrMsg.missingParameter('tension')),
+  query('border')
+    .exists().withMessage(createErrMsg.missingParameter('border')),
+  query('outDir')
+    .exists().withMessage(createErrMsg.missingParameter('outDir')),
+], validateParams, (req, res, next) => {
+  debug('~~~ozCppExe~~~');
+  if (req.error) {
+    next();
+    return;
+  }
+  const params = matchedData(req);
+  const {
+    fstOpi, secOpi, patch, graph, weightDiffCost, weightTransition, minCost,
+    tension, border, outDir,
+  } = params;
+
+  console.log('Parameters: ', params);
+
+  const arrArgs = ['-r'];
+  if (Array.isArray(fstOpi)) {
+    fstOpi.forEach((fstO) => {
+      arrArgs.push(fstO);
+    });
+  } else arrArgs.push(fstOpi);
+
+  arrArgs.push('-s');
+  if (Array.isArray(secOpi)) {
+    secOpi.forEach((secO) => {
+      arrArgs.push(secO);
+    });
+  } else arrArgs.push(secOpi);
+
+  arrArgs.push('-p', `${patch}`);
+
+  arrArgs.push('-g');
+  if (Array.isArray(graph)) {
+    graph.forEach((gr) => {
+      arrArgs.push(gr);
+    });
+  } else arrArgs.push(graph);
+
+  arrArgs.push('-w', `${weightDiffCost}`, '-wt', `${weightTransition}`, '-m', `${minCost}`,
+    '-t', `${tension}`, '-b', `${border}`, '-o', `${outDir}`);
+
+  execFile(ozExe, arrArgs, (err, stdout) => {
+    if (err) {
+      console.log(stdout);
+      console.log(err);
+      res.status(400).send(stdout + err);
+    } else {
+      console.log(stdout);
+      res.status(200).send(`${stdout} OK`);
+    }
+  });
+},
+returnMsg);
+
+module.exports = router;

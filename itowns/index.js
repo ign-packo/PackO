@@ -2,7 +2,7 @@
 /* global setupLoadingScreen */
 import * as itowns from 'itowns';
 import Viewer from './Viewer';
-import Editing from './Editing';
+import Editing, { saisie } from './Editing';
 import Alert from './Alert';
 import Branch from './Branch';
 import Menu from './Menu';
@@ -167,24 +167,44 @@ async function main() {
       .name('Add new branch');
 
     // Selection OPI
-    menu.add(editing, 'select').name('Select an OPI [s]');
-    menu.add(editing, 'opiName')
-      .name('OPI selected').listen()
+    menu.add({ select1: editing.select.bind(editing, 1) }, 'select1')
+      .name('Select an OPI [s]');// TODO linked name with shortcut
+
+    menu.add(editing, 'opi1Name')
+      .name('OPI selected')
+      .listen()
       .onChange((name) => {
         console.log('opi selected: ', name);
       })
       .domElement.parentElement.style.pointerEvents = 'none';
-    menu.add(editing, 'opiDate')
-      .name('Date').listen()
+    menu.add(editing, 'opi1Date')
+      .name('➢ Date').listen()
       .domElement.parentElement.style.pointerEvents = 'none';
-    menu.add(editing, 'opiTime')
-      .name('Time').listen()
+    menu.add(editing, 'opi1Time')
+      .name('➢ Time').listen()
+      .domElement.parentElement.style.pointerEvents = 'none';
+
+    menu.add({ select2: editing.select.bind(editing, 2) }, 'select2')
+      .name('Select a 2nd OPI [w]');
+    menu.add(editing, 'opi2Name')
+      .name('OPI selected')
+      .listen()
+      .onChange((name) => {
+        console.log('opi selected: ', name);
+      })
+      .domElement.parentElement.style.pointerEvents = 'none';
+
+    menu.add(editing, 'opi2Date')
+      .name('➢ Date').listen()
+      .domElement.parentElement.style.pointerEvents = 'none';
+    menu.add(editing, 'opi2Time')
+      .name('➢ Time').listen()
       .domElement.parentElement.style.pointerEvents = 'none';
 
     // Coord
     menu.add(editing, 'coord')
-      .name('Coordinates').listen()
-      .onChange(() => {
+      .name('Coordinates')
+      .listen().onChange(() => {
         if (!checkCoordString(editing.coord)) {
           viewer.message = 'Coordonnees non valides';
         } else {
@@ -204,7 +224,12 @@ async function main() {
       });
 
     // Saisie
-    menu.add(editing, 'polygon').name('Start polygon [p]');
+    const polygonStr = Object.keys(saisie)[saisie.Polygon];
+    menu.add({ [polygonStr]: editing.saisie.bind(editing, polygonStr) }, polygonStr)
+      .name('Simple edit [p]');
+    const lineStringStr = Object.keys(saisie)[saisie.LineString];
+    menu.add({ [lineStringStr]: editing.saisie.bind(editing, lineStringStr) }, lineStringStr)
+      .name('Complexe edit [t]');// TODO shortcut
     menu.add(editing, 'undo').name('undo [CTRL+Z]');
     menu.add(editing, 'redo').name('redo [CTRL+Y]');
     menu.add(editing, 'clear')
@@ -263,7 +288,8 @@ async function main() {
     // visibility of controllers
     menu.setPatchCtr(branch.active.name);// branch.active.name = 'orig'
     menu.setAlertCtr(alert.layerName);// alert.layerName = '-'
-    menu.setOpiCtr(editing.opiName);// editing.opiName = 'none'
+    menu.setOpi1DataCtr(editing.opi1Name);// editing.opi1Name = 'none'
+    menu.setOpi2DataCtr(editing.opi2Name);// editing.opi2Name = 'none'
 
     viewerDiv.focus();
 
@@ -323,7 +349,7 @@ async function main() {
       } else {
         viewer.refresh('Opi');
       }
-      menu.setOpiCtr(newOpi.name);
+      menu[`setOpi${newOpi.id}DataCtr`](newOpi.name);
     });
 
     view.addEventListener('branch-created', (newBranch) => {
@@ -397,9 +423,9 @@ async function main() {
     });
 
     view.addEventListener('error', (ev) => {
+      console.log(ev.error instanceof Array ? ev.error.map((err) => err.status) : ev.error.msg);
       // eslint-disable-next-line no-alert
-      console.log(ev.error instanceof Array ? ev.error.map((error) => error.message).join('') : ev.error.message);
-      window.alert(ev.error instanceof Array ? ev.error.join('') : ev.error);
+      window.alert(ev.error instanceof Array ? ev.error.map((err) => err.status).join('\n') : ev.error.msg);
     });
 
     viewerDiv.addEventListener('mousemove', (ev) => {

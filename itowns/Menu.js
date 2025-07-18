@@ -35,7 +35,12 @@ dat.controllers.Controller.prototype.selectIndex = function selectIndex(newIndex
   this.__select.options.selectedIndex = newIndex;
 };
 dat.controllers.Controller.prototype.setBackgroundColorTo = function _(newColor) {
-  this.__li.style.backgroundColor = newColor;
+  console.log(this.property, /^opi\dName$/g.test(this.property));
+  if (/^opi\dName$/g.test(this.property)) {
+    this.__li.children[0].children[0].style.backgroundColor = newColor;
+  } else {
+    this.__li.style.backgroundColor = newColor;
+  }
 };
 /* eslint-enable no-underscore-dangle */
 
@@ -50,9 +55,15 @@ class Menu extends dat.GUI {
 
     menuDiv.appendChild(this.domElement);
 
-    this.colorGui = this.addFolder('Color Layers');
+    const colorLayersName = `Color Layers ${(this.shortCuts.layerFolders.ColorLayers
+      ? ` [${this.shortCuts.layerFolders.ColorLayers}]`
+      : '')}`;
+    const extraLayersName = `Extra Layers ${(this.shortCuts.layerFolders.extraLayers
+      ? ` [${this.shortCuts.layerFolders.extraLayers}]`
+      : '')}`;
+    this.colorGui = this.addFolder(colorLayersName);
     this.colorGui.open();
-    this.vectorGui = this.addFolder('Extra Layers [v]');
+    this.vectorGui = this.addFolder(extraLayersName);
     this.vectorGui.domElement.id = 'extraLayers';
     this.vectorGui.open();
 
@@ -84,7 +95,7 @@ class Menu extends dat.GUI {
   }
 
   setPatchCtr(branchName) {
-    this[branchName !== 'orig' ? 'show' : 'hide'](['polygon', 'undo', 'redo']);
+    this[branchName !== 'orig' ? 'show' : 'hide'](['Polygon', 'LineString', 'undo', 'redo']);
     if (process.env.NODE_ENV === 'development') this[branchName !== 'orig' ? 'show' : 'hide']('clear');
   }
 
@@ -93,8 +104,12 @@ class Menu extends dat.GUI {
     this[layerName === 'Remarques' ? 'show' : 'hide'](['delRemark']);
   }
 
-  setOpiCtr(opiName) {
-    this[opiName === 'none' ? 'hide' : 'show'](['opiName', 'opiDate', 'opiTime']);
+  setOpi1DataCtr(opiName) {
+    this[opiName === 'none' ? 'hide' : 'show'](['opi1Name', 'opi1Date', 'opi1Time', 'select2']);
+  }
+
+  setOpi2DataCtr(opiName) {
+    this[opiName === 'none' ? 'hide' : 'show'](['opi2Name', 'opi2Date', 'opi2Time']);
   }
 
   refreshDropBox(dropBoxName, listOfValues,
@@ -142,6 +157,7 @@ class Menu extends dat.GUI {
         newLayer.visible = value;
         this.view.notifyChange(newLayer);
       }));
+    // TODO manage check when we select an OPI
 
     // opacity
     folder.add({ opacity: layer.opacity }, 'opacity').min(0.001).max(1.0)

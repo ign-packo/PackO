@@ -22,6 +22,8 @@ tags:
     description: Récupération de fichiers
   - name: process
     description: Gestion des processus longs (donc asynchrones)
+  - name: ozcppexe
+    description: Lancement oz exe c++
 paths:
 # VERSION
   '/version':
@@ -818,6 +820,100 @@ paths:
         required: true
         schema:
           type: integer
+      responses:
+        '200':
+          description: OK
+
+  # CPP EXE
+  '/ozCppExe':
+    get:
+      tags:
+        - ozcppexe
+      summary: "Lancement exe retouche semi-auto du graphe"
+      description: ""
+      parameters:
+      - in: query
+        name: fstOpi
+        description: first opi path
+        required: true
+        schema:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+          example: [opi1_0.tif]
+      - in: query
+        name: secOpi
+        description: second opi path
+        required: true
+        schema:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+          example: [opi2_0.tif]
+      - in: query
+        name: patch
+        description: geojson patch path
+        required: true
+        schema:
+          type: string
+        example: patch.geojson
+      - in: query
+        name: graph
+        description: geotiff_graph_path
+        required: true
+        schema:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+          example: [graph_0.tif]
+      - in: query
+        name: weightDiffCost
+        description: weight of difference cost, between 0 and 1
+        required: false
+        schema:
+          type: double
+          minimum: 0
+          maximum: 1
+          default: 0.95
+      - in: query
+        name: weightTransition
+        description: weight of transition cost
+        required: false
+        schema:
+          type: double
+          minimum: 0
+          default: 10.0
+      - in: query
+        name: minCost
+        description: minimum cost
+        required: false
+        schema:
+          type: double
+          default: 0.0001
+      - in: query
+        name: tension
+        description: tension
+        required: false
+        schema:
+          type: integer
+          default: 2
+      - in: query
+        name: border
+        description: border in meters
+        required: false
+        schema:
+          type: integer
+          default: 20
+      - in: query
+        name: outDir
+        description: output directory path
+        required: false
+        schema:
+          type: string
+          default: 'results'
       responses:
         '200':
           description: OK
