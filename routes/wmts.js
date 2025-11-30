@@ -69,6 +69,7 @@ router.get('/:idBranch/wmts',
   validateParams,
   branch.getCachePath,
   cache.getOverviews,
+  branch.lockShared,
   [
     query('TILEMATRIXSET').if(query('REQUEST').isIn(['GetTile', 'GetFeatureInfo']))
       .exists().withMessage(createErrMsg.missingParameter('TILEMATRIXSET'))
