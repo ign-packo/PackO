@@ -40,7 +40,7 @@
     "gdal-async": "^3.7.0",
     "geojson-validation": "^1.0.2",
     "git-describe": "^4.1.0",
-    "mocha": "^10.1.0",
+    "mocha": "^10.8.2",
     "nocache": "^2.1.0",
     "pg": "^8.7.1",
     "pg-format": "^1.0.4",
