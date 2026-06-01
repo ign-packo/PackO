@@ -217,30 +217,30 @@ function wmts(req, _res, next) {
     }
     try {
       const cogPath = cog.getTileInfo(TILECOL, TILEROW, TILEMATRIX, overviews);
-      let urlBranch = path.join(req.dir_cache,
+      const cogDirUrl = path.join(req.dir_cache,
         layerName,
-        cogPath.dirPath,
-        `${idBranch}_${cogPath.filename}`);
-      let url = path.join(req.dir_cache,
-        layerName,
-        cogPath.dirPath,
-        `${cogPath.filename}`);
+        cogPath.dirPath);
+      let cogNameRVB = `${idBranch}_${cogPath.filename}`;
+      let cogNameIR = `${cogNameRVB}i`;
+      let cogNameOrig = `${cogPath.filename}`;
       if (LAYER === 'opi') {
         if (!Name) {
           [Name] = Object.keys(overviews.list_OPI);
         }
         debugGetTile('Name : ', Name);
-        url += `_${Name}`;
+        cogNameOrig += `_${Name}`;
         // Pas de gestion de branche pour les OPI
-        urlBranch = url;
+        cogNameRVB = cogNameOrig;
+        cogNameIR = cogNameOrig.replace('x', '_ix');
       }
-      urlBranch += '.tif';
-      url += '.tif';
+      let cogUrl = path.join(cogDirUrl, `${cogNameOrig}.tif`);
+      const cogUrlRVB = path.join(cogDirUrl, `${cogNameRVB}.tif`);
+      const cogUrlIR = path.join(cogDirUrl, `${cogNameIR}.tif`);
       // si jamais la version de la branche existe, c'est elle qu'il faut utiliser
-      debug(url, urlBranch);
-      if (fs.existsSync(urlBranch)) {
+      debug('cogUrl :', cogUrl, 'cogUrlRVB: ', cogUrlRVB, 'cogUrlIR: ', cogUrlIR);
+      if (fs.existsSync(cogUrlRVB) || fs.existsSync(cogUrlIR)) {
         debug('version branche');
-        url = urlBranch;
+        cogUrl = cogUrlRVB;
       } else {
         debug('version orig');
       }
@@ -258,7 +258,7 @@ function wmts(req, _res, next) {
           break;
         default:
       }
-      gdalProcessing.getTileEncoded(url,
+      gdalProcessing.getTileEncoded(cogUrl,
         cogPath.x, cogPath.y, cogPath.z,
         formatGDAL, overviews.tileSize.width, bands)
         .then((img) => {
