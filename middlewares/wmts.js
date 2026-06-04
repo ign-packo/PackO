@@ -217,30 +217,28 @@ function wmts(req, _res, next) {
     }
     try {
       const cogPath = cog.getTileInfo(TILECOL, TILEROW, TILEMATRIX, overviews);
-      const cogDirUrl = path.join(req.dir_cache,
-        layerName,
-        cogPath.dirPath);
-      let cogNameRVB = `${idBranch}_${cogPath.filename}`;
-      let cogNameIR = `${cogNameRVB}i`;
-      let cogNameOrig = `${cogPath.filename}`;
+      let cogRgbFilename = `${idBranch}_${cogPath.filename}`;
+      let cogIrFilename = `${cogRgbFilename}i`;
+      let cogOrigFilename = `${cogPath.filename}`;
       if (LAYER === 'opi') {
         if (!Name) {
           [Name] = Object.keys(overviews.list_OPI);
         }
         debugGetTile('Name : ', Name);
-        cogNameOrig += `_${Name}`;
+        cogOrigFilename += `_${Name}`;
         // Pas de gestion de branche pour les OPI
-        cogNameRVB = cogNameOrig;
-        cogNameIR = cogNameOrig.replace('x', '_ix');
+        cogRgbFilename = cogOrigFilename;
+        cogIrFilename = cogOrigFilename.replace('x', '_ix');
       }
-      let cogUrl = path.join(cogDirUrl, `${cogNameOrig}.tif`);
-      const cogUrlRVB = path.join(cogDirUrl, `${cogNameRVB}.tif`);
-      const cogUrlIR = path.join(cogDirUrl, `${cogNameIR}.tif`);
-      // si jamais la version de la branche existe, c'est elle qu'il faut utiliser
-      debug('cogUrl :', cogUrl, 'cogUrlRVB: ', cogUrlRVB, 'cogUrlIR: ', cogUrlIR);
-      if (fs.existsSync(cogUrlRVB) || fs.existsSync(cogUrlIR)) {
+      const cogDirUrl = path.join(req.dir_cache, layerName, cogPath.dirPath);
+      let cogUrl = path.join(cogDirUrl, `${cogOrigFilename}.tif`);
+      const cogRgbUrl = path.join(cogDirUrl, `${cogRgbFilename}.tif`);
+      const cogIrUrl = path.join(cogDirUrl, `${cogIrFilename}.tif`);
+      // S'il y a une image avec saisie, il faut prend celle-ci
+      debug('cogUrl :', cogUrl, 'cogRgbUrl: ', cogRgbUrl, 'cogIrUrl: ', cogIrUrl);
+      if (fs.existsSync(cogRgbUrl) || fs.existsSync(cogIrUrl)) {
         debug('version branche');
-        cogUrl = cogUrlRVB;
+        cogUrl = cogRgbUrl;
       } else {
         debug('version orig');
       }
