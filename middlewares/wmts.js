@@ -232,13 +232,14 @@ function wmts(req, _res, next) {
       }
       const cogDirUrl = path.join(req.dir_cache, layerName, cogPath.dirPath);
       let cogUrl = path.join(cogDirUrl, `${cogOrigFilename}.tif`);
-      const cogRgbUrl = path.join(cogDirUrl, `${cogRgbFilename}.tif`);
-      const cogIrUrl = path.join(cogDirUrl, `${cogIrFilename}.tif`);
       // S'il y a une image avec saisie, il faut prend celle-ci
-      debug('cogUrl :', cogUrl, 'cogRgbUrl: ', cogRgbUrl, 'cogIrUrl: ', cogIrUrl);
-      if (fs.existsSync(cogRgbUrl) || fs.existsSync(cogIrUrl)) {
+
+      debug('cogDirUrl:', cogDirUrl, 'cogOrigFilename: ', cogOrigFilename,
+        'cogRgbFilename: ', cogRgbFilename, 'cogIrFilename: ', cogIrFilename);
+      if (fs.existsSync(path.join(cogDirUrl, `${cogRgbFilename}.tif`))
+          || fs.existsSync(path.join(cogDirUrl, `${cogIrFilename}.tif`))) {
         debug('version branche');
-        cogUrl = cogRgbUrl;
+        cogUrl = path.join(cogDirUrl, `${cogRgbFilename}.tif`);
       } else {
         debug('version orig');
       }
