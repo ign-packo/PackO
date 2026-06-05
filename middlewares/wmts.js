@@ -232,10 +232,13 @@ function wmts(req, _res, next) {
       }
       const cogDirUrl = path.join(req.dir_cache, layerName, cogPath.dirPath);
       let cogUrl = path.join(cogDirUrl, `${cogOrigFilename}.tif`);
-      // S'il y a une image avec saisie, il faut prend celle-ci
 
       debug('cogDirUrl:', cogDirUrl, 'cogOrigFilename: ', cogOrigFilename,
         'cogRgbFilename: ', cogRgbFilename, 'cogIrFilename: ', cogIrFilename);
+      // On teste la présence de fichiers avec saisie en RVB et IR, pour gérer les
+      // caches juste RVB ou juste IR. Par la suite, on ne garde que le chemin RVB
+      // car dans gdalProcessing.getTileEncoded, il recalcule le chemin IR et ne
+      // prend en compte que les fichiers présents.
       if (fs.existsSync(path.join(cogDirUrl, `${cogRgbFilename}.tif`))
           || fs.existsSync(path.join(cogDirUrl, `${cogIrFilename}.tif`))) {
         debug('version branche');
