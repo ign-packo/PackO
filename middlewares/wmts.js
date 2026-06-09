@@ -220,13 +220,15 @@ function wmts(req, _res, next) {
       let cogRgbFilename = `${idBranch}_${cogPath.filename}`;
       let cogIrFilename = `${cogRgbFilename}i`;
       let cogOrigFilename = `${cogPath.filename}`;
+      // Cas des opi:
+      // Les opis ne sont jamais modifier par une saisie ou une branche
+      // il faut donc prend ceux d'origine en RVB et IR
       if (LAYER === 'opi') {
         if (!Name) {
           [Name] = Object.keys(overviews.list_OPI);
         }
         debugGetTile('Name : ', Name);
         cogOrigFilename += `_${Name}`;
-        // Pas de gestion de branche pour les OPI
         cogRgbFilename = cogOrigFilename;
         cogIrFilename = cogOrigFilename.replace('x', '_ix');
       }
