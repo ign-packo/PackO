@@ -409,18 +409,46 @@ print_info_add_layer(contour_lname)
 
 # ------ create group for patches elements --------
 patch_group = project.layerTreeRoot().insertGroup(0, 'SAISIE')
-# --- create patches layer and add to group ----
-patches_fname = os.path.join(dirpath_out, 'retouches_graphe.gpkg')
-patches_fields = QgsFields()
-patches_fields.append(QgsField('fid', QVariant.Int))
-create_vector(patches_fname, patches_fields, QgsWkbTypes.Polygon, crs, project)
-patches_lname = 'retouches_graphe'
-patches_layer = add_layer_to_map(patches_fname, patches_lname,
-                                 project, 'ogr', is_raster=False,
-                                 disable_att_form_popup=True)
+
+# --- create manual patches layer and add to group ----
+manual_patches_fname = os.path.join(dirpath_out, 'raccords_manuel.gpkg')
+manual_patches_fields = QgsFields()
+manual_patches_fields.append(QgsField('fid', QVariant.Int))
+create_vector(manual_patches_fname, manual_patches_fields, QgsWkbTypes.Polygon, crs, project)
+manual_patches_lname = 'raccords_manuel'
+manual_patches_layer = add_layer_to_map(manual_patches_fname, manual_patches_lname,
+                                        project, 'ogr', is_raster=False,
+                                        disable_att_form_popup=True)
 # add to group
-patch_group.insertChildNode(1, QgsLayerTreeLayer(patches_layer))
-print_info_add_layer(patches_lname)
+patch_group.insertChildNode(1, QgsLayerTreeLayer(manual_patches_layer))
+print_info_add_layer(manual_patches_lname)
+
+# --- create nodes layer and add to group ----
+nodes_fname = os.path.join(dirpath_out, 'noeuds_manuel.gpkg')
+nodes_fields = QgsFields()
+nodes_fields.append(QgsField('fid', QVariant.Int))
+create_vector(nodes_fname, nodes_fields, QgsWkbTypes.Polygon, crs, project)
+nodes_lname = 'noeuds_manuel'
+nodes_layer = add_layer_to_map(nodes_fname, nodes_lname,
+                               project, 'ogr', is_raster=False,
+                               disable_att_form_popup=True)
+# add to group
+patch_group.insertChildNode(1, QgsLayerTreeLayer(nodes_layer))
+print_info_add_layer(nodes_lname)
+
+# --- create auto patches layer and add to group ----
+auto_patches_fname = os.path.join(dirpath_out, 'raccords_auto.gpkg')
+auto_patches_fields = QgsFields()
+auto_patches_fields.append(QgsField('fid', QVariant.Int))
+create_vector(auto_patches_fname, auto_patches_fields, QgsWkbTypes.LineString, crs, project)
+auto_patches_lname = 'raccords_auto'
+auto_patches_layer = add_layer_to_map(auto_patches_fname, auto_patches_lname,
+                                      project, 'ogr', is_raster=False,
+                                      disable_att_form_popup=True)
+# add to group
+patch_group.insertChildNode(1, QgsLayerTreeLayer(auto_patches_layer))
+print_info_add_layer(auto_patches_lname)
+
 # --- create infographic patches layer and add to group ----
 patches_infogr_fname = os.path.join(dirpath_out, 'retouches_info.gpkg')
 patches_infogr_fields = QgsFields()
