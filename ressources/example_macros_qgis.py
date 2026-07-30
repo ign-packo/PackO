@@ -8,6 +8,8 @@ from qgis.core import *
 import time
 from pathlib import Path, PurePath
 import os
+import math
+import random
 
 
 def openProject():
@@ -16,6 +18,9 @@ def openProject():
     fic_info_path = PurePath().joinpath(Path(QgsProject.instance().homePath(),
                                              Path(f'OUVERT_SUR_{computername}_PAR_{username}')))
     Path(fic_info_path).touch()
+    print(os.getcwd())
+    os.chdir(QgsProject.instance().homePath())
+    print(os.getcwd())
     pass
 
 def saveProject():
@@ -51,12 +56,16 @@ OPI=None
 color=None
 opi_layer = None
 ortho_layer = None
+ortho_irc_layer = None
 patch_layer = None
 patch_layer_auto = None
+patch_layer_triple = None
 retinfo_layer = None
 retinfosauv_layer = None
 avancement_layer = None
 graph_layer = None
+graph_surface_layer = None
+nb_undo = 0
 
 for layer in QgsProject.instance().mapLayers().values():
     name = layer.name().upper()
@@ -64,34 +73,54 @@ for layer in QgsProject.instance().mapLayers().values():
         opi_layer = layer
     if (name == 'ORTHO'):
         ortho_layer = layer
-    if (name == 'RETOUCHES_GRAPHE'):
+    if (name == 'ORTHOIRC'):
+        ortho_irc_layer = layer
+    if (name == 'RACCORDS_MANUEL'):
         patch_layer = layer
-    if (name == 'RETOUCHES_GRAPHE_AUTO'):
+    if (name == 'RACCORDS_AUTO'):
         patch_layer_auto = layer
+    if (name == 'NOEUDS_MANUEL'):
+        patch_layer_triple = layer
     if (name == 'RETOUCHES_INFO'):
         retinfo_layer = layer
     if (name == 'RETOUCHES_INFO_SAUV'):
         retinfosauv_layer = layer
     if (name == 'GRAPHE_CONTOUR'):
         graph_layer = layer
+    if (name == 'GRAPHE_SURFACE'):
+        graph_surface_layer = layer
     if (name == 'AVANCEMENT'):
         avancement_layer = layer
 
+# verification des paramètres de visibilité pour les couches de graphe
+# la bascule contour/surface doit etre réglée en fonction du nombre
+# tuiles dans une dalle du cache
+# ca depend aussi des DPI de l'écran puisque QGis raisonne en échelle
+dpi=iface.mapCanvas().logicalDpiX()
+res = graph_surface_layer.rasterUnitsPerPixelX()
+echelle=math.ceil(8*res/(0.0254/dpi))
+graph_surface_layer.setScaleBasedVisibility(True)
+graph_surface_layer.setMaximumScale(echelle)
+graph_layer.setScaleBasedVisibility(True)
+graph_layer.setMinimumScale(echelle)
+iface.mapCanvas().refresh()
 
+def setZoom(factor):
+    pixel_size = ortho_layer.rasterUnitsPerPixelX()
+    canvas = iface.mapCanvas()
+    current = canvas.mapUnitsPerPixel()
+    canvas.zoomByFactor(factor * pixel_size / current)
+    canvas.refresh()
 
-#print("POC PACKO")
-# iface.mapCanvas().setCachingEnabled(False)
-
-
-def sendPatch(feature, OPI, color):
-    # print("sendPatch:", feature, OPI, color)
-    exporter = QgsJsonExporter()
-    patch = json.loads(exporter.exportFeatures([feature]))
-    # print(patch)
-    patch['crs'] = {'type': 'name', 'properties': {'name': 'urn:ogc:def:crs:EPSG::'+crs}}
-    patch['features'][0]['properties'] = {'color': color, 'opiName': OPI}
+def sendPatch(patch):
+    print('sendPatch...')
+    #print(patch)
+    QApplication.setOverrideCursor(Qt.WaitCursor)
     res = requests.post(url_patch, json=patch)
-    return res.text
+    QApplication.restoreOverrideCursor()
+    print(res)
+    print('...sendPatch')
+    return res.text, res.status_code
 
 
 def selectOPI(x, y):
@@ -104,27 +133,55 @@ def selectOPI(x, y):
     else:
         return None, None
 
+def search_limit(pts, start, end, cache):
+    print(start, end)
+    if (end-start)==1:
+        print('limite: ', end)
+        return end
+    i=int((start+end)//2)
+    print("on teste :",i)
+    if not(i in cache):
+        pt = pts[i]
+        o, null = selectOPI(pt.x(), pt.y())
+        cache[i] = o
+    if cache[i] == cache[start]:
+        return search_limit(pts, i, end, cache)
+    return search_limit(pts, start, i, cache)
 
 def on_key(event):
     global OPI
     global color
+    global nb_undo
     # print("on_key")
     touche = event.key()
     # print(touche)
     iface.messageBar().clearWidgets()
 
+    # choix des niveaux de zoom
+    if (touche == Qt.Key_Ampersand):
+        setZoom(1)
+    if (touche == Qt.Key_Eacute):
+        setZoom(2)
+    if (touche == Qt.Key_QuoteDbl):
+        setZoom(4)
+    if (touche == Qt.Key_Apostrophe):
+        setZoom(8)
+    if (touche == Qt.Key_ParenLeft):
+        setZoom(16)
+
     if (touche == Qt.Key_M):
         iface.messageBar().pushMessage("PATCH ", "EN COURS : ", level=Qgis.Warning, duration=0)
         nb_features = patch_layer.featureCount()
-        if (OPI is None) or (color is None):
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Information)
-            msg.setText("PAS D'OPI SELECTIONNEE'")
-            msg.setWindowTitle("ERREUR")
-            msg.setStandardButtons(QMessageBox.Ok)
-            msg.exec_()
-            OPI = None
-            return
+        # changement de comportement: s'il n'y a pas d'OPI selectionnée, on prend celle du premier point du polygone
+        # if (OPI is None) or (color is None):
+        #     msg = QMessageBox()
+        #     msg.setIcon(QMessageBox.Information)
+        #     msg.setText("PAS D'OPI SELECTIONNEE'")
+        #     msg.setWindowTitle("ERREUR")
+        #     msg.setStandardButtons(QMessageBox.Ok)
+        #     msg.exec_()
+        #     OPI = None
+        #     return
         if nb_features == 0:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Information)
@@ -145,18 +202,205 @@ def on_key(event):
             return
         patch_layer.startEditing()
         feature = list(patch_layer.getFeatures())[0]
-        ## TODO: handle patch auto
-        mess = sendPatch(feature, OPI, color)
+        # recuperation de l'OPI si nécessaire
+        if (OPI is None) or (color is None):
+            first_pt = feature.geometry().asPolygon()[0][0]
+            print(first_pt)
+            OPI, color = selectOPI(first_pt.x(), first_pt.y())
+            print(OPI, color)
+        exporter = QgsJsonExporter()
+        patch=json.loads(exporter.exportFeatures([feature]))
+        patch['crs'] = {'type': 'name', 'properties': {'name': 'urn:ogc:def:crs:EPSG::2154'}}
+        # patch['features'][0]['properties'] = {'opiRef': {'name': OPI, 'color': color}}
+        patch['features'][0]['properties'] = {'opiName': OPI, 'color': color, 'is_auto': False}
+        mess, code = sendPatch(patch)
+        if code != 200:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText(mess)
+            msg.setWindowTitle("ERREUR")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+            OPI = None
+            return
+        else:
+            nb_undo = 1
+
         print(mess)
         patch_layer.deleteFeature(feature.id())
         patch_layer.commitChanges()
         iface.messageBar().pushMessage("PATCH ", "APPLIQUÉ : ", level=Qgis.Success, duration=0)
         graph_layer.setDataSource(graph_layer.source(), "graphe_contour", "gdal")
         ortho_layer.setDataSource(ortho_layer.source(), "ortho", "gdal")
+        if ortho_irc_layer:
+            ortho_irc_layer.setDataSource(ortho_irc_layer.source(), "orthoIRC", "gdal")
         OPI = None
-        # pour ne pas a avoir a remettre en mode edition pour la prochiane saisie
+        # pour ne pas a avoir a remettre en mode edition pour la prochaine saisie
         patch_layer.startEditing()
         return
+
+    if (touche == Qt.Key_N):
+        # on recupére un polygone
+        patch_layer_triple.startEditing()
+        feature = list(patch_layer_triple.getFeatures())[0]
+        list_pt = feature.geometry().asPolygon()[0]
+        ctr_x = 0
+        ctr_y = 0
+        print("nb pts : ", len(list_pt))
+        # recherche du centre
+        for pt in list_pt:
+            ctr_x += pt.x()
+            ctr_y += pt.y()
+        ctr_x /= len(list_pt)
+        ctr_y /= len(list_pt)
+        print(ctr_x, ctr_y)
+        # recherche des OPI
+        # on test au hasard des points jusqu'à trouver un point dans 3 OPI différentes
+        dic_opi = {}
+        cache = {}
+        T=[]
+        while (len(dic_opi) < 3) and len(cache) < len(list_pt)/2:
+            i = random.randint(1, len(list_pt)-1)
+            if not(i in cache):
+                pt = list_pt[i]
+                o, c = selectOPI(pt.x(), pt.y())
+                cache[i] = o
+                if not(o in dic_opi):
+                    dic_opi[o]={'color': c, 'pts': []}
+                    T.append(i)
+        print(len(dic_opi), len(cache))
+        if len(dic_opi) < 3:
+            # on a peut-etre pas eu de chance au tirage, on va vérifier tous les pt manquants
+            print("verification exhaustive")
+            for i in range(len(list_pt)):
+                if not(i in cache):
+                    pt = list_pt[i]
+                    o, c = selectOPI(pt.x(), pt.y())
+                    cache[i] = o
+                    if not(o in dic_opi):
+                        dic_opi[o]={'color': c, 'pts': []}
+                        T.append(i)
+        print(len(dic_opi), len(cache))
+        if len(dic_opi)<3:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText("IL N'Y A PAS 3 OPI SUR LE DISQUE")
+            msg.setWindowTitle("ERREUR")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+            OPI = None
+            return
+        T.sort()
+        i = 0
+        if not(i in cache):
+            pt = list_pt[i]
+            o, c = selectOPI(pt.x(), pt.y())
+            cache[i] = o
+        # premier segment: entre 0 et T[0]
+        print("arc entre 0 et ", T[0])
+        if cache[0] == cache[T[0]]:
+            # tous les points de cet arc sont dans la même opi
+            for i in range(T[0]+1):
+                dic_opi[cache[T[0]]]['pts'].append(list_pt[i])
+        else:
+            fin = search_limit(list_pt, 0, T[0], cache)
+            for i in range(fin+1):
+                dic_opi[cache[0]]['pts'].append(list_pt[i])
+            for i in range(fin, T[0]):
+                dic_opi[cache[T[0]]]['pts'].append(list_pt[i])
+        # deuxieme segment: entre T[0] et T[1]
+        print("arc entre ", T[0], " et ", T[1])
+        fin = search_limit(list_pt, T[0], T[1], cache)
+        for i in range(T[0], fin+1):
+            dic_opi[cache[T[0]]]['pts'].append(list_pt[i])
+        for i in range(fin, T[1]):
+            dic_opi[cache[T[1]]]['pts'].append(list_pt[i])
+        # troisieme segment entre T[1] et T[2]
+        # on prepare un buffer au cas il soit nécessaire d'insérer les pts dans la premiere OPI
+        buffer=[]
+        print("arc entre ", T[1], " et ", T[2])
+        fin = search_limit(list_pt, T[1], T[2], cache)
+        for i in range(T[1], fin+1):
+            dic_opi[cache[T[1]]]['pts'].append(list_pt[i])
+        # attention, si on retombe sur la premier opi il faut les insérer mettre dans un buffer
+        if cache[T[2]] == cache[0]:
+            for i in range(fin, T[2]):
+                buffer.append(list_pt[i])
+        else:
+            for i in range(fin, T[2]):
+                dic_opi[cache[T[2]]]['pts'].append(list_pt[i])
+        # dernier segment entre T[2] et la fin
+        print("dernier arc entre ", T[2], " et ", len(list_pt)-1)
+        # on va stocker dans un tableau a ajouter eventuellement
+        # a l'OPI du premier arc
+        last = len(list_pt)-1
+        if not(last in cache):
+            pt = list_pt[last]
+            o, c = selectOPI(pt.x(), pt.y())
+            cache[last] = o
+        if cache[last] == cache[T[2]]:
+            print("tous les points du dernier arc sont dans la même opi")
+            # tous les points de cet arc sont dans la même opi
+            for i in range(T[2], last+1):
+                buffer.append(list_pt[i])
+        else:
+            print("on cherche la limite sur le dernier arc")
+            fin = search_limit(list_pt, T[2], len(list_pt)-1, cache)
+            for i in range(T[2], fin+1):
+                dic_opi[cache[T[2]]]['pts'].append(list_pt[i])
+            for i in range(fin, len(list_pt)):
+                buffer.append(list_pt[i])
+        if cache[0] == cache[last]:
+            # le premier et le dernier arc sont dans la meme opi
+            print("on fait la jointure entre le premier et le dernier")
+            print(len(dic_opi[cache[0]]['pts']), len(buffer))
+            dic_opi[cache[0]]['pts'] = buffer + dic_opi[cache[0]]['pts']
+            print(len(dic_opi[cache[0]]['pts']))
+        else:
+            # logiquement il y a une opi qui n'a pas encore d'arc
+            print("on creer le dernier arc manquant ", len(dic_opi[cache[last]]['pts']))
+            dic_opi[cache[last]]['pts'] = buffer
+        print("nb de test effectués: ", len(cache))
+
+        # il reste a créer les polygones
+        exporter = QgsJsonExporter()
+        nb_undo = 0
+        for opiname, opi in dic_opi.items():
+            points = opi["pts"]
+            points.append(QgsPointXY(ctr_x, ctr_y))
+            points.append(points[0])
+            geom = QgsGeometry.fromPolygonXY([points])
+            new_feature = QgsFeature(patch_layer_triple.fields())
+            new_feature.setGeometry(geom)
+            patch=json.loads(exporter.exportFeatures([new_feature]))
+            patch['crs'] = {'type': 'name', 'properties': {'name': 'urn:ogc:def:crs:EPSG::2154'}}
+            patch['features'][0]['properties'] = {'opiName': opiname, 'color': opi["color"], 'is_auto': False}
+            # patch['features'][0]['properties'] = {'opiRef': {'name': opiname, 'color': opi["color"]}}
+            # patch_layer_triple.addFeature(new_feature)
+            mess, code = sendPatch(patch)
+            if code != 200:
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Information)
+                msg.setText(mess)
+                msg.setWindowTitle("ERREUR")
+                msg.setStandardButtons(QMessageBox.Ok)
+                msg.exec_()
+                OPI = None
+                return
+            else:
+                nb_undo += 1
+        patch_layer_triple.deleteFeature(feature.id())
+        patch_layer_triple.commitChanges()
+        iface.messageBar().pushMessage("PATCH ", "APPLIQUÉ : ", level=Qgis.Success, duration=0)
+        graph_layer.setDataSource(graph_layer.source(), "graphe_contour", "gdal")
+        ortho_layer.setDataSource(ortho_layer.source(), "ortho", "gdal")
+        if ortho_irc_layer:
+            ortho_irc_layer.setDataSource(ortho_irc_layer.source(), "orthoIRC", "gdal")
+        OPI = None
+        # pour ne pas a avoir a remettre en mode edition pour la prochiane saisie
+        patch_layer_triple.startEditing()
+        return
+
 
     if (touche == Qt.Key_A):
         nb_features = patch_layer_auto.featureCount()
@@ -180,12 +424,56 @@ def on_key(event):
             return
         patch_layer_auto.startEditing()
         feature = list(patch_layer_auto.getFeatures())[0]
-        mPL=feature.geometry().asMultiPolyline()
-        firstLine=mPL[0]
+        print(QgsWkbTypes.displayString(feature.geometry().wkbType()))
+        print(feature.geometry().wkbType())
+        firstLine=feature.geometry().asPolyline()
         sOPI1=selectOPI(firstLine[0].x(),firstLine[0].y())
-        sOPI2=selectOPI(firstLine[1].x(),firstLine[1].y())
+        sOPI2=sOPI1
+        next_sommet = 1
+        while (next_sommet < len(firstLine) and sOPI1 == sOPI2):
+            sOPI2=selectOPI(firstLine[next_sommet].x(),firstLine[next_sommet].y())
+            next_sommet +=1
         print(sOPI1, sOPI2)
-        # TODO: handle patch auto
+        if sOPI1 == sOPI2:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText("LA RETOUCHE DOIT COUPER LE GRAPHE AU MOINS DEUX FOIS")
+            msg.setWindowTitle("ERREUR")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+            OPI = None
+            return
+
+        exporter = QgsJsonExporter()
+        patch=json.loads(exporter.exportFeatures([feature]))
+        patch['crs'] = {'type': 'name', 'properties': {'name': 'urn:ogc:def:crs:EPSG::2154'}}
+        # patch['features'][0]['properties'] = {'opiRef': {'name': sOPI1[0], 'color': sOPI1[1]}, 'opiSec': {'name': sOPI2[0], 'color': sOPI2[1]}}
+        patch['features'][0]['properties'] = {'opiName': sOPI1[0], 'color': sOPI1[1], 'opiNameSec': sOPI2[0], 'colorSec': sOPI2[1], 'is_auto': True}
+        mess, code = sendPatch(patch)
+        if code != 200:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText(mess)
+            msg.setWindowTitle("ERREUR")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+            OPI = None
+            return
+        else:
+            nb_undo = 1
+
+        print(mess)
+        patch_layer_auto.deleteFeature(feature.id())
+        patch_layer_auto.commitChanges()
+        iface.messageBar().pushMessage("PATCH ", "APPLIQUÉ : ", level=Qgis.Success, duration=0)
+        graph_layer.setDataSource(graph_layer.source(), "graphe_contour", "gdal")
+        ortho_layer.setDataSource(ortho_layer.source(), "ortho", "gdal")
+        if ortho_irc_layer:
+            ortho_irc_layer.setDataSource(ortho_irc_layer.source(), "orthoIRC", "gdal")
+        OPI = None
+        # pour ne pas a avoir a remettre en mode edition pour la prochiane saisie
+        patch_layer_auto.startEditing()
+        return
 
     if (touche == Qt.Key_P):
         # Pick OPI
@@ -205,11 +493,19 @@ def on_key(event):
 
     if (touche == Qt.Key_U):
         # print("undo")
-        res = requests.put(url_undo)
+        res = None
+        if nb_undo > 1:
+            for i in range(nb_undo):
+                res = requests.put(url_undo)
+        else:
+            res = requests.put(url_undo)
+        nb_undo = 0
         # print(res.text)
         # iface.mapCanvas().refreshAllLayers()
         graph_layer.setDataSource(graph_layer.source(), "graphe_contour", "gdal")
         ortho_layer.setDataSource(ortho_layer.source(), "ortho", "gdal")
+        if ortho_irc_layer:
+            ortho_irc_layer.setDataSource(ortho_irc_layer.source(), "orthoIRC", "gdal")
         iface.messageBar().pushMessage(res.text, level=Qgis.Success, duration=0)
         return
 
@@ -229,6 +525,14 @@ def on_key(event):
             id_opi_layer.setItemVisibilityChecked(False)
         else:
             id_opi_layer.setItemVisibilityChecked(True)
+        return
+
+    if (touche == Qt.Key_I) and ortho_irc_layer:
+        id_ortho_irc_layer = QgsProject.instance().layerTreeRoot().findLayer(ortho_irc_layer.id())
+        if id_ortho_irc_layer.isVisible():
+            id_ortho_irc_layer.setItemVisibilityChecked(False)
+        else:
+            id_ortho_irc_layer.setItemVisibilityChecked(True)
         return
 
     if (touche == Qt.Key_V):
