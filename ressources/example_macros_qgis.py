@@ -42,9 +42,9 @@ pixel_size_y = __PIXELSIZEY__
 # ===================================
 
 url_graph = url_server + id_branch + '/graph'
-url_patch = url_server + id_branch + '/patch'
-url_undo = url_server + id_branch + '/patch/undo'
-url_redo = url_server + id_branch + '/patch/redo'
+url_patch = url_server + id_branch + '/multipatch'
+url_undo = url_server + id_branch + '/multipatch/undo'
+url_redo = url_server + id_branch + '/multipatch/redo'
 url_wmts = url_server + id_branch + '/wmts'
 source='contextualWMSLegend=0&crs=EPSG:'+crs+'&dpiMode=7&featureCount=10&format=image/png&layers=opi&styles='+style+'&tileDimensions=Name%3DXXX&tileMatrixSet='+tile_matrix_set+'&url='+url_wmts+'?SERVICE%3DWMTS%26REQUEST%3DGetCapabilities%26VERSION%3D1.0.0'
 OPI=None

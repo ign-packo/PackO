@@ -181,23 +181,32 @@ async function rebase(req, res, next) {
       });
     });
     // on ajoute les patchs dans la BD sur cette nouvelle branche
-    for (const feature of patches.features) {
+    // Groupe feature par id_block
+    const patchByBlock = patches.features.reduce((acc, feature) => {
+      const key = feature.properties.id_block;
+      if (acc[key] === undefined) acc[key] = [];
+      acc[key].push(feature);
+      return acc;
+    }, {});
+    for (const features of Object.values(patchByBlock)) {
       // on insert ce patch dans les MTD de la branche
-      debug(feature.properties);
-      const patchInserted = await db.insertPatch(req.client,
-        idNewBranch,
-        feature.geometry,
-        {
-          ref: feature.properties.id_opi,
-          sec: feature.properties.id_opisec,
-        },
-        feature.properties.is_auto);
-      const idNewPatch = patchInserted.id_patch;
+      debug(features);
+      const multipatchInserted = await db.insertMultiPatchesBlock(req.client, idNewBranch);
+      for (const feature of features) {
+        const patchInserted = await db.insertPatch(req.client,
+          multipatchInserted.id_block,
+          feature.geometry,
+          {
+            ref: feature.properties.id_opi,
+            sec: feature.properties.id_opisec,
+          },
+          feature.properties.is_auto);
 
-      const slabs = feature.properties.slabs.map((s) => ({ x: s[0], y: s[1], z: s[2] }));
+        const slabs = feature.properties.slabs.map((s) => ({ x: s[0], y: s[1], z: s[2] }));
 
-      // ajouter les slabs correspondant au patch dans la table correspondante
-      await db.insertSlabs(req.client, idNewPatch, slabs);
+        // ajouter les slabs correspondant au patch dans la table correspondante
+        await db.insertSlabs(req.client, patchInserted.id_patch, slabs);
+      }
     }
   } catch (error) {
     debug(error);
@@ -223,22 +232,26 @@ async function rebase(req, res, next) {
   // a partir de d'ici c'est non bloquant
   try {
     const patches = await db.getActivePatches(req.client, idBranch);
+    // Groupe feature par id_block
+    const patchByBlock = patches.features.reduce((acc, feature) => {
+      const key = feature.properties.id_block;
+      if (acc[key] === undefined) acc[key] = [];
+      acc[key].push(feature);
+      return acc;
+    }, {});
     debug('patches : ', patches);
 
-    debug('>>applyPatches', patches.features);
-    // Clonage du patches pour en modifier un
-    const patchWithOneFeature = JSON.parse(JSON.stringify(patches));
-    for (const feature of patches.features) {
-      patchWithOneFeature.features = [feature];
-      await patch.applyPatch(
+    for (const features of Object.values(patchByBlock)) {
+      patches.features = features;
+      await patch.applyMultiPatches(
         req.client,
         req.overviews,
         cache.path,
         idNewBranch,
-        patchWithOneFeature,
+        patches,
       );
     }
-    debug('fin de applyPatches');
+    debug('fin de applyMultiPatches');
 
     await db.finishProcess(req.client, 'succeed', idProcess, 'done');
   } catch (error) {

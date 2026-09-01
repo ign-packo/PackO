@@ -26,7 +26,7 @@ function setIdBranch(name, id) {
   idBranch[name] = id;
 }
 
-describe('route/patch.js', () => {
+describe('route/multipatch.js', () => {
   after((done) => {
     app.server.close();
     done();
@@ -74,11 +74,11 @@ describe('route/patch.js', () => {
     });
   });
 
-  describe('POST /{idBranch}/patch', () => {
+  describe('POST /{idBranch}/multipatch', () => {
     describe('body: {}', () => {
       it('should return an error', (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/multipatch`)
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(400);
@@ -90,13 +90,22 @@ describe('route/patch.js', () => {
       });
     });
     describe('body: polygon geoJson', () => {
-      it('should apply the patch and return the list of tiles impacted', (done) => {
+      it('should apply multipatch and return the list of tiles impacted', (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/multipatch`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
             features: [
+              {
+                type: 'Feature',
+                properties: {
+                  color: overviews.list_OPI[testOpi].color,
+                  opiName: testOpi,
+                  is_auto: false,
+                },
+                geometry: { type: 'Polygon', coordinates: [[[230749, 6759646], [230752, 6759646], [230752, 6759644], [230749, 6759644], [230749, 6759646]]] },
+              },
               {
                 type: 'Feature',
                 properties: {
@@ -117,7 +126,7 @@ describe('route/patch.js', () => {
       }).timeout(9000);
       it("should get an error: 'File(s) missing / out of boundaries", (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/multipatch`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
@@ -140,7 +149,7 @@ describe('route/patch.js', () => {
       }).timeout(9000);
       it("should get a error: 'Le parametre geometry n'est pas un LineString valide.'", (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/multipatch`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
@@ -166,7 +175,7 @@ describe('route/patch.js', () => {
       // waiting for ozcpp in ci
       it('should apply the semi auto patch and return the list of tiles impacted', (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/multipatch`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
@@ -191,7 +200,7 @@ describe('route/patch.js', () => {
       }).timeout(9000);
       it("should get a error: 'Le parametre geometry n'est pas un Polygone valide.'", (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/multipatch`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
@@ -217,10 +226,10 @@ describe('route/patch.js', () => {
     });
   });
 
-  describe('GET /{idBranch}/patches', () => {
+  describe('GET /{idBranch}/multipatches', () => {
     it('should return a valid geoJson', (done) => {
       chai.request(app)
-        .get(`/${idBranch[branchName]}/patches`)
+        .get(`/${idBranch[branchName]}/multipatches`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -233,9 +242,9 @@ describe('route/patch.js', () => {
     });
   });
   describe('GET /{idBranch}/lastpatches', () => {
-    it('should return last patch on the branch with 2 patches', (done) => {
+    it('should return last patch on the branch with 3 patches', (done) => {
       chai.request(app)
-        .get(`/${idBranch[branchName]}/patches?nbPatches=1`)
+        .get(`/${idBranch[branchName]}/lastpatches?nbPatches=1`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -243,58 +252,59 @@ describe('route/patch.js', () => {
           GJV.isGeoJSONObject(resJson).should.be.a('boolean').equal(true);
           GJV.isFeatureCollection(resJson).should.be.a('boolean').equal(true);
           resJson.features.should.have.lengthOf(1);
-          resJson.features[0].properties.should.have.property('num', 2);
+          resJson.features[0].properties.should.have.property('num', 1);
+          resJson.features[0].properties.should.have.property('id_block', 3);
           done();
         });
     });
-    it('should return 2 patches when nbPatches=2 and there are 2 patches on the branch', (done) => {
+    it('should return 3 patches when nbPatches=3 and there are 3 patches on the branch', (done) => {
       chai.request(app)
-        .get(`/${idBranch[branchName]}/patches?nbPatches=2`)
+        .get(`/${idBranch[branchName]}/lastpatches?nbPatches=3`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
           const resJson = JSON.parse(res.text);
           GJV.isGeoJSONObject(resJson).should.be.a('boolean').equal(true);
           GJV.isFeatureCollection(resJson).should.be.a('boolean').equal(true);
-          resJson.features.should.have.lengthOf(2);
+          resJson.features.should.have.lengthOf(3);
           done();
         });
     });
-    it('should return 2 patches when nbPatches>2 and there are 2 patches on the branch', (done) => {
+    it('should return 3 patches when nbPatches>3 and there are 3 patches on the branch', (done) => {
       chai.request(app)
-        .get(`/${idBranch[branchName]}/patches?nbPatches=100`)
+        .get(`/${idBranch[branchName]}/lastpatches?nbPatches=100`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
           const resJson = JSON.parse(res.text);
           GJV.isGeoJSONObject(resJson).should.be.a('boolean').equal(true);
           GJV.isFeatureCollection(resJson).should.be.a('boolean').equal(true);
-          resJson.features.should.have.lengthOf(2);
+          resJson.features.should.have.lengthOf(3);
           done();
         });
     });
   });
 
-  describe('PUT /{idBranch}/patch/undo', () => {
-    it("should return 'undo: patch 2 annulé'", (done) => {
+  describe('PUT /{idBranch}/multipatch/undo', () => {
+    it("should return 'undo: multipatch 2 annulé'", (done) => {
       chai.request(app)
-        .put(`/${idBranch[branchName]}/patch/undo`)
+        .put(`/${idBranch[branchName]}/multipatch/undo`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
-          JSON.parse(res.text).should.equal('undo: patch 2 annulé');
+          JSON.parse(res.text).should.equal('undo: multipatch 2 annulé');
           done();
         });
     });
     it("should return a warning (code 201): 'rien à annuler'", (done) => {
       chai.request(app)
-        .put(`/${idBranch[branchName]}/patch/undo`)
+        .put(`/${idBranch[branchName]}/multipatch/undo`)
         .end((errUndo, resUndo) => {
           should.not.exist(errUndo);
           resUndo.should.have.status(200);
 
           chai.request(app)
-            .put(`/${idBranch[branchName]}/patch/undo`)
+            .put(`/${idBranch[branchName]}/multipatch/undo`)
             .end((err, res) => {
               should.not.exist(err);
               res.should.have.status(201);
@@ -305,7 +315,7 @@ describe('route/patch.js', () => {
     });
     it('idBranch=99999 => should return an error', (done) => {
       chai.request(app)
-        .put('/99999/patch/undo')
+        .put('/99999/multipatch/undo')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(400);
@@ -317,10 +327,10 @@ describe('route/patch.js', () => {
     });
   });
 
-  describe('PUT /{idBranch}/patch/redo', () => {
-    it("should return 'redo: patch xxx réappliqué'", (done) => {
+  describe('PUT /{idBranch}/multipatch/redo', () => {
+    it("should return 'redo: multipatch xxx réappliqué'", (done) => {
       chai.request(app)
-        .put(`/${idBranch[branchName]}/patch/redo`)
+        .put(`/${idBranch[branchName]}/multipatch/redo`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -330,14 +340,14 @@ describe('route/patch.js', () => {
     });
     it("should return a warning (code 201): 'rien à réappliquer'", (done) => {
       chai.request(app)
-        .put(`/${idBranch[branchName]}/patch/redo`)
+        .put(`/${idBranch[branchName]}/multipatch/redo`)
         .end((errRedo, resRedo) => {
           should.not.exist(errRedo);
           resRedo.should.have.status(200);
           JSON.parse(resRedo.text).should.to.include('réappliqué');
 
           chai.request(app)
-            .put(`/${idBranch[branchName]}/patch/redo`)
+            .put(`/${idBranch[branchName]}/multipatch/redo`)
             .end((err, res) => {
               should.not.exist(err);
               res.should.have.status(201);
@@ -346,10 +356,10 @@ describe('route/patch.js', () => {
             });
         });
     });
-    it("should return 'redo: patch xxx réappliqué'", (done) => {
+    it("should return 'redo: multipatch xxx réappliqué'", (done) => {
       // Ajout d'un nouveau patch
       chai.request(app)
-        .post(`/${idBranch[branchName]}/patch`)
+        .post(`/${idBranch[branchName]}/multipatch`)
         .send({
           type: 'FeatureCollection',
           crs: { type: 'name', properties: { name: crs } },
@@ -372,19 +382,19 @@ describe('route/patch.js', () => {
 
           // Avant de l'annuler
           chai.request(app)
-            .put(`/${idBranch[branchName]}/patch/undo`)
+            .put(`/${idBranch[branchName]}/multipatch/undo`)
             .end((err1, res1) => {
               should.not.exist(err1);
               res1.should.have.status(200);
-              JSON.parse(res1.text).should.equal('undo: patch 3 annulé');
+              JSON.parse(res1.text).should.equal('undo: multipatch 3 annulé');
 
               // Pour refaire un redo
               chai.request(app)
-                .put(`/${idBranch[branchName]}/patch/redo`)
+                .put(`/${idBranch[branchName]}/multipatch/redo`)
                 .end((err2, res2) => {
                   should.not.exist(err2);
                   res2.should.have.status(200);
-                  JSON.parse(res2.text).should.equal('redo: patch 3 réappliqué');
+                  JSON.parse(res2.text).should.equal('redo: multipatch 3 réappliqué');
                   done();
                 });
             });
@@ -392,7 +402,7 @@ describe('route/patch.js', () => {
     }).timeout(9000);
     it('idBranch=99999 => should return an error', (done) => {
       chai.request(app)
-        .put('/99999/patch/redo')
+        .put('/99999/multipatch/redo')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(400);
@@ -404,10 +414,10 @@ describe('route/patch.js', () => {
     });
   });
 
-  describe('PUT /{idBranch}/patches/clear', () => {
+  describe('PUT /{idBranch}/multipatches/clear', () => {
     it("should return a warning (code 401): 'non autorisé'", (done) => {
       chai.request(app)
-        .put(`/${idBranch[branchName]}/patches/clear`)
+        .put(`/${idBranch[branchName]}/multipatches/clear`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(401);
@@ -418,7 +428,7 @@ describe('route/patch.js', () => {
     it("should return 'clear: all patches deleted'", (done) => {
       // Ajout d'un nouveau patch
       chai.request(app)
-        .post(`/${idBranch[branchName]}/patch`)
+        .post(`/${idBranch[branchName]}/multipatch`)
         .send({
           type: 'FeatureCollection',
           crs: { type: 'name', properties: { name: crs } },
@@ -441,15 +451,15 @@ describe('route/patch.js', () => {
 
           // Avant de l'annuler
           chai.request(app)
-            .put(`/${idBranch[branchName]}/patch/undo`)
+            .put(`/${idBranch[branchName]}/multipatch/undo`)
             .end((err1, res1) => {
               should.not.exist(err1);
               res1.should.have.status(200);
-              JSON.parse(res1.text).should.equal('undo: patch 4 annulé');
+              JSON.parse(res1.text).should.equal('undo: multipatch 4 annulé');
 
               // Pour faire le clear
               chai.request(app)
-                .put(`/${idBranch[branchName]}/patches/clear?test=true`)
+                .put(`/${idBranch[branchName]}/multipatches/clear?test=true`)
                 .end((err2, res2) => {
                   should.not.exist(err2);
                   res2.should.have.status(200);
@@ -461,7 +471,7 @@ describe('route/patch.js', () => {
     }).timeout(9000);
     it("should return a warning (code 201): 'nothing to clear'", (done) => {
       chai.request(app)
-        .put(`/${idBranch[branchName]}/patches/clear?test=true`)
+        .put(`/${idBranch[branchName]}/multipatches/clear?test=true`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(201);
@@ -471,7 +481,7 @@ describe('route/patch.js', () => {
     });
     it('idBranch=99999 => should return an error', (done) => {
       chai.request(app)
-        .put('/99999/patches/clear?test=true')
+        .put('/99999/multipatches/clear?test=true')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(400);

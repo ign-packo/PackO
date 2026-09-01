@@ -14,8 +14,8 @@ tags:
     description: Requête sur les tuiles
   - name: graph
     description: Requête sur le graph de mosaïquage
-  - name: patch
-    description: Gestion des patches
+  - name: multipatch
+    description: Gestion des multi-patchs
   - name: vector
     description: Gestion des couches vecteurs annexes
   - name: file
@@ -290,12 +290,12 @@ paths:
         '404':
           description: No OPI found (corrupted cache)
           
-# PATCH
-  '/{idBranch}/patches':
+# MULTIPATCH
+  '/{idBranch}/multipatches':
     get:
       tags:
-        - patch
-      summary: "Récupération de tous les patchs de correction"
+        - multipatch
+      summary: "Récupération de tous les multi-patchs de correction"
       description: ""
       parameters:
         - in: path
@@ -311,7 +311,7 @@ paths:
   '/{idBranch}/lastpatches':
     get:
       tags:
-        - patch
+        - multipatch
       summary: "Récupération des n derniers patchs de correction en format json"
       description: ""
       parameters:
@@ -332,11 +332,11 @@ paths:
         '200':
           description: OK
 
-  '/{idBranch}/patch':
+  '/{idBranch}/multipatch':
     post:
       tags:
-        - patch
-      summary: "Application d'un patch de correction"
+        - multipatch
+      summary: "Application d'un multi-patch de correction"
       description: "Mise a jour du graph de mosaiquage a partir d'un geoJSON"
       parameters:
         - in: path
@@ -346,7 +346,7 @@ paths:
           schema:
             type: integer
       requestBody:
-        description: Polygone ou polyligne à patcher (GeoJSON); seulement la première feature est considérée. Exemples pris sur le cache cache_test_RGBIR.
+        description: Multi-patches polygone ou polyligne à appliquer (geoJson); seulement la première feature est considérée. Exemples pris sur le cache cache_test_RGBIR.
         required: true
         content:
           application/json:
@@ -396,10 +396,10 @@ paths:
         '200':
           description: OK
 
-  '/{idBranch}/patch/undo':
+  '/{idBranch}/multipatch/undo':
     put:
       tags:
-        - patch
+        - multipatch
       summary: "Annulation de la dernière modification"
       description: ""
       parameters:
@@ -413,10 +413,10 @@ paths:
         '200':
           description: OK
 
-  '/{idBranch}/patch/redo':
+  '/{idBranch}/multipatch/redo':
     put:
       tags:
-        - patch
+        - multipatch
       summary: "Reprise en compte de la dernière modification annulée"
       description: ""
       parameters:
@@ -430,10 +430,10 @@ paths:
         '200':
           description: OK
 
-  '/{idBranch}/patches/clear':
+  '/{idBranch}/multipatches/clear':
     put:
       tags:
-        - patch
+        - multipatch
       summary: "Annulation de toutes les modifications"
       description: ""
       parameters:
@@ -984,7 +984,7 @@ components:
           coordinates: [[[230747.32, 6759652.52],[230746.84, 6759651.79],[230747.77, 6759651.10],[230748.60, 6759652.22],[230747.32, 6759652.52]]]
 
     featureCollectionPolygon:
-      summary: Patch Polygone
+      summary: Multipatches Polygone
       value:
         type: FeatureCollection
         crs:
@@ -1002,10 +1002,19 @@ components:
           geometry:
             type: Polygon
             coordinates: [[[230747.32, 6759652.52],[230746.84, 6759651.79],[230747.77, 6759651.10],[230748.60, 6759652.22],[230747.32, 6759652.52]]]
-
+        - type: Feature
+          properties:
+            is_auto: false
+            color: [55,220,19]
+            opiName: "19FD5606Ax00020_16372"
+            colorSec: nullable
+            opiNameSec: nullable
+          geometry:
+            type: Polygon
+            coordinates: [[[230748.68, 6759650.17],[230749.45, 6759651.1],[230750.2, 6759649.72],[230749.33, 6759649.13],[230748.68, 6759650.17]]]
 
     featureCollectionLinestring:
-      summary: Patch Polyligne
+      summary: Multipatches Polyligne
       value:
         type: FeatureCollection
         crs:
@@ -1023,6 +1032,16 @@ components:
           geometry:
             type: LineString
             coordinates: [[230750.69, 6759646.07],[230751.39, 6759645.84],[230751.92,6759645.10],[230751.89, 6759644.37],[230751.35, 6759643.90]]
+        - type: Feature
+          properties:
+            is_auto: true
+            color: [55,220,19]
+            opiName: "19FD5606Ax00020_16372"
+            colorSec: [192,48,93]
+            opiNameSec: "19FD5606Ax00020_16373"
+          geometry:
+            type: LineString
+            coordinates: [[230746.6, 6759643.88],[230747.34, 6759644],[230747.85, 6759644.35],[230747.97, 6759645.05]]
 
 ## SCHEMA
   schemas:
