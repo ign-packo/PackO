@@ -1,38 +1,39 @@
 const debug = require('debug')('gjson');
 const fs = require('fs');
+const path = require('path');
 
-async function writeGeojson(idBranch, idPatch, cachePath, geojson) {
+async function writeGeojson(filePath, geojson) {
   debug(' ~~writeGeojson');
-  // create dir if it does not exist
-  const dir = `${cachePath}/tmp_test_js`;
   try {
-    fs.mkdirSync(dir);
+    fs.mkdirSync(path.dirname(filePath));
   } catch (error) {
     if (error.code !== 'EEXIST') debug(error);
   }
 
-  // write patch geojson
-  const filePath = `${dir}/patch_idBr${idBranch}_idP${idPatch}.geojson`;
-
-  const geojsonAna = JSON.parse(JSON.stringify(geojson));
-
-  geojsonAna.name = `${idBranch}_${idPatch}`;
-
-  const prop = geojson.features[0].properties;
-  if (prop.is_auto) {
-    geojsonAna.features[0].geometry.type = 'MultiLineString';
-  }
-  geojsonAna.features[0].geometry.coordinates = [geojsonAna.features[0].geometry.coordinates];
-
   try {
-    fs.writeFileSync(filePath, JSON.stringify(geojsonAna, null, 2), 'utf8');
+    fs.writeFileSync(filePath, JSON.stringify(geojson, null, 2), 'utf8');
     debug(`  File '${filePath}' written`);
   } catch (error) {
     debug(error);
   }
-  return filePath;
+}
+
+function paramGeoJsonOz(idBranch, idPatch, cachePath, paramGeojson, properties, coordinates) {
+  debug(' ~~paramGeoJsonOz');
+  // write patch geojson
+  const filePath = `${cachePath}/tmp_test_js/patch_idBr${idBranch}_idP${idPatch}.geojson`;
+
+  const geoJsonOz = paramGeojson;
+  geoJsonOz.name = `${idBranch}_${idPatch}`;
+  geoJsonOz.features = [{
+    geometry: { type: 'MultiLineString', coordinates: [coordinates] },
+    properties,
+  }];
+
+  return [filePath, geoJsonOz];
 }
 
 module.exports = {
+  paramGeoJsonOz,
   writeGeojson,
 };
