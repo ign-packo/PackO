@@ -122,12 +122,13 @@ async function deleteBranch(pgClient, idBranch) {
 
 async function getActivePatches(pgClient, idBranch, nbPatches) {
   debug(`    ~~getActivePatches (idBranch: ${idBranch}, nbPatches: ${nbPatches})`);
-
+  // Mise en place de l'ordre des patches par défaut
+  let order = 'ASC';
+  // Filtrage des n derniers patches
   let limit = '';
-  const params = [idBranch];
   if (nbPatches > 0) {
-    limit = 'LIMIT $2';
-    params.push(nbPatches);
+    limit = `LIMIT ${nbPatches}`;
+    order = 'DESC';
   }
 
   const query = "SELECT json_build_object('type', 'FeatureCollection', 'crs', "
@@ -136,7 +137,7 @@ async function getActivePatches(pgClient, idBranch, nbPatches) {
     + 'FROM branches b '
     + 'JOIN caches c ON b.id_cache = c.id '
     + "WHERE b.id = $1), ':', '::'))), "
-    + "'features', json_agg(ST_AsGeoJSON(s.*)::json ORDER BY s.num DESC) "
+    + `'features', json_agg(ST_AsGeoJSON(s.*)::json ORDER BY s.id_block ${order}, s.num ${order}) `
     + 'FILTER (WHERE s.id IS NOT NULL)) '
     + 'FROM ( '
     + ' SELECT '
@@ -147,20 +148,21 @@ async function getActivePatches(pgClient, idBranch, nbPatches) {
     + '  o2.color AS "colorSec" '
     + ' FROM ( '
     + '  SELECT '
-    + '   p.*, '
+    + '   p.*, blk.num AS num_block, '
     + '   ARRAY_AGG(ARRAY[s.x, s.y, s.z]) AS slabs '
     + '  FROM patches p '
+    + '  JOIN blocks blk ON p.id_block = blk.id '
     + '  LEFT JOIN slabs s ON p.id = s.id_patch '
-    + '  WHERE p.id_branch = $1 '
-    + '  AND p.active = TRUE '
-    + '  GROUP BY p.id '
-    + `  ORDER BY p.num DESC ${limit}`
+    + '  WHERE blk.id_branch = $1'
+    + '  AND blk.active = TRUE '
+    + '  GROUP BY p.id, blk.num '
+    + `  ORDER BY p.id_block DESC, p.num DESC ${limit}`
     + ' ) AS t '
     + ' JOIN opi o ON t.id_opi = o.id '
     + ' LEFT JOIN opi o2 ON t.id_opisec = o2.id AND t.is_auto ) AS s';
 
   debug(query);
-  const results = await pgClient.query(query, params);
+  const results = await pgClient.query(query, [idBranch]);
 
   // cas ou il n'y a pas de patches actifs en base
   if (results.rows[0].json_build_object.features === null) {
@@ -172,19 +174,35 @@ async function getActivePatches(pgClient, idBranch, nbPatches) {
 async function getUnactivePatches(pgClient, idBranch) {
   debug(`    ~~getUnactivePatches (idBranch: ${idBranch})`);
 
-  const sql = "SELECT json_build_object('type', 'FeatureCollection', "
-  + "'features', json_agg(ST_AsGeoJSON(s.*)::json)) FROM "
-  + '(SELECT t.*, o.name as "opiName", o.color FROM '
-  + '(SELECT p.*, ARRAY_AGG(ARRAY[s.x, s.y, s.z]) as slabs '
-  + 'FROM patches p LEFT JOIN slabs s ON p.id = s.id_patch WHERE p.id_branch = $1 '
-  + 'AND p.active=False '
-  + 'GROUP BY p.id ORDER BY p.num) as t, opi o '
-  + 'WHERE t.id_opi = o.id) as s';
+  const query = "SELECT json_build_object('type', 'FeatureCollection', "
+    + "'features', json_agg(ST_AsGeoJSON(s.*)::json ORDER BY s.num DESC) "
+    + 'FILTER (WHERE s.id IS NOT NULL)) '
+    + 'FROM ( '
+    + ' SELECT '
+    + '  t.*, '
+    + '  o.name AS "opiName", '
+    + '  o.color, '
+    + '  o2.name AS "opiNameSec", '
+    + '  o2.color AS "colorSec" '
+    + ' FROM ( '
+    + '  SELECT '
+    + '   p.*, blk.num AS num_block, '
+    + '   ARRAY_AGG(ARRAY[s.x, s.y, s.z]) AS slabs '
+    + '  FROM patches p '
+    + '  JOIN blocks blk ON p.id_block = blk.id '
+    + '  LEFT JOIN slabs s ON p.id = s.id_patch '
+    + '  WHERE blk.id_branch = $1'
+    + '  AND blk.active = FALSE '
+    + '  GROUP BY p.id, blk.num '
+    + '  ORDER BY p.num DESC '
+    + ' ) AS t '
+    + ' JOIN opi o ON t.id_opi = o.id '
+    + ' LEFT JOIN opi o2 ON t.id_opisec = o2.id AND t.is_auto ) AS s';
 
-  debug(sql);
+  debug(query);
 
   const results = await pgClient.query(
-    sql, [idBranch],
+    query, [idBranch],
   );
   // cas ou il n'y a pas de patches actifs en base
   if (results.rows[0].json_build_object.features === null) {
@@ -241,11 +259,11 @@ async function getCacheCrsFromIdBranch(pgClient, idBranch) {
   return results.rows[0];
 }
 
-async function insertPatch(pgClient, idBranch, geometry, idOpi, isAuto) {
-  debug(`    ~~insertPatch (idBranch: ${idBranch})`);
-  const sql = format('INSERT INTO patches (geom, id_branch, id_opi, id_opisec, is_auto) VALUES (ST_GeomFromGeoJSON(%L), %L) RETURNING id as id_patch, num',
+async function insertPatch(pgClient, idBlock, geometry, idOpi, isAuto) {
+  debug(`    ~~insertPatch (idBranch: ${idBlock})`);
+  const sql = format('INSERT INTO patches (geom, id_block, id_opi, id_opisec, is_auto) VALUES (ST_GeomFromGeoJSON(%L), %L) RETURNING id as id_patch, num',
     JSON.stringify(geometry),
-    [idBranch,
+    [idBlock,
       idOpi.ref,
       isAuto ? idOpi.sec : null,
       isAuto]);
@@ -259,53 +277,53 @@ async function insertPatch(pgClient, idBranch, geometry, idOpi, isAuto) {
   return results.rows[0];
 }
 
-async function deactivatePatch(pgClient, idPatch) {
-  debug(`    ~~deactivatePatch (idPatch: ${idPatch})`);
+async function insertMultiPatchesBlock(pgClient, idBranch) {
+  debug(`    ~~insertMultiPatchesBlock (idBranch: ${idBranch})`);
 
-  const sql = format('UPDATE patches SET active=False WHERE id=%s', idPatch);
-  debug(sql);
+  const query = 'INSERT INTO blocks (id_branch) VALUES ($1) RETURNING id as id_block, num';
+  const results = await pgClient.query(query, [idBranch]);
+  if (results.rowCount !== 1) {
+    throw new Error('failed to insert block');
+  }
 
-  const results = await pgClient.query(
-    sql,
-  );
-
-  return results;
+  return results.rows[0];
 }
 
-async function reactivatePatch(pgClient, idPatch) {
-  debug(`    ~~reactivatePatch (idPatch: ${idPatch})`);
+async function deactiveBlock(pgClient, idBlock) {
+  debug(`   ~~deactiveBlock (idBlock : ${idBlock})`);
+  const queryBlock = 'UPDATE blocks SET active=False WHERE id=$1';
+  const result = await pgClient.query(queryBlock, [idBlock]);
 
-  const sql = format('UPDATE patches SET active=True WHERE id=%s', idPatch);
-  debug(sql);
-
-  const results = await pgClient.query(
-    sql,
-  );
-
-  return results;
+  return result;
 }
 
-async function deletePatches(pgClient, idBranch) {
+async function reactiveBlock(pgClient, idBlock) {
+  debug(`   ~~reactiveBlock (idBlock : ${idBlock})`);
+  const queryBlock = 'UPDATE blocks SET active=True WHERE id=$1';
+  const result = await pgClient.query(queryBlock, [idBlock]);
+
+  return result;
+}
+
+async function deleteMultiPatchesBlocks(pgClient, idBranch) {
   debug(`    ~~deletePatches (idBranch: ${idBranch})`);
 
-  const sql = format('DELETE FROM patches WHERE id_branch=%s', idBranch);
-  debug(sql);
+  const queryBlock = 'DELETE FROM blocks WHERE id_branch=$1';
+  debug(queryBlock);
 
-  const results = await pgClient.query(
-    sql,
-  );
+  const result = await pgClient.query(queryBlock, [idBranch]);
 
-  return results;
+  return result;
 }
 
-async function getSlabs(pgClient, idPatch) {
-  debug(`    ~~getSlabs (idPatch: ${idPatch})`);
+async function getSlabs(pgClient, listIdsPatch) {
+  debug(`    ~~getSlabs (listIdsPatch: ${listIdsPatch})`);
 
-  const sql = format('SELECT id, x, y, z FROM slabs WHERE id_patch=%s', idPatch);
-  debug(sql);
+  const querySlabs = 'SELECT id, id_patch, x, y, z FROM slabs WHERE id_patch = ANY($1) ORDER BY array_position($1, id_patch)';
+  debug(querySlabs);
 
   const results = await pgClient.query(
-    sql,
+    querySlabs, [listIdsPatch],
   );
 
   return results.rows;
@@ -607,9 +625,10 @@ module.exports = {
   getOPIFromNames,
   getCrsFromIdBranch: getCacheCrsFromIdBranch,
   insertPatch,
-  deactivatePatch,
-  reactivatePatch,
-  deletePatches,
+  insertMultiPatchesBlock,
+  deactiveBlock,
+  reactiveBlock,
+  deleteMultiPatchesBlocks,
   getSlabs,
   insertSlabs,
   getLayers,

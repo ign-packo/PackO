@@ -44,15 +44,17 @@ const geoJsonAPatcher = [
   body('geoJSON.features.*.properties.is_auto')
     .exists().withMessage(createErrMsg.missingParameter('is_auto'))
     .isBoolean()
-    .withMessage(createErrMsg.invalidParameter('is_auto'))
-    .custom((value, { req }) => { req.result.is_auto = value; return true; }),
+    .withMessage(createErrMsg.invalidParameter('is_auto')),
   body('geoJSON.features.*.geometry')
     .exists().withMessage(createErrMsg.missingParameter('geometry'))
-    .custom((value, { req }) => {
-      if (req.result.is_auto && !GJV.isLineString(value)) {
+    .custom((value, { req, path }) => {
+      const match = path.match(/features\[(\d+)\]/);
+      const index = match ? parseInt(match[1], 10) : -1;
+      const isAuto = req.body.geoJSON.features[index]?.properties?.is_auto;
+      if (isAuto && !GJV.isLineString(value)) {
         throw new Error(createErrMsg.InvalidEntity('geometry', 'LineString'));
       }
-      if (!req.result.is_auto && !GJV.isPolygon(value)) {
+      if (!isAuto && !GJV.isPolygon(value)) {
         throw new Error(createErrMsg.InvalidEntity('geometry', 'Polygon'));
       }
       return true;
@@ -104,10 +106,10 @@ const getPatches = [
   returnMsg,
 ];
 
-router.get('/:idBranch/patches', getPatches);
+router.get('/:idBranch/multipatches', getPatches);
 router.get('/:idBranch/lastpatches', getPatches);
 
-router.post('/:idBranch/patch',
+router.post('/:idBranch/multipatch',
   encapBody.bind({ keyName: 'geoJSON' }),
   pgClient.open,
   branch.getBranches.bind({ column: 'id' }),
@@ -121,11 +123,11 @@ router.post('/:idBranch/patch',
   validateParams,
   branch.getCachePath,
   cache.getOverviews,
-  patch.postPatch,
+  patch.postMultiPatches,
   pgClient.close,
   returnMsg);
 
-router.put('/:idBranch/patch/undo',
+router.put('/:idBranch/multipatch/undo',
   pgClient.open,
   branch.getBranches.bind({ column: 'id' }),
   [
@@ -141,7 +143,7 @@ router.put('/:idBranch/patch/undo',
   pgClient.close,
   returnMsg);
 
-router.put('/:idBranch/patch/redo',
+router.put('/:idBranch/multipatch/redo',
   pgClient.open,
   branch.getBranches.bind({ column: 'id' }),
   [
@@ -157,7 +159,7 @@ router.put('/:idBranch/patch/redo',
   pgClient.close,
   returnMsg);
 
-router.put('/:idBranch/patches/clear',
+router.put('/:idBranch/multipatches/clear',
   pgClient.open,
   branch.getBranches.bind({ column: 'id' }),
   [

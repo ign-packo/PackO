@@ -158,9 +158,9 @@ class API {
     });
   }
 
-  postPatch(idBranch, dataStr) {
+  postMultiPatches(idBranch, dataStr) {
     return new Promise((resolve, reject) => {
-      fetch(`${this.url}/${idBranch}/patch?`,
+      fetch(`${this.url}/${idBranch}/multipatch?`,
         {
           method: 'POST',
           headers: {
