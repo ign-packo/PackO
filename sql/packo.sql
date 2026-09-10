@@ -46,6 +46,27 @@ CREATE TYPE public.processes_status AS ENUM (
 
 ALTER TYPE public.processes_status OWNER TO postgres;
 
+--
+-- Name: auto_num_layers(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.auto_num_layers() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$BEGIN
+	NEW.num = (
+		SELECT  
+	CASE WHEN max(num) IS NULL THEN 1
+	ELSE max(num) + 1
+	END next_num
+	FROM layers
+	WHERE 
+		id_branch=NEW.id_branch 
+	);
+	RETURN NEW;
+END;$$;
+
+
+ALTER FUNCTION public.auto_num_layers() OWNER TO postgres;
 
 --
 -- Name: auto_num_blocks_and_delete_unactive(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -75,55 +96,6 @@ END;$$;
 
 
 ALTER FUNCTION public.auto_num_blocks_and_delete_unactive() OWNER TO postgres;
-
---
--- Name: auto_num_layers(); Type: FUNCTION; Schema: public; Owner: postgres
---
-
-CREATE FUNCTION public.auto_num_layers() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$BEGIN
-    DELETE FROM blocks 
-	WHERE 
-		id_branch=NEW.id_branch 
-		AND 
-		active=False;
-	NEW.num = (
-		SELECT  
-	CASE WHEN max(num) IS NULL THEN 1
-	ELSE max(num) + 1
-	END next_num
-	FROM layers
-	WHERE 
-		id_branch=NEW.id_branch 
-	);
-	RETURN NEW;
-END;$$;
-
-
-ALTER FUNCTION public.auto_num_layers() OWNER TO postgres;
-
---
--- Name: auto_num_patches(); Type: FUNCTION; Schema: public; Owner: postgres
---
-
-CREATE FUNCTION public.auto_num_patches() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$BEGIN
-	NEW.num = (
-		SELECT  
-	CASE WHEN max(num) IS NULL THEN 1
-	ELSE max(num) + 1
-	END next_num
-	FROM patches
-	WHERE 
-		id_block=NEW.id_block 
-	);
-	RETURN NEW;
-END;$$;
-
-
-ALTER FUNCTION public.auto_num_patches() OWNER TO postgres;
 
 --
 -- Name: check_before_block_activation(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -162,6 +134,28 @@ END;$$;
 
 
 ALTER FUNCTION public.check_before_block_deactivation() OWNER TO postgres;
+
+--
+-- Name: auto_num_patches(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.auto_num_patches() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$BEGIN
+	NEW.num = (
+		SELECT  
+	CASE WHEN max(num) IS NULL THEN 1
+	ELSE max(num) + 1
+	END next_num
+	FROM patches
+	WHERE 
+		id_block=NEW.id_block 
+	);
+	RETURN NEW;
+END;$$;
+
+
+ALTER FUNCTION public.auto_num_patches() OWNER TO postgres;
 
 --
 -- Name: create_orig_branch(); Type: FUNCTION; Schema: public; Owner: postgres
