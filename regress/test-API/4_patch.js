@@ -104,7 +104,7 @@ describe('route/patch.js', () => {
                   opiName: testOpi,
                   is_auto: false,
                 },
-                geometry: { type: 'Polygon', coordinates: [[[230749, 6759646], [230752, 6759646], [230752, 6759644], [230749, 6759644], [230749, 6759646]]] },
+                geometry: { type: 'Polygon', coordinates: [[[230758.15, 6759644.78], [230758.78, 6759644.7], [230758.73, 6759644.05], [230758.1, 6759644.08], [230758.15, 6759644.78]]] },
               }],
           })
           .end((err, res) => {
@@ -112,6 +112,7 @@ describe('route/patch.js', () => {
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
             resJson.should.be.a('array');
+            resJson[0].withNoData.should.be.a('boolean').equal(true);
             done();
           });
       }).timeout(9000);
