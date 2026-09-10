@@ -242,7 +242,7 @@ describe('route/multipatch.js', () => {
     });
   });
   describe('GET /{idBranch}/lastpatches', () => {
-    it('should return last patch on the branch with 3 patches', (done) => {
+    it('should return last patch on the branch with 2 patches', (done) => {
       chai.request(app)
         .get(`/${idBranch[branchName]}/lastpatches?nbPatches=1`)
         .end((err, res) => {
@@ -253,7 +253,7 @@ describe('route/multipatch.js', () => {
           GJV.isFeatureCollection(resJson).should.be.a('boolean').equal(true);
           resJson.features.should.have.lengthOf(1);
           resJson.features[0].properties.should.have.property('num', 1);
-          resJson.features[0].properties.should.have.property('id_block', 3);
+          resJson.features[0].properties.should.have.property('id_block', 2);
           done();
         });
     });
