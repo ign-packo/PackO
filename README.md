@@ -10,7 +10,7 @@ Outil pour le contrôle et la retouche du mosaïquage, sous licence CECILL-B (vo
 
 ## BD
 
-Une base de données est utilisée pour stocker les métadonnées des caches (liste des OPI avec leur date, nom, couleur, ...) ainsi que l'historique sur chaque branche (liste des patches).
+Une base de données est utilisée pour stocker les métadonnées des caches (liste des OPI avec leur date, nom, couleur, ...) ainsi que l'historique sur chaque branche (liste des multipatches et patches).
 
 La structure de cette base :
 ![BD Packo](doc/BD_packo.drawio.png)
@@ -436,7 +436,7 @@ Les contours des retouches d'un chantier peuvent être affichés en activant l'o
 
 ### Export des retouches
 
-Pour exporter les retouches d'une branche, on peut utiliser l'url `http://[serveur]:[PORT]/[idBranch]/patches` ou la commande curl `curl [-v] -X "GET" "http://[serveur]:[PORT]/[idBranch]/patches" -H "accept: */*" [-o [chemin_json_sortie]]`.
+Pour exporter les retouches d'une branche, on peut utiliser l'url `http://[serveur]:[PORT]/[idBranch]/multipatches` ou la commande curl `curl [-v] -X "GET" "http://[serveur]:[PORT]/[idBranch]/multipatches" -H "accept: */*" [-o [chemin_json_sortie]]`.
 
 Dans les deux cas, le paramètre **idBranch** représente l'identifiant de la branche contenant les retouches à exporter et, pour le récupérer, on peut demander à l'API la liste des branches en utilisant le url `http://[serveur]:[port]/branches`, comme plus haut.
 
@@ -453,9 +453,9 @@ Lorsque le travail est terminé, on peut rassembler les branches pour obtenir le
 En pratique, PackO va effectuer les opérations suivantes :
 
 - création de la nouvelle branche avec le nom choisi
-- copie des patchs de **B2** dans cette nouvelle branche : c'est rapide puisque l'historique et les résultats d'application de patch sont simplement copiés
+- copie des multipatchs de **B2** dans cette nouvelle branche : c'est rapide puisque l'historique et les résultats d'application de multipatch sont simplement copiés
 - une fois que cette copie est prête : l'utilisateur reçoit une réponse avec l'Id de la nouvelle branche et l'Id du processus long pour suivre l'avancement du **rebase**
-- PackO va ensuite appliquer tous les patchs de **B1** sur cette nouvelle branche. Cela va prendre du temps puisqu'il faut rejouer chaque patch un par un dans l'ordre.
+- PackO va ensuite appliquer tous les multipatchs de **B1** sur cette nouvelle branche. Cela va prendre du temps puisqu'il faut rejouer chaque multipatch un par un dans l'ordre.
 - Lorsque les traitements sont terminés, le processus est mis à jour avec la date de fin et son statut est passé à **succeed**
 
 Il n'y a pas d'interface pour faire le **rebase** depuis iTowns, il faut utiliser la doc : 
@@ -468,7 +468,7 @@ http://[serveur]:[port]/doc/#/process/get_process__id_
 `````
 pour suivre l'avancement du traitement.
 
-Attention : si les deux branches ont modifié les mêmes zones de l'ortho le résultat peut-être imprévisible puisque l'on applique d'abord les patchs de la branche de base (**B2**), puis ceux de la branche **B1**. Un mécanisme d'alerte sera ajouté dès que possible pour signaler ces cas et permettre à un opérateur de les contrôler efficacement. En attendant, il est recommandé de définir la zone à traiter pour chaque opérateur et de gérer les cas limites globalement en fin de chantier. 
+Attention : si les deux branches ont modifié les mêmes zones de l'ortho le résultat peut-être imprévisible puisque l'on applique d'abord les multipatchs de la branche de base (**B2**), puis ceux de la branche **B1**. Un mécanisme d'alerte sera ajouté dès que possible pour signaler ces cas et permettre à un opérateur de les contrôler efficacement. En attendant, il est recommandé de définir la zone à traiter pour chaque opérateur et de gérer les cas limites globalement en fin de chantier. 
 
 ## Export raster
 
@@ -524,7 +524,7 @@ A l'heure actuelle, il faut utiliser des chemins absolus pour que le script fonc
 
 Il est nécessaire de recourir à l'API pour pouvoir renseigner deux de ces informations :
 - l'id de la branche à partir de laquelle on souhaite exporter le graphe vecteur.
-- et le résultat de la route GET /{idBranch}/patches sur celle-ci (au format json).
+- et le résultat de la route GET /{idBranch}/multipatches sur celle-ci (au format json).
 
 Le résultat du script *prep_vectorise_graph.py* est un dossier contenant des fichiers vrt temporaires et un sous-dossier (./tiles) avec les dalles de graphe nécessaires pour le script *vectorise_graph.py*.
 
