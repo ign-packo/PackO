@@ -436,7 +436,7 @@ Les contours des retouches d'un chantier peuvent être affichés en activant l'o
 
 ### Export des retouches
 
-Pour exporter les retouches d'une branche, on peut utiliser l'url `http://[serveur]:[PORT]/[idBranch]/patches` ou la commande curl `curl [-v] -X "GET" "http://[serveur]:[PORT]/[idBranch]/patches" -H "accept: */*" [-o [chemin_json_sortie]]`.
+Pour exporter les retouches d'une branche, on peut utiliser l'url `http://[serveur]:[PORT]/[idBranch]/multipatches` ou la commande curl `curl [-v] -X "GET" "http://[serveur]:[PORT]/[idBranch]/multipatches" -H "accept: */*" [-o [chemin_json_sortie]]`.
 
 Dans les deux cas, le paramètre **idBranch** représente l'identifiant de la branche contenant les retouches à exporter et, pour le récupérer, on peut demander à l'API la liste des branches en utilisant le url `http://[serveur]:[port]/branches`, comme plus haut.
 
