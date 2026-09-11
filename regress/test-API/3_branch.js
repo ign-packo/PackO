@@ -21,12 +21,13 @@ function setIdCache(id) {
 }
 
 const branchName = 'branchRegress';
+const branchName2 = 'branchRegress2';
 const idBranch = {};
 function setIdBranch(name, id) {
   idBranch[name] = id;
 }
 
-// for rebase (adding a patch)
+// for merge (adding a patch)
 const testOpi = '19FD5606Ax00020_16371';
 
 function copyFileSync(source, target) {
@@ -70,8 +71,8 @@ if (process.env.TEST_ENV === 'test') {
 }
 
 const idProcessus = {};
-function setIdProcessus(rebaseName, id) {
-  idProcessus[rebaseName] = id;
+function setIdProcessus(mergeName, id) {
+  idProcessus[mergeName] = id;
 }
 
 describe('route/branch.js', () => {
@@ -208,82 +209,67 @@ describe('route/branch.js', () => {
     });
   });
 
-  describe('POST /{idBranch}/rebase', () => {
-    describe('rebase non valid branches', () => {
+  describe('POST /{idBranch}/merge', () => {
+    describe('merge non valid branches', () => {
       it('should failed', (done) => {
-        const idB = 99999;
         chai.request(app)
-          .post(`/${idB}/rebase`)
+          .post('/branches/merge')
           .query({
-            name: 'rebase',
-            idBase: 99999,
+            name: 'merge',
+            idBranch: [99998, 99999],
           })
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(400);
             const resJson = JSON.parse(res.text);
-            resJson.should.be.an('array').to.have.lengthOf(2);
-            resJson[0].should.have.property('status').equal("Le paramètre 'idBase' n'est pas valide.");
-            resJson[1].should.have.property('status').equal("Le paramètre 'idBranch' n'est pas valide.");
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'idBranch' n'est pas valide.");
             done();
           });
       });
     });
-    describe('rebase a branch on itself', () => {
+    describe('merge a branch on itself', () => {
       it('should failed', (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/rebase`)
+          .post('/branches/merge')
           .query({
-            name: 'rebase',
-            idBase: idBranch[branchName],
+            name: 'merge',
+            idBranch: [idBranch[branchName], idBranch[branchName]],
           })
           .end((err, res) => {
             should.not.exist(err);
-            res.should.have.status(406);
+            res.should.have.status(400);
             const resJson = JSON.parse(res.text);
-            resJson.should.be.an('object');
-            resJson.should.have.property('msg').equal(`Branch '${idBranch[branchName]}' rebase failed with error: impossible to rebase a branch on itself`);
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'idBranch (doublons)' n'est pas valide.");
             done();
           });
       });
     });
-    describe('rebase a branch on a branch from a different cache', () => {
+    describe('merge a branch on a branch from a different cache', () => {
       it('not tested yet', (done) => {
         done();
       });
     });
-    describe('rebase valid branches', () => {
+    describe('merge valid branches', () => {
       describe('with no patch', () => {
         it('should succeed', (done) => {
           chai.request(app)
-            .post(`/${idBranch.orig}/rebase`)
+            .post('/branches/merge')
             .query({
-              name: 'rebase',
-              idBase: idBranch[branchName],
+              name: 'merge',
+              idBranch: [idBranch[branchName], idBranch.orig],
             })
             .end((err, res) => {
               should.not.exist(err);
               res.should.have.status(200);
               const resJson = JSON.parse(res.text);
-              resJson.should.have.property('name').equal('rebase');
-              resJson.should.have.property('id');
-              resJson.should.have.property('idProcess');
-              // // on vérifie que le idProcess est accessible
-              // const { idProcess } = resJson;
-              // chai.request(app)
-              //   .get(`/process/${idProcess}`)
-              //   .end((err2, res2) => {
-              //     should.not.exist(err2);
-              //     res2.should.have.status(200);
-              //     console.log(JSON.parse(res2.text))
-              //     const resJson2 = JSON.parse(res2.text);
-              //     resJson2.should.have.property('id').equal(idProcess);
-              //     resJson2.should.have.property('start_date');
-              //     resJson2.should.have.property('end_date');
-              //     resJson2.should.have.property('status');
-              //     resJson2.should.have.property('result');
-              //     done();
-              //   });
+              resJson.should.have.property('name').equal('merge');
+              resJson.should.have.property('process').that.is.an('array');
+              resJson.process.forEach((item) => {
+                item.should.have.property('id');
+                item.should.have.property('idProcess');
+              });
               done();
             });
         }).timeout(9000);
@@ -317,76 +303,97 @@ describe('route/branch.js', () => {
               });
           }).timeout(9000);
         });
-        describe(`rebase ${branchName} into 'orig'`, () => {
-          it('should succeed', (done) => {
-            const rebaseName = 'rebase2';
+        describe(`New branch ${branchName2} with a patch`, () => {
+          it(`create branch ${branchName2}`, (done) => {
             chai.request(app)
-              .post(`/${idBranch[branchName]}/rebase`)
+              .post('/branch')
               .query({
-                name: rebaseName,
-                idBase: idBranch.orig,
+                name: branchName2,
+                idCache,
               })
               .end((err, res) => {
                 should.not.exist(err);
                 res.should.have.status(200);
                 const resJson = JSON.parse(res.text);
-                resJson.should.have.property('name').equal(rebaseName);
                 resJson.should.have.property('id');
-                resJson.should.have.property('idProcess');
-                setIdProcessus(rebaseName, resJson.idProcess);
+                setIdBranch(cacheName, branchName2, resJson.id);
+                setIdBranch(branchName2, resJson.id);
+                resJson.should.have.property('name').equal(branchName2);
                 done();
-                // // on vérifie que le idProcess est accessible
-                // const { idProcess } = resJson;
-                // chai.request(app)
-                //   .get(`/process/${idProcess}`)
-                //   .end((err2, res2) => {
-                //     should.not.exist(err2);
-                //     res2.should.have.status(200);
-                //     console.log(JSON.parse(res2.text))
-                //     const resJson2 = JSON.parse(res2.text);
-                //     resJson2.should.have.property('id').equal(idProcess);
-                //     resJson2.should.have.property('start_date');
-                //     resJson2.should.have.property('end_date');
-                //     resJson2.should.have.property('status');
-                //     resJson2.should.have.property('result');
-                //     done();
-                //   });
+              });
+          });
+          it(`add a patch on ${branchName2}`, (done) => {
+            chai.request(app)
+              .post(`/${idBranch[branchName2]}/patch`)
+              .send({
+                type: 'FeatureCollection',
+                crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
+                features: [
+                  {
+                    type: 'Feature',
+                    properties: {
+                      color: overviews.list_OPI[testOpi].color,
+                      opiName: testOpi,
+                      is_auto: false,
+                    },
+                    geometry: { type: 'Polygon', coordinates: [[[230749, 6759646], [230752, 6759646], [230752, 6759644], [230749, 6759644], [230749, 6759646]]] },
+                  }],
+              })
+              .end((err, res) => {
+                should.not.exist(err);
+                console.log(res.body.msg);
+                res.should.have.status(200);
+                const resJson = JSON.parse(res.text);
+                resJson.should.be.a('array');
+                done();
               });
           }).timeout(9000);
         });
-        describe(`rebase 'orig' into ${branchName}`, () => {
+        describe(`merge ${branchName} et ${branchName2} into 'orig'`, () => {
           it('should succeed', (done) => {
-            const rebaseName = 'rebase3';
+            const mergeName = 'merge2';
             chai.request(app)
-              .post(`/${idBranch.orig}/rebase`)
+              .post('/branches/merge')
               .query({
-                name: 'rebase3',
-                idBase: idBranch[branchName],
+                name: mergeName,
+                idBranch: [idBranch.orig, idBranch[branchName], idBranch[branchName2]],
               })
               .end((err, res) => {
                 should.not.exist(err);
                 res.should.have.status(200);
                 const resJson = JSON.parse(res.text);
-                resJson.should.have.property('name').equal(rebaseName);
-                resJson.should.have.property('id');
-                resJson.should.have.property('idProcess');
-                setIdProcessus(rebaseName, resJson.idProcess);
+                resJson.should.have.property('name').equal(mergeName);
+                resJson.should.have.property('process').that.is.an('array');
+                resJson.process.forEach((item) => {
+                  item.should.have.property('id');
+                  item.should.have.property('idProcess');
+                });
+                setIdProcessus(mergeName, resJson.process[0].idProcess);
                 done();
-              //   // on vérifie que le idProcess est accessible
-              //   const { idProcess } = resJson;
-              //   chai.request(app)
-              //     .get(`/process/${idProcess}`)
-              //     .end((err2, res2) => {
-              //       should.not.exist(err2);
-              //       res2.should.have.status(200);
-              //       const resJson2 = JSON.parse(res2.text);
-              //       resJson2.should.have.property('id').equal(idProcess);
-              //       resJson2.should.have.property('start_date');
-              //       resJson2.should.have.property('end_date');
-              //       resJson2.should.have.property('status');
-              //       resJson2.should.have.property('result');
-              //       done();
-              //     });
+              });
+          }).timeout(9000);
+        });
+        describe(`merge 'orig' into ${branchName}`, () => {
+          it('should succeed', (done) => {
+            const mergeName = 'merge3';
+            chai.request(app)
+              .post('/branches/merge')
+              .query({
+                name: 'merge3',
+                idBranch: [idBranch[branchName], idBranch.orig],
+              })
+              .end((err, res) => {
+                should.not.exist(err);
+                res.should.have.status(200);
+                const resJson = JSON.parse(res.text);
+                resJson.should.have.property('name').equal(mergeName);
+                resJson.should.have.property('process').that.is.an('array');
+                resJson.process.forEach((item) => {
+                  item.should.have.property('id');
+                  item.should.have.property('idProcess');
+                });
+                setIdProcessus(mergeName, resJson.process[0].idProcess);
+                done();
               });
           }).timeout(9000);
         });
@@ -441,17 +448,17 @@ describe('route/branch.js', () => {
   });
 
   describe('\n  extra: route/processQueue.js\n    GET /process/', () => {
-    it(`should return the idProcessus of the rebase ${branchName} into 'orig'`, (done) => {
+    it(`should return the idProcessus of the merge ${branchName} into 'orig'`, (done) => {
       // on vérifie que le idProcess est accessible
-      const rebaseName = 'rebase2';
-      const idProcess = idProcessus[rebaseName];
+      const mergeName = 'merge2';
+      const idProcess = idProcessus[mergeName];
       chai.request(app)
         .get(`/process/${idProcess}`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
           const resJson2 = JSON.parse(res.text);
-          resJson2.should.have.property('id').equal(idProcessus[rebaseName]);
+          resJson2.should.have.property('id').equal(idProcessus[mergeName]);
           resJson2.should.have.property('start_date');
           resJson2.should.have.property('end_date');
           resJson2.should.have.property('status').equal('succeed');
@@ -459,17 +466,17 @@ describe('route/branch.js', () => {
           done();
         });
     });
-    it(`should return the idProcessus of the rebase 'orig' into ${branchName}`, (done) => {
+    it(`should return the idProcessus of the merge 'orig' into ${branchName}`, (done) => {
       // on vérifie que le idProcess est accessible
-      const rebaseName = 'rebase3';
-      const idProcess = idProcessus[rebaseName];
+      const mergeName = 'merge3';
+      const idProcess = idProcessus[mergeName];
       chai.request(app)
         .get(`/process/${idProcess}`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
           const resJson2 = JSON.parse(res.text);
-          resJson2.should.have.property('id').equal(idProcessus[rebaseName]);
+          resJson2.should.have.property('id').equal(idProcessus[mergeName]);
           resJson2.should.have.property('start_date');
           resJson2.should.have.property('end_date');
           resJson2.should.have.property('status').equal('succeed');

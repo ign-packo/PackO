@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { query, param } = require('express-validator');
+const { query } = require('express-validator');
 
 const validateParams = require('../paramValidation/validateParams');
 const createErrMsg = require('../paramValidation/createErrMsg');
@@ -53,25 +53,26 @@ router.delete('/branch',
   pgClient.close,
   returnMsg);
 
-router.post('/:idBranch/rebase',
+router.post('/branches/merge',
   pgClient.open,
   branch.getBranches.bind({ column: 'id' }),
   [
     query('name')
       .exists().withMessage(createErrMsg.missingParameter('name')),
-    query('idBase')
-      .exists().withMessage(createErrMsg.missingParameter('idBase'))
-      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
-      .withMessage(createErrMsg.invalidParameter('idBase')),
-    param('idBranch')
+    query('idBranch')
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
-      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
+      .customSanitizer((value) => (Array.isArray(value) ? value : [value]).map(Number))
+      .custom((value) => value.every((id) => Number.isInteger(id)))
+      .withMessage(createErrMsg.invalidParameter('idBranch'))
+      .custom((value) => new Set(value).size === value.length)
+      .withMessage(createErrMsg.invalidParameter('idBranch (doublons)'))
+      .custom((value, { req }) => value.every((id) => req.result.getBranches.includes(id)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
   ],
   validateParams,
   branch.getCachePath,
   cache.getOverviews,
-  branch.rebase,
+  branch.merge,
   returnMsg);
 
 module.exports = router;
