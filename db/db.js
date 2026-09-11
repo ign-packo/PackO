@@ -496,6 +496,18 @@ async function createProcess(pgClient, description) {
   return results.rows[0].id;
 }
 
+async function updateProcess(pgClient, idProcess, result) {
+  debug('~~updateProcess');
+
+  const query = 'UPDATE processes SET result=$1 WHERE id=$2';
+  debug(query);
+
+  await pgClient.query(
+    query,
+    [result, idProcess],
+  );
+}
+
 async function finishProcess(pgClient, status, idProcess, result) {
   debug('~~finishProcess');
 
@@ -615,6 +627,7 @@ module.exports = {
   deleteLayer,
   getProcesses,
   createProcess,
+  updateProcess,
   finishProcess,
   getFeatures,
   updateAlert,
