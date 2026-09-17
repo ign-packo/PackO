@@ -76,25 +76,36 @@ async function postVector(req, _res, next) {
   const params = matchedData(req);
   const { idBranch } = params;
 
-  // debug(params.json.data)
-  // debug(params.json.data.features.length)
-
-  // params.json.data.features.forEach(feature => {
-  //   debug("---")
-  //   debug(feature.properties)
-  //   debug(feature.geometry)
-  // });
+  const crs = await db.getCrsFromIdBranch(req.client, idBranch);
+  // Création d'un style
+  const randomColor = Math.round(Math.random() * 0xffffff);
+  const style = {
+    fill: {
+      color: `#${randomColor.toString(16)}`,
+      opacity: 0.7,
+    },
+    stroke: {
+      color: `#${randomColor.toString(16)}`,
+    },
+    point: {
+      color: `#${randomColor.toString(16)}`,
+      radius: 5,
+    },
+  };
 
   try {
     const NewVector = await db.insertLayer(req.client,
       idBranch,
-      params.json.data,
-      params.json.metadonnees);
+      params.json,
+      crs.crs,
+      style);
 
     req.result = {
       json: {
-        msg: `vector '${params.json.metadonnees.name}' (${NewVector.features.length} feature(s)) ajouté.`,
+        msg: `vector '${params.json.name}' (${NewVector.features.length} feature(s)) ajouté.`,
         id: NewVector.id,
+        crs: crs.crs,
+        style,
       },
       code: 200,
     };
@@ -112,11 +123,6 @@ async function postVector(req, _res, next) {
     } else {
       req.error = error;
     }
-    // req.error = {
-    //   msg: error,
-    //   code: 406,
-    //   function: 'postVector',
-    // };
   }
   debug('  next>>');
   next();

@@ -1,70 +1,47 @@
 {
-    "metadonnees": {
-      "name": "vector_example",
-      "style": {
-        "fill": {
-          "color": "#76cda7",
-          "opacity": 0.7
-        },
-        "icon": {},
-        "text": {},
-        "zoom": {},
-        "point": {},
-        "stroke": {
-          "color": "#76cda7"
-        }
+  "type": "FeatureCollection",
+  "name": "vector_example",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "is_auto": false,
+        "color": [
+            254,
+            175,
+            143
+            ],
+        "opiName": "19FD5606Ax00020_16371",
+        "comment": "test_regress"
       },
-      "crs": "EPSG:2154"
-    },
-    "data": {
-      "type": "FeatureCollection",
-      "crs": {
-        "type": "name",
-        "properties": {
-          "name": "urn:ogc:def:crs:EPSG::2154"
-        }
-      },
-      "features": [
-        {
-          "type": "Feature",
-          "properties": {
-            "is_auto": false,
-            "color": [
-                254,
-                175,
-                143
-                ],
-            "opiName": "19FD5606Ax00020_16371",
-            "comment": "test_regress"
-          },
-          "geometry": {
-            "type": "Polygon",
-            "coordinates": [
-              [
-                [
-                  230748,
-                  6759653
-                ],
-                [
-                  230746,
-                  6759653
-                ],
-                [
-                  230746,
-                  6759651
-                ],
-                [
-                  230748,
-                  6759651
-                ],
-                [
-                  230748,
-                  6759653
-                ]
-              ]
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              230748,
+              6759653
+            ],
+            [
+              230746,
+              6759653
+            ],
+            [
+              230746,
+              6759651
+            ],
+            [
+              230748,
+              6759651
+            ],
+            [
+              230748,
+              6759653
             ]
-          }
-        }
-      ]
+          ]
+        ]
+      }
     }
-  }
+  ]
+}
+  

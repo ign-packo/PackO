@@ -493,7 +493,7 @@ paths:
       tags:
         - vector
       summary: "Ajout d'un vecteur annexe en base"
-      description: ""
+      description: "Ajout d'un geojson en base. Géometrie accepté: Point / MultiPoint / LineString / MultiLineString / Polygon / MultiPolygon"
       parameters:
         - in: path
           name: idBranch
@@ -502,40 +502,48 @@ paths:
           schema:
             type: integer
       requestBody:
-        description: couche vecteur annexe à ajouter (json issu de itowns)
+        description: couche vecteur annexe à ajouter (geojson avec une balise "name").
         required: true
         content:
           application/json:
               schema:
                 type: object
                 properties:
-                  metadonnees:
-                    type: object
-                    properties:
-                      name:
-                        type: string
-                        example: 'vector_example'
-                      style:
-                        type: object
-                        example: {"fill": {"color": "#76cda7", "opacity": 0.7}, "icon": {}, "text": {}, "zoom": {}, "point": {}, "stroke": {"color": "#76cda7"}}
-                      crs:
-                        type: string
-                        example: 'EPSG:2154'
-                  data:
-                    type: object
-                    properties:
-                      type:
-                        type: string
-                        value: FeatureCollection
-                      crs:
-                        type: object
-                        example:
-                          $ref: '#/components/examples/nameCrs'
-
-                      features:
-                        type: object
-                        example:
-                          $ref: '#/components/examples/featurePolygon'
+                  type:
+                    type: string
+                    value: FeatureCollection
+                  name:
+                    type: string
+                    example: nom_vecteur
+                  features:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          example: Feature
+                        properties:
+                          type: object
+                          properties:
+                            prop_as_you_want:
+                              type: sting
+                              example: as_you_want
+                        geometry:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                              enum:
+                                - Point
+                                - MultiPoint
+                                - LineString
+                                - MultiLineString
+                                - Polygon
+                                - MultiPolygon
+                            coordinates:
+                              type: array
+                              example: [230747.32, 6759652.52]
 
       responses:
         '200':
@@ -970,18 +978,6 @@ components:
       type: name
       properties:
         name: "urn:ogc:def:crs:EPSG::2154"
-
-    featurePolygon:
-      - type: Feature
-        properties:
-          is_auto: false
-          color: [242,168,55]
-          opiName: "19FD5606Ax00020_16371"
-          colorSec: nullable
-          opiNameSec: nullable
-        geometry:
-          type: Polygon
-          coordinates: [[[230747.32, 6759652.52],[230746.84, 6759651.79],[230747.77, 6759651.10],[230748.60, 6759652.22],[230747.32, 6759652.52]]]
 
     featureCollectionPolygon:
       summary: Patch Polygone
