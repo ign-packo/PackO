@@ -424,7 +424,7 @@ async function insertLayer(pgClient, idBranch, geojson, crs, style) {
   if (Object.keys(geojson.features[0].properties).includes('comment')) {
     const temp = results.rows.map((feature) => ({
       id_feature: feature.id_feature,
-      comment: JSON.parse(feature.properties).comment.replace(/'/g, "''"),
+      comment: feature.properties.comment.replace(/'/g, "''"),
     }));
 
     const sqlInsertFeaturesCtrs = format('INSERT INTO feature_ctrs (comment, id_feature) '
