@@ -11,8 +11,8 @@ const cachePath = './cache_test/cache_test_RGBIR';
 const overviews = JSON.parse(fs.readFileSync(`${cachePath}/overviews.json`, 'utf8'));
 const cacheName = 'cacheRegress';
 
-const vector = JSON.parse(fs.readFileSync('./regress/data/extra_layers/vector.json', 'utf8'));
-const vectorName = vector.metadonnees.name;
+const vector = JSON.parse(fs.readFileSync('./regress/data/extra_layers/vector.geojson', 'utf8'));
+const vectorName = vector.name;
 const testBranchName = 'vectorRegress';
 
 let idCache = null;
@@ -129,7 +129,7 @@ describe('route/vector.js', () => {
             should.not.exist(err);
             res.should.have.status(400);
             const resJson = JSON.parse(res.text);
-            resJson.should.be.an('array').to.have.lengthOf(3);
+            resJson.should.be.an('array').to.have.lengthOf(2);
             resJson[0].should.have.property('status').equal('Un body non vide est requis.');
             done();
           });

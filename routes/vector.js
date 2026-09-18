@@ -25,26 +25,29 @@ function encapBody(req, res, next) {
 }
 
 const vectorToSave = [
-  body('json.data')
-    .exists().withMessage(createErrMsg.missingParameter('data'))
-    .if(body('json.data').exists())
+  body('json')
+    .if(body('json').exists())
     .custom(GJV.isGeoJSONObject)
     .withMessage(createErrMsg.invalidBody('objet GeoJSON'))
-    .if(body('json.data').exists())
+    .if(body('json').exists())
     .custom(GJV.isFeatureCollection)
     .withMessage(createErrMsg.invalidBody('featureCollection')),
-  body('json.data.type')
-    .if(body('json.data').exists())
-    .exists().withMessage(createErrMsg.missingParameter('data.type'))
+  body('json.type')
+    .if(body('json').exists())
+    .exists().withMessage(createErrMsg.missingParameter('type'))
     .isIn(['FeatureCollection'])
-    .withMessage(createErrMsg.invalidParameter('data.type')),
-  // body('json.data.crs')
-  //   .exists().withMessage(createErrMsg.missingParameter('crs'))
-  //   .custom(validator.isCrs)
-  //   .withMessage(createErrMsg.invalidParameter('crs')),
-  body('json.data.features.*.geometry')
-    .custom((value) => (GJV.isPolygon(value)))
-    .withMessage(createErrMsg.InvalidEntity('data.features.*.geometry', 'polygon')),
+    .withMessage(createErrMsg.invalidParameter('type')),
+  body('json.features.*.geometry')
+    .custom((value) => (
+      GJV.isPoint(value)
+      || GJV.isMultiPoint(value)
+      || GJV.isLineString(value)
+      || GJV.isMultiLineString(value)
+      || GJV.isPolygon(value)
+      || GJV.isMultiPolygon(value)
+    ))
+    .withMessage(createErrMsg.InvalidEntity('data.features.*.geometry',
+      '(Point, MultiPoint, LineString, MultiLineString, Polygon ou MultiPolygone)')),
 ];
 
 router.get('/:idBranch/vectors',
@@ -89,17 +92,8 @@ router.post('/:idBranch/vector', encapBody.bind({ keyName: 'json' }),
       .withMessage(createErrMsg.invalidParameter('idBranch')),
     body('json')
       .exists().withMessage(createErrMsg.missingBody),
-    body('json.metadonnees')
-      .exists().withMessage(createErrMsg.missingParameter('metadonnees')),
-    body('json.metadonnees.name')
-      .if(body('json.metadonnees').exists())
-      .exists().withMessage(createErrMsg.missingParameter('metadonnees.name')),
-    body('json.metadonnees.crs')
-      .if(body('json.metadonnees').exists())
-      .exists().withMessage(createErrMsg.missingParameter('metadonnees.crs')),
-    body('json.metadonnees.style')
-      .if(body('json.metadonnees').exists())
-      .exists().withMessage(createErrMsg.missingParameter('metadonnees.style')),
+    body('json.name')
+      .exists().withMessage(createErrMsg.missingParameter('name')),
     ...vectorToSave,
   ],
   validateParams,

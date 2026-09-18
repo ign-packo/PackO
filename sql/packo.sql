@@ -270,7 +270,7 @@ ALTER TABLE public.feature_ctrs ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY
 CREATE TABLE public.features (
     id integer NOT NULL,
     geom public.geometry NOT NULL,
-    properties character varying,
+    properties jsonb,
     id_layer integer NOT NULL
 );
 
@@ -316,7 +316,7 @@ CREATE VIEW public.features_json AS
     COALESCE(feature_json.features, '[]'::jsonb) AS features
    FROM (public.layers l
      LEFT JOIN ( SELECT t.id_layer,
-            jsonb_agg(jsonb_build_object('type', 'Feature', 'geometry', (public.st_asgeojson(t.geom, 9, 0))::jsonb, 'properties', ((to_jsonb(t.*) - 'id_layer'::text) - 'geom'::text))) AS features
+            jsonb_agg(jsonb_build_object('type', 'Feature', 'geometry', (public.st_asgeojson(t.geom, 9, 0))::jsonb, 'properties', (to_jsonb(t.*) - 'id_layer'::text - 'geom'::text - 'properties'::text) || COALESCE(t.properties, '{}'::jsonb))) AS features
            FROM ( SELECT t1.id_layer,
                     t1.id,
                     t1.geom,

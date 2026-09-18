@@ -74,7 +74,7 @@ class API {
     });
   }
 
-  saveVector(idBranch, name, geojson, crs, style) {
+  saveVector(idBranch, name, geojson) {
     return new Promise((resolve, reject) => {
       fetch(`${this.url}/${idBranch}/vector`,
         {
@@ -84,18 +84,14 @@ class API {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            metadonnees: {
-              name,
-              style,
-              crs,
-            },
-            data: geojson,
+            name,
+            ...geojson,
           }),
         }).then((res) => {
         res.json().then((json) => {
           if (res.status === 200) {
             console.log(`-> Layer '${name}' succesfully saved`);
-            resolve(json.id);
+            resolve(json);
           } else {
             console.log(`-> Database Error: Layer '${name}' NOT saved`);
             console.log(json.msg);

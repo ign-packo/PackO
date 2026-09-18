@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "name": "vector_example",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "is_auto": false,
+        "color": [
+            254,
+            175,
+            143
+            ],
+        "opiName": "19FD5606Ax00020_16371",
+        "comment": "test_regress"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              230748,
+              6759653
+            ],
+            [
+              230746,
+              6759653
+            ],
+            [
+              230746,
+              6759651
+            ],
+            [
+              230748,
+              6759651
+            ],
+            [
+              230748,
+              6759653
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}
+  

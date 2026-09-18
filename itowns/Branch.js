@@ -1,25 +1,5 @@
 /* eslint-disable no-console */
 
-function readCRS(json) {
-  if (json.crs) {
-    if (json.crs.type.toLowerCase() === 'epsg') {
-      return `EPSG:${json.crs.properties.code}`;
-    } if (json.crs.type.toLowerCase() === 'name') {
-      const epsgIdx = json.crs.properties.name.toLowerCase().indexOf('epsg:');
-      if (epsgIdx >= 0) {
-        // authority:version:code => EPSG:[...]:code
-        const codeStart = json.crs.properties.name.indexOf(':', epsgIdx + 5);
-        if (codeStart > 0) {
-          return `EPSG:${json.crs.properties.name.substr(codeStart + 1)}`;
-        }
-      }
-    }
-    throw new Error(`Unsupported CRS type '${json.crs}'`);
-  }
-  // assume default crs
-  return 'EPSG:4326';
-}
-
 class Branch {
   constructor(viewer, alert) {
     this.viewer = viewer;
@@ -177,16 +157,15 @@ class Branch {
       });
   }
 
-  saveLayer(name, geojson, style) {
+  saveLayer(name, geojson) {
     return new Promise((resolve, reject) => {
-      const crs = readCRS(geojson);
-      this.api.saveVector(this.active.id, name, geojson, crs, style)
-        .then((id) => {
+      this.api.saveVector(this.active.id, name, geojson)
+        .then((json) => {
           this.vectorList.push({
             name,
-            id,
-            style_itowns: JSON.stringify(style),
-            crs,
+            id: json.id,
+            style_itowns: JSON.stringify(json.style),
+            crs: json.crs,
           });
           this.setLayers(this.vectorList);
           resolve();
