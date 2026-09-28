@@ -886,7 +886,7 @@ async function clear(req, _res, next) {
     fs.unlinkSync(urlHistory);
   });
 
-  const result = await db.deleteMultiPatchesBlocks(req.client, idBranch);
+  const result = await db.deleteMultiPatches(req.client, idBranch);
 
   debug(result.rowCount);
 

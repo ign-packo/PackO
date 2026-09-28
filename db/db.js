@@ -305,7 +305,7 @@ async function reactiveBlock(pgClient, idBlock) {
   return result;
 }
 
-async function deleteMultiPatchesBlocks(pgClient, idBranch) {
+async function deleteMultiPatches(pgClient, idBranch) {
   debug(`    ~~deletePatches (idBranch: ${idBranch})`);
 
   const queryBlock = 'DELETE FROM blocks WHERE id_branch=$1';
@@ -628,7 +628,7 @@ module.exports = {
   insertMultiPatchesBlock,
   deactiveBlock,
   reactiveBlock,
-  deleteMultiPatchesBlocks,
+  deleteMultiPatches,
   getSlabs,
   insertSlabs,
   getLayers,
