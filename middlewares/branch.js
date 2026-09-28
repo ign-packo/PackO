@@ -7,13 +7,12 @@ const pgClient = require('./pgClient');
 const patch = require('./patch');
 const cog = require('../cog_path');
 
-function groupByIdBlock(patches) {
+function getIdsBlocks(patches) {
   return patches.features.reduce((acc, feature) => {
-    const key = feature.properties.id_block;
-    if (acc[key] === undefined) acc[key] = [];
-    acc[key].push(feature);
+    const idBlock = feature.properties.id_block;
+    if (!acc.include(idBlock)) acc.push(idBlock);
     return acc;
-  }, {});
+  }, []);
 }
 
 async function getBranches(req, _res, next) {
@@ -191,11 +190,12 @@ async function rebase(req, res, next) {
     });
     // on ajoute les patchs dans la BD sur cette nouvelle branche
     // Groupe feature par id_block
-    const patchByBlock = groupByIdBlock(patches);
-    for (const features of Object.values(patchByBlock)) {
+    const idsBlocks = getIdsBlocks(patches);
+    for (const idBlock of idsBlocks) {
       // on insert ce patch dans les MTD de la branche
+      const features = patches.features.filter((f) => f.properties.id_block === idBlock);
       debug(features);
-      const multipatchInserted = await db.insertMultiPatchesBlock(req.client, idNewBranch);
+      const multipatchInserted = await db.insertMultiPatches(req.client, idNewBranch);
       for (const feature of features) {
         const patchInserted = await db.insertPatch(req.client,
           multipatchInserted.id_block,
@@ -234,18 +234,24 @@ async function rebase(req, res, next) {
   // a partir de d'ici c'est non bloquant
   try {
     const patches = await db.getActivePatches(req.client, idBranch);
+    const geojsonInput = {
+      type: patches.type,
+      crs: patches.crs,
+    };
     // Groupe feature par id_block
-    const patchByBlock = groupByIdBlock(patches);
     debug('patches : ', patches);
 
-    for (const features of Object.values(patchByBlock)) {
-      patches.features = features;
+    const idsBlocks = getIdsBlocks(patches);
+    for (const idBlock of idsBlocks) {
+      // on insert ce patch dans les MTD de la branche
+      const features = patches.features.filter((f) => f.properties.id_block === idBlock);
+      geojsonInput.features = features;
       await patch.applyMultiPatches(
         req.client,
         req.overviews,
         cache.path,
         idNewBranch,
-        patches,
+        geojsonInput,
       );
     }
     debug('fin de applyMultiPatches');

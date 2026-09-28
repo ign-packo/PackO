@@ -277,8 +277,8 @@ async function insertPatch(pgClient, idBlock, geometry, idOpi, isAuto) {
   return results.rows[0];
 }
 
-async function insertMultiPatchesBlock(pgClient, idBranch) {
-  debug(`    ~~insertMultiPatchesBlock (idBranch: ${idBranch})`);
+async function insertMultiPatches(pgClient, idBranch) {
+  debug(`    ~~insertMultiPatches (idBranch: ${idBranch})`);
 
   const query = 'INSERT INTO blocks (id_branch) VALUES ($1) RETURNING id as id_block, num';
   const results = await pgClient.query(query, [idBranch]);
@@ -625,7 +625,7 @@ module.exports = {
   getOPIFromNames,
   getCrsFromIdBranch: getCacheCrsFromIdBranch,
   insertPatch,
-  insertMultiPatchesBlock,
+  insertMultiPatches,
   deactiveBlock,
   reactiveBlock,
   deleteMultiPatches,

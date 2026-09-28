@@ -535,12 +535,12 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, idBlock,
 
 async function applyMultiPatches(pgClient, overviews, dirCache, idBranch, geojson) {
   debug('applyMultiPatches', geojson);
-  const multipatchInserted = await db.insertMultiPatchesBlock(pgClient, idBranch);
+  const multipatchInserted = await db.insertMultiPatches(pgClient, idBranch);
   const arraySlabs = [];
   const paramGeojson = {
     type: geojson.type,
     crs: geojson.crs,
-  }
+  };
   for (const feature of geojson.features) {
     arraySlabs.push(await applyPatch(pgClient, overviews, dirCache, idBranch,
       multipatchInserted.id_block, multipatchInserted.num, paramGeojson, feature));
