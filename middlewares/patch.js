@@ -855,17 +855,18 @@ async function clear(req, _res, next) {
     return;
   }
   const { features } = activePatches;
-  const slabsDico = new Set();
+  const slabsSet = new Set();
   features.forEach((feature) => {
     feature.properties.slabs.forEach((slab) => {
-      slabsDico.add(JSON.stringify(slab));
+      slabsSet.add(JSON.stringify(slab));
     });
   });
-  debug('', Object.keys(slabsDico).length, ' dalles impactées');
+  debug('', slabsSet.size, ' dalles impactées');
 
-  debug(slabsDico);
+  debug(slabsSet);
 
-  Object.values(slabsDico).forEach((slab) => {
+  slabsSet.forEach((slabString) => {
+    const slab = JSON.parse(slabString);
     debug('clear sur : ', slab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
 
