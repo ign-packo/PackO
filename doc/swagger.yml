@@ -295,7 +295,7 @@ paths:
     get:
       tags:
         - multipatch
-      summary: "Récupération de tous les multi-patchs de correction"
+      summary: "Récupération de tous les multi-patchs de correction dans l'odre croissant"
       description: ""
       parameters:
         - in: path
@@ -312,7 +312,7 @@ paths:
     get:
       tags:
         - multipatch
-      summary: "Récupération des n derniers patchs de correction en format json"
+      summary: "Récupération des n derniers patchs de correction en format json du plus récent au plus vieux"
       description: ""
       parameters:
         - in: path
