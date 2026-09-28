@@ -448,12 +448,13 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
 }
 
 async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgbIr, dirCache,
-  idBranch, newBlockNum, idPatch, newPatchNum, geojson) {
+  idBranch, newBlockNum, idPatch, newPatchNum, paramGeojson) {
   debug('  ~~processSemiAutoPatch');
   const insertPatchPromise = db.insertSlabs(pgClient, idPatch, slabs);
   const isAuto = true;
   // On écrit la saisie dans un fichier json pour le donner à OzCppExe
-  const geojsonPath = await gjson.writeGeojson(idBranch, idPatch, dirCache, geojson, feature);
+  const geojsonPath = await gjson.paramGeoJsonOz(idBranch, idPatch, dirCache,
+    paramGeojson, feature);
   debug('~create patch');
   const promisesCheckFile = slabs.map((slab) => createPatch(slab,
     {
@@ -486,7 +487,7 @@ async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgb
 }
 
 async function applyPatch(pgClient, overviews, dirCache, idBranch, idBlock,
-  newBlockNum, geojson, feature) {
+  newBlockNum, paramGeojson, feature) {
   const patchIsAuto = feature.properties.is_auto;
   debug('  ~~applyPatch: ', feature);
   const nameOpis = [feature.properties.opiName,
@@ -525,7 +526,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, idBlock,
     newBlockNum,
     patchInserted.id_patch,
     patchInserted.num,
-    geojson);
+    paramGeojson);
 
   debug('on retourne les dalles modifiees : ', slabsProcessed);
   debug('Fin de applyPatch');
@@ -536,9 +537,13 @@ async function applyMultiPatches(pgClient, overviews, dirCache, idBranch, geojso
   debug('applyMultiPatches', geojson);
   const multipatchInserted = await db.insertMultiPatchesBlock(pgClient, idBranch);
   const arraySlabs = [];
+  const paramGeojson = {
+    type: geojson.type,
+    crs: geojson.crs,
+  }
   for (const feature of geojson.features) {
     arraySlabs.push(await applyPatch(pgClient, overviews, dirCache, idBranch,
-      multipatchInserted.id_block, multipatchInserted.num, geojson, feature));
+      multipatchInserted.id_block, multipatchInserted.num, paramGeojson, feature));
   }
   return arraySlabs;
 }
