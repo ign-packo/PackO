@@ -1,9 +1,8 @@
 const debug = require('debug')('gjson');
 const fs = require('fs');
 
-async function writeGeojson(idStorage, cachePath, geojson, feature) {
+async function writeGeojson(idBranch, idPatch, cachePath, geojson, feature) {
   debug(' ~~writeGeojson');
-  const { idBranch, idPatch } = idStorage;
   // create dir if it does not exist
   const dir = `${cachePath}/tmp_test_js`;
   try {

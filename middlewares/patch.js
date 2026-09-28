@@ -310,9 +310,8 @@ function createUrlOutputSemiAuto(urlOutputData, idBranch, patch) {
   return outputUrl;
 }
 
-function createUrlOutputPolygon(dirCache, patch, idStorage) {
+function createUrlOutputPolygon(dirCache, patch, idBranch, newBlockNum, newPatchNum) {
   debug('~~createUrlOutputPolygon');
-  const { idBranch, newBlockNum, newPatchNum } = idStorage;
   const outputUrl = {};
   outputUrl.urlGraphOutput = path.join(dirCache,
     'graph',
@@ -342,9 +341,8 @@ function readHistory(urlHistory) {
   return [history, prevBlockNum];
 }
 
-function renameSlab(dirCache, patch, idStorage) {
+function renameSlab(dirCache, patch, idBranch, newBlockNum, newPatchNum) {
   debug('  ~~renameSlab');
-  const { idBranch, newBlockNum, newPatchNum } = idStorage;
   const urlHistory = path.join(dirCache,
     'opi',
     patch.cogPath.dirPath,
@@ -409,7 +407,7 @@ function renameSlab(dirCache, patch, idStorage) {
 }
 
 async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbIr,
-  dirCache, idStorage) {
+  dirCache, idBranch, newBlockNum, idPatch, newPatchNum) {
   debug('  ~~processPolygonPatch');
   // Pour chaque dalle intersectant le polygone, crée le patch GDAL et renomme les fichiers.
   const slabsProcessed = [];
@@ -429,19 +427,20 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
           infoRgbIr.withIr,
           overviews,
           dirCache,
-          idStorage.idBranch,
+          idBranch,
         );
         // Creation des urls des données de sortie
-        const outputUrl = createUrlOutputPolygon(dirCache, patch, idStorage);
+        const outputUrl = createUrlOutputPolygon(dirCache, patch, idBranch,
+          newBlockNum, newPatchNum);
         patch = { ...patch, ...outputUrl, mask: createMask(overviews, ring) };
         // Process polygon patch
         await gdalProcessing.processPolygonPatchAsync(patch, overviews.tileSize.width);
         // Renomme les données de sortie
-        renameSlab(dirCache, patch, idStorage);
+        renameSlab(dirCache, patch, idBranch, newBlockNum, newPatchNum);
       })());
     }
   }
-  const insertPatchPromise = db.insertSlabs(pgClient, idStorage.idPatch, slabsProcessed);
+  const insertPatchPromise = db.insertSlabs(pgClient, idPatch, slabsProcessed);
   debug('', processPromises.length, 'patchs à appliquer.');
   debug('~Promise.all');
   await Promise.all([...processPromises, insertPatchPromise]);
@@ -449,12 +448,12 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
 }
 
 async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgbIr, dirCache,
-  idStorage, geojson) {
+  idBranch, newBlockNum, idPatch, newPatchNum, geojson) {
   debug('  ~~processSemiAutoPatch');
-  const insertPatchPromise = db.insertSlabs(pgClient, idStorage.idPatch, slabs);
+  const insertPatchPromise = db.insertSlabs(pgClient, idPatch, slabs);
   const isAuto = true;
   // On écrit la saisie dans un fichier json pour le donner à OzCppExe
-  const geojsonPath = await gjson.writeGeojson(idStorage, dirCache, geojson, feature);
+  const geojsonPath = await gjson.writeGeojson(idBranch, idPatch, dirCache, geojson, feature);
   debug('~create patch');
   const promisesCheckFile = slabs.map((slab) => createPatch(slab,
     {
@@ -467,10 +466,10 @@ async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgb
     infoRgbIr.withIr,
     overviews,
     dirCache,
-    idStorage.idBranch,
+    idBranch,
     isAuto));
   debug('', promisesCheckFile.length, 'patchs à appliquer.');
-  const urlOutputData = `${dirCache}/result_ozcpp_idBr${idStorage.idBranch}`;
+  const urlOutputData = `${dirCache}/result_ozcpp_idBr${idBranch}`;
   dirTmp = urlOutputData;
   debug('~Promise.all');
   const patchOnSlabs = await Promise.all(promisesCheckFile);
@@ -479,20 +478,21 @@ async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgb
   // Création des URL des données de sortie, puis déplacement et renommage des fichiers
   debug('~rename patch');
   patchOnSlabs.forEach((patch) => {
-    const outputUrl = createUrlOutputSemiAuto(urlOutputData, idStorage.idBranch, patch);
-    renameSlab(dirCache, { ...patch, ...outputUrl }, idStorage);
+    const outputUrl = createUrlOutputSemiAuto(urlOutputData, idBranch, patch);
+    renameSlab(dirCache, { ...patch, ...outputUrl }, idBranch, newBlockNum, newPatchNum);
   });
   await insertPatchPromise;
   return slabs;
 }
 
-async function applyPatch(pgClient, overviews, dirCache, idStorage, geojson, feature) {
+async function applyPatch(pgClient, overviews, dirCache, idBranch, idBlock,
+  newBlockNum, geojson, feature) {
   const patchIsAuto = feature.properties.is_auto;
   debug('  ~~applyPatch: ', feature);
   const nameOpis = [feature.properties.opiName,
     ...(patchIsAuto ? [feature.properties.opiNameSec] : [])];
 
-  const infoOpis = await db.getOPIFromNames(pgClient, idStorage.idBranch, nameOpis);
+  const infoOpis = await db.getOPIFromNames(pgClient, idBranch, nameOpis);
   const infoOpiRef = infoOpis.find((opi) => opi.name === feature.properties.opiName);
   const infoRgbIr = { withRgb: infoOpiRef.with_rgb, withIr: infoOpiRef.with_ir };
   const idOpi = {
@@ -502,7 +502,7 @@ async function applyPatch(pgClient, overviews, dirCache, idStorage, geojson, fea
     } : {}),
   };
 
-  const patchInsertedPromise = db.insertPatch(pgClient, idStorage.idBlock, feature.geometry,
+  const patchInsertedPromise = db.insertPatch(pgClient, idBlock, feature.geometry,
     idOpi, patchIsAuto);
 
   // in case of patch-auto, add border to bbox for selecting slabs
@@ -521,7 +521,10 @@ async function applyPatch(pgClient, overviews, dirCache, idStorage, geojson, fea
     overviews,
     infoRgbIr,
     dirCache,
-    { ...idStorage, newPatchNum: patchInserted.num, idPatch: patchInserted.id_patch },
+    idBranch,
+    newBlockNum,
+    patchInserted.id_patch,
+    patchInserted.num,
     geojson);
 
   debug('on retourne les dalles modifiees : ', slabsProcessed);
@@ -532,15 +535,10 @@ async function applyPatch(pgClient, overviews, dirCache, idStorage, geojson, fea
 async function applyMultiPatches(pgClient, overviews, dirCache, idBranch, geojson) {
   debug('applyMultiPatches', geojson);
   const multipatchInserted = await db.insertMultiPatchesBlock(pgClient, idBranch);
-  const idStorage = {
-    idBranch,
-    idBlock: multipatchInserted.id_block,
-    newBlockNum: multipatchInserted.num,
-  };
   const arraySlabs = [];
   for (const feature of geojson.features) {
-    arraySlabs.push(await applyPatch(pgClient, overviews, dirCache, idStorage, geojson,
-      feature));
+    arraySlabs.push(await applyPatch(pgClient, overviews, dirCache, idBranch,
+      multipatchInserted.id_block, multipatchInserted.num, geojson, feature));
   }
   return arraySlabs;
 }
@@ -898,7 +896,6 @@ async function clear(req, _res, next) {
 
 module.exports = {
   getPatches,
-  applyPatch,
   applyMultiPatches,
   postMultiPatches,
   undo,
