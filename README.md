@@ -448,27 +448,26 @@ Il ne faut jamais travailler à plusieurs en même temps sur la même branche. P
 
 Pour travailler à plusieurs sur un chantier : chaque personne doit créer une branche et travailler uniquement dans cette branche.
 
-Lorsque le travail est terminé, on peut rassembler les branches pour obtenir le résultat complet. Le principe, se base sur la notion de **rebase** de **git** : on choisit une branche (**B1**) et on demande à faire un **rebase** sur une autre branche (**B2**) en lui donnant un nouveau nom.
+Lorsque le travail est terminé, on peut rassembler les branches pour obtenir le résultat complet. Le principe, se base sur la notion de **merge** de **git** : on choisit toutes les branches (**B1** / **B2** / **B3**) que l'on veut rassembler sous une seule branche que l'on donne un nouveau nom.
 
 En pratique, PackO va effectuer les opérations suivantes :
 
 - création de la nouvelle branche avec le nom choisi
-- copie des patchs de **B2** dans cette nouvelle branche : c'est rapide puisque l'historique et les résultats d'application de patch sont simplement copiés
-- une fois que cette copie est prête : l'utilisateur reçoit une réponse avec l'Id de la nouvelle branche et l'Id du processus long pour suivre l'avancement du **rebase**
-- PackO va ensuite appliquer tous les patchs de **B1** sur cette nouvelle branche. Cela va prendre du temps puisqu'il faut rejouer chaque patch un par un dans l'ordre.
-- Lorsque les traitements sont terminés, le processus est mis à jour avec la date de fin et son statut est passé à **succeed**
+- copie des patchs de **B1** dans cette nouvelle branche : c'est rapide puisque l'historique et les résultats d'application de patch sont simplement copiés
+- une fois que cette copie est prête : l'utilisateur reçoit une réponse avec l'Id de la nouvelle branche et les Id du processu long suivant pour suivre l'avancement du **merge** des branches.
+- PackO va ensuite appliquer tous les patchs dans l'ordre des branches donnée **B2** puis **B3** sur cette nouvelle branche. Cela va prendre du temps puisqu'il faut rejouer chaque patch un par un dans l'ordre.
+- Lorsque les traitements sont terminés, le processu est mis à jour avec la date de fin et son statut est passé à **succeed**
+- Dans le cache on retrouve un vecteur annexe "alertes_merge/intersection_merge_<idBranch>" donnant la position des patches inter-branches qui s'intersectent, permettant de localiser les conflits éventuels.
 
-Il n'y a pas d'interface pour faire le **rebase** depuis iTowns, il faut utiliser la doc : 
+Il n'y a pas d'interface pour faire le **merge** depuis iTowns, il faut utiliser la doc : 
 ````
-http://[serveur]:[port]/doc/#/branch/post__idBranch__rebase 
+http://[serveur]:[port]/doc/#//branches/merge?idBranch=B1&idBranch=B2&idBranch=B3&name=maNouvelleBranche
 ````
 pour lancer la commande et 
 `````
 http://[serveur]:[port]/doc/#/process/get_process__id_
 `````
 pour suivre l'avancement du traitement.
-
-Attention : si les deux branches ont modifié les mêmes zones de l'ortho le résultat peut-être imprévisible puisque l'on applique d'abord les patchs de la branche de base (**B2**), puis ceux de la branche **B1**. Un mécanisme d'alerte sera ajouté dès que possible pour signaler ces cas et permettre à un opérateur de les contrôler efficacement. En attendant, il est recommandé de définir la zone à traiter pour chaque opérateur et de gérer les cas limites globalement en fin de chantier. 
 
 ## Export raster
 
