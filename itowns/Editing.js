@@ -629,7 +629,8 @@ class Editing {
       this.view.controls.setCursor('default', 'auto');
       this.currentStatus = status.RAS;
       if (res.status === 200) {
-        this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches']);
+        const cacheBusting = true;
+        this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches'], cacheBusting);
       }
       res.text().then((msg) => {
         this.viewer.message = msg;
