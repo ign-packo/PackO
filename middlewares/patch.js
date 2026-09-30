@@ -337,7 +337,7 @@ function readHistory(urlHistory) {
   debug('  ~~readHistory');
   const history = JSON.parse(`${fs.readFileSync(`${urlHistory}`)}`);
   debug('historique :', history);
-  const prevBlockNum = history.numBlock[history.numBlock.length - 1];
+  const prevBlockNum = Math.max(...Object.keys(history));
   return [history, prevBlockNum];
 }
 
@@ -348,20 +348,17 @@ function renameSlab(dirCache, patch, idBranch, newBlockNum, newPatchNum) {
     patch.cogPath.dirPath,
     `${idBranch}_${patch.cogPath.filename}_history.packo`);
   // Structure fichier json history
-  // une balise principale numBlock donne un array des numéros de block sur le slab
-  // commençant par 'orig'.
-  // Les autres balises sont les numéros de block présent dans numBlock
-  // donnant un array des numéros des patches du block commençant par 'orig'
-  // ex: {numBlock: ['orig', 1, 5, 9], 1: ['orig', 2, 3, 4], 5: ['orig', 8], 9: ['orig', 15, 16]}
+  // les clés sont les numéros de block/multipatch appliqué sur le slab
+  // la valeur des clés est un array contant les numéros des patches dans le block
+  // ex: {1: [2, 3, 4], 5: [8], 9: [15, 16]}
   const [history, prevBlockNum] = fs.existsSync(urlHistory)
     ? readHistory(urlHistory)
-    : [{}, 'orig'];
+    : [{}, null];
 
-  if (prevBlockNum !== 'orig') {
+  if (prevBlockNum !== null) {
     let blockNum = newBlockNum;
     if (prevBlockNum !== newBlockNum) {
-      history.numBlock.push(newBlockNum);
-      history[`${newBlockNum}`] = ['orig'];
+      history[`${newBlockNum}`] = [];
       blockNum = prevBlockNum;
     }
 
@@ -391,8 +388,7 @@ function renameSlab(dirCache, patch, idBranch, newBlockNum, newPatchNum) {
     fs.writeFileSync(`${urlHistory}`, JSON.stringify(history));
   } else {
     debug('le fichier \'history\' n\'existe pas encore');
-    history.numBlock = [prevBlockNum, newBlockNum];
-    history[`${newBlockNum}`] = [prevBlockNum, newPatchNum];
+    history[`${newBlockNum}`] = [newPatchNum];
     fs.writeFileSync(`${urlHistory}`, JSON.stringify(history));
   // On a pas besoin de renommer l'image d'origine
   // qui reste partagée pour toutes les branches
@@ -627,7 +623,7 @@ async function undo(req, _res, next) {
   // récupération du numéro de multipatch
   const lastBlockNum = filterPatches[0].properties.num_block;
 
-  debug(`Block '${lastBlockNum}' à annuler.`);
+  debug(`Block '${lastBlockNum}' à annuler.`, typeof lastBlockNum);
 
   let slabs = await db.getSlabs(req.client, filterPatches.map((feature) => feature.properties.id));
 
@@ -641,12 +637,14 @@ async function undo(req, _res, next) {
     // on récupère l'historique de cette tuile
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     const history = JSON.parse(`${fs.readFileSync(`${urlHistory}`)}`);
+    const numblk = Math.max(...Object.keys(history));
+    debug('last numblok dans history', numblk, typeof numblk);
     return {
       ...slab, history, urlHistory, cogPath,
     };
   });
   const slabsError = slabs.filter(
-    ({ history }) => (history.numBlock[history.numBlock.length - 1]) !== lastBlockNum,
+    ({ history }) => (Math.max(...Object.keys(history)) !== lastBlockNum),
   );
   if (slabsError.length > 0) {
     req.error = {
@@ -672,30 +670,19 @@ async function undo(req, _res, next) {
     const { history } = slab;
     debug(history);
     const patchIdPrev = history[`${lastBlockNum}`][history[`${lastBlockNum}`].length - 1];
-    const numBlockSelected = history.numBlock[history.numBlock.length - 2];
-    debug(patchIdPrev, numBlockSelected);
-    let numPatchSelected = 'orig';
-    if (numBlockSelected !== 'orig') {
-      numPatchSelected = history[`${numBlockSelected}`][history[`${numBlockSelected}`].length - 1];
-    }
-    // mise à jour de l'historique
-    history.numBlock.pop();
-    delete history[`${lastBlockNum}`];
-    debug('newHistory : ', history);
-    fs.writeFileSync(`${slab.urlHistory}`, JSON.stringify(history));
+    debug('dernier id patch appliquer : ', patchIdPrev);
+    const numBlocks = Object.keys(history);
+    // Récupération du numéro de block à réappliquer
+    const numBlockSelected = numBlocks.length > 1 ? numBlocks.sort((a, b) => b - a)[1] : 'orig';
     debug(` dalle ${slab.z}/${slab.y}/${slab.x} : version ${numBlockSelected} selectionnée`);
     const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
     const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
     // renommer les images pour pointer sur ce numéro de version
     const nameCog = `${idBranch}_${cogPath.filename}`;
-    const nameCogSelect = `${idBranch}_${cogPath.filename}_${numBlockSelected}-${numPatchSelected}`;
     const nameCogPrev = `${idBranch}_${cogPath.filename}_${lastBlockNum}-${patchIdPrev}`;
     const urlGraph = path.join(graphDir, `${nameCog}.tif`);
     const urlOrthoRgb = path.join(orthoDir, `${nameCog}.tif`);
     const urlOrthoIr = path.join(orthoDir, `${nameCog}i.tif`);
-    const urlGraphSelected = path.join(graphDir, `${nameCogSelect}.tif`);
-    const urlOrthoRgbSelected = path.join(orthoDir, `${nameCogSelect}.tif`);
-    const urlOrthoIrSelected = path.join(orthoDir, `${nameCogSelect}i.tif`);
 
     // on renomme les anciennes images
     const urlGraphPrev = path.join(graphDir, `${nameCogPrev}.tif`);
@@ -708,9 +695,25 @@ async function undo(req, _res, next) {
 
     // on renomme les nouvelles images sauf si c'est la version orig
     if (numBlockSelected !== 'orig') {
+      const numPatchSelected = history[`${numBlockSelected}`][
+        history[`${numBlockSelected}`].length - 1
+      ];
+      const nameCogSelect = `${idBranch}_${cogPath.filename}_${numBlockSelected}-${numPatchSelected}`;
+      const urlGraphSelected = path.join(graphDir, `${nameCogSelect}.tif`);
+      const urlOrthoRgbSelected = path.join(orthoDir, `${nameCogSelect}.tif`);
+      const urlOrthoIrSelected = path.join(orthoDir, `${nameCogSelect}i.tif`);
       rename(urlGraphSelected, urlGraph);
       if (withRgb) rename(urlOrthoRgbSelected, urlOrthoRgb);
       if (withIr) rename(urlOrthoIrSelected, urlOrthoIr);
+    }
+    // mise à jour de l'historique
+    delete history[`${lastBlockNum}`];
+    debug('newHistory : ', history);
+    if (Object.keys(history).length === 0) {
+      // cas history vide on supprime le fichier
+      fs.unlinkSync(slab.urlHistory);
+    } else {
+      fs.writeFileSync(`${slab.urlHistory}`, JSON.stringify(history));
     }
   });
 
@@ -778,23 +781,18 @@ async function redo(req, _res, next) {
 
     // on met a jour l'historique
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
-    const [history, blockNumPrev] = readHistory(urlHistory);
-    let patchNumPrev = 'orig';
-    if (blockNumPrev !== 'orig') {
-      patchNumPrev = history[`${blockNumPrev}`][history[blockNumPrev].length - 1];
-    }
-    if (blockNumPrev !== blockNumRedo) {
-      history.numBlock.push(blockNumRedo);
-    }
+    const [history, blockNumPrev] = fs.existsSync(urlHistory)
+      ? readHistory(urlHistory)
+      : [{}, null];
+    // initialisation de l'history si n'existe pas
     if (history[`${blockNumRedo}`] === undefined) {
-      history[`${blockNumRedo}`] = ['orig'];
+      history[`${blockNumRedo}`] = [];
     }
     history[`${blockNumRedo}`].push(patchNumRedo);
     fs.writeFileSync(`${urlHistory}`, JSON.stringify(history));
     // noms des fichiers
     const nameCog = `${idBranch}_${cogPath.filename}`;
     const nameCogSelect = `${idBranch}_${cogPath.filename}_${blockNumRedo}-${patchNumRedo}`;
-    const nameCogPrev = `${idBranch}_${cogPath.filename}_${blockNumPrev}-${patchNumPrev}`;
     // on verifie si la tuile a été effectivement modifiée par ce patch
     const urlGraphSelected = path.join(graphDir, `${nameCogSelect}.tif`);
     const urlOrthoRgbSelected = path.join(orthoDir, `${nameCogSelect}.tif`);
@@ -804,22 +802,22 @@ async function redo(req, _res, next) {
     const urlOrthoRgb = path.join(orthoDir, `${nameCog}.tif`);
     const urlOrthoIr = path.join(orthoDir, `${nameCog}i.tif`);
     // on renomme les anciennes images
-    const urlGraphPrev = path.join(graphDir, `${nameCogPrev}.tif`);
-    const urlOrthoRgbPrev = path.join(orthoDir, `${nameCogPrev}.tif`);
-    const urlOrthoIrPrev = path.join(orthoDir, `${nameCogPrev}i.tif`);
-    if (patchNumPrev !== 'orig') {
+    if (blockNumPrev !== null) {
+      const patchNumPrev = history[`${blockNumPrev}`][history[blockNumPrev].length - 1];
+      const nameCogPrev = `${idBranch}_${cogPath.filename}_${blockNumPrev}-${patchNumPrev}`;
+      const urlGraphPrev = path.join(graphDir, `${nameCogPrev}.tif`);
+      const urlOrthoRgbPrev = path.join(orthoDir, `${nameCogPrev}.tif`);
+      const urlOrthoIrPrev = path.join(orthoDir, `${nameCogPrev}i.tif`);
       rename(urlGraph, urlGraphPrev);
       if (withRgb) rename(urlOrthoRgb, urlOrthoRgbPrev);
       if (withIr) rename(urlOrthoIr, urlOrthoIrPrev);
     }
-
     // on renomme les nouvelles images
     rename(urlGraphSelected, urlGraph);
     if (withRgb) rename(urlOrthoRgbSelected, urlOrthoRgb);
     if (withIr) rename(urlOrthoIrSelected, urlOrthoIr);
   });
   // on remet les features dans req.app.activePatches.features
-
   const result = await db.reactiveBlock(req.client, blockIdRedo);
   debug(result.rowCount);
 
