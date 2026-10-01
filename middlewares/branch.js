@@ -2,11 +2,14 @@ const debug = require('debug')('branch');
 const fs = require('fs');
 const path = require('path');
 const { matchedData } = require('express-validator');
-const turf = require('@turf/turf');
 const db = require('../db/db');
 const pgClient = require('./pgClient');
 const patch = require('./patch');
 const cog = require('../cog_path');
+const gdalProcessing = require('../gdal_processing');
+
+// Nombre de pixels utilisé pour le buffer d'intersection du merge
+const NBPX = 5;
 
 async function getBranches(req, _res, next) {
   debug('>>GET branches');
@@ -239,6 +242,7 @@ async function merge(req, res, next) {
   next();
   // on applique les patchs des autres Branches dans cette nouvelle branche
   debug(`Boucle sur les ids Banches ${idBranch}`);
+  const buffer = NBPX * req.overviews.resolution;
   try {
     for (const [i, idBr] of idBranch.entries()) {
       // On fait un commit pour la première partie du merge et on ouvre une transaction
@@ -254,10 +258,13 @@ async function merge(req, res, next) {
       for (const feature of patches.features) {
         // Vérification si la saisie intersect une autre saisie de la branche de merge
         for (const featureBase of newMergePatches.features) {
-          const intersect = geometriesIntersect(feature, featureBase);
-          if (intersect) {
+          const intersection = gdalProcessing.geometriesIntersection(feature.geometry,
+            featureBase.geometry, buffer, req.overviews.crs.code);
+          if (intersection && !intersection.isEmpty()) {
+            const centroid = intersection.centroid();
             let ms = `feature id ${feature.properties.id} intersect `;
             ms += `feature id ${featureBase.properties.id}`;
+            ms += `Le barycentre de l'intersection est ${centroid.x}, ${centroid.y}.`;
             debug(ms);
           }
         }
