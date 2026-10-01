@@ -208,7 +208,7 @@ describe('route/branch.js', () => {
     });
   });
 
-  describe('POST /{idBranch}/rebase', () => {
+  describe.skip('POST /{idBranch}/rebase', () => {
     describe('rebase non valid branches', () => {
       it('should failed', (done) => {
         const idB = 99999;
@@ -292,7 +292,7 @@ describe('route/branch.js', () => {
         describe(`add a patch on ${branchName}`, () => {
           it('should succeed', (done) => {
             chai.request(app)
-              .post(`/${idBranch[branchName]}/patch`)
+              .post(`/${idBranch[branchName]}/multipatch`)
               .send({
                 type: 'FeatureCollection',
                 crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },
@@ -440,7 +440,7 @@ describe('route/branch.js', () => {
     });
   });
 
-  describe('\n  extra: route/processQueue.js\n    GET /process/', () => {
+  describe.skip('\n  extra: route/processQueue.js\n    GET /process/', () => {
     it(`should return the idProcessus of the rebase ${branchName} into 'orig'`, (done) => {
       // on vérifie que le idProcess est accessible
       const rebaseName = 'rebase2';

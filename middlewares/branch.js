@@ -7,6 +7,14 @@ const pgClient = require('./pgClient');
 const patch = require('./patch');
 const cog = require('../cog_path');
 
+function getIdsBlocks(patches) {
+  return patches.features.reduce((acc, feature) => {
+    const idBlock = feature.properties.id_block;
+    if (!acc.include(idBlock)) acc.push(idBlock);
+    return acc;
+  }, []);
+}
+
 async function getBranches(req, _res, next) {
   debug('>>GET branches');
   if (req.error) {
@@ -181,23 +189,26 @@ async function rebase(req, res, next) {
       });
     });
     // on ajoute les patchs dans la BD sur cette nouvelle branche
-    for (const feature of patches.features) {
+    // Groupe feature par id_block
+    const idsBlocks = getIdsBlocks(patches);
+    for (const idBlock of idsBlocks) {
       // on insert ce patch dans les MTD de la branche
-      debug(feature.properties);
-      const patchInserted = await db.insertPatch(req.client,
-        idNewBranch,
-        feature.geometry,
-        {
-          ref: feature.properties.id_opi,
-          sec: feature.properties.id_opisec,
-        },
-        feature.properties.is_auto);
-      const idNewPatch = patchInserted.id_patch;
+      const features = patches.features.filter((f) => f.properties.id_block === idBlock);
+      debug(features);
+      const multipatchInserted = await db.insertMultiPatches(req.client, idNewBranch);
+      for (const feature of features) {
+        const patchInserted = await db.insertPatch(req.client,
+          multipatchInserted.id_block,
+          feature.geometry,
+          {
+            ref: feature.properties.id_opi,
+            sec: feature.properties.id_opisec,
+          },
+          feature.properties.is_auto);
 
-      const slabs = feature.properties.slabs.map((s) => ({ x: s[0], y: s[1], z: s[2] }));
-
-      // ajouter les slabs correspondant au patch dans la table correspondante
-      await db.insertSlabs(req.client, idNewPatch, slabs);
+        // ajouter les slabs correspondant au patch dans la table correspondante
+        await db.insertSlabs(req.client, patchInserted.id_patch, feature.properties.slabs);
+      }
     }
   } catch (error) {
     debug(error);
@@ -223,22 +234,27 @@ async function rebase(req, res, next) {
   // a partir de d'ici c'est non bloquant
   try {
     const patches = await db.getActivePatches(req.client, idBranch);
+    const geojsonInput = {
+      type: patches.type,
+      crs: patches.crs,
+    };
+    // Groupe feature par id_block
     debug('patches : ', patches);
 
-    debug('>>applyPatches', patches.features);
-    // Clonage du patches pour en modifier un
-    const patchWithOneFeature = JSON.parse(JSON.stringify(patches));
-    for (const feature of patches.features) {
-      patchWithOneFeature.features = [feature];
-      await patch.applyPatch(
+    const idsBlocks = getIdsBlocks(patches);
+    for (const idBlock of idsBlocks) {
+      // on insert ce patch dans les MTD de la branche
+      const features = patches.features.filter((f) => f.properties.id_block === idBlock);
+      geojsonInput.features = features;
+      await patch.applyMultiPatches(
         req.client,
         req.overviews,
         cache.path,
         idNewBranch,
-        patchWithOneFeature,
+        geojsonInput,
       );
     }
-    debug('fin de applyPatches');
+    debug('fin de applyMultiPatches');
 
     await db.finishProcess(req.client, 'succeed', idProcess, 'done');
   } catch (error) {
