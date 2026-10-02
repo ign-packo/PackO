@@ -194,10 +194,12 @@ async function rebase(req, res, next) {
         feature.properties.is_auto);
       const idNewPatch = patchInserted.id_patch;
 
-      const slabs = feature.properties.slabs.map((s) => ({ x: s[0], y: s[1], z: s[2] }));
+      const slabs = feature.properties.slabs.map((s) => ({
+        idPatch: idNewPatch, x: s[0], y: s[1], z: s[2],
+      }));
 
       // ajouter les slabs correspondant au patch dans la table correspondante
-      await db.insertSlabs(req.client, idNewPatch, slabs);
+      await db.insertSlabs(req.client, slabs);
     }
   } catch (error) {
     debug(error);

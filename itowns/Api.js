@@ -171,7 +171,7 @@ class API {
         })
         .then((res) => {
           if (res.status === 200) {
-            resolve();
+            res.json().then((json) => resolve(json));
           } else {
             res.json().then((json) => reject(json));
           }

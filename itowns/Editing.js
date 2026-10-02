@@ -151,10 +151,27 @@ class Editing {
 
     // On post le geojson sur l'API
     this.api.postPatch(this.branch.active.id, JSON.stringify(geojson))
-      .then(() => {
+      .then((res) => {
         const cacheBusting = true;
         this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches'], cacheBusting);
         this.viewer.message = '';
+        // Filtrage des patchs avec du No Data sans doublon
+        const patchNoData = [
+          ...new Map(
+            res.filter((patch) => patch.withNoData).map((patch) => [patch.id, patch]),
+          ).values(),
+        ];
+        // Création du message
+        let msPxNoData = 'No Data présent dans le patch: \n';
+        patchNoData.forEach((patch) => {
+          msPxNoData += `id patch: ${patch.idPatch}\n`;
+        });
+        if (patchNoData.length > 0) {
+          this.viewer.view.dispatchEvent({
+            type: 'error',
+            error: { msg: msPxNoData },
+          });
+        }
       })
       .catch((error) => {
         console.log(error);

@@ -391,12 +391,10 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
   idBranch, patchInserted) {
   debug('  ~~processPolygonPatch');
   // Pour chaque dalle intersectant le polygone, crée le patch GDAL et renomme les fichiers.
-  const slabsProcessed = [];
   const processPromises = [];
   for (const slab of slabs) {
     const ring = createRingBySlab(slab, feature.geometry.coordinates, overviews);
     if (ring.length > 0) {
-      slabsProcessed.push(slab);
       processPromises.push((async () => {
         let patch = await createPatch(
           slab,
@@ -414,23 +412,31 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
         const outputUrl = createUrlOutputPolygon(dirCache, idBranch, patch, patchInserted.num);
         patch = { ...patch, ...outputUrl, mask: createMask(overviews, ring) };
         // Process polygon patch
-        await gdalProcessing.processPolygonPatchAsync(patch, overviews.tileSize.width);
+        const pxNoDataSlab = await gdalProcessing.processPolygonPatchAsync(patch,
+          overviews.tileSize.width);
+        let withNoData = false;
+        if (pxNoDataSlab.pxNoData > 0 || pxNoDataSlab.pxNoDataIr > 0) {
+          debug(`Px No Data in RVB ${pxNoDataSlab.pxNoData}, in Ir ${pxNoDataSlab.pxNoDataIr}`);
+          withNoData = true;
+        }
         // Renomme les données de sortie
         renameSlab(dirCache, idBranch, patch, patchInserted.num);
+        return { idPatch: patchInserted.id_patch, withNoData, ...slab };
       })());
     }
   }
-  const insertPatchPromise = db.insertSlabs(pgClient, patchInserted.id_patch, slabsProcessed);
-  debug('', processPromises.length, 'patchs à appliquer.');
-  debug('~Promise.all');
-  await Promise.all([...processPromises, insertPatchPromise]);
+  debug(`${processPromises.length} patchs à appliquer.`);
+  const slabsProcessed = await Promise.all(processPromises);
+  debug(slabsProcessed);
+  await db.insertSlabs(pgClient, slabsProcessed);
   return slabsProcessed;
 }
 
 async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgbIr, dirCache,
   idBranch, patchInserted, geojson) {
   debug('  ~~processSemiAutoPatch');
-  const insertPatchPromise = db.insertSlabs(pgClient, patchInserted.id_patch, slabs);
+  const insertPatchPromise = db.insertSlabs(pgClient,
+    slabs.map((slab) => ({ idPatch: patchInserted.id_patch, ...slab })));
   const isAuto = true;
   // On écrit la saisie dans un fichier json pour le donner à OzCppExe
   const geojsonPath = await gjson.writeGeojson(idBranch, patchInserted.id_patch, dirCache,
