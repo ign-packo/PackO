@@ -9,7 +9,8 @@ const cog = require('../cog_path');
 const gdalProcessing = require('../gdal_processing');
 
 // Nombre de pixels utilisé pour le buffer d'intersection du merge
-const NBPX = 5;
+const NBPXMANUEL = 5;
+const NBPXAUTO = 30;
 const NOM_VECT_INTER_MERGE = 'intersection_merge';
 
 async function getBranches(req, _res, next) {
@@ -181,6 +182,13 @@ async function initMergeBranch(pgClientRequest, nameNewBranch, idBase, cache, ov
   return [idNewBranch, patches];
 }
 
+function getBufferToIntersect(feature, resolution) {
+  if (feature.properties.is_auto) {
+    return NBPXAUTO * resolution;
+  }
+  return NBPXMANUEL * resolution;
+}
+
 async function merge(req, res, next) {
   debug('~~~merge branch~~~');
   if (req.error) {
@@ -239,7 +247,6 @@ async function merge(req, res, next) {
   next();
   // on applique les patchs des autres Branches dans cette nouvelle branche
   debug(`Boucle sur les ids Banches ${idBranch}`);
-  const buffer = NBPX * req.overviews.resolution;
   const intersectMerge = {
     type: 'FeatureCollection',
     crs: {
@@ -266,14 +273,15 @@ async function merge(req, res, next) {
       for (const feature of patches.features) {
         // Vérification si la saisie intersect une autre saisie de la branche de merge
         for (const featureBase of newMergePatches.features) {
-          const intersection = gdalProcessing.geometriesIntersection(feature.geometry,
-            featureBase.geometry, buffer, req.overviews.crs.code);
+          const buffer1 = getBufferToIntersect(feature, req.overviews.resolution);
+          const buffer2 = getBufferToIntersect(featureBase, req.overviews.resolution);
+          const intersection = gdalProcessing.geometriesIntersection(feature.geometry, buffer1,
+            featureBase.geometry, buffer2, req.overviews.crs.code);
           if (intersection && !intersection.isEmpty()) {
             const centroid = intersection.centroid();
-            let ms = `feature id ${feature.properties.id} intersect `;
-            ms += `feature id ${featureBase.properties.id}`;
-            ms += `Le barycentre de l'intersection est ${centroid.x}, ${centroid.y}.`;
-            debug(ms);
+            debug(`Ids Patch intersect: ${feature.properties.id}, `
+              + `${featureBase.properties.id}.\n`
+              + `Centroid of intersection: ${centroid.x}, ${centroid.y}.`);
             intersectMerge.features.push({
               type: 'Feature',
               geometry: centroid.toObject(),
