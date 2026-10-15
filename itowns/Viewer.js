@@ -597,7 +597,9 @@ class Viewer {
         if (nbFileLoaded === files.length && Object.keys(errors).length > 0) {
           const error = [];
           Object.keys(errors).forEach((layer) => {
-            error.push(new Error(` ${[`Adding ${layer}`, ...errors[layer]].join('\n    -> ')}\n`));
+            const err = new Error(` ${[`Adding ${layer}`, ...errors[layer]].join('\n    -> ')}\n`);
+            err.name = 'drag&dropError';
+            error.push(err);
           });
 
           _view.dispatchEvent({
@@ -622,7 +624,9 @@ class Viewer {
           if (nbFileLoaded === files.length && Object.keys(errors).length > 0) {
             const error = [];
             Object.keys(errors).forEach((layer) => {
-              error.push(new Error(` ${[`Adding ${layer}`, ...errors[layer]].join('\n    -> ')}\n`));
+              const err = new Error(` ${[`Adding ${layer}`, ...errors[layer]].join('\n    -> ')}\n`);
+              err.name = 'drag&dropError';
+              error.push(err);
             });
 
             this.view.dispatchEvent({

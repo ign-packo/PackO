@@ -67,8 +67,10 @@ class API {
           console.log(`-> Database Error: Vector '${name}' (id: ${id}) NOT deleted`);
           res.text().then((msg) => {
             console.log(msg);
-            reject();
           });
+          const err = new Error(`Vector '${name}' (id: ${id}) NOT deleted`);
+          err.name = 'Database Error';
+          reject(err);
         }
       });
     });
@@ -97,9 +99,11 @@ class API {
             console.log(`-> Layer '${name}' succesfully saved`);
             resolve(json.id);
           } else {
-            console.log(`-> Database Error: Layer '${name}' NOT saved`);
-            console.log(json.msg);
-            reject();
+            const err = new Error(`Layer '${name}' NOT saved`);
+            err.name = 'Database Error';
+            console.log(err);
+            console.log('réponse api: ', json);
+            reject(err);
           }
         });
       });
