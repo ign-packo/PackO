@@ -526,7 +526,7 @@ class Viewer {
         if (fileMtd.format === _GEOJSON) {
           data[layerName] = JSON.parse(dataLoaded);
           if (!data[layerName].type || data[layerName].type !== 'FeatureCollection' || !GJV.valid(data[layerName])) {
-            const msgError = 'File is not a valid geoJson';
+            const msgError = `File ${layerName} is not a valid geoJson`;
             if (!errors[layerName]) {
               errors[layerName] = [msgError];
             } else {
