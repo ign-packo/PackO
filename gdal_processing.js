@@ -357,11 +357,11 @@ function geometriesIntersection(geometry1, geometry2, buffer, epsg) {
   const segments = 30;// Nombre de segments pour approximer les arcs du buffer
   const bufferedA = geom1.buffer(buffer, segments);
   const bufferedB = geom2.buffer(buffer, segments);
-  return bufferedA.intersects(bufferedB);
+  return bufferedA.intersection(bufferedB);
 }
 
 exports.getTileEncoded = getTileEncoded;
 exports.getColor = getColor;
 exports.getDefaultEncoded = getDefaultEncoded;
 exports.processPolygonPatchAsync = processPolygonPatchAsync;
-exports.geometriesIntersect = geometriesIntersect;
+exports.geometriesIntersection = geometriesIntersection;
