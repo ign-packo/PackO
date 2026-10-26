@@ -445,13 +445,15 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
 }
 
 async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgbIr, dirCache,
-  idBranch, newBlockNum, idPatch, newPatchNum, paramGeojson) {
+  idBranch, newBlockNum, idPatch, newPatchNum, geoJsonCrs) {
   debug('  ~~processSemiAutoPatch');
   const insertPatchPromise = db.insertSlabs(pgClient, idPatch, slabs);
   const isAuto = true;
   // On écrit la saisie dans un fichier json pour le donner à OzCppExe
-  const [geojsonPath, geojsonOz] = gjson.paramGeoJsonOz(idBranch, idPatch, dirCache,
-    paramGeojson, feature.properties, feature.geometry.coordinates);
+  const geojsonOz = gjson.geoJsonOzObject(idBranch, idPatch, geoJsonCrs,
+    feature.properties, feature.geometry.coordinates);
+    // write patch geojson
+  const geojsonPath = `${dirCache}/tmp_test_js/patch_idBr${idBranch}_idP${idPatch}.geojson`;
   await gjson.writeGeojson(geojsonPath, geojsonOz);
   debug('~create patch');
   const promisesCheckFile = slabs.map((slab) => createPatch(slab,
@@ -485,7 +487,7 @@ async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgb
 }
 
 async function applyPatch(pgClient, overviews, dirCache, idBranch, idBlock,
-  newBlockNum, paramGeojson, feature) {
+  newBlockNum, geoJsonCrs, feature) {
   const patchIsAuto = feature.properties.is_auto;
   debug('  ~~applyPatch: ', feature);
   const nameOpis = [feature.properties.opiName,
@@ -524,7 +526,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, idBlock,
     newBlockNum,
     patchInserted.id_patch,
     patchInserted.num,
-    paramGeojson);
+    geoJsonCrs);
 
   debug('on retourne les dalles modifiees : ', slabsProcessed);
   debug('Fin de applyPatch');
@@ -535,13 +537,9 @@ async function applyMultiPatches(pgClient, overviews, dirCache, idBranch, geojso
   debug('applyMultiPatches', geojson);
   const multipatchInserted = await db.insertMultiPatches(pgClient, idBranch);
   const arraySlabs = [];
-  const paramGeojson = {
-    type: geojson.type,
-    crs: geojson.crs,
-  };
   for (const feature of geojson.features) {
     arraySlabs.push(await applyPatch(pgClient, overviews, dirCache, idBranch,
-      multipatchInserted.id_block, multipatchInserted.num, paramGeojson, feature));
+      multipatchInserted.id_block, multipatchInserted.num, geojson.crs, feature));
   }
   return arraySlabs;
 }
@@ -858,6 +856,7 @@ async function clear(req, _res, next) {
   const slabsSet = new Set();
   features.forEach((feature) => {
     feature.properties.slabs.forEach((slab) => {
+      // Ordonnance des balises x, y, z de l'objet pour vérifier leur unicité entre eux
       slabsSet.add(JSON.stringify({ x: slab.x, y: slab.y, z: slab.z }));
     });
   });

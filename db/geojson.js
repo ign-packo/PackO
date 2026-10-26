@@ -18,22 +18,22 @@ async function writeGeojson(filePath, geojson) {
   }
 }
 
-function paramGeoJsonOz(idBranch, idPatch, cachePath, paramGeojson, properties, coordinates) {
-  debug(' ~~paramGeoJsonOz');
-  // write patch geojson
-  const filePath = `${cachePath}/tmp_test_js/patch_idBr${idBranch}_idP${idPatch}.geojson`;
-
-  const geoJsonOz = paramGeojson;
-  geoJsonOz.name = `${idBranch}_${idPatch}`;
-  geoJsonOz.features = [{
-    geometry: { type: 'MultiLineString', coordinates: [coordinates] },
-    properties,
-  }];
-
-  return [filePath, geoJsonOz];
+function geoJsonOzObject(idBranch, idPatch, geoJsonCrs, properties, coordinates) {
+  debug(' ~~geoJsonOzObject');
+  // Création d'un objet GeoJSON FeatureCollection
+  // (seul type de GeoJSON pris en compte comme saisie)
+  return {
+    type: 'FeatureCollection',
+    crs: geoJsonCrs,
+    name: `${idBranch}_${idPatch}`,
+    features: [{
+      geometry: { type: 'MultiLineString', coordinates: [coordinates] },
+      properties,
+    }],
+  };
 }
 
 module.exports = {
-  paramGeoJsonOz,
+  geoJsonOzObject,
   writeGeojson,
 };
