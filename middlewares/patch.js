@@ -347,14 +347,14 @@ function renameSlab(dirCache, patch, idBranch, newBlockNum, newPatchNum) {
     'opi',
     patch.cogPath.dirPath,
     `${idBranch}_${patch.cogPath.filename}_history.packo`);
-  // Structure du fichier history.json (1 par slab)
-  // avec pour clés, les numéros de bloc (ou multipatch) appliqué
-  // et pour valeur un array contant les numéros des patches du bloc
-  // ex: {
-  // 1: [2, 3, 4],
-  // 5: [8],
-  // 9: [15, 16],
-  // }
+  /* Structure du fichier history.json (1 par slab)
+  avec pour clés, les numéros de bloc (ou multipatch) appliqué
+  et pour valeur un array contant les numéros des patches du bloc
+  ex: {
+    1: [2, 3, 4],
+    5: [8],
+    9: [15, 16],
+  } */
   const [history, prevBlockNum] = fs.existsSync(urlHistory)
     ? readHistory(urlHistory)
     : [{}, 'orig'];
