@@ -7,8 +7,8 @@ const pgClient = require('./pgClient');
 const patch = require('./patch');
 const cog = require('../cog_path');
 
-function getIdsBlocks(patches) {
-  return [...new Set(patches.features.map((feature) => feature.properties.idBlock))];
+function getUniqueIdBlocks(patches) {
+  return new Set(patches.features.map((feature) => feature.properties.id_block));
 }
 
 async function getBranches(req, _res, next) {
@@ -186,8 +186,8 @@ async function rebase(req, res, next) {
     });
     // on ajoute les patchs dans la BD sur cette nouvelle branche
     // Groupe feature par id_block
-    const idsBlocks = getIdsBlocks(patches);
-    for (const idBlock of idsBlocks) {
+    const idBlocks = getUniqueIdBlocks(patches);
+    for (const idBlock of idBlocks) {
       // on insert ce patch dans les MTD de la branche
       const features = patches.features.filter((f) => f.properties.id_block === idBlock);
       debug(features);
@@ -237,8 +237,8 @@ async function rebase(req, res, next) {
     // Groupe feature par id_block
     debug('patches : ', patches);
 
-    const idsBlocks = getIdsBlocks(patches);
-    for (const idBlock of idsBlocks) {
+    const idBlocks = getUniqueIdBlocks(patches);
+    for (const idBlock of idBlocks) {
       // on insert ce patch dans les MTD de la branche
       const features = patches.features.filter((f) => f.properties.id_block === idBlock);
       geojsonInput.features = features;
