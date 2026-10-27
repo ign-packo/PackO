@@ -625,25 +625,27 @@ async function undo(req, _res, next) {
 
   debug(`Block '${lastBlockNum}' à annuler.`, typeof lastBlockNum);
 
-  let slabs = await db.getSlabs(req.client, filterPatches.map((feature) => feature.properties.id));
+  const slabs = await db.getSlabs(
+    req.client,
+    filterPatches.map((feature) => feature.properties.id),
+  );
 
   debug(slabs);
   debug(slabs.length, 'dalles impactées');
-  slabs = slabs.map((slab) => {
+  const metaDataSlabs = slabs.map((slab) => {
     debug('slab :', slab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
+    debug('cogPath :', cogPath);
     const opiDir = path.join(req.dir_cache, 'opi', cogPath.dirPath);
 
     // on récupère l'historique de cette tuile
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     const history = JSON.parse(`${fs.readFileSync(`${urlHistory}`)}`);
-    const numblk = Math.max(...Object.keys(history));
-    debug('last numblok dans history', numblk, typeof numblk);
     return {
-      ...slab, history, urlHistory, cogPath,
+      history, urlHistory, cogPath,
     };
   });
-  const slabsError = slabs.filter(
+  const slabsError = metaDataSlabs.filter(
     ({ history }) => (Math.max(...Object.keys(history)) !== lastBlockNum),
   );
   if (slabsError.length > 0) {
@@ -658,23 +660,29 @@ async function undo(req, _res, next) {
     next();
     return;
   }
-  const seen = new Set();
-  slabs = slabs.filter(
-    ({ cogPath }) => !seen.has(cogPath.filename) && seen.add(cogPath.filename),
+  const uniqueCogPath = new Set();
+  const uniqueMetaDataSlabs = metaDataSlabs.filter(
+    ({ cogPath }) => {
+      if (!uniqueCogPath.has(cogPath.filename)) {
+        uniqueCogPath.add(cogPath.filename);
+        return true;
+      }
+      return false;
+    },
   );
 
-  slabs.forEach((slab) => {
-    const { cogPath } = slab;
+  uniqueMetaDataSlabs.forEach((metaSlab) => {
+    const { cogPath } = metaSlab;
     debug(cogPath.filename);
     // on récupère la version à restaurer
-    const { history } = slab;
+    const { history } = metaSlab;
     debug(history);
     const patchIdPrev = history[`${lastBlockNum}`][history[`${lastBlockNum}`].length - 1];
     debug('dernier id patch appliquer : ', patchIdPrev);
     const numBlocks = Object.keys(history);
     // Récupération du numéro de block à réappliquer
     const numBlockSelected = numBlocks.length > 1 ? numBlocks.sort((a, b) => b - a)[1] : 'orig';
-    debug(` dalle ${slab.z}/${slab.y}/${slab.x} : version ${numBlockSelected} selectionnée`);
+    debug(`version ${numBlockSelected} selectionnée`);
     const graphDir = path.join(req.dir_cache, 'graph', cogPath.dirPath);
     const orthoDir = path.join(req.dir_cache, 'ortho', cogPath.dirPath);
     // renommer les images pour pointer sur ce numéro de version
@@ -711,9 +719,9 @@ async function undo(req, _res, next) {
     debug('newHistory : ', history);
     if (Object.keys(history).length === 0) {
       // cas history vide on supprime le fichier
-      fs.unlinkSync(slab.urlHistory);
+      fs.unlinkSync(metaSlab.urlHistory);
     } else {
-      fs.writeFileSync(`${slab.urlHistory}`, JSON.stringify(history));
+      fs.writeFileSync(`${metaSlab.urlHistory}`, JSON.stringify(history));
     }
   });
 
@@ -761,12 +769,12 @@ async function redo(req, _res, next) {
   const blockNumRedo = filterPatches[0].properties.num_block;
 
   debug(`Block '${blockNumRedo}' à réappliquer.`);
-  // Map id patch avec son numéro
+  // Map id patch avec son numéro, trié par ordre croissant
   const idsPatchesMap = new Map(filterPatches
     .sort((a, b) => a.properties.num - b.properties.num)
     .map((feature) => [feature.properties.id, feature.properties.num]));
   debug(idsPatchesMap);
-  // Récupération des slabs liée aux ids des patchs
+  // Récupération des slabs liée aux ids des patchs, dans le même ordre que la liste des ids
   const slabsOfFeature = await db.getSlabs(req.client, [...idsPatchesMap.keys()]);
   debug(slabsOfFeature, 'dalles impactées');
   // pour chaque tuile, renommer les images
@@ -783,7 +791,7 @@ async function redo(req, _res, next) {
     const urlHistory = path.join(opiDir, `${idBranch}_${cogPath.filename}_history.packo`);
     const [history, blockNumPrev] = fs.existsSync(urlHistory)
       ? readHistory(urlHistory)
-      : [{}, null];
+      : [{}, 'orig'];
     // initialisation de l'history si n'existe pas
     if (history[`${blockNumRedo}`] === undefined) {
       history[`${blockNumRedo}`] = [];
@@ -802,7 +810,7 @@ async function redo(req, _res, next) {
     const urlOrthoRgb = path.join(orthoDir, `${nameCog}.tif`);
     const urlOrthoIr = path.join(orthoDir, `${nameCog}i.tif`);
     // on renomme les anciennes images
-    if (blockNumPrev !== null) {
+    if (blockNumPrev !== 'orig') {
       const patchNumPrev = history[`${blockNumPrev}`][history[blockNumPrev].length - 1];
       const nameCogPrev = `${idBranch}_${cogPath.filename}_${blockNumPrev}-${patchNumPrev}`;
       const urlGraphPrev = path.join(graphDir, `${nameCogPrev}.tif`);
