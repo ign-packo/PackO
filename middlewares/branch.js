@@ -227,6 +227,7 @@ async function rebase(req, res, next) {
   await db.beginTransaction(req.client);
   // on retourne l'identifiant de la branche, son nom et l'identifiant et du processus
   req.result = { json: { name, id: idNewBranch, idProcess }, code: 200 };
+  next();
   // a partir de d'ici c'est non bloquant
   try {
     const patches = await db.getActivePatches(req.client, idBranch);
@@ -257,7 +258,6 @@ async function rebase(req, res, next) {
     await db.finishProcess(req.client, 'failed', idProcess, 'done');
   }
   pgClient.close(req, res, () => {});
-  next();
 }
 
 async function getCachePath(req, _res, next) {
