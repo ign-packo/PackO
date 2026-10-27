@@ -61,6 +61,30 @@ function copyFolderRecursiveSync(source, target) {
   }
 }
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function waitRebase(idProcess, timeoutMs = 5000) {
+  const debut = Date.now();
+
+  while (Date.now() - debut < timeoutMs) {
+    const res = await chai.request(app)
+      .get(`/process/${idProcess}`);
+
+    res.should.have.status(200);
+    const resJson2 = JSON.parse(res.text);
+
+    if (resJson2.status === 'succeed') {
+      return resJson2;
+    }
+
+    if (resJson2.status === 'failed') {
+      throw new Error(`Le traitement ${idProcess} a échoué`);
+    }
+    await wait(500);
+  }
+  throw new Error(`Le traitement ${idProcess} n'est pas terminé à temps`);
+}
+
 if (process.env.TEST_ENV === 'test') {
   if (!fs.existsSync(cachePathTmp)) {
     fs.mkdirSync(cachePathTmp);
@@ -326,7 +350,7 @@ describe('route/branch.js', () => {
                 name: rebaseName,
                 idBase: idBranch.orig,
               })
-              .end((err, res) => {
+              .end(async (err, res) => {
                 should.not.exist(err);
                 res.should.have.status(200);
                 const resJson = JSON.parse(res.text);
@@ -335,22 +359,6 @@ describe('route/branch.js', () => {
                 resJson.should.have.property('idProcess');
                 setIdProcessus(rebaseName, resJson.idProcess);
                 done();
-                // // on vérifie que le idProcess est accessible
-                // const { idProcess } = resJson;
-                // chai.request(app)
-                //   .get(`/process/${idProcess}`)
-                //   .end((err2, res2) => {
-                //     should.not.exist(err2);
-                //     res2.should.have.status(200);
-                //     console.log(JSON.parse(res2.text))
-                //     const resJson2 = JSON.parse(res2.text);
-                //     resJson2.should.have.property('id').equal(idProcess);
-                //     resJson2.should.have.property('start_date');
-                //     resJson2.should.have.property('end_date');
-                //     resJson2.should.have.property('status');
-                //     resJson2.should.have.property('result');
-                //     done();
-                //   });
               });
           }).timeout(9000);
         });
@@ -363,7 +371,7 @@ describe('route/branch.js', () => {
                 name: 'rebase3',
                 idBase: idBranch[branchName],
               })
-              .end((err, res) => {
+              .end(async (err, res) => {
                 should.not.exist(err);
                 res.should.have.status(200);
                 const resJson = JSON.parse(res.text);
@@ -372,21 +380,6 @@ describe('route/branch.js', () => {
                 resJson.should.have.property('idProcess');
                 setIdProcessus(rebaseName, resJson.idProcess);
                 done();
-              //   // on vérifie que le idProcess est accessible
-              //   const { idProcess } = resJson;
-              //   chai.request(app)
-              //     .get(`/process/${idProcess}`)
-              //     .end((err2, res2) => {
-              //       should.not.exist(err2);
-              //       res2.should.have.status(200);
-              //       const resJson2 = JSON.parse(res2.text);
-              //       resJson2.should.have.property('id').equal(idProcess);
-              //       resJson2.should.have.property('start_date');
-              //       resJson2.should.have.property('end_date');
-              //       resJson2.should.have.property('status');
-              //       resJson2.should.have.property('result');
-              //       done();
-              //     });
               });
           }).timeout(9000);
         });
@@ -441,41 +434,27 @@ describe('route/branch.js', () => {
   });
 
   describe('\n  extra: route/processQueue.js\n    GET /process/', () => {
-    it(`should return the idProcessus of the rebase ${branchName} into 'orig'`, (done) => {
+    it(`should return the idProcessus of the rebase ${branchName} into 'orig'`, async () => {
       // on vérifie que le idProcess est accessible
       const rebaseName = 'rebase2';
       const idProcess = idProcessus[rebaseName];
-      chai.request(app)
-        .get(`/process/${idProcess}`)
-        .end((err, res) => {
-          should.not.exist(err);
-          res.should.have.status(200);
-          const resJson2 = JSON.parse(res.text);
-          resJson2.should.have.property('id').equal(idProcessus[rebaseName]);
-          resJson2.should.have.property('start_date');
-          resJson2.should.have.property('end_date');
-          resJson2.should.have.property('status').equal('succeed');
-          resJson2.should.have.property('result').equal('done');
-          done();
-        });
+      const processJson = await waitRebase(idProcess, 15000);
+      processJson.should.have.property('id').equal(idProcessus[rebaseName]);
+      processJson.should.have.property('start_date');
+      processJson.should.have.property('end_date');
+      processJson.should.have.property('status').equal('succeed');
+      processJson.should.have.property('result').equal('done');
     });
-    it(`should return the idProcessus of the rebase 'orig' into ${branchName}`, (done) => {
+    it(`should return the idProcessus of the rebase 'orig' into ${branchName}`, async () => {
       // on vérifie que le idProcess est accessible
       const rebaseName = 'rebase3';
       const idProcess = idProcessus[rebaseName];
-      chai.request(app)
-        .get(`/process/${idProcess}`)
-        .end((err, res) => {
-          should.not.exist(err);
-          res.should.have.status(200);
-          const resJson2 = JSON.parse(res.text);
-          resJson2.should.have.property('id').equal(idProcessus[rebaseName]);
-          resJson2.should.have.property('start_date');
-          resJson2.should.have.property('end_date');
-          resJson2.should.have.property('status').equal('succeed');
-          resJson2.should.have.property('result').equal('done');
-          done();
-        });
+      const processJson = await waitRebase(idProcess, 15000);
+      processJson.should.have.property('id').equal(idProcessus[rebaseName]);
+      processJson.should.have.property('start_date');
+      processJson.should.have.property('end_date');
+      processJson.should.have.property('status').equal('succeed');
+      processJson.should.have.property('result').equal('done');
     });
   });
 
@@ -487,6 +466,7 @@ describe('route/branch.js', () => {
           .query({ idCache })
           .end((err, res) => {
             should.not.exist(err);
+            console.log(JSON.parse(res.text));
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
             resJson.should.equal(`cache '${cacheName}' détruit`);
