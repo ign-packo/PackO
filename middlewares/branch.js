@@ -230,10 +230,6 @@ async function rebase(req, res, next) {
   // a partir de d'ici c'est non bloquant
   try {
     const patches = await db.getActivePatches(req.client, idBranch);
-    const geojsonInput = {
-      type: patches.type,
-      crs: patches.crs,
-    };
     // Groupe feature par id_block
     debug('patches : ', patches);
 
@@ -241,13 +237,16 @@ async function rebase(req, res, next) {
     for (const idBlock of idBlocks) {
       // on insert ce patch dans les MTD de la branche
       const features = patches.features.filter((f) => f.properties.id_block === idBlock);
-      geojsonInput.features = features;
       await patch.applyMultiPatches(
         req.client,
         req.overviews,
         cache.path,
         idNewBranch,
-        geojsonInput,
+        {
+          type: patches.type,
+          crs: patches.crs,
+          features,
+        },
       );
     }
     debug('fin de applyMultiPatches');
