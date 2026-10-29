@@ -38,10 +38,16 @@ async function insertCache(pgClient, name, path, crs) {
 
 async function deleteCache(pgClient, idCache) {
   debug(`    ~~deleteCache (idCache: ${idCache})`);
+  await pgClient.query(
+    'DELETE FROM branches WHERE id_cache=$1',
+    [idCache],
+  );
+  debug('1. delete branch of cache');
   const results = await pgClient.query(
     'DELETE FROM caches WHERE id=$1 RETURNING name',
     [idCache],
   );
+  debug('2. delete cache');
   if (results.rowCount === 1) return results.rows[0].name;
   throw new Error('failed to delete');
 }
