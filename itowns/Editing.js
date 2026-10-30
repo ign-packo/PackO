@@ -1,6 +1,7 @@
 /* eslint-disable no-alert */
 /* eslint-disable no-console */
 import * as THREE from 'three';
+import Warning from './Warning';
 
 const status = {
   RAS: 0,
@@ -151,10 +152,22 @@ class Editing {
 
     // On post le geojson sur l'API
     this.api.postPatch(this.branch.active.id, JSON.stringify(geojson))
-      .then(() => {
+      .then((res) => {
         const cacheBusting = true;
         this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches'], cacheBusting);
         this.viewer.message = '';
+        // Filtrage des patchs avec du No Data sans doublon
+        const PatchNoData = res.filter((patch) => patch.withNoData === true);
+        // Création du message d'erreur
+        if (PatchNoData.length > 0) {
+          const idPatchNoData = [...new Set(PatchNoData.map((patch) => patch.idPatch))];
+          const warning = new Warning(`NODATA dans saisie(s): ${idPatchNoData.join(', ')}.`);
+          warning.name = 'WarningNoData';
+          this.viewer.view.dispatchEvent({
+            type: 'warning',
+            warning,
+          });
+        }
       })
       .catch((error) => {
         console.log(error);

@@ -314,10 +314,7 @@ async function getSlabs(pgClient, idPatch) {
 async function insertSlabs(pgClient, idPatch, slabs) {
   debug(`    ~~insertSlabs (idPatch: ${idPatch})`);
 
-  const values = [];
-  slabs.forEach((slab) => {
-    values.push([idPatch, slab.x, slab.y, slab.z]);
-  });
+  const values = slabs.map((slab) => [idPatch, slab.x, slab.y, slab.z]);
 
   const sql = format('INSERT INTO slabs (id_patch, x, y, z) values (%s)', values.join('),('));
   debug(sql);
