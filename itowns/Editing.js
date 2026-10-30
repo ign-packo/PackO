@@ -160,8 +160,7 @@ class Editing {
         const PatchNoData = res.filter((patch) => patch.withNoData === true);
         // Création du message d'erreur
         if (PatchNoData.length > 0) {
-          const idPatchNoData = [...new Set(PatchNoData.map((patch) => patch.idPatch))];
-          const warning = new Warning(`NODATA dans saisie(s): ${idPatchNoData.join(', ')}.`);
+          const warning = new Warning('NODATA dans la saisie');
           warning.name = 'WarningNoData';
           this.viewer.view.dispatchEvent({
             type: 'warning',
