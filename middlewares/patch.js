@@ -391,12 +391,10 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
   idBranch, patchInserted) {
   debug('  ~~processPolygonPatch');
   // Pour chaque dalle intersectant le polygone, crée le patch GDAL et renomme les fichiers.
-  const slabsProcessed = [];
   const processPromises = [];
   for (const slab of slabs) {
     const ring = createRingBySlab(slab, feature.geometry.coordinates, overviews);
     if (ring.length > 0) {
-      slabsProcessed.push(slab);
       processPromises.push((async () => {
         let patch = await createPatch(
           slab,
@@ -414,16 +412,24 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
         const outputUrl = createUrlOutputPolygon(dirCache, idBranch, patch, patchInserted.num);
         patch = { ...patch, ...outputUrl, mask: createMask(overviews, ring) };
         // Process polygon patch
-        await gdalProcessing.processPolygonPatchAsync(patch, overviews.tileSize.width);
+        const { nbPxNoData } = await gdalProcessing.processPolygonPatchAsync(patch,
+          overviews.tileSize.width);
+        let withNoData = false;
+        const idPatch = patchInserted.id_patch;
+        if (nbPxNoData.RGB > 0 || nbPxNoData.IR > 0) {
+          debug(`${idPatch}: NODATA px in RGB ${nbPxNoData.RGB}, in Ir ${nbPxNoData.IR}`);
+          withNoData = true;
+        }
         // Renomme les données de sortie
         renameSlab(dirCache, idBranch, patch, patchInserted.num);
+        return { idPatch, withNoData, ...slab };
       })());
     }
   }
-  const insertPatchPromise = db.insertSlabs(pgClient, patchInserted.id_patch, slabsProcessed);
-  debug('', processPromises.length, 'patchs à appliquer.');
-  debug('~Promise.all');
-  await Promise.all([...processPromises, insertPatchPromise]);
+  debug(`${processPromises.length} patchs à appliquer.`);
+  const slabsProcessed = await Promise.all(processPromises);
+  debug(slabsProcessed);
+  await db.insertSlabs(pgClient, patchInserted.id_patch, slabsProcessed);
   return slabsProcessed;
 }
 

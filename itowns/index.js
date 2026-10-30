@@ -60,6 +60,12 @@ function createCacheDialog(listCaches) {
   dial.showModal();
 }
 
+function sendUserMessage(msg) {
+  console.log(msg);
+  // eslint-disable-next-line no-alert
+  window.alert(msg);
+}
+
 async function main() {
   console.log(`Client in '${process.env.NODE_ENV}' mode.`);
 
@@ -434,12 +440,14 @@ async function main() {
 
       // Cas erreur de l'api retourné directement pour l'utilisateur
       if (ev.sender === 'api') {
-        console.log(error.map((err) => err.msg).join('\n'));
-        window.alert(error.map((err) => err.msg).join('\n'));
+        sendUserMessage(error.map((err) => err.msg).join('\n'));
       } else { // Cas erreur du moniteur retourne un objet js 'Error'
-        console.log(error.join('\n'));
-        window.alert(error.join('\n'));
+        sendUserMessage(error.join('\n'));
       }
+    });
+
+    view.addEventListener('warning', (ev) => {
+      sendUserMessage(ev.warning);
     });
 
     viewerDiv.addEventListener('mousemove', (ev) => {
