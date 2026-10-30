@@ -430,9 +430,16 @@ async function main() {
     });
 
     view.addEventListener('error', (ev) => {
-      console.log(ev.error instanceof Array ? ev.error.map((err) => err.status) : ev.error.msg);
-      // eslint-disable-next-line no-alert
-      window.alert(ev.error instanceof Array ? ev.error.map((err) => err.status).join('\n') : ev.error.msg);
+      const error = Array.isArray(ev.error) ? ev.error : [ev.error];
+
+      // Cas erreur de l'api retourné directement pour l'utilisateur
+      if (ev.sender === 'api') {
+        console.log(error.map((err) => err.msg).join('\n'));
+        window.alert(error.map((err) => err.msg).join('\n'));
+      } else { // Cas erreur du moniteur retourne un objet js 'Error'
+        console.log(error.join('\n'));
+        window.alert(error.join('\n'));
+      }
     });
 
     viewerDiv.addEventListener('mousemove', (ev) => {

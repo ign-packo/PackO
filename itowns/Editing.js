@@ -161,6 +161,7 @@ class Editing {
         this.viewer.message = 'Erreur post patch';
         this.viewer.view.dispatchEvent({
           type: 'error',
+          sender: 'api',
           error,
         });
       })
@@ -671,7 +672,7 @@ class Editing {
         this.viewer.message = 'remark: error during save';
         this.viewer.view.dispatchEvent({
           type: 'error',
-          msg: error,
+          error,
         });
       });
   }
@@ -703,7 +704,7 @@ class Editing {
         this.viewer.message = 'remark: error during delete';
         this.viewer.view.dispatchEvent({
           type: 'error',
-          msg: error,
+          error,
         });
       });
   }
