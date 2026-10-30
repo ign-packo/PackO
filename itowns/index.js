@@ -435,9 +435,11 @@ async function main() {
       // Cas erreur de l'api retourné directement pour l'utilisateur
       if (ev.sender === 'api') {
         console.log(error.map((err) => err.msg).join('\n'));
+        // eslint-disable-next-line no-alert
         window.alert(error.map((err) => err.msg).join('\n'));
       } else { // Cas erreur du moniteur retourne un objet js 'Error'
         console.log(error.join('\n'));
+        // eslint-disable-next-line no-alert
         window.alert(error.join('\n'));
       }
     });
