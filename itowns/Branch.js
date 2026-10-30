@@ -75,7 +75,7 @@ class Branch {
       {
         name: 'Patches',
         type: 'vector',
-        url: `${this.api.url}/${this.active.id}/patches`,
+        url: `${this.api.url}/${this.active.id}/multipatches`,
         crs: this.viewer.crs,
         opacity: 1,
         visible: false,
