@@ -391,12 +391,13 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
   idBranch, patchInserted) {
   debug('  ~~processPolygonPatch');
   // Pour chaque dalle intersectant le polygone, crée le patch GDAL et renomme les fichiers.
-  const processPromises = [];
+  // Préparation des patchs à modifier par dalle
+  const patchPromises = [];
   for (const slab of slabs) {
     const ring = createRingBySlab(slab, feature.geometry.coordinates, overviews);
     if (ring.length > 0) {
-      processPromises.push((async () => {
-        let patch = await createPatch(
+      patchPromises.push((async () => {
+        const patch = await createPatch(
           slab,
           {
             colorRef: feature.properties.color,
@@ -408,26 +409,55 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
           dirCache,
           idBranch,
         );
-        // Creation des urls des données de sortie
-        const outputUrl = createUrlOutputPolygon(dirCache, idBranch, patch, patchInserted.num);
-        patch = { ...patch, ...outputUrl, mask: createMask(overviews, ring) };
-        // Process polygon patch
-        const { nbPxNoData } = await gdalProcessing.processPolygonPatchAsync(patch,
-          overviews.tileSize.width);
-        let withNoData = false;
-        const idPatch = patchInserted.id_patch;
-        if (nbPxNoData.RGB > 0 || nbPxNoData.IR > 0) {
-          debug(`${idPatch}: NODATA px in RGB ${nbPxNoData.RGB}, in Ir ${nbPxNoData.IR}`);
-          withNoData = true;
-        }
-        // Renomme les données de sortie
-        renameSlab(dirCache, idBranch, patch, patchInserted.num);
-        return { idPatch, withNoData, ...slab };
+
+        return { slab, ring, patch };
       })());
     }
   }
-  debug(`${processPromises.length} patchs à appliquer.`);
-  const slabsProcessed = await Promise.all(processPromises);
+  debug(`${patchPromises.length} patchs à appliquer.`);
+  const slabsProcessed = await Promise.all(patchPromises)
+    // Vérification de la validité des patchs par dalles
+    .catch((error) => {
+      debug(`Échec de la préparation des patchs : ${error.message}`);
+      const errorUser = new Error("Saisie impossible, l'emprise de l'OPI est dépassée");
+      errorUser.name = 'ErrorPatch';
+      throw errorUser;
+    })
+    // Traitement de chaque patch
+    .then((preparedPatches) => Promise.all(
+      preparedPatches.map(async ({ slab, ring, patch }) => {
+        debug(patch);
+
+        const outputUrl = createUrlOutputPolygon(
+          dirCache,
+          idBranch,
+          patch,
+          patchInserted.num,
+        );
+
+        const patchProcess = {
+          ...patch,
+          ...outputUrl,
+          mask: createMask(overviews, ring),
+        };
+
+        const { nbPxNoData } = await gdalProcessing.processPolygonPatchAsync(
+          patchProcess,
+          overviews.tileSize.width,
+        );
+
+        const idPatch = patchInserted.id_patch;
+        const withNoData = nbPxNoData.RGB > 0 || nbPxNoData.IR > 0;
+        if (withNoData) {
+          debug(
+            `${idPatch}: NODATA px in RGB ${nbPxNoData.RGB}, in Ir ${nbPxNoData.IR}`,
+          );
+        }
+        renameSlab(dirCache, idBranch, patchProcess, patchInserted.num);
+        return { idPatch, withNoData, ...slab };
+      }),
+    ));
+
   debug(slabsProcessed);
   await db.insertSlabs(pgClient, patchInserted.id_patch, slabsProcessed);
   return slabsProcessed;
