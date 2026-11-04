@@ -451,7 +451,15 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
     }),
   );
 
-  debug(promisesProcessed);
+  const promisesError = promisesProcessed.filter((promise) => promise.status === 'rejected');
+  if (promisesError.length > 0) {
+    debug(promisesError);
+    const error = new Error('Attention, votre branche est sans doute corrompue '
+      + "; une saisie n'a pas pu être appliquée.");
+    error.name = 'ErrorApplyPatch';
+    throw error;
+  }
+
   const slabsProcessed = promisesProcessed.map((promise) => promise.value);
   await db.insertSlabs(pgClient, patchInserted.id_patch, slabsProcessed);
   return slabsProcessed;
