@@ -415,50 +415,44 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
     }
   }
   debug(`${patchPromises.length} patchs à appliquer.`);
-  const slabsProcessed = await Promise.all(patchPromises)
-    // Vérification de la validité des patchs par dalles
-    .catch((error) => {
-      debug(`Échec de la préparation des patchs : ${error.message}`);
+  let preparedPatches;
+  try {
+    preparedPatches = await Promise.all(patchPromises);
+  } catch (error) {
+    debug(`Échec de la préparation des patchs : ${error.message}`);
+    if (error.message.includes('ENOENT')) {
       const errorUser = new Error("Saisie impossible, l'emprise de l'OPI est dépassée");
       errorUser.name = 'ErrorPatch';
+      errorUser.cause = error; // conserve l'erreur d'origine
       throw errorUser;
-    })
-    // Traitement de chaque patch
-    .then((preparedPatches) => Promise.all(
-      preparedPatches.map(async ({ slab, ring, patch }) => {
-        debug(patch);
+    }
+    throw error;
+  }
 
-        const outputUrl = createUrlOutputPolygon(
-          dirCache,
-          idBranch,
-          patch,
-          patchInserted.num,
-        );
+  const promisesProcessed = await Promise.allSettled(
+    preparedPatches.map(async ({ slab, ring, patch }) => {
+      debug(patch);
 
-        const patchProcess = {
-          ...patch,
-          ...outputUrl,
-          mask: createMask(overviews, ring),
-        };
+      const outputUrl = createUrlOutputPolygon(dirCache, idBranch, patch, patchInserted.num);
+      const patchProcess = { ...patch, ...outputUrl, mask: createMask(overviews, ring) };
 
-        const { nbPxNoData } = await gdalProcessing.processPolygonPatchAsync(
-          patchProcess,
-          overviews.tileSize.width,
-        );
+      const { nbPxNoData } = await gdalProcessing.processPolygonPatchAsync(
+        patchProcess,
+        overviews.tileSize.width,
+      );
 
-        const idPatch = patchInserted.id_patch;
-        const withNoData = nbPxNoData.RGB > 0 || nbPxNoData.IR > 0;
-        if (withNoData) {
-          debug(
-            `${idPatch}: NODATA px in RGB ${nbPxNoData.RGB}, in Ir ${nbPxNoData.IR}`,
-          );
-        }
-        renameSlab(dirCache, idBranch, patchProcess, patchInserted.num);
-        return { idPatch, withNoData, ...slab };
-      }),
-    ));
+      const idPatch = patchInserted.id_patch;
+      const withNoData = nbPxNoData.RGB > 0 || nbPxNoData.IR > 0;
+      if (withNoData) {
+        debug(`${idPatch}: NODATA px in RGB ${nbPxNoData.RGB}, in Ir ${nbPxNoData.IR}`);
+      }
+      renameSlab(dirCache, idBranch, patchProcess, patchInserted.num);
+      return { idPatch, withNoData, ...slab };
+    }),
+  );
 
-  debug(slabsProcessed);
+  debug(promisesProcessed);
+  const slabsProcessed = promisesProcessed.map((promise) => promise.value);
   await db.insertSlabs(pgClient, patchInserted.id_patch, slabsProcessed);
   return slabsProcessed;
 }
