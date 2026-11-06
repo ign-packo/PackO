@@ -13,17 +13,51 @@ const status = {
   ADDREMARK: 6,
 };
 
-export const saisie = {
+const saisieColor = {
+  manuel: '#FF0000',
+  semiAuto: '#FFFF00',
+  isle: '#0400ff',
+};
+
+const saisieShortcut = {
+  manuel: 'p',
+  semiAuto: 't',
+  isle: 'l',
+};
+
+export const saisieType = {
+  manuel: {
+    id: 'manuel',
+    name: 'Polygon',
+    shortcut: saisieShortcut.manuel,
+    color: saisieColor.manuel,
+    geometry: 'Polygon',
+    isAuto: false,
+  },
+  semiAuto: {
+    id: 'semiAuto',
+    name: 'Semi-auto',
+    shortcut: saisieShortcut.semiAuto,
+    color: saisieColor.semiAuto,
+    geometry: 'LineString',
+    isAuto: true,
+  },
+  isle: {
+    id: 'isle',
+    name: 'Isle',
+    shortcut: saisieShortcut.isle,
+    color: saisieColor.isle,
+    geometry: 'Polygon',
+    isAuto: true,
+  },
+};
+
+const codeVertexGeom = {
   LineString: 0,
   Polygon: 1,
 };
 
 const actvBtnColor = '#FF0000';
-
-const saisieColor = {
-  LineString: '#FFFF00',
-  Polygon: '#FF0000',
-};
 
 function getAllCheckboxes(id, className) {
   const allCheckboxes = [];
@@ -93,7 +127,8 @@ class Editing {
         vertices.set(newPoint.toArray(), 3 * this.nbVertices);
         vertices.copyAt(this.nbVertices + 1, vertices, 0);
         vertices.needsUpdate = true;
-        this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + this.saisie.type + 1);
+        const count = this.nbVertices + codeVertexGeom[this.saisie.type.geometry] + 1;
+        this.currentPolygon.geometry.setDrawRange(0, count);
         this.currentPolygon.geometry.computeBoundingSphere();
         this.view.notifyChange(this.currentPolygon);
       }
@@ -109,8 +144,7 @@ class Editing {
     this.viewer.message = 'calcul en cours';
     this.view.controls.setCursor('default', 'wait');
 
-    const saisieTypeStr = Object.keys(saisie)[this.saisie.type];
-    console.log(` -> patch: ${saisieTypeStr}, currentStatus: ${this.currentStatus}`);
+    console.log(` -> patch: ${this.saisie.type.name}, currentStatus: ${this.currentStatus}`);
     this.currentStatus = status.WAITING;
 
     const positions = this.currentPolygon.geometry.attributes.position.array;
@@ -133,19 +167,19 @@ class Editing {
         {
           type: 'Feature',
           properties: {
-            is_auto: !this.saisie.type,
+            is_auto: this.saisie.type.isAuto,
             opiName: this.opi1Name,
             color: this.opi1Color,
-            ...(!this.saisie.type && {
+            ...(this.saisie.type.isAuto && {
               opiNameSec: this.opi2Name,
               colorSec: this.opi2Color,
             }),
           },
           geometry:
-                    {
-                      type: saisieTypeStr,
-                      coordinates: this.saisie.type ? [coordinates] : coordinates.slice(0, -1),
-                    },
+            {
+              type: this.saisie.type.geometry,
+              coordinates: (this.saisie.type.geometry === 'Polygon') ? [coordinates] : coordinates.slice(0, -1),
+            },
         },
       ],
     };
@@ -181,7 +215,7 @@ class Editing {
         this.resetCurrentPolygon();
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
-        this.menu.getController(saisieTypeStr).setBackgroundColorTo('');
+        this.menu.getController(this.saisie.type.id).setBackgroundColorTo('');
       });
   }
 
@@ -222,8 +256,9 @@ class Editing {
       // select Opi 2
       if (e.key === 'w') this.select(2);
       // start polygon
-      if ((e.key === 'p') && (this.branch.active.name !== 'orig')) this.saisie('Polygon');
-      if ((e.key === 't') && (this.branch.active.name !== 'orig')) this.saisie('LineString');
+      Object.entries(saisieShortcut).forEach(([saisieId, shortcut]) => {
+        if ((e.key === shortcut) && (this.branch.active.name !== 'orig')) this.saisie(saisieId);
+      });
       // change visibility on ColorLayers
       Object.keys(this.viewer.shortCuts.visibleFolder).forEach((key) => {
         if (e.key === this.viewer.shortCuts.visibleFolder[key]) {
@@ -318,7 +353,7 @@ class Editing {
         this.menu.getController(`select${this.currentOpi}`).setBackgroundColorTo('');
       }
       if (this.currentStatus === status.SAISIE) {
-        this.menu.getController(Object.keys(saisie)[this.saisie.type]).setBackgroundColorTo('');
+        this.menu.getController(this.saisie.type.id).setBackgroundColorTo('');
         this.resetCurrentPolygon();
       }
       if (this.currentStatus === status.ADDREMARK) {
@@ -346,7 +381,8 @@ class Editing {
             vertices.copyAt(this.nbVertices, vertices, 0);
             vertices.needsUpdate = true;
 
-            this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + this.saisie.type);
+            const count = this.nbVertices + codeVertexGeom[this.saisie.type.geometry];
+            this.currentPolygon.geometry.setDrawRange(0, count);
             this.currentPolygon.geometry.computeBoundingSphere();
             this.view.notifyChange(this.currentPolygon);
           }
@@ -358,7 +394,8 @@ class Editing {
           vertices.copyAt(this.nbVertices, vertices, 0);
           vertices.needsUpdate = true;
 
-          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + this.saisie.type);
+          const count = this.nbVertices + codeVertexGeom[this.saisie.type.geometry];
+          this.currentPolygon.geometry.setDrawRange(0, count);
           this.currentPolygon.geometry.computeBoundingSphere();
           this.view.notifyChange(this.currentPolygon);
           this.nbVertices -= 1;
@@ -382,7 +419,8 @@ class Editing {
           vertices.set(newPoint.toArray(), 3 * this.nbVertices);
           vertices.needsUpdate = true;
 
-          this.currentPolygon.geometry.setDrawRange(0, this.nbVertices + this.saisie.type + 1);
+          const count = this.nbVertices + codeVertexGeom[this.saisie.type.geometry] + 1;
+          this.currentPolygon.geometry.setDrawRange(0, count);
           this.currentPolygon.geometry.computeBoundingSphere();
           this.view.notifyChange(this.currentPolygon);
           this.view.controls.setCursor('default', 'crosshair');
@@ -522,7 +560,7 @@ class Editing {
       return;
     }
 
-    if (saisie[type] === saisie.Polygon) {
+    if (type === saisieType.manuel.id) {
       if (this.opi1Name === 'none') {
         this.viewer.message = 'pas d\'Opi sélectionnée';
         return;
@@ -531,20 +569,19 @@ class Editing {
         this.viewer.message = '2 Opi sélectionnées !';
         return;
       }
-    } else if (saisie[type] === saisie.LineString) {
+    } else if (type === saisieType.semiAuto.id || type === saisieType.isle.id) {
       if (this.opi1Name === 'none' || this.opi2Name === 'none') {
         this.viewer.message = 'Sélectionnez 2 Opi';
         return;
       }
     }
 
-    this.saisie.type = saisie[type];
-    this.saisie.color = saisieColor[type];
-    console.log(`Saisie d'un.e ${type}`);
-    this.viewer.message = `Saisie d'un.e ${type}`;
+    this.saisie.type = saisieType[type];
+    console.log(`Saisie d'un.e ${this.saisie.type.geometry}`);
+    this.viewer.message = `Saisie d'un.e ${this.saisie.type.geometry}`;
     this.view.controls.setCursor('default', 'crosshair');
     this.menu.getController(`select${this.currentOpi}`).setBackgroundColorTo('');
-    this.menu.getController(type).setBackgroundColorTo(this.saisie.color);
+    this.menu.getController(type).setBackgroundColorTo(this.saisie.type.color);
 
     const MAX_POINTS = 500;
     const geometry = new THREE.BufferGeometry();
@@ -552,7 +589,7 @@ class Editing {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setDrawRange(0, 1);
     const material = new THREE.LineBasicMaterial({
-      color: this.saisie.color,
+      color: this.saisie.type.color,
       depthTest: false,
       depthWrite: false,
     });

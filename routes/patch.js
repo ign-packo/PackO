@@ -49,8 +49,9 @@ const geoJsonAPatcher = [
   body('geoJSON.features.*.geometry')
     .exists().withMessage(createErrMsg.missingParameter('geometry'))
     .custom((value, { req }) => {
-      if (req.result.is_auto && !GJV.isLineString(value)) {
-        throw new Error(createErrMsg.InvalidEntity('geometry', 'LineString'));
+      if (req.result.is_auto
+        && [!GJV.isLineString(value), !GJV.isPolygon(value)].every(Boolean)) {
+        throw new Error(createErrMsg.InvalidEntity('geometry', value.type));
       }
       if (!req.result.is_auto && !GJV.isPolygon(value)) {
         throw new Error(createErrMsg.InvalidEntity('geometry', 'Polygon'));
@@ -60,26 +61,32 @@ const geoJsonAPatcher = [
 
   body('geoJSON.features.*.properties.opiName')
     .if(body('geoJSON.features.*.properties').exists())
-    .exists().withMessage(createErrMsg.missingParameter('properties.opiName'))
+    .exists()
+    .withMessage(createErrMsg.missingParameter('properties.opiName'))
     .if(body('geoJSON.features.*.properties.opiName').exists())
     .matches(/^[a-zA-Z0-9-_]+$/i)
     .withMessage(createErrMsg.invalidParameter('properties.opiName')),
   body('geoJSON.features.*.properties.color')
     .if(body('geoJSON.features.*.properties.opiName').exists())
-    .exists().withMessage(createErrMsg.missingParameter('properties.color'))
+    .exists()
+    .withMessage(createErrMsg.missingParameter('properties.color'))
     .if(body('geoJSON.features.*.properties.color').exists())
     .custom(validator.isColor)
     .withMessage(createErrMsg.invalidParameter('properties.color')),
 
   body('geoJSON.features.*.properties.opiNameSec')
-    .if(body('geoJSON.features.*.properties.opiNameSec').exists().notEmpty())
-    .exists().withMessage(createErrMsg.missingParameter('properties.opiNameSec'))
+    .if((_, { req }) => req.result.is_auto)
+    .if(body('geoJSON.features.*.properties').exists())
+    .exists()
+    .withMessage(createErrMsg.missingParameter('properties.opiNameSec'))
     .if(body('geoJSON.features.*.properties.opiNameSec').exists())
     .matches(/^[a-zA-Z0-9-_]+$/i)
     .withMessage(createErrMsg.invalidParameter('properties.opiNameSec')),
   body('geoJSON.features.*.properties.colorSec')
-    .if(body('geoJSON.features.*.properties.colorSec').exists().notEmpty())
-    .exists().withMessage(createErrMsg.missingParameter('properties.colorSec'))
+    .if((_, { req }) => req.result.is_auto)
+    .if(body('geoJSON.features.*.properties.opiNameSec').exists())
+    .exists()
+    .withMessage(createErrMsg.missingParameter('properties.colorSec'))
     .if(body('geoJSON.features.*.properties.colorSec').exists())
     .custom(validator.isColor)
     .withMessage(createErrMsg.invalidParameter('properties.colorSec')),
