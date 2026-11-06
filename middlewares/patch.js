@@ -861,6 +861,7 @@ async function clear(req, _res, next) {
   const slabsSet = new Set();
   features.forEach((feature) => {
     feature.properties.slabs.forEach((slab) => {
+      // Ordonnance des balises x, y, z de l'objet pour vérifier leur unicité entre eux
       slabsSet.add(JSON.stringify({ x: slab.x, y: slab.y, z: slab.z }));
     });
   });
