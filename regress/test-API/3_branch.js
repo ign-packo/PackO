@@ -292,7 +292,7 @@ describe('route/branch.js', () => {
         describe(`add a patch on ${branchName}`, () => {
           it('should succeed', (done) => {
             chai.request(app)
-              .post(`/${idBranch[branchName]}/patch`)
+              .post(`/${idBranch[branchName]}/multipatch`)
               .send({
                 type: 'FeatureCollection',
                 crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::2154' } },

@@ -151,7 +151,7 @@ class Editing {
     };
 
     // On post le geojson sur l'API
-    this.api.postPatch(this.branch.active.id, JSON.stringify(geojson))
+    this.api.postMultiPatches(this.branch.active.id, JSON.stringify(geojson))
       .then((res) => {
         const cacheBusting = true;
         this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches'], cacheBusting);
@@ -578,7 +578,7 @@ class Editing {
     this.view.controls.setCursor('default', 'wait');
     this.currentStatus = status.WAITING;
 
-    fetch(`${this.api.url}/${this.branch.active.id}/patch/undo?`,
+    fetch(`${this.api.url}/${this.branch.active.id}/multipatch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -606,7 +606,7 @@ class Editing {
     this.viewer.message = 'calcul en cours';
     this.view.controls.setCursor('default', 'wait');
     this.currentStatus = status.WAITING;
-    fetch(`${this.api.url}/${this.branch.active.id}/patch/redo?`,
+    fetch(`${this.api.url}/${this.branch.active.id}/multipatch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -633,7 +633,7 @@ class Editing {
     this.view.controls.setCursor('default', 'wait');
     this.currentStatus = status.WAITING;
 
-    fetch(`${this.api.url}/${this.branch.active.id}/patches/clear?`,
+    fetch(`${this.api.url}/${this.branch.active.id}/multipatches/clear?`,
       {
         method: 'PUT',
       }).then((res) => {
