@@ -124,8 +124,8 @@ function createPatch(slab,
   overviews,
   dirCache,
   idBranch,
-  isAuto = false) {
-  debug('~~createPatch : ', slab, propOpis, withRgb, withIr, isAuto);
+  applyOzcpp = false) {
+  debug('~~createPatch : ', slab, propOpis, withRgb, withIr, applyOzcpp);
   const {
     colorRef, nameRef, colorSec, nameSec,
   } = propOpis;
@@ -155,7 +155,7 @@ function createPatch(slab,
     `${cogPath.filename}_${nameRefRgb}.tif`);
   patchData.urlOpiRefIr = path.join(dirCache, 'opi', cogPath.dirPath,
     `${cogPath.filename}_${nameRefIr}.tif`);
-  if (isAuto) {
+  if (applyOzcpp) {
     const nameSecRgb = withRgb ? nameSec : nameSec.replace('_ix', 'x');
     const nameSecIr = withRgb ? nameSec.replace('x', '_ix') : nameSec;
     patchData.urlOpiSecRgb = path.join(dirCache, 'opi', cogPath.dirPath,
@@ -188,7 +188,7 @@ function createPatch(slab,
       },
     ));
     promises.push(fs.promises.access(patchData.urlOpiRefRgb, fs.constants.F_OK));
-    if (isAuto) promises.push(fs.promises.access(patchData.urlOpiSecRgb, fs.constants.F_OK));
+    if (applyOzcpp) promises.push(fs.promises.access(patchData.urlOpiSecRgb, fs.constants.F_OK));
   }
   if (patchData.withIr) {
     promises.push(fs.promises.access(patchData.urlOrthoIr, fs.constants.F_OK).catch(
@@ -198,7 +198,7 @@ function createPatch(slab,
       },
     ));
     promises.push(fs.promises.access(patchData.urlOpiRefIr, fs.constants.F_OK));
-    if (isAuto) promises.push(fs.promises.access(patchData.urlOpiSecIr, fs.constants.F_OK));
+    if (applyOzcpp) promises.push(fs.promises.access(patchData.urlOpiSecIr, fs.constants.F_OK));
   }
 
   return Promise.all(promises).then(() => patchData);
@@ -227,7 +227,7 @@ async function getPatches(req, _res, next) {
   next();
 }
 
-function ozCppExe(patches, outputDir, geojsonPath) {
+function ozCppExe(patches, outputDir, geojsonPath, isIsle) {
   debug('>>ozCppExe');
   const arrArgsR = ['-r'];
   const arrArgsS = ['-s'];
@@ -263,6 +263,7 @@ function ozCppExe(patches, outputDir, geojsonPath) {
     border: 20,
     outDir: outputDir,
   };
+  if (isIsle) { arrArgs.push('--patch_as_isle'); }
   arrArgs.push(
     '-w', `${options.weightDiffCost}`,
     '-wt', `${options.weightTransition}`,
@@ -437,13 +438,13 @@ async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgb
   idBranch, patchInserted, crsObject) {
   debug('  ~~processSemiAutoPatch');
   const insertPatchPromise = db.insertSlabs(pgClient, patchInserted.id_patch, slabs);
-  const isAuto = true;
   // On écrit la saisie dans un fichier json pour le donner à OzCppExe
   const geojsonOz = gjson.geoJsonOzObject(idBranch, patchInserted.id_patch, crsObject,
-    feature.properties, feature.geometry.coordinates);
-    // write patch geojson
+    feature);
+  // write patch geojson
   const geojsonPath = `${dirCache}/tmp_test_js/patch_idBr${idBranch}_idP${patchInserted.id_patch}.geojson`;
   await gjson.writeGeojson(geojsonPath, geojsonOz);
+  const applyOzcpp = true;
   debug('~create patch');
   const promisesCheckFile = slabs.map((slab) => createPatch(slab,
     {
@@ -457,14 +458,15 @@ async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgb
     overviews,
     dirCache,
     idBranch,
-    isAuto));
+    applyOzcpp));
   debug('', promisesCheckFile.length, 'patchs à appliquer.');
   const urlOutputData = `${dirCache}/result_ozcpp_idBr${idBranch}`;
   dirTmp = urlOutputData;
   debug('~Promise.all');
   const patchOnSlabs = await Promise.all(promisesCheckFile);
   // Traitement par OzCppExe
-  await ozCppExe(patchOnSlabs, urlOutputData, geojsonPath);
+  const isIsle = feature.geometry.type === 'Polygon';
+  await ozCppExe(patchOnSlabs, urlOutputData, geojsonPath, isIsle);
   // Création des URL des données de sortie, puis déplacement et renommage des fichiers
   debug('~rename patch');
   patchOnSlabs.forEach((patch) => {
@@ -498,7 +500,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, geojson) {
   // in case of patch-auto, add border to bbox for selecting slabs
   const borderMeters = patchIsAuto ? 20 : 0;
   let { coordinates } = feature.geometry;
-  if (!patchIsAuto) {
+  if (feature.geometry.type === 'Polygon') {
     [coordinates] = coordinates;
   }
   const slabs = getSlabs(coordinates, overviews, borderMeters);

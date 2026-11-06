@@ -95,7 +95,7 @@ class Menu extends dat.GUI {
   }
 
   setPatchCtr(branchName) {
-    this[branchName !== 'orig' ? 'show' : 'hide'](['Polygon', 'LineString', 'undo', 'redo']);
+    this[branchName !== 'orig' ? 'show' : 'hide'](['manuel', 'semiAuto', 'isle', 'undo', 'redo']);
     if (process.env.NODE_ENV === 'development') this[branchName !== 'orig' ? 'show' : 'hide']('clear');
   }
 

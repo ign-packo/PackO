@@ -18,18 +18,20 @@ async function writeGeojson(filePath, geojson) {
   }
 }
 
-function geoJsonOzObject(idBranch, idPatch, crsObject, properties, coordinates) {
+function geoJsonOzObject(idBranch, idPatch, crsObject, feature) {
   debug(' ~~geoJsonOzObject');
+  const newFeature = feature;
+  if (newFeature.geometry.type === 'LineString') {
+    newFeature.geometry.type = 'MultiLineString';
+    newFeature.geometry.coordinates = [newFeature.geometry.coordinates];
+  }
   // Création d'un objet GeoJSON FeatureCollection
   // (seul type de GeoJSON pris en compte comme saisie)
   return {
     type: 'FeatureCollection',
     crs: crsObject,
     name: `${idBranch}_${idPatch}`,
-    features: [{
-      geometry: { type: 'MultiLineString', coordinates: [coordinates] },
-      properties,
-    }],
+    features: [newFeature],
   };
 }
 
