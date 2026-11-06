@@ -391,12 +391,13 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
   idBranch, patchInserted) {
   debug('  ~~processPolygonPatch');
   // Pour chaque dalle intersectant le polygone, crée le patch GDAL et renomme les fichiers.
-  const processPromises = [];
+  // Préparation des patchs à modifier par dalle
+  const patchPromises = [];
   for (const slab of slabs) {
     const ring = createRingBySlab(slab, feature.geometry.coordinates, overviews);
     if (ring.length > 0) {
-      processPromises.push((async () => {
-        let patch = await createPatch(
+      patchPromises.push((async () => {
+        const patch = await createPatch(
           slab,
           {
             colorRef: feature.properties.color,
@@ -408,27 +409,58 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
           dirCache,
           idBranch,
         );
-        // Creation des urls des données de sortie
-        const outputUrl = createUrlOutputPolygon(dirCache, idBranch, patch, patchInserted.num);
-        patch = { ...patch, ...outputUrl, mask: createMask(overviews, ring) };
-        // Process polygon patch
-        const { nbPxNoData } = await gdalProcessing.processPolygonPatchAsync(patch,
-          overviews.tileSize.width);
-        let withNoData = false;
-        const idPatch = patchInserted.id_patch;
-        if (nbPxNoData.RGB > 0 || nbPxNoData.IR > 0) {
-          debug(`${idPatch}: NODATA px in RGB ${nbPxNoData.RGB}, in Ir ${nbPxNoData.IR}`);
-          withNoData = true;
-        }
-        // Renomme les données de sortie
-        renameSlab(dirCache, idBranch, patch, patchInserted.num);
-        return { idPatch, withNoData, ...slab };
+
+        return { slab, ring, patch };
       })());
     }
   }
-  debug(`${processPromises.length} patchs à appliquer.`);
-  const slabsProcessed = await Promise.all(processPromises);
-  debug(slabsProcessed);
+  debug(`${patchPromises.length} patchs à appliquer.`);
+  let preparedPatches;
+  try {
+    preparedPatches = await Promise.all(patchPromises);
+  } catch (error) {
+    debug(`Échec de la préparation des patchs : ${error.message}`);
+    if (error.message.includes('ENOENT')) {
+      const errorUser = new Error(`Patch ${patchInserted.id_patch} outside the OPI`);
+      errorUser.name = 'PatchError';
+      errorUser.cause = error; // conserve l'erreur d'origine
+      throw errorUser;
+    }
+    throw error;
+  }
+
+  const promisesProcessed = await Promise.allSettled(
+    preparedPatches.map(async ({ slab, ring, patch }) => {
+      debug(patch);
+
+      const outputUrl = createUrlOutputPolygon(dirCache, idBranch, patch, patchInserted.num);
+      const patchProcess = { ...patch, ...outputUrl, mask: createMask(overviews, ring) };
+
+      const { nbPxNoData } = await gdalProcessing.processPolygonPatchAsync(
+        patchProcess,
+        overviews.tileSize.width,
+      );
+
+      const idPatch = patchInserted.id_patch;
+      const withNoData = nbPxNoData.RGB > 0 || nbPxNoData.IR > 0;
+      if (withNoData) {
+        debug(`${idPatch}: NODATA px in RGB ${nbPxNoData.RGB}, in Ir ${nbPxNoData.IR}`);
+      }
+      renameSlab(dirCache, idBranch, patchProcess, patchInserted.num);
+      return { idPatch, withNoData, ...slab };
+    }),
+  );
+
+  const promisesError = promisesProcessed.filter((promise) => promise.status === 'rejected');
+  if (promisesError.length > 0) {
+    debug(promisesError);
+    const error = new Error(`Patch ${patchInserted.id_patch} to`
+      + ` ${promisesError.lenght} slabs failed.`);
+    error.name = 'ErrorApplyPatch';
+    throw error;
+  }
+
+  const slabsProcessed = promisesProcessed.map((promise) => promise.value);
   await db.insertSlabs(pgClient, patchInserted.id_patch, slabsProcessed);
   return slabsProcessed;
 }
