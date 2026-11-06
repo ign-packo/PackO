@@ -157,10 +157,11 @@ class Editing {
         this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches'], cacheBusting);
         this.viewer.message = '';
         // Filtrage des patchs avec du No Data sans doublon
-        const PatchNoData = res.filter((patch) => patch.withNoData === true);
+        const PatchNoData = res.flat().filter((patch) => patch.withNoData === true);
         // Création du message d'erreur
         if (PatchNoData.length > 0) {
-          const warning = new Warning('NODATA dans la saisie');
+          const numPatchNoData = [...new Set(PatchNoData.map((patch) => patch.newPatchNum))];
+          const warning = new Warning(`NODATA dans saisie(s) numéro(s): ${numPatchNoData.join(', ')}.`);
           warning.name = 'WarningNoData';
           this.viewer.view.dispatchEvent({
             type: 'warning',

@@ -438,7 +438,9 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
         }
         // Renomme les données de sortie
         renameSlab(dirCache, patch, idBranch, newBlockNum, newPatchNum);
-        return { idPatch, withNoData, ...slab };
+        return {
+          idPatch, newPatchNum, withNoData, ...slab,
+        };
       })());
     }
   }

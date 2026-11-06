@@ -121,7 +121,8 @@ describe('route/multipatch.js', () => {
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
             resJson.should.be.a('array');
-            resJson[0].withNoData.should.be.a('boolean').equal(true);
+            // checking for the presence of NODAOA
+            resJson[0][0].withNoData.should.be.a('boolean').equal(true);
             done();
           });
       }).timeout(9000);
