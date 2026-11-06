@@ -38,13 +38,18 @@ const vectorToSave = [
     .exists().withMessage(createErrMsg.missingParameter('data.type'))
     .isIn(['FeatureCollection'])
     .withMessage(createErrMsg.invalidParameter('data.type')),
-  // body('json.data.crs')
-  //   .exists().withMessage(createErrMsg.missingParameter('crs'))
-  //   .custom(validator.isCrs)
-  //   .withMessage(createErrMsg.invalidParameter('crs')),
   body('json.data.features.*.geometry')
-    .custom((value) => (GJV.isPolygon(value)))
-    .withMessage(createErrMsg.InvalidEntity('data.features.*.geometry', 'polygon')),
+    .custom((value) => (
+      GJV.isPoint(value)
+      || GJV.isMultiPoint(value)
+      || GJV.isLineString(value)
+      || GJV.isMultiLineString(value)
+      || GJV.isPolygon(value)
+      || GJV.isMultiPolygon(value)
+    ))
+    .withMessage((value, { path }) => (
+      createErrMsg.InvalidEntity(path, String(value.type))
+    )),
 ];
 
 router.get('/:idBranch/vectors',
