@@ -227,7 +227,7 @@ async function getPatches(req, _res, next) {
   next();
 }
 
-function ozCppExe(patches, outputDir, geojsonPath) {
+function ozCppExe(patches, outputDir, geojsonPath, isIslet) {
   debug('>>ozCppExe');
   const arrArgsR = ['-r'];
   const arrArgsS = ['-s'];
@@ -263,6 +263,7 @@ function ozCppExe(patches, outputDir, geojsonPath) {
     border: 20,
     outDir: outputDir,
   };
+  if (isIslet) { arrArgs.push('--patch_as_isle'); }
   arrArgs.push(
     '-w', `${options.weightDiffCost}`,
     '-wt', `${options.weightTransition}`,
@@ -437,13 +438,13 @@ async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgb
   idBranch, patchInserted, crsObject) {
   debug('  ~~processSemiAutoPatch');
   const insertPatchPromise = db.insertSlabs(pgClient, patchInserted.id_patch, slabs);
-  const isAuto = true;
   // On écrit la saisie dans un fichier json pour le donner à OzCppExe
   const geojsonOz = gjson.geoJsonOzObject(idBranch, patchInserted.id_patch, crsObject,
-    feature.properties, feature.geometry.coordinates);
-    // write patch geojson
+    feature);
+  // write patch geojson
   const geojsonPath = `${dirCache}/tmp_test_js/patch_idBr${idBranch}_idP${patchInserted.id_patch}.geojson`;
   await gjson.writeGeojson(geojsonPath, geojsonOz);
+  const isAuto = true;
   debug('~create patch');
   const promisesCheckFile = slabs.map((slab) => createPatch(slab,
     {
@@ -464,7 +465,8 @@ async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgb
   debug('~Promise.all');
   const patchOnSlabs = await Promise.all(promisesCheckFile);
   // Traitement par OzCppExe
-  await ozCppExe(patchOnSlabs, urlOutputData, geojsonPath);
+  const isIslet = feature.geometry.type === 'Polygon';
+  await ozCppExe(patchOnSlabs, urlOutputData, geojsonPath, isIslet);
   // Création des URL des données de sortie, puis déplacement et renommage des fichiers
   debug('~rename patch');
   patchOnSlabs.forEach((patch) => {
@@ -498,7 +500,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, geojson) {
   // in case of patch-auto, add border to bbox for selecting slabs
   const borderMeters = patchIsAuto ? 20 : 0;
   let { coordinates } = feature.geometry;
-  if (!patchIsAuto) {
+  if (feature.geometry.type === 'Polygon') {
     [coordinates] = coordinates;
   }
   const slabs = getSlabs(coordinates, overviews, borderMeters);
