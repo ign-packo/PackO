@@ -3,6 +3,7 @@
 import * as itowns from 'itowns';
 import * as THREE from 'three';
 import shp from 'shpjs';
+import GJV from 'geojson-validation';
 
 itowns.ShaderChunk.customHeaderColorLayer(`
 float edge(sampler2D textu, float stepx, float stepy, vec2 center){
@@ -424,6 +425,7 @@ class Viewer {
   }
 
   addDnDFiles(eventDnD, files) {
+    console.log(' ~~addDnDFiles');
     eventDnD.preventDefault();
 
     // TYPE
@@ -523,11 +525,12 @@ class Viewer {
         nbFileLoaded += 1;
         if (fileMtd.format === _GEOJSON) {
           data[layerName] = JSON.parse(dataLoaded);
-          if (!data[layerName].type || data[layerName].type !== 'FeatureCollection' || !data[layerName].features) {
+          if (!data[layerName].type || data[layerName].type !== 'FeatureCollection' || !GJV.valid(data[layerName])) {
+            const msgError = 'File is not a valid geoJson';
             if (!errors[layerName]) {
-              errors[layerName] = ['File is not a valid geoJson'];
+              errors[layerName] = [msgError];
             } else {
-              errors[layerName].push('File is not a valid geoJson');
+              errors[layerName].push(msgError);
             }
           } else {
             resData = data[layerName];
