@@ -151,16 +151,17 @@ class Editing {
     };
 
     // On post le geojson sur l'API
-    this.api.postPatch(this.branch.active.id, JSON.stringify(geojson))
+    this.api.postMultiPatches(this.branch.active.id, JSON.stringify(geojson))
       .then((res) => {
         const cacheBusting = true;
         this.viewer.refresh(['Ortho', 'Graph', 'Contour', 'Patches'], cacheBusting);
         this.viewer.message = '';
         // Filtrage des patchs avec du No Data sans doublon
-        const PatchNoData = res.filter((patch) => patch.withNoData === true);
+        const PatchNoData = res.flat().filter((patch) => patch.withNoData === true);
         // Création du message d'erreur
         if (PatchNoData.length > 0) {
-          const warning = new Warning('NODATA dans la saisie');
+          const idPatchNoData = [...new Set(PatchNoData.map((patch) => patch.idPatch))];
+          const warning = new Warning(`NODATA dans saisie(s): ${idPatchNoData.join(', ')}.`);
           warning.name = 'WarningNoData';
           this.viewer.view.dispatchEvent({
             type: 'warning',
@@ -578,7 +579,7 @@ class Editing {
     this.view.controls.setCursor('default', 'wait');
     this.currentStatus = status.WAITING;
 
-    fetch(`${this.api.url}/${this.branch.active.id}/patch/undo?`,
+    fetch(`${this.api.url}/${this.branch.active.id}/multipatch/undo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -606,7 +607,7 @@ class Editing {
     this.viewer.message = 'calcul en cours';
     this.view.controls.setCursor('default', 'wait');
     this.currentStatus = status.WAITING;
-    fetch(`${this.api.url}/${this.branch.active.id}/patch/redo?`,
+    fetch(`${this.api.url}/${this.branch.active.id}/multipatch/redo?`,
       {
         method: 'PUT',
       }).then((res) => {
@@ -633,7 +634,7 @@ class Editing {
     this.view.controls.setCursor('default', 'wait');
     this.currentStatus = status.WAITING;
 
-    fetch(`${this.api.url}/${this.branch.active.id}/patches/clear?`,
+    fetch(`${this.api.url}/${this.branch.active.id}/multipatches/clear?`,
       {
         method: 'PUT',
       }).then((res) => {
