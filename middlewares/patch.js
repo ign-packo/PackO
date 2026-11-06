@@ -421,8 +421,8 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
   } catch (error) {
     debug(`Échec de la préparation des patchs : ${error.message}`);
     if (error.message.includes('ENOENT')) {
-      const errorUser = new Error("Saisie impossible, l'emprise de l'OPI est dépassée");
-      errorUser.name = 'ErrorPatch';
+      const errorUser = new Error(`Patch ${patchInserted.id_patch} outside the OPI`);
+      errorUser.name = 'PatchError';
       errorUser.cause = error; // conserve l'erreur d'origine
       throw errorUser;
     }
@@ -454,8 +454,8 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
   const promisesError = promisesProcessed.filter((promise) => promise.status === 'rejected');
   if (promisesError.length > 0) {
     debug(promisesError);
-    const error = new Error('Attention, votre branche est sans doute corrompue '
-      + "; une saisie n'a pas pu être appliquée.");
+    const error = new Error(`Patch ${patchInserted.id_patch} to`
+      + ` ${promisesError.lenght} slabs failed.`);
     error.name = 'ErrorApplyPatch';
     throw error;
   }

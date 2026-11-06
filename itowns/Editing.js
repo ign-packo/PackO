@@ -171,11 +171,28 @@ class Editing {
       .catch((error) => {
         console.log(error);
         this.viewer.message = 'Erreur post patch';
-        this.viewer.view.dispatchEvent({
-          type: 'error',
-          sender: 'api',
-          error,
-        });
+        if (error.msg.includes('PatchError')) {
+          const errorC = new Error("Saisie impossible, l'emprise de l'OPI est dépassée");
+          errorC.name = 'PatchError';
+          this.viewer.view.dispatchEvent({
+            type: 'error',
+            error: errorC,
+          });
+        } else if (error.msg.includes('ErrorApplyPatch')) {
+          const errorC = new Error('Attention, votre branche est sans doute corrompue '
+            + "; une saisie n'a pas pu être appliquée.");
+          errorC.name = 'ErrorApplyPatch';
+          this.viewer.view.dispatchEvent({
+            type: 'error',
+            error: errorC,
+          });
+        } else {
+          this.viewer.view.dispatchEvent({
+            type: 'error',
+            sender: 'api',
+            error,
+          });
+        }
       })
       .finally(() => {
         this.resetCurrentPolygon();
