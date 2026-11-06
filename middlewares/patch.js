@@ -434,13 +434,16 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
 }
 
 async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgbIr, dirCache,
-  idBranch, patchInserted, geojson) {
+  idBranch, patchInserted, crsObject) {
   debug('  ~~processSemiAutoPatch');
   const insertPatchPromise = db.insertSlabs(pgClient, patchInserted.id_patch, slabs);
   const isAuto = true;
   // On écrit la saisie dans un fichier json pour le donner à OzCppExe
-  const geojsonPath = await gjson.writeGeojson(idBranch, patchInserted.id_patch, dirCache,
-    geojson, feature);
+  const geojsonOz = gjson.geoJsonOzObject(idBranch, patchInserted.id_patch, crsObject,
+    feature.properties, feature.geometry.coordinates);
+    // write patch geojson
+  const geojsonPath = `${dirCache}/tmp_test_js/patch_idBr${idBranch}_idP${patchInserted.id_patch}.geojson`;
+  await gjson.writeGeojson(geojsonPath, geojsonOz);
   debug('~create patch');
   const promisesCheckFile = slabs.map((slab) => createPatch(slab,
     {
@@ -503,7 +506,7 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, geojson) {
   const patchInserted = await patchInsertedPromise;
   const processPatch = patchIsAuto ? processSemiAutoPatch : processPolygonPatch;
   const slabsProcessed = await processPatch(pgClient, slabs, feature, overviews, infoRgbIr,
-    dirCache, idBranch, patchInserted, geojson);
+    dirCache, idBranch, patchInserted, geojson.crs);
 
   debug('on retourne les dalles modifiees : ', slabsProcessed);
   debug('Fin de applyPatch');
