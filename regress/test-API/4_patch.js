@@ -309,7 +309,7 @@ describe('route/patch.js', () => {
   describe('GET /{idBranch}/lastpatches', () => {
     it('should return last patch on the branch with 3 patches', (done) => {
       chai.request(app)
-        .get(`/${idBranch[branchName]}/patches?nbPatches=1`)
+        .get(`/${idBranch[branchName]}/lastpatches?nbPatches=1`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -323,7 +323,7 @@ describe('route/patch.js', () => {
     });
     it('should return 3 patches when nbPatches=3 and there are 3 patches on the branch', (done) => {
       chai.request(app)
-        .get(`/${idBranch[branchName]}/patches?nbPatches=3`)
+        .get(`/${idBranch[branchName]}/lastpatches?nbPatches=3`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -336,7 +336,7 @@ describe('route/patch.js', () => {
     });
     it('should return 3 patches when nbPatches>3 and there are 3 patches on the branch', (done) => {
       chai.request(app)
-        .get(`/${idBranch[branchName]}/patches?nbPatches=100`)
+        .get(`/${idBranch[branchName]}/lastpatches?nbPatches=100`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
