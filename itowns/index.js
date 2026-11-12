@@ -2,7 +2,7 @@
 /* global setupLoadingScreen */
 import * as itowns from 'itowns';
 import Viewer from './Viewer';
-import Editing, { saisie } from './Editing';
+import Editing, { patchType } from './Editing';
 import Alert from './Alert';
 import Branch from './Branch';
 import Menu from './Menu';
@@ -230,12 +230,10 @@ async function main() {
       });
 
     // Saisie
-    const polygonStr = Object.keys(saisie)[saisie.Polygon];
-    menu.add({ [polygonStr]: editing.saisie.bind(editing, polygonStr) }, polygonStr)
-      .name('Polygon patch [p]');
-    const lineStringStr = Object.keys(saisie)[saisie.LineString];
-    menu.add({ [lineStringStr]: editing.saisie.bind(editing, lineStringStr) }, lineStringStr)
-      .name('Semi-auto patch [t]');// TODO link to shortcut dictionnary
+    Object.values(patchType).forEach((saisie) => {
+      menu.add({ [saisie.id]: editing.saisie.bind(editing, saisie.id) }, saisie.id)
+        .name(`${saisie.name} patch [${saisie.keyShortcut}]`);
+    });
     menu.add(editing, 'undo').name('undo [CTRL+Z]');
     menu.add(editing, 'redo').name('redo [CTRL+Y]');
     menu.add(editing, 'clear')

@@ -388,9 +388,11 @@ paths:
                         $ref: '#/components/schemas/geometry'
             examples:
               exemple_polygon:
-                $ref: '#/components/examples/featureCollectionPolygon'
-              exemple_linestring:
-                $ref: '#/components/examples/featureCollectionLinestring'
+                $ref: '#/components/examples/featureCollectionManuel'
+              exemple_semiauto:
+                $ref: '#/components/examples/featureCollectionSemiAuto'
+              exemple_isle:
+                $ref: '#/components/examples/featureCollectionSemiAuto'
 
       responses:
         '200':
@@ -983,7 +985,7 @@ components:
           type: Polygon
           coordinates: [[[230747.32, 6759652.52],[230746.84, 6759651.79],[230747.77, 6759651.10],[230748.60, 6759652.22],[230747.32, 6759652.52]]]
 
-    featureCollectionPolygon:
+    featureCollectionManuel:
       summary: Patch Polygone
       value:
         type: FeatureCollection
@@ -1004,7 +1006,7 @@ components:
             coordinates: [[[230747.32, 6759652.52],[230746.84, 6759651.79],[230747.77, 6759651.10],[230748.60, 6759652.22],[230747.32, 6759652.52]]]
 
 
-    featureCollectionLinestring:
+    featureCollectionSemiAuto:
       summary: Patch Polyligne
       value:
         type: FeatureCollection
@@ -1023,6 +1025,26 @@ components:
           geometry:
             type: LineString
             coordinates: [[230750.69, 6759646.07],[230751.39, 6759645.84],[230751.92,6759645.10],[230751.89, 6759644.37],[230751.35, 6759643.90]]
+
+    featureCollectionIsle:
+      summary: Patch Polygone
+      value:
+        type: FeatureCollection
+        crs:
+          type: name
+          properties:
+            name: "urn:ogc:def:crs:EPSG::2154"
+        features:
+        - type: Feature
+          properties:
+            is_auto: true
+            color: [242,168,55]
+            opiName: "19FD5606Ax00020_16371"
+            colorSec: [55,220,19]
+            opiNameSec: "19FD5606Ax00020_16372"
+          geometry:
+            type: Polygon
+            coordinates: [[[230750, 6759652],[230752, 6759652],[230752, 6759651],[230750, 6759651],[230750, 66759652]]]
 
 ## SCHEMA
   schemas:
