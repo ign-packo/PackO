@@ -168,14 +168,32 @@ class Editing {
           });
         }
       })
-      .catch((error) => {
-        console.log(error);
+      .catch((err) => {
+        console.log(err);
         this.viewer.message = 'Erreur post patch';
-        this.viewer.view.dispatchEvent({
-          type: 'error',
-          sender: 'api',
-          error,
-        });
+        const errorName = err.msg.split(':')[0];
+        if (errorName === 'PatchError') {
+          const error = new Error("Saisie impossible, l'emprise de l'OPI est dépassée");
+          error.name = 'PatchError';
+          this.viewer.view.dispatchEvent({
+            type: 'error',
+            error,
+          });
+        } else if (errorName === 'ErrorApplyPatch') {
+          const error = new Error('Attention, votre branche est sans doute corrompue '
+            + "; une saisie n'a pas pu être appliquée.");
+          error.name = 'PatchError';
+          this.viewer.view.dispatchEvent({
+            type: 'error',
+            error,
+          });
+        } else {
+          this.viewer.view.dispatchEvent({
+            type: 'error',
+            sender: 'api',
+            error: err,
+          });
+        }
       })
       .finally(() => {
         this.resetCurrentPolygon();
