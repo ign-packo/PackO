@@ -221,6 +221,26 @@ class API {
       });
     });
   }
+
+  postBackup(idBranch) {
+    return new Promise((resolve, reject) => {
+      fetch(`${this.url}/${idBranch}/backup?`, { method: 'POST' })
+        .then((res) => {
+          if (res.status === 200) {
+            resolve();
+          } else {
+            res.json().then((json) => {
+              console.log(`Error postBackup : ${json.msg}`);
+              const errorMsg = json.msg.split(':');
+              const nameError = errorMsg.shift();
+              const err = new Error(errorMsg.join(':'));
+              err.name = nameError;
+              reject(err);
+            });
+          }
+        });
+    });
+  }
 }
 
 export default API;

@@ -92,7 +92,21 @@ const geoJsonAPatcher = [
     .withMessage(createErrMsg.invalidParameter('properties.colorSec')),
 ];
 
-const getPatches = [
+router.get('/:idBranch/patches',
+  pgClient.open,
+  branch.getBranches.bind({ column: 'id' }),
+  [
+    param('idBranch')
+      .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
+      .withMessage(createErrMsg.invalidParameter('idBranch')),
+  ],
+  validateParams,
+  patch.getPatches,
+  pgClient.close,
+  returnMsg);
+
+router.get('/:idBranch/lastpatches',
   pgClient.open,
   branch.getBranches.bind({ column: 'id' }),
   [
@@ -101,18 +115,15 @@ const getPatches = [
       .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
     query('nbPatches')
-      .if(query('nbPatches').exists())
+      .exists().withMessage(createErrMsg.missingParameter('nbPatches'))
       .isInt({ min: 1 })
       .withMessage(createErrMsg.invalidParameter('nbPatches')),
   ],
   validateParams,
   patch.getPatches,
   pgClient.close,
-  returnMsg,
-];
+  returnMsg);
 
-router.get('/:idBranch/patches', getPatches);
-router.get('/:idBranch/lastpatches', getPatches);
 
 router.post('/:idBranch/patch',
   encapBody.bind({ keyName: 'geoJSON' }),

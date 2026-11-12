@@ -585,6 +585,36 @@ async function deleteFeature(pgClient, idFeature) {
   return results.rows[0];
 }
 
+async function getBackups(pgClient, idBranch, nbBackup) {
+  debug(`~~getBackups (idBranch: ${idBranch})`);
+
+  let limit = '';
+  const params = [idBranch];
+  if (nbBackup > 0) {
+    limit = 'LIMIT $2';
+    params.push(nbBackup);
+  }
+
+  const query = 'SELECT b.id, b.last_included_patch_id, '
+    + 'to_char(b.date AT TIME ZONE \'UTC\', \'YYYY-MM-DD"T"HH24:MI:SS\') AS date '
+    + 'FROM backup AS b JOIN patches AS p ON p.id = b.last_included_patch_id '
+    + `WHERE p.id_branch = $1 ORDER BY date ASC ${limit}`;
+  debug('      ', query);
+  const results = await pgClient.query(query, params);
+  return results.rows;
+}
+
+async function insertBackup(pgClient, idPatch) {
+  debug(`~~insertBackup (idPatch: ${idPatch})`);
+
+  const query = 'INSERT INTO backup (last_included_patch_id) VALUES ($1) RETURNING id, date';
+
+  debug('      ', query);
+  const results = await pgClient.query(query, [idPatch]);
+  if (results.rowCount === 1) return results.rows[0];
+  throw new Error('Failed to insert backup.');
+}
+
 module.exports = {
   beginTransaction,
   endTransaction,
@@ -620,4 +650,6 @@ module.exports = {
   updateAlert,
   insertFeature,
   deleteFeature,
+  getBackups,
+  insertBackup,
 };
