@@ -552,7 +552,6 @@ class Viewer {
               shp.parseShp(data[layerName].shp, data[layerName].prj),
               shp.parseDbf(data[layerName].dbf),
             ]);
-            resData.crs = { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::4326' } };
           }
         }
         if (resData) {
@@ -570,29 +569,12 @@ class Viewer {
 
           // itowns.GeoJsonParser.parse(resData, options).then((features) => {
           itowns.GeoJsonParser.parse(resData, options).then(() => {
-            const randomColor = Math.round(Math.random() * 0xffffff);
-
-            const style = {
-              fill: {
-                color: `#${randomColor.toString(16)}`,
-                opacity: 0.7,
-              },
-              stroke: {
-                color: `#${randomColor.toString(16)}`,
-              },
-              point: {
-                color: `#${randomColor.toString(16)}`,
-                radius: 5,
-              },
-            };
-
             console.log(`-> Layer '${layerName}' dropped`);
 
             _view.dispatchEvent({
               type: 'file-dropped',
               name: layerName,
               data: geoJson,
-              style,
             });
           });
         }

@@ -4,6 +4,28 @@ const { matchedData } = require('express-validator');
 
 const db = require('../db/db');
 
+function readCRS(geojsonObjet) {
+  if (geojsonObjet.crs) {
+    if (geojsonObjet.crs.type.toLowerCase() === 'epsg') {
+      return `EPSG:${geojsonObjet.crs.properties.code}`;
+    }
+    if (geojsonObjet.crs.type.toLowerCase() === 'name') {
+      const epsgIdx = geojsonObjet.crs.properties.name.toLowerCase().indexOf('epsg:');
+      if (epsgIdx >= 0) {
+        // authority:version:code => EPSG:[...]:code
+        const codeStart = geojsonObjet.crs.properties.name.indexOf(':', epsgIdx + 5);
+        if (codeStart > 0) {
+          return `EPSG:${geojsonObjet.crs.properties.name.substr(codeStart + 1)}`;
+        }
+      }
+      throw new Error('Invalid EPSG encoding');
+    }
+    throw new Error(`Unsupported CRS type '${geojsonObjet.crs}'`);
+  }
+  // assume default crs
+  return 'EPSG:4326';
+}
+
 async function getVectors(req, _res, next) {
   debug('>>GET vectors');
   if (req.error) {
@@ -74,27 +96,49 @@ async function postVector(req, _res, next) {
     return;
   }
   const params = matchedData(req);
-  const { idBranch } = params;
+  const { idBranch, name } = params;
 
-  // debug(params.json.data)
-  // debug(params.json.data.features.length)
-
-  // params.json.data.features.forEach(feature => {
-  //   debug("---")
-  //   debug(feature.properties)
-  //   debug(feature.geometry)
-  // });
+  let crs;
+  try {
+    crs = readCRS(params.json);
+  } catch (error) {
+    debug(error);
+    req.error = {
+      code: 404,
+      function: 'postVector',
+      msg: error.toString(),
+    };
+  }
+  // Création d'un style
+  const randomColor = Math.round(Math.random() * 0xffffff);
+  const style = {
+    fill: {
+      color: `#${randomColor.toString(16)}`,
+      opacity: 0.7,
+    },
+    stroke: {
+      color: `#${randomColor.toString(16)}`,
+    },
+    point: {
+      color: `#${randomColor.toString(16)}`,
+      radius: 5,
+    },
+  };
 
   try {
     const NewVector = await db.insertLayer(req.client,
       idBranch,
-      params.json.data,
-      params.json.metadonnees);
+      name,
+      params.json,
+      crs,
+      style);
 
     req.result = {
       json: {
-        msg: `vector '${params.json.metadonnees.name}' (${NewVector.features.length} feature(s)) ajouté.`,
+        msg: `vector '${name}' (${NewVector.features.length} feature(s)) ajouté.`,
         id: NewVector.id,
+        crs,
+        style,
       },
       code: 200,
     };
@@ -112,11 +156,6 @@ async function postVector(req, _res, next) {
     } else {
       req.error = error;
     }
-    // req.error = {
-    //   msg: error,
-    //   code: 406,
-    //   function: 'postVector',
-    // };
   }
   debug('  next>>');
   next();

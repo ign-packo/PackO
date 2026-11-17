@@ -370,10 +370,8 @@ async function getLayer(pgClient, idVector) {
   return results.rows[0].geojson;
 }
 
-async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
+async function insertLayer(pgClient, idBranch, name, geojson, crs, style) {
   debug(`    ~~insertLayer (idBranch: ${idBranch})`);
-  // metadonnees.opacity = 1;
-  // metadonnees.visibility = true;
   let results;
   /// ////////////////////
   // TODO gestion des STYLES
@@ -381,10 +379,10 @@ async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
   const sqlInsertStyle = format('INSERT INTO styles (name, opacity, visibility, style_itowns) '
                               + 'VALUES (%L, %s, %L, %L) '
                               + 'returning id as id_style',
-  `${metadonnees.name}_${idBranch}`,
+  `${name}_${idBranch}`,
   1,
   true,
-  metadonnees.style);
+  style);
 
   debug('      ', sqlInsertStyle);
   results = await pgClient.query(sqlInsertStyle);
@@ -395,8 +393,8 @@ async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
   const sqlInsertLayer = format('INSERT INTO layers (name, crs, id_branch, id_style) '
     + 'VALUES (%L, %L, %s, %s) '
     + 'RETURNING id as id_layer',
-  metadonnees.name,
-  metadonnees.crs,
+  name,
+  crs,
   idBranch,
   results.rows[0].id_style);
 
@@ -409,7 +407,7 @@ async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
   geojson.features.forEach((feature) => {
     const properties = JSON.parse(JSON.stringify(feature.properties));
     // delete properties.comment;
-    values.push(`ST_SetSRID(ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}'), ${metadonnees.crs.split(':')[1]}), '${JSON.stringify(properties).replace(/'/g, "''")}', '${idNewLayer}'`);
+    values.push(`ST_SetSRID(ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}'), ${crs.split(':')[1]}), '${JSON.stringify(properties).replace(/'/g, "''")}', '${idNewLayer}'`);
   });
 
   const sqlInsertFeatures = format('INSERT INTO features (geom, properties, id_layer) '
@@ -423,7 +421,7 @@ async function insertLayer(pgClient, idBranch, geojson, metadonnees) {
   if (Object.keys(geojson.features[0].properties).includes('comment')) {
     const temp = results.rows.map((feature) => ({
       id_feature: feature.id_feature,
-      comment: JSON.parse(feature.properties).comment.replace(/'/g, "''"),
+      comment: feature.properties.comment.replace(/'/g, "''"),
     }));
 
     const sqlInsertFeaturesCtrs = format('INSERT INTO feature_ctrs (comment, id_feature) '
