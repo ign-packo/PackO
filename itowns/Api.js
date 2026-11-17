@@ -76,28 +76,21 @@ class API {
     });
   }
 
-  saveVector(idBranch, name, geojson, crs, style) {
+  saveVector(idBranch, name, geojson) {
     return new Promise((resolve, reject) => {
-      fetch(`${this.url}/${idBranch}/vector`,
+      fetch(`${this.url}/${idBranch}/vector?name=${name}`,
         {
           method: 'POST',
           headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            metadonnees: {
-              name,
-              style,
-              crs,
-            },
-            data: geojson,
-          }),
+          body: JSON.stringify(geojson),
         }).then((res) => {
         res.json().then((json) => {
           if (res.status === 200) {
             console.log(`-> Layer '${name}' succesfully saved`);
-            resolve(json.id);
+            resolve(json);
           } else {
             const err = new Error(`Layer '${name}' NOT saved`);
             err.name = 'Database Error';

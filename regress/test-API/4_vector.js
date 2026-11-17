@@ -11,8 +11,8 @@ const cachePath = './cache_test/cache_test_RGBIR';
 const overviews = JSON.parse(fs.readFileSync(`${cachePath}/overviews.json`, 'utf8'));
 const cacheName = 'cacheRegress';
 
-const vector = JSON.parse(fs.readFileSync('./regress/data/extra_layers/vector.json', 'utf8'));
-const vectorName = vector.metadonnees.name;
+const vector = JSON.parse(fs.readFileSync('./regress/data/extra_layers/vector.geojson', 'utf8'));
+const vectorName = vector.name;
 const testBranchName = 'vectorRegress';
 
 let idCache = null;
@@ -121,7 +121,7 @@ describe('route/vector.js', () => {
   });
 
   describe('POST /{idBranch}/vector', () => {
-    describe('body: {}', () => {
+    describe('name: null', () => {
       it('should return an error', (done) => {
         chai.request(app)
           .post(`/${idBranch[testBranchName]}/vector`)
@@ -129,8 +129,41 @@ describe('route/vector.js', () => {
             should.not.exist(err);
             res.should.have.status(400);
             const resJson = JSON.parse(res.text);
-            resJson.should.be.an('array').to.have.lengthOf(3);
+            resJson.should.be.an('array').to.have.lengthOf(2);
+            resJson[0].should.have.property('status').equal("Le paramètre 'name' est requis.");
+            done();
+          });
+      });
+    });
+    describe('body: {}', () => {
+      it('should return an error', (done) => {
+        chai.request(app)
+          .post(`/${idBranch[testBranchName]}/vector`)
+          .query({ name: 'vector1' })
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(400);
+            const resJson = JSON.parse(res.text);
+            resJson.should.be.an('array').to.have.lengthOf(1);
             resJson[0].should.have.property('status').equal('Un body non vide est requis.');
+            done();
+          });
+      });
+    });
+    describe('body: with crs different of the cache', () => {
+      it('should return an error', (done) => {
+        const vectNoCrs = JSON.parse(JSON.stringify(vector));
+        delete vectNoCrs.crs;
+        chai.request(app)
+          .post(`/${idBranch[testBranchName]}/vector`)
+          .query({ name: 'vector1' })
+          .send(vectNoCrs)
+          .end((err, res) => {
+            should.not.exist(err);
+            res.should.have.status(406);
+            const resJson = JSON.parse(res.text);
+            resJson.should.have.property('msg').equal("Error: CRS of file is different of crs view. File 'vector1' not load.");
+            resJson.should.have.property('function').equal('insertVector');
             done();
           });
       });
@@ -139,6 +172,7 @@ describe('route/vector.js', () => {
       it('should send the vector and return name and id of the vector added', (done) => {
         chai.request(app)
           .post(`/${idBranch[testBranchName]}/vector`)
+          .query({ name: vectorName })
           .send(vector)
           .end((err, res) => {
             should.not.exist(err);
@@ -155,12 +189,14 @@ describe('route/vector.js', () => {
       it('should return a error', (done) => {
         chai.request(app)
           .post(`/${idBranch[testBranchName]}/vector`)
+          .query({ name: vectorName })
           .send(vector)
           .end((err, res) => {
             should.not.exist(err);
-            res.should.have.status(406);
+            res.should.have.status(400);
             const resJson = JSON.parse(res.text);
-            resJson.should.have.property('msg').equal('A vector with this name already exists.');
+            resJson.should.be.an('array').to.have.lengthOf(1);
+            resJson[0].should.have.property('status').equal("Le paramètre 'name' n'est pas valide.");
             done();
           });
       });
