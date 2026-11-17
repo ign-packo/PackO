@@ -16,6 +16,8 @@ tags:
     description: Requête sur le graph de mosaïquage
   - name: patch
     description: Gestion des patches
+  - name: backup
+    description: Sauvegarde temporaire des patches sur une branche
   - name: vector
     description: Gestion des couches vecteurs annexes
   - name: file
@@ -437,6 +439,41 @@ paths:
       tags:
         - patch
       summary: "Annulation de toutes les modifications"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+
+# BACKUP
+  '/{idBranch}/backups':
+    get:
+      tags:
+        - backup
+      summary: "Récuperation des sauvegardes temporaires effectuées sur une branche"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+
+  '/{idBranch}/backup':
+    post:
+      tags:
+        - backup
+      summary: "Sauvegarde temporaire d'une branche"
       description: ""
       parameters:
         - in: path
