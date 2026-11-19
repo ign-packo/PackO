@@ -385,9 +385,10 @@ A partir du client web en ajoutant le paramètre namecache={nom du cache en base
 ### Import de couches vecteur annexes
 
 A partir de l'interface web, on peut intégrer des couches vecteur (au format geojson ou shapefile) en les glissant directement dans la vue. 
-Pour les fichiers shapefile, il faut glisser les fichiers .shp, .shx, .dbf et .prj en même temps.
+Attention Le format shapefile n'est plus supporté pour le 'drag and drop'.\
+~~Pour les fichiers shapefile, il faut glisser les fichiers .shp, .shx, .dbf et .prj en même temps.
 Pour des soucis d'intégrité, si on désire ajouter plusieurs couches, il faut les ajouter une à une.
-Chaque couche ajoutée est sauvegardée dans la base de données.
+Chaque couche ajoutée est sauvegardée dans la base de données.~~
 
 Actuellement les couches de polygone multipart ne sont pas bien gérées, il faut exploser ces couches en polygone simple avant de les ajouter à la vue itowns.
 
@@ -426,10 +427,34 @@ Et pour exporter tous les vecteurs d'une branche, on peut utiliser l'url `http:/
 
 ### Retouches
 
+Il existe plusieurs types de retouches pour corriger le graph de mosaïquage : manuelles, semi-automatiques et ilôt.
+
+#### Retouches manuelles
+
+Les retouches manuelles permettent de corriger le graph de mosaïquage en dessinant directement un polygone qui sera appliqué tel quel.
+
+#### Retouches semi-automatiques
+
+Les retouches semi-automatiques permettent de corriger le graph de mosaïquage en dessinant une ligne commançant et terminant dans la même OPI. Puis un algorithme va générer automatiquement le graph corrigé le plus proche de la ligne avec le plus faible coût possible entre les deux OPI.
+
+#### Retouches ilôt
+
+Les retouches ilôt permettent de corriger le graph de mosaïquage en dessinant un polygone à l'intérieur d'une OPI. L'algorithme va ensuite ajuster automatiquement le graph pour que le polygone soit intégré dans le graph avec le plus faible coût.
+
+#### Appliquer une retouche
+
 Les étapes du processus de retouche du graphe de mosaïquage sont :
 * choisir la branche de saisie dans le menu déroulant "Active branch" (utiliser "Add new branch" pour créer une nouvelle branche)
-* choisir l'OPI de travail avec "Select an OPI"
-* démarrer la retouche ("Start polygon"), appuyer sur la touche "Majuscule" du clavier pour fermer la saisie
+
+* Retouche manuelle
+  * choisir l'OPI de travail avec "Select an OPI"
+  * démarrer la retouche manuelle ("Polygon Patch"), appuyer sur la touche "Majuscule" du clavier pour fermer la saisie
+
+* Retouche semi-automatique
+  * choisir une première OPI de travail avec "Select an OPI", puis une seconde avec "Select a 2nd OPI"
+  * démarrer la retouche semi-auto ("Semi-auto patch"), appuyer sur la touche "Majuscule" du clavier pour terminer la saisie
+  * démarrer la retouche ilôt ("Isle patch"), appuyer sur la touche "Majuscule" du clavier pour terminer la saisie
+
 * annuler ou refaire la retouche en utilisant les outils "undo", "redo"
 
 Les contours des retouches d'un chantier peuvent être affichés en activant l'option "visible" de la couche "Patches".
@@ -489,9 +514,7 @@ gdal_translate "WMTS:http://[serveur]:[port]/[idBranch]/wmts?SERVICE=WMTS&REQUES
 gdal_translate -of Jpeg ortho.xml ortho.jpg
 ````
 
-
 ## Export d'un graphe vecteur à partir d'un cache
-
 
 Le traitement permettant d'exporter un graphe vecteur à partir d'un cache PackO est divisé en deux parties :
 - une première partie pour créer les paramétrages pour les traitements qui sont parallélisables (fichier JSON compatible avec le service gpao de l'IGN) : ***prep_vectorise_graph.py***
@@ -576,10 +599,12 @@ optional arguments:
 Les raccourcis clavier disponibles dans l'interface sont :
 - Sélectionner une OPI de réference (*Select ref OPI*) : **s**
 - Sélectionner une OPI secondaire (*Select sec OPI*) : **w**
-- Démarrer polygone (*Start polygon*) : **p**
-- Démarrer polygone pour saisie auto (*Start polygon auto*) : **t**
-- Annuler polygone (*Undo*) : **Ctrl + Z**
-- Refaire polygone (*Redo*) : **Ctrl + Y**
+- Démarrer saisie
+  - manuelle (*Polygon patch*) : **p**
+  - semi-auto (*Semi-auto patch*) : **t**
+  - ilôt (*isle patch*) : **l**
+- Annuler saisie (*Undo*) : **Ctrl + Z**
+- Refaire saisie (*Redo*) : **Ctrl + Y**
 - Masquer/Afficher l’Ortho mosaïquée : **m**
 - Masquer/Afficher les contours : **g**
 - Masquer/Afficher l’Opi sélectionnée : **o**
