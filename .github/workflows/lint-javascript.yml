@@ -5,6 +5,9 @@ name: Eslint
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   eslint:
     runs-on: ubuntu-latest
