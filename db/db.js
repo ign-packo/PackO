@@ -124,10 +124,12 @@ async function getActivePatches(pgClient, idBranch, nbPatches) {
   debug(`    ~~getActivePatches (idBranch: ${idBranch}, nbPatches: ${nbPatches})`);
 
   let limit = '';
+  let order = 'ASC';
   const params = [idBranch];
   if (nbPatches > 0) {
     limit = 'LIMIT $2';
     params.push(nbPatches);
+    order = 'DESC';
   }
 
   const query = "SELECT json_build_object('type', 'FeatureCollection', 'crs', "
@@ -136,7 +138,7 @@ async function getActivePatches(pgClient, idBranch, nbPatches) {
     + 'FROM branches b '
     + 'JOIN caches c ON b.id_cache = c.id '
     + "WHERE b.id = $1), ':', '::'))), "
-    + "'features', json_agg(ST_AsGeoJSON(s.*)::json ORDER BY s.num DESC) "
+    + `'features', json_agg(json_strip_nulls(ST_AsGeoJSON(s.*)::json) ORDER BY s.num ${order}) `
     + 'FILTER (WHERE s.id IS NOT NULL)) '
     + 'FROM ( '
     + ' SELECT '

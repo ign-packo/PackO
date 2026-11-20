@@ -164,7 +164,7 @@ class API {
 
   postPatch(idBranch, dataStr) {
     return new Promise((resolve, reject) => {
-      fetch(`${this.url}/${idBranch}/patch?`,
+      fetch(`${this.url}/${idBranch}/patches?`,
         {
           method: 'POST',
           headers: {

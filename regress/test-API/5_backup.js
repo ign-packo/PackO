@@ -92,7 +92,7 @@ describe('route/backup.js', () => {
   describe('apply test patch', () => {
     it('apply patch - return slab impacted', (done) => {
       chai.request(app)
-        .post(`/${idBranch[branchName1]}/patch`)
+        .post(`/${idBranch[branchName1]}/patches`)
         .send({
           type: 'FeatureCollection',
           crs: { type: 'name', properties: { name: crs } },
