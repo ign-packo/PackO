@@ -509,8 +509,7 @@ async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgb
   return slabs;
 }
 
-async function applyPatch(pgClient, overviews, dirCache, idBranch, geojson) {
-  const feature = geojson.features[0];
+async function applyPatch(pgClient, overviews, dirCache, idBranch, feature, crsObject) {
   const patchIsAuto = feature.properties.is_auto;
   debug('  ~~applyPatch: ', feature);
   const nameOpis = [feature.properties.opiName,
@@ -540,11 +539,22 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, geojson) {
   const patchInserted = await patchInsertedPromise;
   const processPatch = patchIsAuto ? processSemiAutoPatch : processPolygonPatch;
   const slabsProcessed = await processPatch(pgClient, slabs, feature, overviews, infoRgbIr,
-    dirCache, idBranch, patchInserted, geojson.crs);
+    dirCache, idBranch, patchInserted, crsObject);
 
   debug('on retourne les dalles modifiees : ', slabsProcessed);
   debug('Fin de applyPatch');
   return slabsProcessed;
+}
+
+async function applyPatches(pgClient, overviews, dirCache, idBranch, geojson) {
+  debug(`~~applyPatches (idBranch: ${idBranch})`);
+  const slabsFeaturesProcessed = [];
+  for (const feature of geojson.features) {
+    slabsFeaturesProcessed.push(
+      ...(await applyPatch(pgClient, overviews, dirCache, idBranch, feature, geojson.crs)),
+    );
+  }
+  return slabsFeaturesProcessed;
 }
 
 function postPatch(req, _res, next) {
@@ -559,7 +569,7 @@ function postPatch(req, _res, next) {
   const geoJson = params.geoJSON;
   const { idBranch } = params;
 
-  applyPatch(req.client,
+  applyPatches(req.client,
     overviews,
     req.dir_cache,
     idBranch,

@@ -310,36 +310,11 @@ paths:
         '200':
           description: OK
 
-  '/{idBranch}/lastpatches':
-    get:
-      tags:
-        - patch
-      summary: "Récupération des n derniers patchs de correction en format json"
-      description: ""
-      parameters:
-        - in: path
-          name: idBranch
-          description: l'identifiant de la branche
-          required: false
-          schema:
-            type: integer
-        - in: query
-          name: nbPatches
-          description: le nombre des n derniers patchs voulus
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-      responses:
-        '200':
-          description: OK
-
-  '/{idBranch}/patch':
     post:
       tags:
         - patch
-      summary: "Application d'un patch de correction"
-      description: "Mise a jour du graph de mosaiquage a partir d'un geoJSON"
+      summary: "Application des patches de correction"
+      description: "Mise a jour du graph de mosaiquage a partir d'un geoJSON. **Attention** les patches sont appliqués dans l'ordre donné."
       parameters:
         - in: path
           name: idBranch
@@ -396,6 +371,30 @@ paths:
               exemple_isle:
                 $ref: '#/components/examples/featureCollectionSemiAuto'
 
+      responses:
+        '200':
+          description: OK
+
+  '/{idBranch}/lastpatches':
+    get:
+      tags:
+        - patch
+      summary: "Récupération des n derniers patchs de correction en format json"
+      description: ""
+      parameters:
+        - in: path
+          name: idBranch
+          description: l'identifiant de la branche
+          required: false
+          schema:
+            type: integer
+        - in: query
+          name: nbPatches
+          description: le nombre des n derniers patchs voulus
+          required: false
+          schema:
+            type: integer
+            minimum: 1
       responses:
         '200':
           description: OK
