@@ -226,16 +226,14 @@ async function rebase(req, res, next) {
     debug('patches : ', patches);
 
     debug('>>applyPatches', patches.features);
-    // Clonage du patches pour en modifier un
-    const patchWithOneFeature = JSON.parse(JSON.stringify(patches));
     for (const feature of patches.features) {
-      patchWithOneFeature.features = [feature];
       await patch.applyPatch(
         req.client,
         req.overviews,
         cache.path,
         idNewBranch,
-        patchWithOneFeature,
+        feature,
+        patches.crs,
       );
     }
     debug('fin de applyPatches');

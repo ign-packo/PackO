@@ -456,7 +456,7 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
   if (promisesError.length > 0) {
     debug(promisesError);
     const error = new Error(`Patch ${patchInserted.id_patch} has`
-      + ` ${promisesError.lenght} failed slabs.`);
+      + ` ${promisesError.length} failed slabs.`);
     error.name = 'ErrorApplyPatch';
     throw error;
   }
@@ -509,8 +509,7 @@ async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgb
   return slabs;
 }
 
-async function applyPatch(pgClient, overviews, dirCache, idBranch, geojson) {
-  const feature = geojson.features[0];
+async function applyPatch(pgClient, overviews, dirCache, idBranch, feature, crsObject) {
   const patchIsAuto = feature.properties.is_auto;
   debug('  ~~applyPatch: ', feature);
   const nameOpis = [feature.properties.opiName,
@@ -540,11 +539,22 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, geojson) {
   const patchInserted = await patchInsertedPromise;
   const processPatch = patchIsAuto ? processSemiAutoPatch : processPolygonPatch;
   const slabsProcessed = await processPatch(pgClient, slabs, feature, overviews, infoRgbIr,
-    dirCache, idBranch, patchInserted, geojson.crs);
+    dirCache, idBranch, patchInserted, crsObject);
 
   debug('on retourne les dalles modifiees : ', slabsProcessed);
   debug('Fin de applyPatch');
   return slabsProcessed;
+}
+
+async function applyPatches(pgClient, overviews, dirCache, idBranch, geojson) {
+  debug(`~~applyPatches (idBranch: ${idBranch})`);
+  const slabsFeaturesProcessed = [];
+  for (const feature of geojson.features) {
+    slabsFeaturesProcessed.push(
+      ...(await applyPatch(pgClient, overviews, dirCache, idBranch, feature, geojson.crs)),
+    );
+  }
+  return slabsFeaturesProcessed;
 }
 
 function postPatch(req, _res, next) {
@@ -559,7 +569,7 @@ function postPatch(req, _res, next) {
   const geoJson = params.geoJSON;
   const { idBranch } = params;
 
-  applyPatch(req.client,
+  applyPatches(req.client,
     overviews,
     req.dir_cache,
     idBranch,
@@ -618,42 +628,30 @@ async function undo(req, _res, next) {
 
   // trouver le patch a annuler: c'est-à-dire sortir les éléments
   // de req.app.activePatches.features avec patchId == lastPatchId
-  // const lastPatchId = activePatches.features[
-  //   activePatches.features.length - 1]
-  //   .properties.num;
-
   const lastPatchNum = Math.max(...activePatches.features.map((feature) => feature.properties.num));
   const lastPatchId = activePatches.features
     .filter((feature) => feature.properties.num === lastPatchNum)[0].properties.id;
 
-  debug(`Patch '${lastPatchNum}' à annuler.`);
+  // Check lastPatchId isn't saved
+  const backup = await db.getBackups(req.client, idBranch, 1);
+  const lastBackup = backup.length ? backup[0] : { id: -1 };
+  if (lastPatchId <= lastBackup.last_included_patch_id) {
+    debug(`patch ${lastPatchId} saved, no undo`);
+    req.result = { json: 'patch saved, no undo', code: 201 };
+    next();
+    return;
+  }
 
-  // const features = [];
-  // let index = activePatches.features.length - 1;
-  // const slabs = {};
-  // while (index >= 0) {
-  //   const feature = activePatches.features[index];
-  //   if (feature.properties.num === lastPatchId) {
-  //     features.push(feature);
-  //     activePatches.features.splice(index, 1);
-  //     feature.properties.slabs.forEach((item) => {
-  //       slabs[`${item.x}_${item.y}_${item.z}`] = item;
-  //     });
-  //   }
-  //   index -= 1;
-  // }
+  debug(`Patch '${lastPatchNum}' à annuler.`);
 
   const slabs = await db.getSlabs(req.client, lastPatchId);
 
   debug(slabs);
 
-  // debug(Object.keys(slabs).length, 'dalles impactées');
   debug(slabs.length, 'dalles impactées');
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
   const errors = [];
   const histories = [];
-  // Object.values(slabs).forEach((slab, indexSlab) => {
-  // slabs.forEach((slab, indexSlab) => {
   slabs.forEach((slab, indexSlab) => {
     debug('slab :', slab, indexSlab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
