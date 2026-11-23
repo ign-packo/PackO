@@ -46,7 +46,7 @@ async function postBackup(req, _res, next) {
   } catch (error) {
     debug(error);
     let err;
-    if (error.name === 'TypeError') {
+    if (error.message.includes("property 'properties' of undefined")) {
       err = new Error(`No patches to save on the ${idBranch} branch.`);
       err.name = 'NoActivePatch';
     } else if (error.message.includes('last_included_patch_id_unique')) {

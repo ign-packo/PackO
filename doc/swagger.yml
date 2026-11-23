@@ -469,7 +469,7 @@ paths:
           description: OK
 
   '/{idBranch}/backup':
-    post:
+    put:
       tags:
         - backup
       summary: "Sauvegarde temporaire d'une branche"

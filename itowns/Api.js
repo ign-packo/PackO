@@ -224,7 +224,7 @@ class API {
 
   postBackup(idBranch) {
     return new Promise((resolve, reject) => {
-      fetch(`${this.url}/${idBranch}/backup?`, { method: 'POST' })
+      fetch(`${this.url}/${idBranch}/backup?`, { method: 'PUT' })
         .then((res) => {
           if (res.status === 200) {
             resolve();

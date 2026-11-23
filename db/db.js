@@ -588,7 +588,7 @@ async function deleteFeature(pgClient, idFeature) {
 }
 
 async function getBackups(pgClient, idBranch, nbBackup) {
-  debug(`~~getBackups (idBranch: ${idBranch})`);
+  debug(`~~getBackups (idBranch: ${idBranch}, nb backup ${nbBackup})`);
 
   let limit = '';
   const params = [idBranch];
@@ -600,7 +600,7 @@ async function getBackups(pgClient, idBranch, nbBackup) {
   const query = 'SELECT b.id, b.last_included_patch_id, '
     + 'to_char(b.date AT TIME ZONE \'UTC\', \'YYYY-MM-DD"T"HH24:MI:SS\') AS date '
     + 'FROM backup AS b JOIN patches AS p ON p.id = b.last_included_patch_id '
-    + `WHERE p.id_branch = $1 ORDER BY date ASC ${limit}`;
+    + `WHERE p.id_branch = $1 ORDER BY b.date DESC ${limit}`;
   debug('      ', query);
   const results = await pgClient.query(query, params);
   return results.rows;

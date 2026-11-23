@@ -120,7 +120,7 @@ describe('route/backup.js', () => {
   describe('backup idBranch', () => {
     it('idBranch=99999 => should return an error', (done) => {
       chai.request(app)
-        .post('/99999/backup')
+        .put('/99999/backup')
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(400);
@@ -132,7 +132,7 @@ describe('route/backup.js', () => {
     });
     it('should return an error, no active patch in branch', (done) => {
       chai.request(app)
-        .post(`/${idBranch[branchName2]}/backup`)
+        .put(`/${idBranch[branchName2]}/backup`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(406);
@@ -143,7 +143,7 @@ describe('route/backup.js', () => {
     });
     it('should return idBackup and date', (done) => {
       chai.request(app)
-        .post(`/${idBranch[branchName1]}/backup`)
+        .put(`/${idBranch[branchName1]}/backup`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -184,7 +184,7 @@ describe('route/backup.js', () => {
           should.not.exist(errb);
           resb.should.have.status(200);
           chai.request(app)
-            .post(`/${idBranch[branchName1]}/backup`)
+            .put(`/${idBranch[branchName1]}/backup`)
             .end((err, res) => {
               should.not.exist(err);
               res.should.have.status(406);

@@ -274,7 +274,7 @@ class Editing {
       if (e.key === 's') this.select(1);
       // select Opi 2
       if (e.key === 'w') this.select(2);
-      // start polygon
+      // start patch (manuel, semi-auto, isle)
       Object.entries(keyShortcut).forEach(([patchId, key]) => {
         if ((e.key === key) && (this.branch.active.name !== 'orig')) this.saisie(patchId);
       });
@@ -723,7 +723,7 @@ class Editing {
     this.currentStatus = status.WAITING;
     this.api.postBackup(this.branch.active.id)
       .then(() => {
-        this.viewer.message = '';
+        this.viewer.message = 'Patches sauvegardés';
       })
       .catch((err) => {
         this.viewer.message = 'Error de sauvegarde';
@@ -732,7 +732,7 @@ class Editing {
         if (err.name === 'NoActivePatch') {
           error = new Error('Aucun patch à sauvegarder sur la branche.');
         } else if (err.name === 'NoNewPatch') {
-          error = new Error('Aucun nouveau patch par rapport à la dernier sauvegarde.');
+          error = new Error('Aucun nouveau patch par rapport à la dernière sauvegarde.');
         } else {
           error = new Error(err.message);
         }
@@ -743,6 +743,7 @@ class Editing {
         });
       })
       .finally(() => {
+        this.viewer.message = '';
         this.view.controls.setCursor('default', 'auto');
         this.currentStatus = status.RAS;
       });

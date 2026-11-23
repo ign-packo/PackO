@@ -23,7 +23,7 @@ router.get('/:idBranch/backups',
   pgClient.close,
   returnMsg);
 
-router.post('/:idBranch/backup',
+router.put('/:idBranch/backup',
   pgClient.open,
   branch.getBranches.bind({ column: 'id' }),
   [

@@ -616,26 +616,24 @@ async function undo(req, _res, next) {
   const withRgb = firstOPI.with_rgb;
   const withIr = firstOPI.with_ir;
 
-  const activePatches = await db.getActivePatches(req.client, idBranch);
+  // Récupération du dernier patch effectué sur la branche demandé
+  const lastActivePatches = await db.getActivePatches(req.client, idBranch, 1);
 
   // if (req.selectedBranch.activePatches.features.length === 0) {
-  if (activePatches.features.length === 0) {
+  if (lastActivePatches.features.length === 0) {
     debug('rien à annuler');
     req.result = { json: 'rien à annuler', code: 201 };
     next();
     return;
   }
 
-  // trouver le patch a annuler: c'est-à-dire sortir les éléments
-  // de req.app.activePatches.features avec patchId == lastPatchId
-  const lastPatchNum = Math.max(...activePatches.features.map((feature) => feature.properties.num));
-  const lastPatchId = activePatches.features
-    .filter((feature) => feature.properties.num === lastPatchNum)[0].properties.id;
+  // récupération du numéro et de l'id du patch à enlever
+  const lastPatchNum = lastActivePatches.features[0].properties.num;
+  const lastPatchId = lastActivePatches.features[0].properties.id;
 
   // Check lastPatchId isn't saved
-  const backup = await db.getBackups(req.client, idBranch, 1);
-  const lastBackup = backup.length ? backup[0] : { last_included_patch_id: -1 };
-  if (lastPatchId <= lastBackup.last_included_patch_id) {
+  const lastBackup = (await db.getBackups(req.client, idBranch, 1))[0];
+  if (lastBackup !== undefined && lastPatchId <= lastBackup.last_included_patch_id) {
     debug(`patch ${lastPatchId} saved, no undo`);
     req.result = { json: 'patch saved, no undo', code: 201 };
     next();
