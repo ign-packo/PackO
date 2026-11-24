@@ -24,7 +24,7 @@ function encapBody(req, _res, next) {
   next();
 }
 
-const geoJsonAPatcher = [
+const validatorGeojsonPatches = [
   body('geoJSON')
     .exists().withMessage(createErrMsg.missingBody)
     .custom(GJV.isGeoJSONObject)
@@ -44,16 +44,20 @@ const geoJsonAPatcher = [
   body('geoJSON.features.*.properties.is_auto')
     .exists().withMessage(createErrMsg.missingParameter('is_auto'))
     .isBoolean()
-    .withMessage(createErrMsg.invalidParameter('is_auto'))
-    .custom((value, { req }) => { req.result.is_auto = value; return true; }),
+    .withMessage(createErrMsg.invalidParameter('is_auto')),
   body('geoJSON.features.*.geometry')
     .exists().withMessage(createErrMsg.missingParameter('geometry'))
-    .custom((value, { req }) => {
-      if (req.result.is_auto
+    .custom((value, { req, path }) => {
+      // Recherche dans le path la structure 'features[<number>]'
+      const matchWord = path.match(/features\[(\d+)\]/);
+      // matchWord = ['features[<number>]'], '<number>', index, input] ou null (if don't find)
+      const index = matchWord ? parseInt(matchWord[1], 10) : undefined;
+      const isAuto = req.body.geoJSON.features[index]?.properties?.is_auto;
+      if (isAuto
         && [!GJV.isLineString(value), !GJV.isPolygon(value)].every(Boolean)) {
         throw new Error(createErrMsg.InvalidEntity('geometry', value.type));
       }
-      if (!req.result.is_auto && !GJV.isPolygon(value)) {
+      if (!isAuto && !GJV.isPolygon(value)) {
         throw new Error(createErrMsg.InvalidEntity('geometry', 'Polygon'));
       }
       return true;
@@ -75,7 +79,13 @@ const geoJsonAPatcher = [
     .withMessage(createErrMsg.invalidParameter('properties.color')),
 
   body('geoJSON.features.*.properties.opiNameSec')
-    .if((_, { req }) => req.result.is_auto)
+    .if((_, { req, path }) => {
+      // Recherche dans le path la structure 'features[<number>]'
+      const matchWord = path.match(/features\[(\d+)\]/);
+      // matchWord = ['features[<number>]'], '<number>', index, input] ou null (if don't find)
+      const index = matchWord ? parseInt(matchWord[1], 10) : undefined;
+      return req.body.geoJSON.features[index]?.properties?.is_auto;
+    })
     .if(body('geoJSON.features.*.properties').exists())
     .exists()
     .withMessage(createErrMsg.missingParameter('properties.opiNameSec'))
@@ -83,7 +93,13 @@ const geoJsonAPatcher = [
     .matches(/^[a-zA-Z0-9-_]+$/i)
     .withMessage(createErrMsg.invalidParameter('properties.opiNameSec')),
   body('geoJSON.features.*.properties.colorSec')
-    .if((_, { req }) => req.result.is_auto)
+    .if((_, { req, path }) => {
+      // Recherche dans le path la structure 'features[<number>]'
+      const matchWord = path.match(/features\[(\d+)\]/);
+      // matchWord = ['features[<number>]'], '<number>', index, input] ou null (if don't find)
+      const index = matchWord ? parseInt(matchWord[1], 10) : undefined;
+      return req.body.geoJSON.features[index]?.properties?.is_auto;
+    })
     .if(body('geoJSON.features.*.properties.opiNameSec').exists())
     .exists()
     .withMessage(createErrMsg.missingParameter('properties.colorSec'))
@@ -92,7 +108,21 @@ const geoJsonAPatcher = [
     .withMessage(createErrMsg.invalidParameter('properties.colorSec')),
 ];
 
-const getPatches = [
+router.get('/:idBranch/patches',
+  pgClient.open,
+  branch.getBranches.bind({ column: 'id' }),
+  [
+    param('idBranch')
+      .exists().withMessage(createErrMsg.missingParameter('idBranch'))
+      .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
+      .withMessage(createErrMsg.invalidParameter('idBranch')),
+  ],
+  validateParams,
+  patch.getPatches,
+  pgClient.close,
+  returnMsg);
+
+router.get('/:idBranch/lastpatches',
   pgClient.open,
   branch.getBranches.bind({ column: 'id' }),
   [
@@ -101,20 +131,16 @@ const getPatches = [
       .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
     query('nbPatches')
-      .if(query('nbPatches').exists())
+      .exists().withMessage(createErrMsg.missingParameter('nbPatches'))
       .isInt({ min: 1 })
       .withMessage(createErrMsg.invalidParameter('nbPatches')),
   ],
   validateParams,
   patch.getPatches,
   pgClient.close,
-  returnMsg,
-];
+  returnMsg);
 
-router.get('/:idBranch/patches', getPatches);
-router.get('/:idBranch/lastpatches', getPatches);
-
-router.post('/:idBranch/patch',
+router.post('/:idBranch/patches',
   encapBody.bind({ keyName: 'geoJSON' }),
   pgClient.open,
   branch.getBranches.bind({ column: 'id' }),
@@ -123,12 +149,12 @@ router.post('/:idBranch/patch',
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
       .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
-    ...geoJsonAPatcher,
+    ...validatorGeojsonPatches,
   ],
   validateParams,
   branch.getCachePath,
   cache.getOverviews,
-  patch.postPatch,
+  patch.postPatches,
   pgClient.close,
   returnMsg);
 

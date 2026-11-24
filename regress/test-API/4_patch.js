@@ -78,7 +78,7 @@ describe('route/patch.js', () => {
     describe('body: {}', () => {
       it('should return an error', (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/patches`)
           .end((err, res) => {
             should.not.exist(err);
             res.should.have.status(400);
@@ -92,7 +92,7 @@ describe('route/patch.js', () => {
     describe('body: polygon geoJson', () => {
       it('should apply the patch and return the list of tiles impacted', (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/patches`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
@@ -111,14 +111,15 @@ describe('route/patch.js', () => {
             should.not.exist(err);
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
-            resJson.should.be.a('array');
-            resJson[0].withNoData.should.be.a('boolean').equal(true);
+            resJson.should.be.a('array').to.have.lengthOf(1);
+            resJson[0].should.be.a('array');
+            resJson[0][0].withNoData.should.be.a('boolean').equal(true);
             done();
           });
       }).timeout(9000);
       it("should get an error: 'File(s) missing / out of boundaries", (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/patches`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
@@ -141,7 +142,7 @@ describe('route/patch.js', () => {
       }).timeout(9000);
       it("should get a error: 'Le parametre geometry n'est pas un Polygon valide.'", (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/patches`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
@@ -167,7 +168,7 @@ describe('route/patch.js', () => {
       // waiting for ozcpp in ci
       it('should apply the semi auto patch and return the list of tiles impacted', (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/patches`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
@@ -192,7 +193,7 @@ describe('route/patch.js', () => {
       }).timeout(9000);
       it('should apply isle patch and return the list of tiles impacted', (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/patches`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
@@ -217,7 +218,7 @@ describe('route/patch.js', () => {
       }).timeout(9000);
       it("should get a error: 'Le parametre geometry n'est pas un Polygon valide.'", (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/patches`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
@@ -242,7 +243,7 @@ describe('route/patch.js', () => {
       }).timeout(9000);
       it("should get a error: 'Le parametre geometry n'est pas un LineString valide.'", (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/patches`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
@@ -267,7 +268,7 @@ describe('route/patch.js', () => {
       }).timeout(9000);
       it("should get a error: 'Le paramètre 'opiNameSec' est requis..'", (done) => {
         chai.request(app)
-          .post(`/${idBranch[branchName]}/patch`)
+          .post(`/${idBranch[branchName]}/patches`)
           .send({
             type: 'FeatureCollection',
             crs: { type: 'name', properties: { name: crs } },
@@ -309,7 +310,7 @@ describe('route/patch.js', () => {
   describe('GET /{idBranch}/lastpatches', () => {
     it('should return last patch on the branch with 3 patches', (done) => {
       chai.request(app)
-        .get(`/${idBranch[branchName]}/patches?nbPatches=1`)
+        .get(`/${idBranch[branchName]}/lastpatches?nbPatches=1`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -323,7 +324,7 @@ describe('route/patch.js', () => {
     });
     it('should return 3 patches when nbPatches=3 and there are 3 patches on the branch', (done) => {
       chai.request(app)
-        .get(`/${idBranch[branchName]}/patches?nbPatches=3`)
+        .get(`/${idBranch[branchName]}/lastpatches?nbPatches=3`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -336,7 +337,7 @@ describe('route/patch.js', () => {
     });
     it('should return 3 patches when nbPatches>3 and there are 3 patches on the branch', (done) => {
       chai.request(app)
-        .get(`/${idBranch[branchName]}/patches?nbPatches=100`)
+        .get(`/${idBranch[branchName]}/lastpatches?nbPatches=100`)
         .end((err, res) => {
           should.not.exist(err);
           res.should.have.status(200);
@@ -436,7 +437,7 @@ describe('route/patch.js', () => {
     it("should return 'redo: patch xxx réappliqué'", (done) => {
       // Ajout d'un nouveau patch
       chai.request(app)
-        .post(`/${idBranch[branchName]}/patch`)
+        .post(`/${idBranch[branchName]}/patches`)
         .send({
           type: 'FeatureCollection',
           crs: { type: 'name', properties: { name: crs } },
@@ -505,7 +506,7 @@ describe('route/patch.js', () => {
     it("should return 'clear: all patches deleted'", (done) => {
       // Ajout d'un nouveau patch
       chai.request(app)
-        .post(`/${idBranch[branchName]}/patch`)
+        .post(`/${idBranch[branchName]}/patches`)
         .send({
           type: 'FeatureCollection',
           crs: { type: 'name', properties: { name: crs } },

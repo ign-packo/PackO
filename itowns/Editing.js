@@ -274,10 +274,12 @@ class Editing {
       if (e.key === 's') this.select(1);
       // select Opi 2
       if (e.key === 'w') this.select(2);
-      // start polygon
+      // start patch (manuel, semi-auto, isle)
       Object.entries(keyShortcut).forEach(([patchId, key]) => {
         if ((e.key === key) && (this.branch.active.name !== 'orig')) this.saisie(patchId);
       });
+      // backup Ctrl+s
+      if (e.ctrlKey && (e.key === 's')) this.backup();
       // change visibility on ColorLayers
       Object.keys(this.viewer.shortCuts.visibleFolder).forEach((key) => {
         if (e.key === this.viewer.shortCuts.visibleFolder[key]) {
@@ -710,6 +712,41 @@ class Editing {
         this.viewer.message = msg;
       });
     });
+  }
+
+  // Backup
+  backup() {
+    if (this.currentStatus !== status.RAS) return;
+    console.log('sauvegarde des patches sur la branche');
+    this.viewer.message = 'sauvegarde des patches';
+    this.view.controls.setCursor('default', 'wait');
+    this.currentStatus = status.WAITING;
+    this.api.postBackup(this.branch.active.id)
+      .then(() => {
+        this.viewer.message = 'Patches sauvegardés';
+      })
+      .catch((err) => {
+        this.viewer.message = 'Error de sauvegarde';
+        console.log(err);
+        let error;
+        if (err.name === 'NoActivePatch') {
+          error = new Error('Aucun patch à sauvegarder sur la branche.');
+        } else if (err.name === 'NoNewPatch') {
+          error = new Error('Aucun nouveau patch par rapport à la dernière sauvegarde.');
+        } else {
+          error = new Error(err.message);
+        }
+        error.name = err.name;
+        this.viewer.view.dispatchEvent({
+          type: 'error',
+          error,
+        });
+      })
+      .finally(() => {
+        this.viewer.message = '';
+        this.view.controls.setCursor('default', 'auto');
+        this.currentStatus = status.RAS;
+      });
   }
 
   // remarques

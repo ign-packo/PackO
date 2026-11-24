@@ -434,11 +434,20 @@ Les étapes du processus de retouche du graphe de mosaïquage sont :
 
 Les contours des retouches d'un chantier peuvent être affichés en activant l'option "visible" de la couche "Patches".
 
+### Sauvegarde des retouches
+
+Pour sauvegarder les retouches effectuées sur une branche, il suffit d'utiliser le bouton 'sauvegarde' ou le raccourci **Ctrl + S** (ou **Cmd + S** sur macOS).
+Cela permet de bloquer les annulations "undo" de saisies sur les dernières saisies non sauvegardées.\
+On ne peut pas sauvegarder une branche ne contenant aucune saisie active.\
+On ne peut pas sauvegarder plusieurs fois de suite sans avoir effectué de nouvelles saisies actives.\
+
 ### Export des retouches
 
-Pour exporter les retouches d'une branche, on peut utiliser l'url `http://[serveur]:[PORT]/[idBranch]/patches` ou la commande curl `curl [-v] -X "GET" "http://[serveur]:[PORT]/[idBranch]/patches" -H "accept: */*" [-o [chemin_json_sortie]]`.
+Pour exporter toutes les retouches d'une branche, on peut utiliser l'url `http://[serveur]:[PORT]/[idBranch]/patches` ou la commande curl `curl [-v] -X "GET" "http://[serveur]:[PORT]/[idBranch]/patches" -H "accept: */*" [-o [chemin_json_sortie]]`.
 
-Dans les deux cas, le paramètre **idBranch** représente l'identifiant de la branche contenant les retouches à exporter et, pour le récupérer, on peut demander à l'API la liste des branches en utilisant le url `http://[serveur]:[port]/branches`, comme plus haut.
+Pour exporter les retouches sauvegardées d'une branche, on peut utiliser l'url `http://[serveur]:[PORT]/[idBranch]/patches/backup` ou la commande curl `curl [-v] -X "GET" "http://[serveur]:[PORT]/[idBranch]/patches/backup" -H "accept: */*" [-o [chemin_json_sortie]]`.
+
+Dans les quatre cas, le paramètre **idBranch** représente l'identifiant de la branche contenant les retouches à exporter et, pour le récupérer, on peut demander à l'API la liste des branches en utilisant le url `http://[serveur]:[port]/[idCache]/branches`, comme plus haut. Avec **idCache** l'identifiant du cache, récupérable via l'API avec l'url `http://[serveur]:[port]/caches`.
 
 Les options curl *-v* ou *--verbose* et *-o* ou *--output* sont facultatives. Si on utilise l'option *-o*, **chemin_json_sortie** représente le chemin du fichier geoJson en sortie contenant les retouches.
 
@@ -580,6 +589,7 @@ Les raccourcis clavier disponibles dans l'interface sont :
 - Démarrer polygone pour saisie auto (*Start polygon auto*) : **t**
 - Annuler polygone (*Undo*) : **Ctrl + Z**
 - Refaire polygone (*Redo*) : **Ctrl + Y**
+- Sauvegarde des saisies sur la branche courante : **Ctrl + S**
 - Masquer/Afficher l’Ortho mosaïquée : **m**
 - Masquer/Afficher les contours : **g**
 - Masquer/Afficher l’Opi sélectionnée : **o**

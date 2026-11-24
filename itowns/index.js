@@ -239,6 +239,9 @@ async function main() {
     menu.add(editing, 'clear')
       .domElement.parentElement.parentElement.style.display = 'none';
 
+    // Backup
+    menu.add(editing, 'backup').name('Save patches [Ctrl+s]');
+
     // Message
     viewer.message = '';
     menu.add(viewer, 'message')

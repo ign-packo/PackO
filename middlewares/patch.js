@@ -456,7 +456,7 @@ async function processPolygonPatch(pgClient, slabs, feature, overviews, infoRgbI
   if (promisesError.length > 0) {
     debug(promisesError);
     const error = new Error(`Patch ${patchInserted.id_patch} has`
-      + ` ${promisesError.lenght} failed slabs.`);
+      + ` ${promisesError.length} failed slabs.`);
     error.name = 'ErrorApplyPatch';
     throw error;
   }
@@ -509,8 +509,7 @@ async function processSemiAutoPatch(pgClient, slabs, feature, overviews, infoRgb
   return slabs;
 }
 
-async function applyPatch(pgClient, overviews, dirCache, idBranch, geojson) {
-  const feature = geojson.features[0];
+async function applyPatch(pgClient, overviews, dirCache, idBranch, feature, crsObject) {
   const patchIsAuto = feature.properties.is_auto;
   debug('  ~~applyPatch: ', feature);
   const nameOpis = [feature.properties.opiName,
@@ -540,14 +539,24 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, geojson) {
   const patchInserted = await patchInsertedPromise;
   const processPatch = patchIsAuto ? processSemiAutoPatch : processPolygonPatch;
   const slabsProcessed = await processPatch(pgClient, slabs, feature, overviews, infoRgbIr,
-    dirCache, idBranch, patchInserted, geojson.crs);
+    dirCache, idBranch, patchInserted, crsObject);
 
   debug('on retourne les dalles modifiees : ', slabsProcessed);
   debug('Fin de applyPatch');
   return slabsProcessed;
 }
 
-function postPatch(req, _res, next) {
+async function applyMultiPatch(pgClient, overviews, dirCache, idBranch, geojson) {
+  debug(`~~applyPatches (idBranch: ${idBranch})`);
+  const patchesSlabsProcessed = [];
+  for (const feature of geojson.features) {
+    patchesSlabsProcessed.push(await applyPatch(pgClient, overviews,
+      dirCache, idBranch, feature, geojson.crs));
+  }
+  return patchesSlabsProcessed;
+}
+
+function postPatches(req, _res, next) {
   debug('>>POST patch');
   if (req.error) {
     debug(req.error);
@@ -559,7 +568,7 @@ function postPatch(req, _res, next) {
   const geoJson = params.geoJSON;
   const { idBranch } = params;
 
-  applyPatch(req.client,
+  applyMultiPatch(req.client,
     overviews,
     req.dir_cache,
     idBranch,
@@ -606,54 +615,40 @@ async function undo(req, _res, next) {
   const withRgb = firstOPI.with_rgb;
   const withIr = firstOPI.with_ir;
 
-  const activePatches = await db.getActivePatches(req.client, idBranch);
+  // Récupération du dernier patch effectué sur la branche demandé
+  const lastActivePatches = await db.getActivePatches(req.client, idBranch, 1);
 
   // if (req.selectedBranch.activePatches.features.length === 0) {
-  if (activePatches.features.length === 0) {
+  if (lastActivePatches.features.length === 0) {
     debug('rien à annuler');
     req.result = { json: 'rien à annuler', code: 201 };
     next();
     return;
   }
 
-  // trouver le patch a annuler: c'est-à-dire sortir les éléments
-  // de req.app.activePatches.features avec patchId == lastPatchId
-  // const lastPatchId = activePatches.features[
-  //   activePatches.features.length - 1]
-  //   .properties.num;
+  // récupération du numéro et de l'id du patch à enlever
+  const lastPatchNum = lastActivePatches.features[0].properties.num;
+  const lastPatchId = lastActivePatches.features[0].properties.id;
 
-  const lastPatchNum = Math.max(...activePatches.features.map((feature) => feature.properties.num));
-  const lastPatchId = activePatches.features
-    .filter((feature) => feature.properties.num === lastPatchNum)[0].properties.id;
+  // Check lastPatchId isn't saved
+  const lastBackup = (await db.getBackups(req.client, idBranch, 1))[0];
+  if (lastBackup !== undefined && lastPatchId <= lastBackup.last_included_patch_id) {
+    debug(`patch ${lastPatchId} saved, no undo`);
+    req.result = { json: 'patch saved, no undo', code: 201 };
+    next();
+    return;
+  }
 
   debug(`Patch '${lastPatchNum}' à annuler.`);
-
-  // const features = [];
-  // let index = activePatches.features.length - 1;
-  // const slabs = {};
-  // while (index >= 0) {
-  //   const feature = activePatches.features[index];
-  //   if (feature.properties.num === lastPatchId) {
-  //     features.push(feature);
-  //     activePatches.features.splice(index, 1);
-  //     feature.properties.slabs.forEach((item) => {
-  //       slabs[`${item.x}_${item.y}_${item.z}`] = item;
-  //     });
-  //   }
-  //   index -= 1;
-  // }
 
   const slabs = await db.getSlabs(req.client, lastPatchId);
 
   debug(slabs);
 
-  // debug(Object.keys(slabs).length, 'dalles impactées');
   debug(slabs.length, 'dalles impactées');
   // pour chaque tuile, trouver le numéro de version le plus élevé inférieur au numéro de patch
   const errors = [];
   const histories = [];
-  // Object.values(slabs).forEach((slab, indexSlab) => {
-  // slabs.forEach((slab, indexSlab) => {
   slabs.forEach((slab, indexSlab) => {
     debug('slab :', slab, indexSlab);
     const cogPath = cog.getSlabPath(slab.x, slab.y, slab.z, overviews.pathDepth);
@@ -940,8 +935,8 @@ async function clear(req, _res, next) {
 
 module.exports = {
   getPatches,
-  applyPatch,
-  postPatch,
+  applyMultiPatch,
+  postPatches,
   undo,
   redo,
   clear,

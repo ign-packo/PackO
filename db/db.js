@@ -124,10 +124,12 @@ async function getActivePatches(pgClient, idBranch, nbPatches) {
   debug(`    ~~getActivePatches (idBranch: ${idBranch}, nbPatches: ${nbPatches})`);
 
   let limit = '';
+  let order = 'ASC';
   const params = [idBranch];
   if (nbPatches > 0) {
     limit = 'LIMIT $2';
     params.push(nbPatches);
+    order = 'DESC';
   }
 
   const query = "SELECT json_build_object('type', 'FeatureCollection', 'crs', "
@@ -136,7 +138,7 @@ async function getActivePatches(pgClient, idBranch, nbPatches) {
     + 'FROM branches b '
     + 'JOIN caches c ON b.id_cache = c.id '
     + "WHERE b.id = $1), ':', '::'))), "
-    + "'features', json_agg(ST_AsGeoJSON(s.*)::json ORDER BY s.num DESC) "
+    + `'features', json_agg(json_strip_nulls(ST_AsGeoJSON(s.*)::json) ORDER BY s.num ${order}) `
     + 'FILTER (WHERE s.id IS NOT NULL)) '
     + 'FROM ( '
     + ' SELECT '
@@ -585,6 +587,36 @@ async function deleteFeature(pgClient, idFeature) {
   return results.rows[0];
 }
 
+async function getBackups(pgClient, idBranch, nbBackup) {
+  debug(`~~getBackups (idBranch: ${idBranch}, nb backup ${nbBackup})`);
+
+  let limit = '';
+  const params = [idBranch];
+  if (nbBackup > 0) {
+    limit = 'LIMIT $2';
+    params.push(nbBackup);
+  }
+
+  const query = 'SELECT b.id, b.last_included_patch_id, '
+    + 'to_char(b.date AT TIME ZONE \'UTC\', \'YYYY-MM-DD"T"HH24:MI:SS\') AS date '
+    + 'FROM backup AS b JOIN patches AS p ON p.id = b.last_included_patch_id '
+    + `WHERE p.id_branch = $1 ORDER BY b.date DESC ${limit}`;
+  debug('      ', query);
+  const results = await pgClient.query(query, params);
+  return results.rows;
+}
+
+async function insertBackup(pgClient, idPatch) {
+  debug(`~~insertBackup (idPatch: ${idPatch})`);
+
+  const query = 'INSERT INTO backup (last_included_patch_id) VALUES ($1) RETURNING id, date';
+
+  debug('      ', query);
+  const results = await pgClient.query(query, [idPatch]);
+  if (results.rowCount === 1) return results.rows[0];
+  throw new Error('Failed to insert backup.');
+}
+
 module.exports = {
   beginTransaction,
   endTransaction,
@@ -620,4 +652,6 @@ module.exports = {
   updateAlert,
   insertFeature,
   deleteFeature,
+  getBackups,
+  insertBackup,
 };

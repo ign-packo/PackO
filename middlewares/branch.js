@@ -225,19 +225,14 @@ async function rebase(req, res, next) {
     const patches = await db.getActivePatches(req.client, idBranch);
     debug('patches : ', patches);
 
-    debug('>>applyPatches', patches.features);
-    // Clonage du patches pour en modifier un
-    const patchWithOneFeature = JSON.parse(JSON.stringify(patches));
-    for (const feature of patches.features) {
-      patchWithOneFeature.features = [feature];
-      await patch.applyPatch(
-        req.client,
-        req.overviews,
-        cache.path,
-        idNewBranch,
-        patchWithOneFeature,
-      );
-    }
+    debug('>>applyMultiPatch', patches.features);
+    await patch.applyMultiPatch(
+      req.client,
+      req.overviews,
+      cache.path,
+      idNewBranch,
+      patches,
+    );
     debug('fin de applyPatches');
 
     await db.finishProcess(req.client, 'succeed', idProcess, 'done');
