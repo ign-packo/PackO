@@ -384,11 +384,7 @@ A partir du client web en ajoutant le paramètre namecache={nom du cache en base
 
 ### Import de couches vecteur annexes
 
-A partir de l'interface web, on peut intégrer des couches vecteur (au format geojson ou shapefile) en les glissant directement dans la vue. 
-Attention Le format shapefile n'est plus supporté pour le 'drag and drop'.\
-~~Pour les fichiers shapefile, il faut glisser les fichiers .shp, .shx, .dbf et .prj en même temps.
-Pour des soucis d'intégrité, si on désire ajouter plusieurs couches, il faut les ajouter une à une.
-Chaque couche ajoutée est sauvegardée dans la base de données.~~
+A partir de l'interface web (itowns), on peut intégrer des couches vecteur (au format geojson) en les glissant directement dans la vue. 
 
 Actuellement les couches de polygone multipart ne sont pas bien gérées, il faut exploser ces couches en polygone simple avant de les ajouter à la vue itowns.
 
