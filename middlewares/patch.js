@@ -546,18 +546,17 @@ async function applyPatch(pgClient, overviews, dirCache, idBranch, feature, crsO
   return slabsProcessed;
 }
 
-async function applyPatches(pgClient, overviews, dirCache, idBranch, geojson) {
+async function applyMultiPatch(pgClient, overviews, dirCache, idBranch, geojson) {
   debug(`~~applyPatches (idBranch: ${idBranch})`);
-  const slabsFeaturesProcessed = [];
+  const patchesSlabsProcessed = [];
   for (const feature of geojson.features) {
-    slabsFeaturesProcessed.push(
-      ...(await applyPatch(pgClient, overviews, dirCache, idBranch, feature, geojson.crs)),
-    );
+    patchesSlabsProcessed.push(await applyPatch(pgClient, overviews,
+      dirCache, idBranch, feature, geojson.crs));
   }
-  return slabsFeaturesProcessed;
+  return patchesSlabsProcessed;
 }
 
-function postPatch(req, _res, next) {
+function postPatches(req, _res, next) {
   debug('>>POST patch');
   if (req.error) {
     debug(req.error);
@@ -569,7 +568,7 @@ function postPatch(req, _res, next) {
   const geoJson = params.geoJSON;
   const { idBranch } = params;
 
-  applyPatches(req.client,
+  applyMultiPatch(req.client,
     overviews,
     req.dir_cache,
     idBranch,
@@ -936,8 +935,8 @@ async function clear(req, _res, next) {
 
 module.exports = {
   getPatches,
-  applyPatch,
-  postPatch,
+  applyMultiPatch,
+  postPatches,
   undo,
   redo,
   clear,

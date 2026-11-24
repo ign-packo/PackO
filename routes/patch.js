@@ -24,7 +24,7 @@ function encapBody(req, _res, next) {
   next();
 }
 
-const geoJsonAPatcher = [
+const validatorGeojsonPatches = [
   body('geoJSON')
     .exists().withMessage(createErrMsg.missingBody)
     .custom(GJV.isGeoJSONObject)
@@ -48,8 +48,10 @@ const geoJsonAPatcher = [
   body('geoJSON.features.*.geometry')
     .exists().withMessage(createErrMsg.missingParameter('geometry'))
     .custom((value, { req, path }) => {
-      const match = path.match(/features\[(\d+)\]/);
-      const index = match ? parseInt(match[1], 10) : -1;
+      // Recherche dans le path la structure 'features[<number>]'
+      const matchWord = path.match(/features\[(\d+)\]/);
+      // matchWord = ['features[<number>]'], '<number>', index, input] ou null (if don't find)
+      const index = matchWord ? parseInt(matchWord[1], 10) : undefined;
       const isAuto = req.body.geoJSON.features[index]?.properties?.is_auto;
       if (isAuto
         && [!GJV.isLineString(value), !GJV.isPolygon(value)].every(Boolean)) {
@@ -78,8 +80,10 @@ const geoJsonAPatcher = [
 
   body('geoJSON.features.*.properties.opiNameSec')
     .if((_, { req, path }) => {
-      const match = path.match(/features\[(\d+)\]/);
-      const index = match ? parseInt(match[1], 10) : -1;
+      // Recherche dans le path la structure 'features[<number>]'
+      const matchWord = path.match(/features\[(\d+)\]/);
+      // matchWord = ['features[<number>]'], '<number>', index, input] ou null (if don't find)
+      const index = matchWord ? parseInt(matchWord[1], 10) : undefined;
       return req.body.geoJSON.features[index]?.properties?.is_auto;
     })
     .if(body('geoJSON.features.*.properties').exists())
@@ -90,8 +94,10 @@ const geoJsonAPatcher = [
     .withMessage(createErrMsg.invalidParameter('properties.opiNameSec')),
   body('geoJSON.features.*.properties.colorSec')
     .if((_, { req, path }) => {
-      const match = path.match(/features\[(\d+)\]/);
-      const index = match ? parseInt(match[1], 10) : -1;
+      // Recherche dans le path la structure 'features[<number>]'
+      const matchWord = path.match(/features\[(\d+)\]/);
+      // matchWord = ['features[<number>]'], '<number>', index, input] ou null (if don't find)
+      const index = matchWord ? parseInt(matchWord[1], 10) : undefined;
       return req.body.geoJSON.features[index]?.properties?.is_auto;
     })
     .if(body('geoJSON.features.*.properties.opiNameSec').exists())
@@ -143,12 +149,12 @@ router.post('/:idBranch/patches',
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
       .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
-    ...geoJsonAPatcher,
+    ...validatorGeojsonPatches,
   ],
   validateParams,
   branch.getCachePath,
   cache.getOverviews,
-  patch.postPatch,
+  patch.postPatches,
   pgClient.close,
   returnMsg);
 

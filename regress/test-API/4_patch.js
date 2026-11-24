@@ -111,8 +111,9 @@ describe('route/patch.js', () => {
             should.not.exist(err);
             res.should.have.status(200);
             const resJson = JSON.parse(res.text);
-            resJson.should.be.a('array');
-            resJson[0].withNoData.should.be.a('boolean').equal(true);
+            resJson.should.be.a('array').to.have.lengthOf(1);
+            resJson[0].should.be.a('array');
+            resJson[0][0].withNoData.should.be.a('boolean').equal(true);
             done();
           });
       }).timeout(9000);
