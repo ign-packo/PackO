@@ -346,7 +346,22 @@ function processPolygonPatchAsync(patch, blocSize) {
   });
 }
 
+function geometriesIntersection(geometry1, buffer1, geometry2, buffer2, epsg) {
+  // Creating a GDAL geometry
+  const geom1 = gdal.Geometry.fromGeoJson(geometry1);
+  const geom2 = gdal.Geometry.fromGeoJson(geometry2);
+  // Adding the projection to the geometries
+  geom1.srs = gdal.SpatialReference.fromEPSG(epsg);
+  geom2.srs = gdal.SpatialReference.fromEPSG(epsg);
+
+  const segments = 30;// Number of segments used to approximate the arcs in the buffer
+  const bufferedA = geom1.buffer(buffer1, segments);
+  const bufferedB = geom2.buffer(buffer2, segments);
+  return bufferedA.intersection(bufferedB);
+}
+
 exports.getTileEncoded = getTileEncoded;
 exports.getColor = getColor;
 exports.getDefaultEncoded = getDefaultEncoded;
 exports.processPolygonPatchAsync = processPolygonPatchAsync;
+exports.geometriesIntersection = geometriesIntersection;

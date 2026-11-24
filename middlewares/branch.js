@@ -6,6 +6,12 @@ const db = require('../db/db');
 const pgClient = require('./pgClient');
 const patch = require('./patch');
 const cog = require('../cog_path');
+const gdalProcessing = require('../gdal_processing');
+
+// Number of pixels used for the merge intersection buffer
+const NBPXMANUEL = 5;
+const NBPXAUTO = 30;
+const NOM_VECT_INTER_MERGE = 'intersection_merge';
 
 async function getBranches(req, _res, next) {
   debug('>>GET branches');
@@ -92,161 +98,231 @@ async function deleteBranch(req, _res, next) {
   next();
 }
 
-async function rebase(req, res, next) {
-  debug('~~~rebase branch~~~');
+async function initMergeBranch(pgClientRequest, nameNewBranch, idBase, cache, overviews) {
+  // establishment of the new branch
+  const idNewBranch = await db.insertBranch(pgClientRequest, nameNewBranch, cache.id);
+  debug('new branch : ', idNewBranch);
+  // incorporation of the database corrections into this new branch
+  const patches = await db.getActivePatches(pgClientRequest, idBase);
+  let selectedSlabs = new Set();
+  patches.features.forEach(async (feature) => {
+    // the tiles are added to the list of affected tiles
+    feature.properties.slabs.forEach((slab) => {
+      selectedSlabs.add(JSON.stringify(slab));
+    });
+  });
+  selectedSlabs = Array.from(selectedSlabs).map((slab) => JSON.parse(slab));
+  debug('slabs to copy : ', selectedSlabs, idBase, idNewBranch);
+  // We copy the image files to the cache for this new branch
+  selectedSlabs.forEach((slab) => {
+    const cogPath = cog.getSlabPath(
+      slab[0],
+      slab[1],
+      slab[2],
+      overviews.pathDepth,
+    );
+    const graphDir = path.join(cache.path, 'graph', cogPath.dirPath);
+    const orthoDir = path.join(cache.path, 'ortho', cogPath.dirPath);
+    const opiDir = path.join(cache.path, 'opi', cogPath.dirPath);
+    debug(orthoDir);
+    const arrayLinkOrtho = fs.readdirSync(orthoDir).filter(
+      (filename) => (filename.startsWith(`${idBase}_${cogPath.filename}`)),
+    );
+    const regex = new RegExp(`^${idBase}_`);
+    debug(regex);
+    arrayLinkOrtho.forEach((file) => {
+      const newName = file.replace(regex, `${idNewBranch}_`);
+      debug('copy ', file, newName);
+      // fs.copyFileSync(path.join(orthoDir, file), path.join(orthoDir, newName));
+      const data = fs.readFileSync(path.join(orthoDir, file));
+      fs.writeFileSync(path.join(orthoDir, newName), data);
+    });
+    debug(graphDir);
+    const arrayLinkGraph = fs.readdirSync(graphDir).filter(
+      (filename) => (filename.startsWith(`${idBase}_${cogPath.filename}`)),
+    );
+    arrayLinkGraph.forEach((file) => {
+      const newName = file.replace(regex, `${idNewBranch}_`);
+      debug('copy ', file, newName);
+      // fs.copyFileSync(path.join(graphDir, file), path.join(graphDir, newName));
+      const data = fs.readFileSync(path.join(graphDir, file));
+      fs.writeFileSync(path.join(graphDir, newName), data);
+    });
+    debug(opiDir);
+    const arrayLinkOpi = fs.readdirSync(opiDir).filter(
+      (filename) => (filename.startsWith(`${idBase}_${cogPath.filename}`)),
+    );
+    arrayLinkOpi.forEach((file) => {
+      const newName = file.replace(regex, `${idNewBranch}_`);
+      debug('copy ', file, newName);
+      // fs.copyFileSync(path.join(opiDir, file), path.join(opiDir, newName));
+      const data = fs.readFileSync(path.join(opiDir, file));
+      fs.writeFileSync(path.join(opiDir, newName), data);
+    });
+  });
+  // We add the patches to the database on this new branch
+  for (const feature of patches.features) {
+    debug(feature.properties);
+    const patchInserted = await db.insertPatch(pgClientRequest,
+      idNewBranch,
+      feature.geometry,
+      {
+        ref: feature.properties.id_opi,
+        sec: feature.properties.id_opisec,
+      },
+      feature.properties.is_auto);
+    const idNewPatch = patchInserted.id_patch;
+
+    const slabs = feature.properties.slabs.map((s) => ({ x: s[0], y: s[1], z: s[2] }));
+
+    // Add the slabs corresponding to the patch to the relevant table
+    await db.insertSlabs(pgClientRequest, idNewPatch, slabs);
+  }
+  return [idNewBranch, patches];
+}
+
+function getBufferToIntersect(feature, resolution) {
+  if (feature.properties.is_auto) {
+    return NBPXAUTO * resolution;
+  }
+  return NBPXMANUEL * resolution;
+}
+
+async function merge(req, res, next) {
+  debug('~~~merge branch~~~');
   if (req.error) {
     await pgClient.close(req, res, () => {});
     next();
     return;
   }
   const params = matchedData(req);
-  const { idBranch } = params;
-  const { name } = params;
-  const { idBase } = params;
-  debug(idBranch, name, idBase);
-  let idNewBranch = null;
-  let cache = null;
+  const { idBranch, name } = params;
+  debug(idBranch, name);
+  // We retrieve and remove the first value from the array of branch IDs
+  const idBase = idBranch.shift();
+  let idNewBranch;
+  let newMergePatches;
 
-  // On commence par creer une copie de la branche
-  // avec le bon nom et un nouvel id
-  try {
-    if (idBranch === idBase) {
-      throw new Error('impossible to rebase a branch on itself');
-    }
-    // on récupére le cache correspondant aux deux branches
-    cache = await db.getCache(req.client, idBranch);
-    const cacheBase = await db.getCache(req.client, idBase);
-    if (cache.id !== cacheBase.id) {
-      throw new Error('impossible to rebase on two different caches');
-    }
-    // creation de la nouvelle branche
-    idNewBranch = await db.insertBranch(req.client, name, cache.id);
-    debug('nouvelle branche : ', idNewBranch);
-    // reprise des corrections de la base dans cette nouvelle branche
-    const patches = await db.getActivePatches(req.client, idBase);
-    let selectedSlabs = new Set();
-    patches.features.forEach(async (feature) => {
-      // on ajoute les dalles dans la liste des dalles impactées
-      feature.properties.slabs.forEach((slab) => {
-        selectedSlabs.add(JSON.stringify(slab));
-      });
-    });
-    selectedSlabs = Array.from(selectedSlabs).map((slab) => JSON.parse(slab));
-    debug('tuiles a copier : ', selectedSlabs, idBase, idNewBranch);
-    // on copie les fichers images dans le cache pour cette nouvelle branche
-    selectedSlabs.forEach((slab) => {
-      const cogPath = cog.getSlabPath(
-        slab[0],
-        slab[1],
-        slab[2],
-        req.overviews.pathDepth,
-      );
-      const graphDir = path.join(cache.path, 'graph', cogPath.dirPath);
-      const orthoDir = path.join(cache.path, 'ortho', cogPath.dirPath);
-      const opiDir = path.join(cache.path, 'opi', cogPath.dirPath);
-      debug(orthoDir);
-      const arrayLinkOrtho = fs.readdirSync(orthoDir).filter(
-        (filename) => (filename.startsWith(`${idBase}_${cogPath.filename}`)),
-      );
-      const regex = new RegExp(`^${idBase}_`);
-      debug(regex);
-      arrayLinkOrtho.forEach((file) => {
-        const newName = file.replace(regex, `${idNewBranch}_`);
-        debug('copy ', file, newName);
-        // fs.copyFileSync(path.join(orthoDir, file), path.join(orthoDir, newName));
-        const data = fs.readFileSync(path.join(orthoDir, file));
-        fs.writeFileSync(path.join(orthoDir, newName), data);
-      });
-      debug(graphDir);
-      const arrayLinkGraph = fs.readdirSync(graphDir).filter(
-        (filename) => (filename.startsWith(`${idBase}_${cogPath.filename}`)),
-      );
-      arrayLinkGraph.forEach((file) => {
-        const newName = file.replace(regex, `${idNewBranch}_`);
-        debug('copy ', file, newName);
-        // fs.copyFileSync(path.join(graphDir, file), path.join(graphDir, newName));
-        const data = fs.readFileSync(path.join(graphDir, file));
-        fs.writeFileSync(path.join(graphDir, newName), data);
-      });
-      debug(opiDir);
-      const arrayLinkOpi = fs.readdirSync(opiDir).filter(
-        (filename) => (filename.startsWith(`${idBase}_${cogPath.filename}`)),
-      );
-      arrayLinkOpi.forEach((file) => {
-        const newName = file.replace(regex, `${idNewBranch}_`);
-        debug('copy ', file, newName);
-        // fs.copyFileSync(path.join(opiDir, file), path.join(opiDir, newName));
-        const data = fs.readFileSync(path.join(opiDir, file));
-        fs.writeFileSync(path.join(opiDir, newName), data);
-      });
-    });
-    // on ajoute les patchs dans la BD sur cette nouvelle branche
-    for (const feature of patches.features) {
-      // on insert ce patch dans les MTD de la branche
-      debug(feature.properties);
-      const patchInserted = await db.insertPatch(req.client,
-        idNewBranch,
-        feature.geometry,
-        {
-          ref: feature.properties.id_opi,
-          sec: feature.properties.id_opisec,
-        },
-        feature.properties.is_auto);
-      const idNewPatch = patchInserted.id_patch;
-
-      const slabs = feature.properties.slabs.map((s) => ({ x: s[0], y: s[1], z: s[2] }));
-
-      // ajouter les slabs correspondant au patch dans la table correspondante
-      await db.insertSlabs(req.client, idNewPatch, slabs);
-    }
-  } catch (error) {
-    debug(error);
+  // Check that the branches are on the same cache
+  const cache = await db.getCache(req.client, idBase);
+  const branchesCache = await db.getBranches(req.client, cache.id);
+  const idBranchesCache = branchesCache.map((branch) => branch.id);
+  const idsMiss = idBranch.find((id) => !idBranchesCache.includes(id));
+  if (idsMiss) {
     req.error = {
-      msg: `Branch '${idBranch}' rebase failed with error: ${error.message}`,
+      msg: `Branch '${idsMiss}' is not part of the cache ${cache.id}`,
       code: 406,
-      function: 'rebase',
+      function: 'merge',
     };
     await pgClient.close(req, res, () => {});
     next();
     return;
   }
-  // on applique les patchs de idBranch dans cette nouvelle branche
-  // Comme cela peut-être long
-  // il faut créer un processus
+
+  // We start by creating a copy of the branch
+  // with the correct name and a new ID
+  try {
+    [idNewBranch, newMergePatches] = await initMergeBranch(req.client, name, idBase,
+      cache, req.overviews);
+    debug('newMergePatches : ', newMergePatches);
+  } catch (error) {
+    debug(error);
+    req.error = {
+      msg: `Branch '${idBase}' merge failed with error: ${error.message}`,
+      code: 406,
+      function: 'merge',
+    };
+    await pgClient.close(req, res, () => {});
+    next();
+    return;
+  }
+
+  // As this may take a long time, we need to set up a process
   const idProcess = await db.createProcess(req.client,
     `base: ${idBase} + branch: ${idBranch} -> ${idNewBranch} (${name})`);
-  // On fait un commit pour la première partie du rebase et on ouvre une transaction pour la suite
-  await db.endTransaction(req.client, !(req.error));
-  await db.beginTransaction(req.client);
-  // on retourne l'identifiant de la branche, son nom et l'identifiant et du processus
-  req.result = { json: { name, id: idNewBranch, idProcess }, code: 200 };
-  // a partir de d'ici c'est non bloquant
+  // It returns the thread ID, its name and the process ID
+  req.result = { json: { name, idNewBranch, idProcess }, code: 200 };
+  next();
+  //  We apply the patches from the other branches to this new branch
+  debug(`Loop on ids Branches ${idBranch}`);
+  const intersectMerge = {
+    type: 'FeatureCollection',
+    crs: {
+      type: 'name',
+      properties: {
+        name: `urn:ogc:def:crs:${cache.crs.replace(':', '::')}`,
+      },
+    },
+    features: [],
+  };
+  const nbBranch = idBranch.length;
   try {
-    const patches = await db.getActivePatches(req.client, idBranch);
-    debug('patches : ', patches);
-
-    debug('>>applyPatches', patches.features);
-    // Clonage du patches pour en modifier un
-    const patchWithOneFeature = JSON.parse(JSON.stringify(patches));
-    for (const feature of patches.features) {
-      patchWithOneFeature.features = [feature];
-      await patch.applyPatch(
-        req.client,
-        req.overviews,
-        cache.path,
-        idNewBranch,
-        patchWithOneFeature,
-      );
+    for (const [i, idBr] of idBranch.entries()) {
+      // We make a commit for the first part of the merge and
+      // open a transaction for each branch operation
+      await db.endTransaction(req.client, !(req.error));
+      await db.beginTransaction(req.client);
+      // Processing a branch
+      const patches = await db.getActivePatches(req.client, idBr);
+      patches.features.sort((el1, el2) => el1.properties.id - el2.properties.id);
+      debug('>>applyPatches', patches.features);
+      // Cloning patches to modify one of them
+      const patchWithOneFeature = JSON.parse(JSON.stringify(patches));
+      for (const feature of patches.features) {
+        // Check whether the entry intersects with another entry in the merge branch
+        for (const featureBase of newMergePatches.features) {
+          const buffer1 = getBufferToIntersect(feature, req.overviews.resolution);
+          const buffer2 = getBufferToIntersect(featureBase, req.overviews.resolution);
+          const intersection = gdalProcessing.geometriesIntersection(feature.geometry, buffer1,
+            featureBase.geometry, buffer2, req.overviews.crs.code);
+          if (intersection && !intersection.isEmpty()) {
+            const centroid = intersection.centroid();
+            debug(`Ids Patch intersect: ${feature.properties.id}, `
+              + `${featureBase.properties.id}.\n`
+              + `Centroid of intersection: ${centroid.x}, ${centroid.y}.`);
+            intersectMerge.features.push({
+              type: 'Feature',
+              geometry: centroid.toObject(),
+              properties: {
+                idPatch: feature.properties.id,
+                idBranch: feature.properties.id_branch,
+                idPatchBase: featureBase.properties.id,
+                idBranchBase: featureBase.properties.id_branch,
+              },
+            });
+          }
+        }
+        // Applying the patch
+        patchWithOneFeature.features = [feature];
+        await patch.applyPatch(
+          req.client,
+          req.overviews,
+          cache.path,
+          idNewBranch,
+          patchWithOneFeature,
+        );
+      }
+      debug('end to applyPatches');
+      // Add patches applied to the patches in the branch
+      newMergePatches.features = newMergePatches.features.concat(patches.features);
+      await db.updateProcess(req.client, idProcess, `${((i + 1) / nbBranch) * 100}%`);
     }
-    debug('fin de applyPatches');
-
     await db.finishProcess(req.client, 'succeed', idProcess, 'done');
   } catch (error) {
     debug(error);
     await db.finishProcess(req.client, 'failed', idProcess, 'done');
   }
+  if (intersectMerge.features.length !== 0) {
+    const dir = `${cache.path}/alertes_merge`;
+    try {
+      fs.mkdirSync(dir);
+    } catch (error) {
+      if (error.code !== 'EEXIST') debug(error);
+    }
+    fs.writeFileSync(`${dir}/${NOM_VECT_INTER_MERGE}_${idNewBranch}.geojson`,
+      JSON.stringify(intersectMerge));
+  }
   pgClient.close(req, res, () => {});
-  next();
 }
 
 async function getCachePath(req, _res, next) {
@@ -256,7 +332,10 @@ async function getCachePath(req, _res, next) {
     return;
   }
   const params = matchedData(req);
-  const { idBranch } = params;
+  let { idBranch } = params;
+  if (Array.isArray(idBranch)) {
+    [idBranch] = idBranch;
+  }
   try {
     req.dir_cache = await db.getCachePath(req.client, idBranch);
   } catch (error) {
@@ -271,6 +350,6 @@ module.exports = {
   getBranches,
   postBranch,
   deleteBranch,
-  rebase,
+  merge,
   getCachePath,
 };

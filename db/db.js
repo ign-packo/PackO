@@ -68,7 +68,7 @@ async function insertListOpi(pgClient, idCache, listOpi) {
 async function getCache(pgClient, idBranch) {
   debug(`~~getCache (idBranch: ${idBranch})`);
   const results = await pgClient.query(
-    'SELECT c.id, c.path FROM branches b, caches c WHERE b.id_cache = c.id AND b.id = $1',
+    'SELECT c.id, c.path, c.crs FROM branches b, caches c WHERE b.id_cache = c.id AND b.id = $1',
     [idBranch],
   );
   if (results.rowCount === 1) return results.rows[0];
@@ -496,6 +496,18 @@ async function createProcess(pgClient, description) {
   return results.rows[0].id;
 }
 
+async function updateProcess(pgClient, idProcess, result) {
+  debug('~~updateProcess');
+
+  const query = 'UPDATE processes SET result=$1 WHERE id=$2';
+  debug(query);
+
+  await pgClient.query(
+    query,
+    [result, idProcess],
+  );
+}
+
 async function finishProcess(pgClient, status, idProcess, result) {
   debug('~~finishProcess');
 
@@ -615,6 +627,7 @@ module.exports = {
   deleteLayer,
   getProcesses,
   createProcess,
+  updateProcess,
   finishProcess,
   getFeatures,
   updateAlert,
