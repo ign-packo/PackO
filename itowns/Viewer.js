@@ -55,6 +55,50 @@ function initAlertColor() {
 
 initAlertColor();
 
+function readCRS(geojsonObjet) {
+  if (geojsonObjet.crs) {
+    if (geojsonObjet.crs.type.toLowerCase() === 'epsg') {
+      return `EPSG:${geojsonObjet.crs.properties.code}`;
+    }
+    if (geojsonObjet.crs.type.toLowerCase() === 'name') {
+      const epsgIdx = geojsonObjet.crs.properties.name.toLowerCase().indexOf('epsg:');
+      if (epsgIdx >= 0) {
+        // authority:version:code => EPSG:[...]:code
+        const codeStart = geojsonObjet.crs.properties.name.indexOf(':', epsgIdx + 5);
+        if (codeStart > 0) {
+          return `EPSG:${geojsonObjet.crs.properties.name.substr(codeStart + 1)}`;
+        }
+      }
+      throw new Error('Invalid EPSG encoding');
+    }
+    throw new Error(`Unsupported CRS type '${geojsonObjet.crs}'`);
+  }
+  // assume default crs
+  return 'EPSG:4326';
+}
+
+function getEpsgPrj(prj) {
+  // Cases where the EPSG code is explicitly present at the root.
+  const match = prj.match(
+    /(?:AUTHORITY|ID)\s*\[\s*"EPSG"\s*,\s*"?(\d+)"?\s*\]\s*\]\s*$/i,
+  );
+
+  if (match) {
+    return `EPSG::${match[1]}`;
+  }
+
+  // Special case of the provided file EPSG 2154.
+  if (/^\s*PROJCS\s*\[\s*"RGF93_Lambert_93"/i.test(prj)) {
+    return 'EPSG::2154';
+  }
+  // ESRI:102110 mapped in EPSG:2154
+  if (/^\s*PROJCS\s*\[\s*"RGF_1993_Lambert_93"/i.test(prj)) {
+    return 'EPSG::2154';
+  }
+
+  return 'EPSG::4326'; // Unrecognized system = default system
+}
+
 function coloringAlerts(properties) {
   if (properties.status === false) {
     return alertCheckedColor;
@@ -424,7 +468,7 @@ class Viewer {
     });
   }
 
-  addDnDFiles(eventDnD, files) {
+  async addDnDFiles(eventDnD, files) {
     console.log(' ~~addDnDFiles');
     eventDnD.preventDefault();
 
@@ -474,137 +518,111 @@ class Viewer {
       return filename.split('.').slice(0, -1).join('.');
     }
 
-    const errors = {};
-    let nbFileLoaded = 0;
-    const ListFile = {};
+    const listFileToLoad = [];
+    const listFile = {};
     for (let i = 0; i < files.length; i += 1) {
-      const file = files[i];
+      try {
+        const file = files[i];
 
-      const extension = file.name.split('.').pop().toLowerCase();
-      const layerName = getLayerNameFromVectorFile(file.name);
+        const extension = file.name.split('.').pop().toLowerCase();
+        const layerName = getLayerNameFromVectorFile(file.name);
 
-      if (!ListFile[layerName]) ListFile[layerName] = { nbFileDropped: 0, nbFileLoaded: 0 };
+        // checking the file's accessibility
+        try {
+          await file.arrayBuffer();
+        } catch (error) {
+          throw new Error(`File ${layerName} not accessible or corrupt.`);
+        }
 
-      if (Object.keys(extensionsMap).includes(extension)) ListFile[layerName].nbFileDropped += 1;
+        if (!listFile[layerName]) listFile[layerName] = { nbFileDropped: 0, nbFileLoaded: 0 };
+        if (Object.keys(extensionsMap).includes(extension)) {
+          listFile[layerName].nbFileDropped += 1;
+        } else {
+          throw new Error(`Type of file (.${extension}) not supported.`);
+        }
+
+        const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
+        if (listColorLayer.includes(layerName)) {
+          throw new Error('A layer with the same name has already been added.');
+        }
+
+        listFileToLoad.push(file);
+      } catch (error) {
+        error.name = 'drag&dropError';
+        this.view.dispatchEvent({
+          type: 'error',
+          error,
+        });
+      }
     }
 
-    // Read each file
     const data = {};
-    for (let i = 0; i < files.length; i += 1) {
-      const file = files[i];
-      let fileMtd = extensionsMap[file.name.split('.').pop().toLowerCase()];
+    for (let i = 0; i < listFileToLoad.length; i += 1) {
+      const file = listFileToLoad[i];
       const layerName = getLayerNameFromVectorFile(file.name);
-
       if (!data[layerName]) data[layerName] = {};
-
-      if (!fileMtd) {
-        if (!errors[layerName]) {
-          errors[layerName] = [`Type of file (.${file.name.split('.').pop().toLowerCase()}) not supported.`];
-        } else {
-          errors[layerName].push(`Type of file (.${file.name.split('.').pop().toLowerCase()}) not supported.`);
-        }
-        fileMtd = {};
-      }
-
-      const listColorLayer = this.view.getLayers((l) => l.isColorLayer).map((l) => l.id);
-      if (listColorLayer.includes(layerName)) {
-        fileMtd = {};
-        if (!errors[layerName]) {
-          errors[layerName] = ['A layer with the same name has already been added.'];
-        } else {
-          errors[layerName].push('A layer with the same name has already been added.');
-        }
-      }
+      const fileMtd = extensionsMap[file.name.split('.').pop().toLowerCase()];
 
       const fileReader = new FileReader();
       const _view = this.view;
       // eslint-disable-next-line no-loop-func
       fileReader.onload = function onload(e) {
-        const dataLoaded = e.target.result;
-        let resData;
-        nbFileLoaded += 1;
-        if (fileMtd.format === _GEOJSON) {
-          data[layerName] = JSON.parse(dataLoaded);
-          if (!data[layerName].type || data[layerName].type !== 'FeatureCollection' || !GJV.valid(data[layerName])) {
-            const msgError = `File ${layerName} is not a valid geoJson`;
-            if (!errors[layerName]) {
-              errors[layerName] = [msgError];
-            } else {
-              errors[layerName].push(msgError);
+        try {
+          const dataLoaded = e.target.result;
+          listFile[layerName].nbFileLoaded += 1;
+          let resData;
+          if (fileMtd.format === _GEOJSON) {
+            data[layerName] = JSON.parse(dataLoaded);
+            if (!data[layerName].type || data[layerName].type !== 'FeatureCollection' || !GJV.valid(data[layerName])) {
+              throw new Error(`File ${layerName} is not a valid geoJson.`);
             }
-          } else {
             resData = data[layerName];
-          }
-        } else if (fileMtd.format === _SHP) {
-          data[layerName][fileMtd.extension] = dataLoaded;
-          ListFile[layerName].nbFileLoaded += 1;
-          if (ListFile[layerName].nbFileLoaded < 4) {
-            if (ListFile[layerName].nbFileLoaded === ListFile[layerName].nbFileDropped) {
-              const message = 'file(s) missing. (A shapefile must be added with the .shp, the .shx, the .prj and the .dbf)';
-              if (!errors[layerName]) {
-                errors[layerName] = [message];
-              } else {
-                errors[layerName].push(message);
+          } else if (fileMtd.format === _SHP) {
+            data[layerName][fileMtd.extension] = dataLoaded;
+            if (listFile[layerName].nbFileLoaded < 4) {
+              if (listFile[layerName].nbFileLoaded === listFile[layerName].nbFileDropped) {
+                throw new Error('File(s) missing. (A shapefile must be added with the .shp, the .shx, the .prj and the .dbf)');
               }
+            } else {
+              resData = shp.combine([
+                shp.parseShp(data[layerName].shp),
+                shp.parseDbf(data[layerName].dbf),
+              ]);
+              const epsg = getEpsgPrj(data[layerName].prj);
+              resData.crs = { type: 'name', properties: { name: `urn:ogc:def:crs:${epsg}` } };
             }
-          } else {
-            resData = shp.combine([
-              shp.parseShp(data[layerName].shp, data[layerName].prj),
-              shp.parseDbf(data[layerName].dbf),
-            ]);
-            resData.crs = { type: 'name', properties: { name: 'urn:ogc:def:crs:EPSG::4326' } };
           }
-        }
-        if (resData) {
-          const geoJson = JSON.parse(JSON.stringify(resData));
-          const { crs } = _view.tileLayer.extent;
-          const options = {
-            out: {
-              crs,
-              buildExtent: true,
-              mergeFeatures: true,
-              structure: '2d',
-              forcedExtentCrs: crs !== 'EPSG:4978' ? crs : 'EPSG:4326',
-            },
-          };
-
-          // itowns.GeoJsonParser.parse(resData, options).then((features) => {
-          itowns.GeoJsonParser.parse(resData, options).then(() => {
-            const randomColor = Math.round(Math.random() * 0xffffff);
-
-            const style = {
-              fill: {
-                color: `#${randomColor.toString(16)}`,
-                opacity: 0.7,
-              },
-              stroke: {
-                color: `#${randomColor.toString(16)}`,
-              },
-              point: {
-                color: `#${randomColor.toString(16)}`,
-                radius: 5,
+          if (resData) {
+            const geoJson = JSON.parse(JSON.stringify(resData));
+            const { crs } = _view.tileLayer.extent;
+            if (crs !== readCRS(geoJson)) {
+              throw new Error(`The file's CRS is different from the view's CRS. File ${layerName} not loaded.`);
+            }
+            const options = {
+              out: {
+                crs,
+                buildExtent: true,
+                mergeFeatures: true,
+                structure: '2d',
+                forcedExtentCrs: crs !== 'EPSG:4978' ? crs : 'EPSG:4326',
               },
             };
+            itowns.GeoJsonParser.parse(resData, options).then(() => {
+              console.log(`-> Layer '${layerName}' dropped`);
 
-            console.log(`-> Layer '${layerName}' dropped`);
-
-            _view.dispatchEvent({
-              type: 'file-dropped',
-              name: layerName,
-              data: geoJson,
-              style,
+              _view.dispatchEvent({
+                type: 'file-dropped',
+                name: layerName,
+                data: geoJson,
+              });
             });
-          });
-        }
-
-        if (nbFileLoaded === files.length && Object.keys(errors).length > 0) {
-          const error = [];
-          Object.keys(errors).forEach((layer) => {
-            const err = new Error(` ${[`Adding ${layer}`, ...errors[layer]].join('\n    -> ')}\n`);
-            err.name = 'drag&dropError';
-            error.push(err);
-          });
-
+          }
+        } catch (err) {
+          let error = err;
+          if (err.message.includes("Cannot read properties of null (reading 'type')")) {
+            error = new Error(`File ${layerName} has at least one feature with no geometry.`);
+          }
+          error.name = 'drag&dropError';
           _view.dispatchEvent({
             type: 'error',
             error,
@@ -623,20 +641,7 @@ class Viewer {
           fileReader.readAsBinaryString(file);
           break;
         default:
-          nbFileLoaded += 1;
-          if (nbFileLoaded === files.length && Object.keys(errors).length > 0) {
-            const error = [];
-            Object.keys(errors).forEach((layer) => {
-              const err = new Error(` ${[`Adding ${layer}`, ...errors[layer]].join('\n    -> ')}\n`);
-              err.name = 'drag&dropError';
-              error.push(err);
-            });
-
-            this.view.dispatchEvent({
-              type: 'error',
-              error,
-            });
-          }
+          listFile[layerName].nbFileLoaded += 1;
       }
     }
   }

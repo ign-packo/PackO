@@ -25,20 +25,14 @@ function encapBody(req, res, next) {
 }
 
 const vectorToSave = [
-  body('json.data')
-    .exists().withMessage(createErrMsg.missingParameter('data'))
-    .if(body('json.data').exists())
+  body('json')
+    .if(body('json').exists())
     .custom(GJV.isGeoJSONObject)
     .withMessage(createErrMsg.invalidBody('objet GeoJSON'))
-    .if(body('json.data').exists())
     .custom(GJV.isFeatureCollection)
     .withMessage(createErrMsg.invalidBody('featureCollection')),
-  body('json.data.type')
-    .if(body('json.data').exists())
-    .exists().withMessage(createErrMsg.missingParameter('data.type'))
-    .isIn(['FeatureCollection'])
-    .withMessage(createErrMsg.invalidParameter('data.type')),
-  body('json.data.features.*.geometry')
+  body('json.features.*.geometry')
+    .if(body('json.features').exists())
     .custom((value) => (
       GJV.isPoint(value)
       || GJV.isMultiPoint(value)
@@ -92,19 +86,16 @@ router.post('/:idBranch/vector', encapBody.bind({ keyName: 'json' }),
       .exists().withMessage(createErrMsg.missingParameter('idBranch'))
       .custom((value, { req }) => req.result.getBranches.includes(Number(value)))
       .withMessage(createErrMsg.invalidParameter('idBranch')),
+  ],
+  validateParams,
+  vector.getVectors.bind({ column: 'name' }),
+  [
+    query('name')
+      .exists().withMessage(createErrMsg.missingParameter('name'))
+      .custom((value, { req }) => !req.result.getVectors.includes(value))
+      .withMessage(createErrMsg.invalidParameter('name')),
     body('json')
       .exists().withMessage(createErrMsg.missingBody),
-    body('json.metadonnees')
-      .exists().withMessage(createErrMsg.missingParameter('metadonnees')),
-    body('json.metadonnees.name')
-      .if(body('json.metadonnees').exists())
-      .exists().withMessage(createErrMsg.missingParameter('metadonnees.name')),
-    body('json.metadonnees.crs')
-      .if(body('json.metadonnees').exists())
-      .exists().withMessage(createErrMsg.missingParameter('metadonnees.crs')),
-    body('json.metadonnees.style')
-      .if(body('json.metadonnees').exists())
-      .exists().withMessage(createErrMsg.missingParameter('metadonnees.style')),
     ...vectorToSave,
   ],
   validateParams,

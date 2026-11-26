@@ -270,7 +270,7 @@ ALTER TABLE public.feature_ctrs ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY
 CREATE TABLE public.features (
     id integer NOT NULL,
     geom public.geometry NOT NULL,
-    properties character varying,
+    properties jsonb,
     id_layer integer NOT NULL
 );
 
@@ -314,25 +314,22 @@ ALTER TABLE public.layers OWNER TO postgres;
 CREATE VIEW public.features_json AS
  SELECT l.id AS id_layer,
     COALESCE(feature_json.features, '[]'::jsonb) AS features
-   FROM (public.layers l
+   FROM public.layers l
      LEFT JOIN ( SELECT t.id_layer,
-            jsonb_agg(jsonb_build_object('type', 'Feature', 'geometry', (public.st_asgeojson(t.geom, 9, 0))::jsonb, 'properties', ((to_jsonb(t.*) - 'id_layer'::text) - 'geom'::text))) AS features
-           FROM ( SELECT t1.id_layer,
-                    t1.id,
-                    t1.geom,
-                    t1.properties,
-                    t1.status,
-                    t1.comment
-                   FROM ( SELECT f.id_layer,
-                            f.id,
-                            f.geom,
-                            f.properties,
-                            fc.status,
-                            fc.comment
-                           FROM (public.features f
-                             LEFT JOIN public.feature_ctrs fc ON ((f.id = fc.id_feature)))
-                          ORDER BY f.id) t1) t
-          GROUP BY t.id_layer) feature_json ON ((l.id = feature_json.id_layer)));
+            jsonb_agg(jsonb_build_object('type', 'Feature', 'geometry', public.st_asgeojson(t.geom, 9, 0)::jsonb, 'properties', COALESCE(t.properties, '{}'::jsonb) ||
+                CASE
+                    WHEN t.comment IS NOT NULL THEN jsonb_build_object('id', t.id, 'status', t.status, 'comment', t.comment)
+                    ELSE '{}'::jsonb
+                END) ORDER BY t.id) AS features
+           FROM ( SELECT f.id_layer,
+                    f.id,
+                    f.geom,
+                    f.properties,
+                    fc.status,
+                    fc.comment
+                   FROM public.features f
+                     LEFT JOIN public.feature_ctrs fc ON f.id = fc.id_feature) t
+          GROUP BY t.id_layer) feature_json ON l.id = feature_json.id_layer;
 
 
 ALTER TABLE public.features_json OWNER TO postgres;
